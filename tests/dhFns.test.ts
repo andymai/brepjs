@@ -32,11 +32,15 @@ function rotMat(axis: V3, angle: number): M3 {
     t * z * z + c,
   ];
 }
+function el(m: M3, i: number): number {
+  return m[i] ?? NaN;
+}
 function matMul(a: M3, b: M3): M3 {
   const o = [0, 0, 0, 0, 0, 0, 0, 0, 0] as unknown as M3;
   for (let r = 0; r < 3; r++)
     for (let c = 0; c < 3; c++)
-      o[r * 3 + c] = a[r * 3] * b[c] + a[r * 3 + 1] * b[3 + c] + a[r * 3 + 2] * b[6 + c];
+      o[r * 3 + c] =
+        el(a, r * 3) * el(b, c) + el(a, r * 3 + 1) * el(b, 3 + c) + el(a, r * 3 + 2) * el(b, 6 + c);
   return o;
 }
 function matVec(m: M3, v: V3): V3 {
@@ -146,7 +150,7 @@ describe('jointsFromDH', () => {
       [30, -45],
       [90, 90],
       [-60, 120],
-    ]) {
+    ] satisfies [number, number][]) {
       expectMatchesReference(rows, { link1: q1, link2: q2 }, [q1, q2]);
     }
   });

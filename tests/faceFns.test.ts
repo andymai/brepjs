@@ -29,14 +29,22 @@ import {
   isErr,
   isWire,
   isFace,
+  type Face,
 } from '@/index.js';
+import type { KernelShape } from '@/kernel/types.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
 
+function firstFaceOf(shape: KernelShape): Face {
+  const face = getFaces(castShape(shape))[0];
+  if (!face) throw new Error('shape has no faces');
+  return face;
+}
+
 function getFirstFace(shape: ReturnType<typeof box>) {
-  return getFaces(castShape(shape.wrapped))[0];
+  return firstFaceOf(shape.wrapped);
 }
 
 describe('getSurfaceType / faceGeomType', () => {
@@ -80,7 +88,7 @@ describe('uvBounds', () => {
 describe('pointOnSurface', () => {
   it('returns a Vec3 point', () => {
     const rect = sketchRectangle(10, 10);
-    const f = getFaces(castShape(rect.face().wrapped))[0];
+    const f = firstFaceOf(rect.face().wrapped);
     const pt = pointOnSurface(f, 0.5, 0.5);
     expect(pt).toHaveLength(3);
     expect(typeof pt[0]).toBe('number');
@@ -90,7 +98,7 @@ describe('pointOnSurface', () => {
 describe('uvCoordinates', () => {
   it('returns [u, v] pair', () => {
     const rect = sketchRectangle(10, 10);
-    const f = getFaces(castShape(rect.face().wrapped))[0];
+    const f = firstFaceOf(rect.face().wrapped);
     const [u, v] = uvCoordinates(f, [0, 0, 0]);
     expect(typeof u).toBe('number');
     expect(typeof v).toBe('number');
@@ -100,7 +108,7 @@ describe('uvCoordinates', () => {
 describe('normalAt', () => {
   it('returns normal vector', () => {
     const rect = sketchRectangle(10, 10);
-    const f = getFaces(castShape(rect.face().wrapped))[0];
+    const f = firstFaceOf(rect.face().wrapped);
     const n = normalAt(f);
     // Normal of XY plane face should be approx [0,0,+/-1]
     expect(Math.abs(n[2])).toBeCloseTo(1, 1);
@@ -110,7 +118,7 @@ describe('normalAt', () => {
 describe('faceCenter', () => {
   it('returns center Vec3', () => {
     const rect = sketchRectangle(10, 10);
-    const f = getFaces(castShape(rect.face().wrapped))[0];
+    const f = firstFaceOf(rect.face().wrapped);
     const c = faceCenter(f);
     expect(c).toHaveLength(3);
     expect(c[0]).toBeCloseTo(0, 0);
@@ -121,14 +129,14 @@ describe('faceCenter', () => {
 describe('outerWire / innerWires', () => {
   it('returns outer wire of a face', () => {
     const rect = sketchRectangle(10, 10);
-    const f = getFaces(castShape(rect.face().wrapped))[0];
+    const f = firstFaceOf(rect.face().wrapped);
     const w = outerWire(f);
     expect(isWire(w)).toBe(true);
   });
 
   it('returns empty inner wires for simple face', () => {
     const rect = sketchRectangle(10, 10);
-    const f = getFaces(castShape(rect.face().wrapped))[0];
+    const f = firstFaceOf(rect.face().wrapped);
     const inner = innerWires(f);
     expect(inner).toHaveLength(0);
   });
@@ -191,7 +199,7 @@ describe('getSurfaceType — surface type map coverage', () => {
   });
 
   it('getSurfaceType returns ok for a known surface type', () => {
-    const f = getFaces(castShape(sphere(5).wrapped))[0];
+    const f = firstFaceOf(sphere(5).wrapped);
     const result = getSurfaceType(f);
     expect(isOk(result)).toBe(true);
     expect(unwrap(result)).toBe('SPHERE');
@@ -205,7 +213,7 @@ describe('getSurfaceType — surface type map coverage', () => {
 describe('projectPointOnFace', () => {
   it('projects a point onto a planar face and returns ok', () => {
     const rect = sketchRectangle(10, 10);
-    const f = getFaces(castShape(rect.face().wrapped))[0];
+    const f = firstFaceOf(rect.face().wrapped);
     // Project the origin — on the XY-plane face
     const result = projectPointOnFace(f, [0, 0, 0]);
     expect(isOk(result)).toBe(true);
@@ -219,7 +227,7 @@ describe('projectPointOnFace', () => {
 
   it('returns a near-zero distance when the point is already on the face', () => {
     const rect = sketchRectangle(10, 10);
-    const f = getFaces(castShape(rect.face().wrapped))[0];
+    const f = firstFaceOf(rect.face().wrapped);
     const result = projectPointOnFace(f, [0, 0, 0]);
     expect(isOk(result)).toBe(true);
     expect(unwrap(result).distance).toBeCloseTo(0, 5);
@@ -227,7 +235,7 @@ describe('projectPointOnFace', () => {
 
   it('projects a point lifted above the plane and reports positive distance', () => {
     const rect = sketchRectangle(10, 10);
-    const f = getFaces(castShape(rect.face().wrapped))[0];
+    const f = firstFaceOf(rect.face().wrapped);
     const height = 3;
     const result = projectPointOnFace(f, [0, 0, height]);
     expect(isOk(result)).toBe(true);
@@ -239,7 +247,7 @@ describe('projectPointOnFace', () => {
 
   it('projected 3D point matches expected location for off-center input', () => {
     const rect = sketchRectangle(10, 10);
-    const f = getFaces(castShape(rect.face().wrapped))[0];
+    const f = firstFaceOf(rect.face().wrapped);
     const result = projectPointOnFace(f, [2, 3, 5]);
     expect(isOk(result)).toBe(true);
     const proj = unwrap(result);
@@ -252,6 +260,7 @@ describe('projectPointOnFace', () => {
     const s = sphere(5);
     const faces = getFaces(castShape(s.wrapped));
     const sphereFace = faces.find((f) => faceGeomType(f) === 'SPHERE');
+    if (!sphereFace) throw new Error('expected a spherical face');
     // Project a point very close to the surface, slightly inside
     const result = projectPointOnFace(sphereFace, [4.9, 0, 0]);
     expect(isOk(result)).toBe(true);
@@ -264,6 +273,7 @@ describe('projectPointOnFace', () => {
     const cyl = cylinder(5, 10);
     const faces = getFaces(castShape(cyl.wrapped));
     const cylFace = faces.find((f) => faceGeomType(f) === 'CYLINDRE');
+    if (!cylFace) throw new Error('expected a cylindrical face');
     // Project a point close to the side of the cylinder
     const result = projectPointOnFace(cylFace, [4.5, 0, 5]);
     expect(isOk(result)).toBe(true);
@@ -274,7 +284,7 @@ describe('projectPointOnFace', () => {
   });
 
   it('returned PointProjectionResult has all required fields', () => {
-    const f = getFaces(castShape(box(10, 10, 10).wrapped))[0];
+    const f = firstFaceOf(box(10, 10, 10).wrapped);
     const result = projectPointOnFace(f, [1, 1, 1]);
     expect(isOk(result)).toBe(true);
     const proj = unwrap(result);
@@ -292,7 +302,7 @@ describe('projectPointOnFace', () => {
     // For well-formed shapes projectPointOnFace always succeeds, so we
     // verify the happy-path result type is never an err for normal inputs
     // and document that the err variant is typed correctly.
-    const f = getFaces(castShape(box(10, 10, 10).wrapped))[0];
+    const f = firstFaceOf(box(10, 10, 10).wrapped);
     const result = projectPointOnFace(f, [5, 5, 5]);
     // Normal faces always project successfully
     expect(isErr(result)).toBe(false);

@@ -29,7 +29,7 @@ describe('importDXF', () => {
     expect(isOk(result)).toBe(true);
     const wires = unwrap(result);
     expect(wires.length).toBeGreaterThanOrEqual(1);
-    const len = curveLength(wires[0]);
+    const len = wires[0] && curveLength(wires[0]);
     expect(len).toBeCloseTo(40, 0); // 10x10 rectangle perimeter
   });
 
@@ -79,7 +79,7 @@ describe('importDXF entity types', () => {
     const wires = unwrap(result);
     expect(wires.length).toBeGreaterThanOrEqual(1);
     // Circle circumference = 2*PI*5 ~ 31.4
-    const len = curveLength(wires[0]);
+    const len = wires[0] && curveLength(wires[0]);
     expect(len).toBeCloseTo(2 * Math.PI * 5, 0);
   });
 
@@ -116,7 +116,7 @@ describe('importDXF entity types', () => {
     const wires = unwrap(result);
     expect(wires.length).toBeGreaterThanOrEqual(1);
     // Quarter circle: (2*PI*10)/4 ~ 15.7
-    const len = curveLength(wires[0]);
+    const len = wires[0] && curveLength(wires[0]);
     expect(len).toBeCloseTo((2 * Math.PI * 10) / 4, 0);
   });
 
@@ -197,7 +197,7 @@ describe('importDXF entity types', () => {
     const wires = unwrap(result);
     expect(wires.length).toBeGreaterThanOrEqual(1);
     // Quarter circle arc (~15.7) + straight line (~14.14) = ~29.9
-    const len = curveLength(wires[0]);
+    const len = wires[0] && curveLength(wires[0]);
     const expectedArc = (2 * Math.PI * 10) / 4;
     const expectedLine = Math.sqrt(10 * 10 + 10 * 10);
     expect(len).toBeCloseTo(expectedArc + expectedLine, 0);

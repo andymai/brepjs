@@ -54,7 +54,7 @@ describe('enhanced boolean errors', () => {
     } else {
       // If it fails, error should have diagnostics
       const error = unwrapErr(result);
-      expect(error.metadata?.diagnostics).toBeDefined();
+      expect(error.metadata?.['diagnostics']).toBeDefined();
     }
   });
 

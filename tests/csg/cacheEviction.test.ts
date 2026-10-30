@@ -7,11 +7,23 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from '../setup.js';
 import { Evaluator, withEvaluator, box, sphere, fuse, emptySolid, param } from '@/csg/index.js';
-import { unwrap, measureVolume, getDisposalStats } from '@/index.js';
+import {
+  unwrap,
+  measureVolume,
+  getDisposalStats,
+  isShape3D,
+  type AnyShape,
+  type Dimension,
+} from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
+
+function volumeOf(s: AnyShape<Dimension>): number {
+  if (!isShape3D(s)) throw new Error('expected a 3D shape');
+  return unwrap(measureVolume(s));
+}
 
 describe('CSG cache eviction — default (unbounded)', () => {
   it('never evicts when maxCacheEntries is unset', () => {
@@ -64,14 +76,14 @@ describe('CSG cache eviction — bounded', () => {
     unwrap(ev.evaluate(box(8, 8, 8))); // evict a
     expect(ev.cacheStats().evictions).toBeGreaterThanOrEqual(1);
     const r = unwrap(ev.evaluate(a)); // miss → rebuild
-    expect(unwrap(measureVolume(r))).toBeCloseTo(125, 3);
+    expect(volumeOf(r)).toBeCloseTo(125, 3);
   });
 
   it('honors the bound through withEvaluator', () => {
     const vol = withEvaluator({ maxCacheEntries: 2 }, (ev) => {
       for (let i = 1; i <= 6; i++) unwrap(ev.evaluate(box(i, 4, 4)));
       expect(ev.cacheStats().entries).toBeLessThanOrEqual(2);
-      return unwrap(measureVolume(unwrap(ev.evaluate(box(5, 4, 4)))));
+      return volumeOf(unwrap(ev.evaluate(box(5, 4, 4))));
     });
     expect(vol).toBeCloseTo(80, 3); // 5*4*4
   });
@@ -87,10 +99,10 @@ describe('CSG cache eviction — shared-handle safety', () => {
     const b = box(4, 4, 4);
     const r1 = unwrap(ev.evaluate(fuse(b, emptySolid())));
     expect(ev.cacheStats().evictions).toBe(1); // box key evicted, fuse key kept
-    expect(unwrap(measureVolume(r1))).toBeCloseTo(64, 3); // handle still live
+    expect(volumeOf(r1)).toBeCloseTo(64, 3); // handle still live
 
     const r2 = unwrap(ev.evaluate(fuse(b, emptySolid()))); // fuse key hit
-    expect(unwrap(measureVolume(r2))).toBeCloseTo(64, 3);
+    expect(volumeOf(r2)).toBeCloseTo(64, 3);
   });
 });
 
@@ -125,7 +137,7 @@ describe('CSG cache eviction — error path & reentrancy', () => {
     }
     expect(ev.cacheStats().entries).toBeLessThanOrEqual(1);
     expect(ev.cacheStats().evictions).toBe(0); // rollbacks are not evictions
-    expect(unwrap(measureVolume(r))).toBeCloseTo(125, 3);
+    expect(volumeOf(r)).toBeCloseTo(125, 3);
   });
 
   it('rejects a reentrant evaluate() from onStep when bounded', () => {
@@ -159,7 +171,7 @@ describe('CSG cache eviction — error path & reentrancy', () => {
       // keeping the bound and the earlier result intact.
       expect(() => ev.evaluate(box(6, 6, 6))).toThrow(/boom/);
       expect(ev.cacheStats().entries).toBeLessThanOrEqual(1);
-      expect(unwrap(measureVolume(r))).toBeCloseTo(125, 3);
+      expect(volumeOf(r)).toBeCloseTo(125, 3);
     } finally {
       ev[Symbol.dispose]();
     }

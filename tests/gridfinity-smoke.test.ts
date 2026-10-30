@@ -42,9 +42,10 @@ import {
   getBounds,
   curveLength,
   measureVolume,
+  Sketch,
 } from '@/index.js';
 
-import type { AnyShape, Shape3D } from '@/index.js';
+import type { AnyShape, Shape3D, ValidSolid } from '@/index.js';
 
 // ---------------------------------------------------------------------------
 // Setup
@@ -83,7 +84,7 @@ describe('1. Sketch primitives', () => {
   it('drawRoundedRectangle → extrude', (ctx) => {
     skipIfDiverges(ctx, 'gridfinity.roundedRectExtrude');
     const solid = drawRoundedRectangle(42, 42, 3.75).sketchOnPlane('XY').extrude(7);
-    const s = boundsSize(getBounds(solid as AnyShape));
+    const s = boundsSize(getBounds(solid));
     expect(s.width).toBeCloseTo(42, 0);
     expect(s.height).toBeCloseTo(42, 0);
     expect(s.depth).toBeCloseTo(7, 0);
@@ -91,7 +92,7 @@ describe('1. Sketch primitives', () => {
 
   it('drawRectangle → extrude (volume check)', () => {
     const solid = drawRectangle(10, 10).sketchOnPlane('XY').extrude(5);
-    const s = boundsSize(getBounds(solid as AnyShape));
+    const s = boundsSize(getBounds(solid));
     // 10 × 10 × 5 = 500
     expect(s.width * s.height * s.depth).toBeCloseTo(500, -1);
   });
@@ -99,14 +100,14 @@ describe('1. Sketch primitives', () => {
   it('drawCircle → extrude (magnet hole)', (ctx) => {
     skipIfDiverges(ctx, 'gridfinity.circleExtrude');
     const solid = drawCircle(3.25).sketchOnPlane('XY').extrude(2);
-    const s = boundsSize(getBounds(solid as AnyShape));
+    const s = boundsSize(getBounds(solid));
     expect(s.width).toBeCloseTo(6.5, 0);
     expect(s.depth).toBeCloseTo(2, 0);
   });
 
   it('drawPolysides → extrude (hex pattern)', () => {
     const solid = drawPolysides(5, 6).sketchOnPlane('XY').extrude(1);
-    const s = boundsSize(getBounds(solid as AnyShape));
+    const s = boundsSize(getBounds(solid));
     expect(s.depth).toBeCloseTo(1, 0);
     expect(s.width).toBeGreaterThan(0);
   });
@@ -119,7 +120,7 @@ describe('1. Sketch primitives', () => {
       .close()
       .sketchOnPlane('XY')
       .extrude(1);
-    const s = boundsSize(getBounds(solid as AnyShape));
+    const s = boundsSize(getBounds(solid));
     expect(s.width).toBeCloseTo(10, 0);
     expect(s.height).toBeCloseTo(5, 0);
     expect(s.depth).toBeCloseTo(1, 0);
@@ -149,11 +150,11 @@ describe('2. Ruled loft (socket)', () => {
     if (!first) throw new Error('expected at least one sketch');
     const solid = first.loftWith(rest, { ruled: true });
 
-    const s = boundsSize(getBounds(solid as AnyShape));
+    const s = boundsSize(getBounds(solid));
     expect(s.width).toBeGreaterThan(38);
     expect(s.depth).toBeGreaterThan(4);
 
-    const m = mesh(solid as AnyShape, { tolerance: 0.1 });
+    const m = mesh(solid, { tolerance: 0.1 });
     expect(m.triangles.length).toBeGreaterThan(0);
   });
 });
@@ -167,20 +168,18 @@ describe('3. Shell (bin body)', () => {
     const box = drawRoundedRectangle(84, 84, 3.75).sketchOnPlane('XY').extrude(21);
 
     // Find the top face (parallel to Z, highest)
-    const topFaces = faceFinder()
-      .parallelTo('Z')
-      .findAll(box as AnyShape);
+    const topFaces = faceFinder().parallelTo('Z').findAll(box);
 
     // Pick the face at highest Z
     const topFace = topFaces.reduce((best, f) => {
-      const fb = getBounds(f as AnyShape);
-      const bb = getBounds(best as AnyShape);
+      const fb = getBounds(f);
+      const bb = getBounds(best);
       return fb.zMax > bb.zMax ? f : best;
     });
 
-    const hollow = unwrap(shell(box as AnyShape, [topFace], 1.2));
+    const hollow = unwrap(shell(box as ValidSolid, [topFace], 1.2));
 
-    const hollowSize = boundsSize(getBounds(hollow as AnyShape));
+    const hollowSize = boundsSize(getBounds(hollow));
 
     // Bounding box should be roughly the same
     expect(hollowSize.width).toBeCloseTo(84, 0);
@@ -207,11 +206,11 @@ describe('4. Sweep + fillet (stacking lip)', () => {
           .lineTo([0.5, 1.8])
           .lineTo([0, 1.8])
           .close()
-          .sketchOnPlane(_plane, _origin),
+          .sketchOnPlane(_plane),
       { withContact: true }
     );
 
-    const s = boundsSize(getBounds(solid as AnyShape));
+    const s = boundsSize(getBounds(solid));
     expect(s.width).toBeGreaterThan(80);
     expect(s.depth).toBeGreaterThan(0);
   });
@@ -236,11 +235,8 @@ describe('4. Sweep + fillet (stacking lip)', () => {
     const box = drawRoundedRectangle(outerW, outerD, BOX_CORNER_RADIUS)
       .sketchOnPlane('XY')
       .extrude(wallHeight);
-    const topFaces = faceFinder()
-      .parallelTo('Z')
-      .atDistance(wallHeight, [0, 0, 0])
-      .findAll(box as AnyShape);
-    const hollowBox = unwrap(shell(box as AnyShape, topFaces, 1.2));
+    const topFaces = faceFinder().parallelTo('Z').atDistance(wallHeight, [0, 0, 0]).findAll(box);
+    const hollowBox = unwrap(shell(box as ValidSolid, topFaces, 1.2));
 
     // Build lip via sweep — uses the real profile from boxBuilder.ts
     const spine = drawRoundedRectangle(outerW, outerD, BOX_CORNER_RADIUS).sketchOnPlane('XY');
@@ -253,20 +249,20 @@ describe('4. Sweep + fillet (stacking lip)', () => {
           .line(LIP_BIG_TAPER, LIP_BIG_TAPER)
           .vLineTo(0)
           .close()
-          .sketchOnPlane(plane, _origin);
+          .sketchOnPlane(plane);
       },
       { withContact: true }
     );
 
     // Lip solid must have positive volume
-    const lipVolume = unwrap(measureVolume(lipSolid as AnyShape));
+    const lipVolume = unwrap(measureVolume(lipSolid));
     expect(lipVolume).toBeGreaterThan(100);
 
-    const lipBounds = getBounds(lipSolid as AnyShape);
+    const lipBounds = getBounds(lipSolid);
     expect(lipBounds.zMax - lipBounds.zMin).toBeGreaterThan(0);
 
     // Translate lip to top of box and fuse
-    const translatedLip = translate(lipSolid as AnyShape, [0, 0, wallHeight]);
+    const translatedLip = translate(lipSolid, [0, 0, wallHeight]);
     const result = fuse(hollowBox, translatedLip);
 
     // The fuse must succeed and produce a meshable solid
@@ -274,15 +270,15 @@ describe('4. Sweep + fillet (stacking lip)', () => {
       throw new Error(`fuse failed: ${JSON.stringify(result)}`);
     }
     const fused = result.value;
-    const m = mesh(fused as AnyShape, { tolerance: 0.1 });
+    const m = mesh(fused, { tolerance: 0.1 });
     expect(m.triangles.length).toBeGreaterThan(0);
 
     // Fused solid must have substantial volume
-    const fusedVolume = unwrap(measureVolume(fused as AnyShape));
+    const fusedVolume = unwrap(measureVolume(fused));
     expect(fusedVolume).toBeGreaterThan(5000);
 
     // Fused solid should extend above the box by roughly LIP_HEIGHT
-    const fusedBounds = getBounds(fused as AnyShape);
+    const fusedBounds = getBounds(fused);
     expect(fusedBounds.zMax).toBeGreaterThan(wallHeight + LIP_HEIGHT - 2);
   });
 
@@ -305,11 +301,8 @@ describe('4. Sweep + fillet (stacking lip)', () => {
     const box = drawRoundedRectangle(outerW, outerD, BOX_CORNER_RADIUS)
       .sketchOnPlane('XY')
       .extrude(wallHeight);
-    const topFaces = faceFinder()
-      .parallelTo('Z')
-      .atDistance(wallHeight, [0, 0, 0])
-      .findAll(box as AnyShape);
-    const hollowBox = unwrap(shell(box as AnyShape, topFaces, 1.2));
+    const topFaces = faceFinder().parallelTo('Z').atDistance(wallHeight, [0, 0, 0]).findAll(box);
+    const hollowBox = unwrap(shell(box as ValidSolid, topFaces, 1.2));
 
     const spine = drawRoundedRectangle(outerW, outerD, BOX_CORNER_RADIUS).sketchOnPlane('XY');
 
@@ -321,41 +314,42 @@ describe('4. Sweep + fillet (stacking lip)', () => {
           .line(LIP_BIG_TAPER, LIP_BIG_TAPER)
           .vLineTo(0)
           .close()
-          .sketchOnPlane(plane, _origin);
+          .sketchOnPlane(plane);
       },
       { withContact: true }
     );
 
     // Lip solid must have positive volume
-    const lipVolume = unwrap(measureVolume(lipSolid as AnyShape));
+    const lipVolume = unwrap(measureVolume(lipSolid));
     expect(lipVolume).toBeGreaterThan(100);
 
-    const lipBounds = getBounds(lipSolid as AnyShape);
+    const lipBounds = getBounds(lipSolid);
     expect(lipBounds.zMax - lipBounds.zMin).toBeGreaterThan(0);
     // Lip X extent should not exceed spine (positive-X = outward)
     const spineSketch = drawRoundedRectangle(outerW, outerD, BOX_CORNER_RADIUS).sketchOnPlane('XY');
-    const spineBounds = getBounds(spineSketch.wire as AnyShape);
+    if (!(spineSketch instanceof Sketch)) throw new Error('expected a single sketch');
+    const spineBounds = getBounds(spineSketch.wire);
     spineSketch.delete();
     // Allow up to LIP_TAPER_WIDTH outward overhang
     expect(lipBounds.xMax).toBeLessThan(spineBounds.xMax + LIP_TAPER_WIDTH + 0.5);
     expect(lipBounds.yMax).toBeLessThan(spineBounds.yMax + LIP_TAPER_WIDTH + 0.5);
 
     // Fuse lip onto box
-    const translatedLip = translate(lipSolid as AnyShape, [0, 0, wallHeight]);
+    const translatedLip = translate(lipSolid, [0, 0, wallHeight]);
     const result = fuse(hollowBox, translatedLip);
 
     if (!result.ok) {
       throw new Error(`fuse failed: ${JSON.stringify(result)}`);
     }
     const fused = result.value;
-    const m = mesh(fused as AnyShape, { tolerance: 0.1 });
+    const m = mesh(fused, { tolerance: 0.1 });
     expect(m.triangles.length).toBeGreaterThan(0);
 
     // Fused solid must have substantial volume
-    const fusedVolume = unwrap(measureVolume(fused as AnyShape));
+    const fusedVolume = unwrap(measureVolume(fused));
     expect(fusedVolume).toBeGreaterThan(5000);
 
-    const fusedBounds = getBounds(fused as AnyShape);
+    const fusedBounds = getBounds(fused);
     expect(fusedBounds.zMax).toBeGreaterThan(wallHeight + LIP_HEIGHT - 2);
     // Verify aspect ratio preserved — depth should be ~3x width
     const fusedWidth = fusedBounds.xMax - fusedBounds.xMin;
@@ -367,20 +361,18 @@ describe('4. Sweep + fillet (stacking lip)', () => {
     const box = drawRectangle(20, 20).sketchOnPlane('XY').extrude(10);
 
     // Find vertical edges
-    const vertEdges = edgeFinder()
-      .parallelTo('Z')
-      .findAll(box as AnyShape);
+    const vertEdges = edgeFinder().parallelTo('Z').findAll(box);
 
     let solid;
     if (vertEdges.length > 0) {
-      solid = unwrap(fillet(box as AnyShape, vertEdges.slice(0, 4), 1));
+      solid = unwrap(fillet(box as ValidSolid, vertEdges.slice(0, 4), 1));
     } else {
       // Fallback: fillet all edges
-      const allEdges = edgeFinder().findAll(box as AnyShape);
-      solid = unwrap(fillet(box as AnyShape, allEdges.slice(0, 4), 1));
+      const allEdges = edgeFinder().findAll(box);
+      solid = unwrap(fillet(box as ValidSolid, allEdges.slice(0, 4), 1));
     }
 
-    const s = boundsSize(getBounds(solid as AnyShape));
+    const s = boundsSize(getBounds(solid));
     expect(s.width).toBeGreaterThan(0);
   });
 });
@@ -393,8 +385,8 @@ describe('5. Boolean pipeline', () => {
   it('fuse two overlapping boxes', () => {
     const a = drawRectangle(10, 10).sketchOnPlane('XY').extrude(5);
     const b = drawRectangle(10, 10).sketchOnPlane('XY', 2).extrude(5);
-    const result = unwrap(fuse(a as AnyShape, b as AnyShape));
-    const s = boundsSize(getBounds(result as AnyShape));
+    const result = unwrap(fuse(a, b));
+    const s = boundsSize(getBounds(result));
     expect(s.depth).toBeCloseTo(7, 0); // 5 + 2 overlap => 7
   });
 
@@ -408,20 +400,20 @@ describe('5. Boolean pipeline', () => {
         ]) as Shape3D
     );
     const result = unwrap(fuseAll(solids));
-    const s = boundsSize(getBounds(result as AnyShape));
+    const s = boundsSize(getBounds(result));
     expect(s.width).toBeCloseTo(20, 0); // 3 boxes offset by 5 each: 0..10 + 5..15 + 10..20
   });
 
   it('cut (box from box)', () => {
     const base = drawRectangle(20, 20).sketchOnPlane('XY').extrude(10);
     const tool = drawRectangle(6, 6).sketchOnPlane('XY').extrude(20);
-    const result = unwrap(cut(base as AnyShape, tool as AnyShape));
-    const s = boundsSize(getBounds(result as AnyShape));
+    const result = unwrap(cut(base, tool));
+    const s = boundsSize(getBounds(result));
     expect(s.width).toBeCloseTo(20, 0);
   });
 
   it('cutAll multiple tools', () => {
-    const base = drawRectangle(40, 40).sketchOnPlane('XY').extrude(5) as Shape3D;
+    const base = drawRectangle(40, 40).sketchOnPlane('XY').extrude(5);
     const tools = [-10, 10].map(
       (x) =>
         translate(drawRectangle(4, 4).sketchOnPlane('XY').extrude(10) as AnyShape, [
@@ -431,18 +423,15 @@ describe('5. Boolean pipeline', () => {
         ]) as Shape3D
     );
     const result = unwrap(cutAll(base, tools));
-    const s = boundsSize(getBounds(result as AnyShape));
+    const s = boundsSize(getBounds(result));
     expect(s.width).toBeCloseTo(40, 0);
   });
 
   it('intersect two overlapping boxes', () => {
     const a = drawRectangle(10, 10).sketchOnPlane('XY').extrude(10);
-    const b = translate(
-      drawRectangle(10, 10).sketchOnPlane('XY').extrude(10) as AnyShape,
-      [5, 5, 0]
-    );
-    const result = unwrap(intersect(a as AnyShape, b));
-    const s = boundsSize(getBounds(result as AnyShape));
+    const b = translate(drawRectangle(10, 10).sketchOnPlane('XY').extrude(10), [5, 5, 0]);
+    const result = unwrap(intersect(a, b));
+    const s = boundsSize(getBounds(result));
     // Intersection should be 5×5×10
     expect(s.width).toBeCloseTo(5, 0);
     expect(s.height).toBeCloseTo(5, 0);
@@ -457,7 +446,7 @@ describe('6. Transforms', () => {
   it('translate shifts bounding box', () => {
     const box = drawRectangle(10, 10).sketchOnPlane('XY').extrude(5);
     const result = translate(box as AnyShape, [42, 0, 0]);
-    const s = boundsSize(getBounds(result as AnyShape));
+    const s = boundsSize(getBounds(result));
     // Box was centered at ~5, now shifted by 42
     expect(s.centerX).toBeGreaterThan(35);
   });
@@ -469,7 +458,7 @@ describe('6. Transforms', () => {
       { type: 'rotate', angle: 90, axis: [0, 0, 1] },
     ]);
     const result = transformCopy(box as AnyShape, composed);
-    const s = boundsSize(getBounds(result as AnyShape));
+    const s = boundsSize(getBounds(result));
     expect(s.width).toBeGreaterThan(0);
   });
 
@@ -477,7 +466,7 @@ describe('6. Transforms', () => {
     const box = drawRectangle(10, 10).sketchOnPlane('XY').extrude(5);
     const copy = unwrap(clone(box as AnyShape));
     const moved = translate(copy, [100, 0, 0]);
-    const origBounds = boundsSize(getBounds(box as AnyShape));
+    const origBounds = boundsSize(getBounds(box));
     const copyBounds = boundsSize(getBounds(moved));
     // Original should be unmoved
     expect(origBounds.centerX).toBeLessThan(20);
@@ -493,16 +482,14 @@ describe('6. Transforms', () => {
 describe('7. Finders', () => {
   it('faceFinder().parallelTo(Z) finds top/bottom faces', () => {
     const box = drawRectangle(10, 10).sketchOnPlane('XY').extrude(5);
-    const faces = faceFinder()
-      .parallelTo('Z')
-      .findAll(box as AnyShape);
+    const faces = faceFinder().parallelTo('Z').findAll(box);
     // A box has 2 faces parallel to Z (top and bottom)
     expect(faces.length).toBeGreaterThanOrEqual(2);
   });
 
   it('edgeFinder().findAll returns edges', () => {
     const box = drawRectangle(10, 10).sketchOnPlane('XY').extrude(5);
-    const edges = edgeFinder().findAll(box as AnyShape);
+    const edges = edgeFinder().findAll(box);
     // A box has 12 edges
     expect(edges.length).toBeGreaterThanOrEqual(12);
   });
@@ -515,14 +502,14 @@ describe('7. Finders', () => {
 describe('8. Mesh & export', () => {
   it('mesh() produces valid triangulation', () => {
     const box = drawRectangle(10, 10).sketchOnPlane('XY').extrude(5);
-    const m = mesh(box as AnyShape, { tolerance: 0.1 });
+    const m = mesh(box, { tolerance: 0.1 });
     expect(m.vertices.length).toBeGreaterThan(0);
     expect(m.triangles.length).toBeGreaterThan(0);
   });
 
   it('meshEdges() produces edge lines', () => {
     const box = drawRectangle(10, 10).sketchOnPlane('XY').extrude(5);
-    const m = meshEdges(box as AnyShape, { tolerance: 0.1 });
+    const m = meshEdges(box, { tolerance: 0.1 });
     expect(m.lines.length).toBeGreaterThan(0);
     expect(m.edgeGroups.length).toBeGreaterThan(0);
   });
@@ -541,7 +528,7 @@ describe('8. Mesh & export', () => {
 
   it('getBounds returns valid bounding box', () => {
     const box = drawRectangle(10, 10).sketchOnPlane('XY').extrude(5);
-    const bounds = getBounds(box as AnyShape);
+    const bounds = getBounds(box);
     const s = boundsSize(bounds);
     expect(s.width).toBeCloseTo(10, 0);
     expect(s.height).toBeCloseTo(10, 0);
@@ -552,7 +539,7 @@ describe('8. Mesh & export', () => {
 
   it('curveLength returns positive length', () => {
     const box = drawRectangle(10, 10).sketchOnPlane('XY').extrude(5);
-    const edges = edgeFinder().findAll(box as AnyShape);
+    const edges = edgeFinder().findAll(box);
     expect(edges.length).toBeGreaterThan(0);
     const firstEdge = edges[0];
     if (!firstEdge) throw new Error('expected at least one edge');
