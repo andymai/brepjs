@@ -6,6 +6,9 @@ import {
   curveStartPoint,
   curveEndPoint,
   curveLength,
+  curveIsClosed,
+  curvePointAt,
+  curveTangentAt,
   isOk,
   isErr,
   unwrap,
@@ -104,4 +107,37 @@ describe('interpolateCurve', () => {
     expect(isOk(result)).toBe(true);
     expect(curveLength(unwrap(result))).toBeGreaterThan(0);
   });
+
+  // The closed cubic OCCT's periodic GeomAPI_Interpolate builds: chord-length
+  // parameters, C2 at every point but the first, where it closes C1. Points at
+  // fractions of the parameter range, read off occt-wasm.
+  it('closes a periodic curve back on its first point, smoothly', () => {
+    const pts: Vec3[] = [
+      [0, 0, 0],
+      [20, -5, 0],
+      [30, 10, 0],
+      [15, 25, 0],
+      [-5, 15, 0],
+    ];
+    using c = unwrap(interpolateCurve(pts, { periodic: true }));
+    expectPoint(curveStartPoint(c), [0, 0, 0]);
+    expectPoint(curveEndPoint(c), [0, 0, 0]);
+    expect(curveIsClosed(c)).toBe(true);
+    const start = curveTangentAt(c, 0);
+    const end = curveTangentAt(c, 1);
+    for (const k of [0, 1, 2]) expect(end[k]).toBeCloseTo(start[k] ?? NaN, 6);
+    const expected: Array<[number, Vec3]> = [
+      [0.1, [9.463965590029137, -6.899276545384871, 0]],
+      [0.25, [23.41630010011421, -2.6107066657746323, 0]],
+      [0.5, [25.553873148024046, 19.51754794319828, 0]],
+      [0.75, [0.4362218786906773, 21.228094074771555, 0]],
+      [0.9, [-5.38902754967702, 10.076158089803327, 0]],
+    ];
+    for (const [at, point] of expected) expectPoint(curvePointAt(c, at), point);
+    expect(curveLength(c)).toBeCloseTo(104.92854186347782, 3);
+  });
 });
+
+function expectPoint(actual: readonly number[], expected: readonly number[]): void {
+  for (const [i, value] of expected.entries()) expect(actual[i]).toBeCloseTo(value, 6);
+}

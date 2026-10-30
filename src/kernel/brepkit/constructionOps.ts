@@ -6,6 +6,7 @@
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape, KernelType } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import {
   type BrepkitHandle,
   isBrepkitHandle,
@@ -700,6 +701,7 @@ export function interpolatePoints(
     );
   }
   if (points.length < 2) throw new Error('brepkit: need at least 2 points');
+  if (options?.periodic) return interpolateClosed(bk, points);
   if (points.length === 2) {
     return makeLineEdge(bk, wasmIndex(points, 0), wasmIndex(points, 1));
   }
@@ -708,6 +710,136 @@ export function interpolatePoints(
   const coords = points.flatMap(([x, y, z]) => [x, y, z]);
   const id = bk.interpolatePoints(coords, degree);
   return edgeHandle(id);
+}
+
+/**
+ * The closed cubic through `points` that OCCT's periodic GeomAPI_Interpolate
+ * builds, which brepkit-wasm has no binding for. The points are parameterised
+ * by chord length, the closing chord included; the spline is C2 at every point
+ * but the first, where it closes C1 with the tangent of the Lagrange
+ * polynomial through the first four points (three when there are only three).
+ * It is built as one cubic Bezier segment per chord: a clamped NURBS whose
+ * interior knots have multiplicity 3.
+ */
+function interpolateClosed(bk: BrepkitKernel, points: [number, number, number][]): KernelShape {
+  if (points.length < 3) {
+    throw new UnsupportedKernelOperationError(
+      'brepkit: a periodic interpolation needs at least 3 points'
+    );
+  }
+  const loop = [...points, wasmIndex(points, 0)];
+  const h = loop.slice(1).map((p, i) => {
+    const q = wasmIndex(loop, i);
+    return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+  });
+  if (h.some((len) => len === 0)) {
+    throw new Error('brepkit: periodic interpolation through repeated points');
+  }
+  const t = [0];
+  for (const len of h) t.push(wasmIndex(t, t.length - 1) + len);
+  const tangent = lagrangeStartTangent(loop, t, points.length === 3 ? 2 : 3);
+  const derivatives = [tangent, ...interiorDerivatives(loop, h, tangent), tangent];
+
+  const controlPoints: number[] = [...wasmIndex(loop, 0)];
+  const knots: number[] = [0, 0, 0, 0];
+  for (let i = 0; i < h.length; i++) {
+    const third = wasmIndex(h, i) / 3;
+    const p0 = wasmIndex(loop, i);
+    const p1 = wasmIndex(loop, i + 1);
+    const d0 = wasmIndex(derivatives, i);
+    const d1 = wasmIndex(derivatives, i + 1);
+    controlPoints.push(...p0.map((c, k) => c + third * wasmIndex(d0, k)));
+    controlPoints.push(...p1.map((c, k) => c - third * wasmIndex(d1, k)));
+    controlPoints.push(...p1);
+    const ti = wasmIndex(t, i + 1);
+    knots.push(ti, ti, ti);
+  }
+  knots.push(wasmIndex(t, t.length - 1));
+  const [x, y, z] = wasmIndex(loop, 0);
+  const weights = Array<number>(controlPoints.length / 3).fill(1);
+  return edgeHandle(bk.makeNurbsEdge(x, y, z, x, y, z, 3, knots, controlPoints, weights));
+}
+
+/** Derivative at t[0] of the Lagrange polynomial through the first degree + 1 points. */
+function lagrangeStartTangent(
+  pts: [number, number, number][],
+  t: number[],
+  degree: number
+): [number, number, number] {
+  const t0 = wasmIndex(t, 0);
+  const tangent: [number, number, number] = [0, 0, 0];
+  for (let j = 0; j <= degree; j++) {
+    let weight = j === 0 ? 0 : 1;
+    let den = 1;
+    for (let m = 0; m <= degree; m++) {
+      if (m === j) continue;
+      if (j === 0) weight += 1 / (t0 - wasmIndex(t, m));
+      else if (m !== 0) weight *= t0 - wasmIndex(t, m);
+      den *= wasmIndex(t, j) - wasmIndex(t, m);
+    }
+    if (j !== 0) weight /= den;
+    const p = wasmIndex(pts, j);
+    for (let k = 0; k < 3; k++) tangent[k] = wasmIndex(tangent, k) + weight * wasmIndex(p, k);
+  }
+  return tangent;
+}
+
+/**
+ * Derivatives at the interior points of a cubic spline through `pts` (the first
+ * point repeated at the end), from C2 continuity at each, with `tangent` at
+ * both ends: one tridiagonal system per coordinate.
+ */
+function interiorDerivatives(
+  pts: [number, number, number][],
+  h: number[],
+  tangent: [number, number, number]
+): [number, number, number][] {
+  const sub: number[] = [];
+  const diag: number[] = [];
+  const sup: number[] = [];
+  const rhs: [number[], number[], number[]] = [[], [], []];
+  const last = h.length - 1;
+  for (let i = 1; i <= last; i++) {
+    const hp = wasmIndex(h, i - 1);
+    const hn = wasmIndex(h, i);
+    sub.push(hn);
+    diag.push(2 * (hp + hn));
+    sup.push(hp);
+    const prev = wasmIndex(pts, i - 1);
+    const cur = wasmIndex(pts, i);
+    const next = wasmIndex(pts, i + 1);
+    for (let k = 0; k < 3; k++) {
+      const into = wasmIndex(cur, k) - wasmIndex(prev, k);
+      const out = wasmIndex(next, k) - wasmIndex(cur, k);
+      let r = 3 * ((hn / hp) * into + (hp / hn) * out);
+      if (i === 1) r -= hn * wasmIndex(tangent, k);
+      if (i === last) r -= hp * wasmIndex(tangent, k);
+      wasmIndex(rhs, k).push(r);
+    }
+  }
+  const [xs, ys, zs] = rhs.map((r) => solveTridiagonal(sub, diag, sup, r)) as [
+    number[],
+    number[],
+    number[],
+  ];
+  return xs.map((x, i) => [x, wasmIndex(ys, i), wasmIndex(zs, i)]);
+}
+
+/** Solve a tridiagonal system (sub-, main and super-diagonal) by the Thomas algorithm. */
+function solveTridiagonal(sub: number[], diag: number[], sup: number[], rhs: number[]): number[] {
+  const n = diag.length;
+  const c: number[] = [];
+  const d: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const den = wasmIndex(diag, i) - (i > 0 ? wasmIndex(sub, i) * wasmIndex(c, i - 1) : 0);
+    c.push(wasmIndex(sup, i) / den);
+    d.push((wasmIndex(rhs, i) - (i > 0 ? wasmIndex(sub, i) * wasmIndex(d, i - 1) : 0)) / den);
+  }
+  const x = Array<number>(n).fill(0);
+  for (let i = n - 1; i >= 0; i--) {
+    x[i] = wasmIndex(d, i) - (i < n - 1 ? wasmIndex(c, i) * wasmIndex(x, i + 1) : 0);
+  }
+  return x;
 }
 
 export function approximatePoints(
