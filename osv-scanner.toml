@@ -20,7 +20,7 @@
 
 [[IgnoredVulns]]
 id = "GHSA-p98j-92pf-mc4p"
-ignoreUntil = 2026-11-01
+ignoreUntil = 2026-12-01
 # Needs IN_PLACE sanitization plus an afterSanitizeElements or
 # afterSanitizeAttributes hook that removes a non-root element, leaving the
 # detached subtree's event handlers armed on the caller's live DOM. monaco has
@@ -33,7 +33,7 @@ reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never i
 
 [[IgnoredVulns]]
 id = "GHSA-6688-9rhm-gjv2"
-ignoreUntil = 2026-11-01
+ignoreUntil = 2026-12-01
 # Needs sanitize(node, { IN_PLACE: true }) on a Node input whose root is a
 # rawtext element. Same missing half as above: monaco 0.57.0's two call sites
 # in domSanitize.js pass an HTML string with RETURN_DOM_FRAGMENT or
@@ -43,7 +43,7 @@ reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never i
 
 [[IgnoredVulns]]
 id = "GHSA-mrv2-3pqr-j5jr"
-ignoreUntil = 2026-11-01
+ignoreUntil = 2026-12-01
 # The incomplete-fix follow-up to GHSA-p98j-92pf-mc4p: an IN_PLACE hook that
 # removes the current node's parent or a later sibling leaves that subtree's
 # handlers armed. Same missing half as GHSA-p98j-92pf-mc4p: no IN_PLACE.
@@ -51,7 +51,7 @@ reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never i
 
 [[IgnoredVulns]]
 id = "GHSA-cg2g-xh64-v4q7"
-ignoreUntil = 2026-11-01
+ignoreUntil = 2026-12-01
 # Needs SAFE_FOR_TEMPLATES with a DOM-returning mode, on input that carries an
 # attached shadow root, whose output then feeds a template engine. monaco has
 # the DOM-returning half (RETURN_DOM_FRAGMENT), but SAFE_FOR_TEMPLATES appears
@@ -61,26 +61,29 @@ reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never i
 
 [[IgnoredVulns]]
 id = "GHSA-c6gr-qvv4-5v3f"
-ignoreUntil = 2026-11-01
+ignoreUntil = 2026-12-01
 # Needs PARSER_MEDIA_TYPE 'application/xhtml+xml' plus an allowlist that keeps
 # animate/set and attributeName. PARSER_MEDIA_TYPE appears nowhere in esm/
 # outside the vendored dompurify.js, so monaco parses as text/html, where the
 # attributeName=href guard lowercases correctly.
 reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never imported; PARSER_MEDIA_TYPE never set, so the guard runs in text/html mode"
 
-# --- katex via mermaid (docs site) ------------------------------------------
-# Fixed only in katex 0.18.2, and mermaid (11.17.2 here, 12.1.0 latest) still
-# declares katex ^0.16.47, so the fix is outside the parent's range. An
-# override would force mermaid onto an unvetted katex line.
+# --- minimatch via eslint, typedoc, typescript-eslint (dev tooling) ---------
+# Fixed only in minimatch 11.0.1, and the npm latest of every parent still
+# declares ^10: eslint ^10.2.6, @eslint/config-array ^10.2.4, typedoc ^10.2.5,
+# @typescript-eslint/typescript-estree ^10.2.2. An override would force all
+# four onto an unvetted major.
 #
-# Re-evaluate when a mermaid release accepts katex >= 0.18.2.
+# Re-evaluate when those parents accept minimatch >= 11.0.1, or a patched 10.x
+# ships.
 
 [[IgnoredVulns]]
-id = "GHSA-238p-pmpm-9mq7"
+id = "GHSA-g3hv-75wg-m249"
 ignoreUntil = 2026-12-01
-# A read-side gadget: needs Object.prototype already polluted by some other
-# bug before KaTeX reads options. KaTeX is dev-only (apps/docs via
-# vitepress-plugin-mermaid), and mermaid dynamically imports it only for a
-# diagram label matching $$...$$. No docs page contains one, and every diagram
-# is authored in-repo.
-reason = "docs-only via mermaid; loaded only for $$ math labels, which no page has; needs a separate prototype-pollution bug"
+# Needs an attacker-supplied glob compiled with optimizationLevel >= 2: the
+# globParts amplification (firstPhasePreProcess) and the quadratic pairwise
+# pass (secondPhasePreProcess) both run only behind that check in minimatch's
+# preprocess(). None of the four parents passes optimizationLevel, so they all
+# take the default level 1 path (levelOneOptimize). Every glob they compile
+# comes from config authored in this repo.
+reason = "dev-only lint/docs tooling; no consumer sets optimizationLevel >= 2, the only path that amplifies globParts; globs are repo-authored"
