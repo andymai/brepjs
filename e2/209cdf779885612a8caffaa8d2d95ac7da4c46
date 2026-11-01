@@ -1,0 +1,26 @@
+packages/brepjs-cad/tests/langfuseDatasetRun.test.ts
+  s_305afb2d3cfe67::t_7a4d06cb4c04c4 5-6
+packages/brepjs-cad/bench/syncDataset.ts
+  s_305afb2d3cfe67::t_7a4d06cb4c04c4 2
+packages/brepjs-cad/bench/langfuse.ts
+  s_305afb2d3cfe67::t_7a4d06cb4c04c4 5
+packages/brepjs-cad/bench/playgroundCorpus.ts
+  s_305afb2d3cfe67::t_7a4d06cb4c04c4 10
+  s_305afb2d3cfe67::t_b3e72bad095c94 32-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e2209cdf779885612a8caffaa8d2d95ac7da4c46",
+  "prompts": {},
+  "sessions": {
+    "s_305afb2d3cfe67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cd90b1a-acf9-4692-b146-d6d5589bcf40",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
