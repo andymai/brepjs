@@ -2,6 +2,7 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 import { LangfuseSpanProcessor } from '@langfuse/otel';
 import { getActiveTraceId, startActiveObservation } from '@langfuse/tracing';
 import { LangfuseClient } from '@langfuse/client';
+import { PLAYGROUND_DATASET } from './playgroundCorpus.js';
 import type { EvalPrompt } from './prompts.js';
 import { SCHEMA_VERSION, runScores, itemScores, type EvalResult, type Scorecard } from './score.js';
 
@@ -20,8 +21,6 @@ import { SCHEMA_VERSION, runScores, itemScores, type EvalResult, type Scorecard 
  * runs compare natively in the dataset Runs view. Deferred: per-call nested generation/span
  * observations inside the live `eval:live` path.
  */
-export const PLAYGROUND_DATASET = 'brepjs-playground';
-
 export interface Telemetry {
   /** Run one prompt's eval inside a trace; derive + attach scores from the result. */
   observePrompt: (

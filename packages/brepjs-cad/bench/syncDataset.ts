@@ -1,5 +1,5 @@
 import { LangfuseClient } from '@langfuse/client';
-import { PLAYGROUND_DATASET as DATASET } from './langfuse.js';
+import { PLAYGROUND_DATASET as DATASET } from './playgroundCorpus.js';
 
 // Sync the plain-brepjs playground examples (basics + mechanical) into a Langfuse dataset, so
 // /eval-skill runs can be recorded + compared as dataset experiments. Each example's description

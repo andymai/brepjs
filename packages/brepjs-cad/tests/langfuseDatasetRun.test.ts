@@ -2,7 +2,8 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { gunzipSync } from 'node:zlib';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { createTelemetry, PLAYGROUND_DATASET } from '../bench/langfuse.js';
+import { createTelemetry } from '../bench/langfuse.js';
+import { PLAYGROUND_DATASET } from '../bench/playgroundCorpus.js';
 import type { EvalResult, Scorecard } from '../bench/score.js';
 
 // pushDatasetRun against a local stand-in for the Langfuse API. Every Langfuse call in the bench is

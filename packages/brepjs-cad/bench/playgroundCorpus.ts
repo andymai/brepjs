@@ -7,6 +7,7 @@ import type { EvalPrompt } from './prompts.js';
 // `eval:live --corpus playground` run records cleanly as a dataset experiment. `basics` +
 // `mechanical` only (plain brepjs); `bim` / `sheet-metal` need their own skills.
 const SCOPE = new Set(['basics', 'mechanical']);
+export const PLAYGROUND_DATASET = 'brepjs-playground';
 
 interface Example {
   id: string;
@@ -28,16 +29,14 @@ export async function playgroundPrompts(): Promise<EvalPrompt[]> {
   const registry = '../../../apps/playground/src/lib/examples/index.ts';
   const mod = (await import(registry)) as { CATEGORIES: readonly Category[] };
   return mod.CATEGORIES.filter((c) => SCOPE.has(c.id)).flatMap((c) =>
-    c.examples.map(
-      (e): EvalPrompt => ({
-        id: e.id,
-        category: c.id as EvalPrompt['category'],
-        prompt: e.description,
-        rubric: e.description,
-        // The example's own source is the known-good reference the judge grades against — so the
-        // eval measures the author's part vs the curated build of the same request, not vs nothing.
-        referenceCode: e.code,
-      })
-    )
+    c.examples.map((e): EvalPrompt => ({
+      id: e.id,
+      category: c.id as EvalPrompt['category'],
+      prompt: e.description,
+      rubric: e.description,
+      // The example's own source is the known-good reference the judge grades against — so the
+      // eval measures the author's part vs the curated build of the same request, not vs nothing.
+      referenceCode: e.code,
+    }))
   );
 }
