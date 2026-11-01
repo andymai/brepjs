@@ -70,9 +70,9 @@
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "0.137.0",
-    "@langfuse/client": "6.0.0",
-    "@langfuse/otel": "6.0.0",
-    "@langfuse/tracing": "6.0.0",
+    "@langfuse/client": "6.0.2",
+    "@langfuse/otel": "6.0.2",
+    "@langfuse/tracing": "6.0.2",
     "@opentelemetry/sdk-node": "0.223.0",
     "@react-three/drei": "10.7.9",
     "@react-three/fiber": "9.8.2",
