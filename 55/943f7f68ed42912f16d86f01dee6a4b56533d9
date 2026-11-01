@@ -1,0 +1,20 @@
+packages/brepjs-cad/tests/langfuseDatasetRun.test.ts
+  s_305afb2d3cfe67::t_7902dbe32cde93 1-99,101-158
+  s_305afb2d3cfe67::t_082473ae8b5df9 100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "55943f7f68ed42912f16d86f01dee6a4b56533d9",
+  "prompts": {},
+  "sessions": {
+    "s_305afb2d3cfe67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cd90b1a-acf9-4692-b146-d6d5589bcf40",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
