@@ -35,6 +35,13 @@ updates:
       # the site never uses it. Re-allow once the plugin's peer range accepts 12.x.
       - dependency-name: mermaid
         update-types: ['version-update:semver-major']
+      # @opentelemetry/sdk-node 0.300 is OpenTelemetry SDK 3.x, which peers on
+      # @opentelemetry/api >=1.10.0. @langfuse/otel (through 6.1.0) peers on
+      # @opentelemetry/core and sdk-trace-base ^2, which need api <1.10.0. One
+      # process can't hold both, and any @langfuse/* bump then fails ERESOLVE.
+      # Re-allow once @langfuse/otel's peer ranges accept SDK 3.
+      - dependency-name: '@opentelemetry/sdk-node'
+        versions: ['>=0.300.0']
     groups:
       minor-and-patch:
         update-types:
@@ -49,6 +56,17 @@ updates:
         patterns:
           - size-limit
           - '@size-limit/*'
+        update-types:
+          - major
+          - minor
+          - patch
+      # @langfuse/client depends on @langfuse/tracing at its own major, and all
+      # three share @langfuse/core. A per-package major bump nests a second
+      # tracing/core copy beside the old one, so spans and scores come from
+      # different SDK majors. Move the set together.
+      langfuse:
+        patterns:
+          - '@langfuse/*'
         update-types:
           - major
           - minor

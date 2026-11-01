@@ -1,11 +1,11 @@
 import { LangfuseClient } from '@langfuse/client';
+import { PLAYGROUND_DATASET as DATASET } from './playgroundCorpus.js';
 
 // Sync the plain-brepjs playground examples (basics + mechanical) into a Langfuse dataset, so
 // /eval-skill runs can be recorded + compared as dataset experiments. Each example's description
 // is the prompt (input); its own code is the reference (expectedOutput). The dataset auto-tracks
 // the playground catalog. No-op without LANGFUSE_* keys.
 //   npm run eval:dataset:sync -w brepjs-cad
-const DATASET = 'brepjs-playground';
 const SCOPE = new Set(['basics', 'mechanical']); // plain brepjs; bim/sheet-metal need other skills
 
 interface Example {
@@ -41,9 +41,6 @@ async function main(): Promise<void> {
   }
   const corpus = await loadCorpus();
   const client = new LangfuseClient();
-  // Go through client.api.* — the flat client.createDataset/createDatasetItem aliases are assigned
-  // unbound in the v5.5.3 constructor (`this.createDataset = this.api.datasets.create`), so calling
-  // them detaches `this` and throws "this.__create is not a function". The .api path stays bound.
   try {
     await client.api.datasets.create({
       name: DATASET,

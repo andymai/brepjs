@@ -1,24 +1,19 @@
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { LangfuseSpanProcessor } from '@langfuse/otel';
-import { startActiveObservation } from '@langfuse/tracing';
+import { getActiveTraceId, startActiveObservation } from '@langfuse/tracing';
 import { LangfuseClient } from '@langfuse/client';
+import { PLAYGROUND_DATASET } from './playgroundCorpus.js';
 import type { EvalPrompt } from './prompts.js';
-import {
-  SCHEMA_VERSION,
-  runScores,
-  itemScores,
-  type EvalResult,
-  type Scorecard,
-} from './score.js';
+import { SCHEMA_VERSION, runScores, itemScores, type EvalResult, type Scorecard } from './score.js';
 
 /**
- * Langfuse v5 (OpenTelemetry-based) telemetry for the live eval, behind a no-op shim.
+ * Langfuse v6 (OpenTelemetry-based) telemetry for the live eval, behind a no-op shim.
  *
  * When the LANGFUSE_* keys are absent the factory returns a shim that no-ops every method, so the
  * offline `eval:live` workflow keeps working and the OTel SDK is never even started (so
  * `startActiveObservation` is never reached without a provider). Telemetry is a strictly optional
  * side-channel: every real Langfuse call is wrapped so a failure only warns — it must never fail or
- * corrupt the eval. The split-package v5 API is used directly (`@langfuse/tracing` + `@langfuse/otel`
+ * corrupt the eval. The split-package v6 API is used directly (`@langfuse/tracing` + `@langfuse/otel`
  * + `@langfuse/client`); there is no single `langfuse` package and no `.trace()/.generation()`.
  *
  * `pushDatasetRun` records a run as a Langfuse dataset experiment — one trace per part, its scores
@@ -152,39 +147,37 @@ export function createTelemetry(): Telemetry {
     },
     pushDatasetRun: async (card) => {
       // Record the run as a Langfuse dataset experiment so per-part scores compare across skill
-      // versions natively (the lift view). Each result links its own trace to the matching
-      // brepjs-playground dataset item (item id === example id) under one run name = the skill
-      // version. Best-effort + isolated per item: corpus drift (a result whose id has no dataset
-      // item) only warns and skips, so one missing item never aborts the rest of the run.
+      // versions natively (the lift view). v6 links traces to dataset items only through the
+      // experiment runner, so the finished run is replayed through it: each item's task returns the
+      // authored module (the trace output a Langfuse LLM-as-a-Judge evaluator reviews against the
+      // item's expectedOutput) and queues the part's scores on the item's trace. The run name is the
+      // skill version. Corpus drift (a result whose id has no dataset item) only warns and skips.
       const runName = card.skillVersion ?? `${card.model}-${card.date}`;
-      let linked = 0;
-      for (const r of card.results) {
-        try {
-          await startActiveObservation(r.id, async (obs) => {
-            obs.update({
-              // Request + authored module so a Langfuse LLM-as-a-Judge evaluator can review the run
-              // against the dataset item's expectedOutput. Absent for legacy/manual scorecards.
-              ...(r.prompt !== undefined ? { input: r.prompt } : {}),
-              ...(r.code !== undefined ? { output: r.code } : {}),
-              metadata: { runName, category: r.category, skillVersion: card.skillVersion },
-            });
-            attachScores(client, obs.traceId, r);
-            await client.api.datasetRunItems.create({
-              runName,
-              runDescription: `brepjs-cad eval — ${card.model} ${card.date}`,
-              datasetItemId: r.id,
-              traceId: obs.traceId,
-              metadata: { skillVersion: card.skillVersion, brepjsVersion: card.brepjsVersion },
-            });
-          });
-          linked++;
-        } catch (e) {
-          console.warn(
-            `langfuse: dataset-run link failed for ${r.id} (${(e as Error).message.split('\n')[0]})`
-          );
+      try {
+        const dataset = await client.dataset.get(PLAYGROUND_DATASET);
+        const byId = new Map(card.results.map((r) => [r.id, r]));
+        const itemIds = new Set(dataset.items.map((i) => i.id));
+        for (const r of card.results) {
+          if (!itemIds.has(r.id)) console.warn(`langfuse: no dataset item for ${r.id}, skipped`);
         }
+        const run = await client.experiment.run({
+          name: 'brepjs-cad eval',
+          runName,
+          description: `brepjs-cad eval — ${card.model} ${card.date}`,
+          metadata: { skillVersion: card.skillVersion, brepjsVersion: card.brepjsVersion },
+          data: dataset.items.filter((i) => byId.has(i.id)),
+          task: (item) => {
+            const r = 'id' in item ? byId.get(item.id) : undefined;
+            const traceId = getActiveTraceId();
+            if (r !== undefined && traceId !== undefined) attachScores(client, traceId, r);
+            return Promise.resolve(r?.code);
+          },
+        });
+        return run.itemResults.length;
+      } catch (e) {
+        console.warn(`langfuse: dataset run failed (${(e as Error).message.split('\n')[0]})`);
+        return 0;
       }
-      return linked;
     },
     shutdown: async () => {
       try {
