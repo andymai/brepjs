@@ -69,6 +69,25 @@ describe('findBlends', () => {
   });
 });
 
+describe('findBlends radius sharing', () => {
+  it('never moves a radius further than the tolerance from its fit', () => {
+    // Four fillets between the same floor and wall, radii a chain of 0.04 steps.
+    const radii = [3, 3.04, 3.08, 3.12];
+    const surfaces: AnalyticSurface[] = [
+      plane([0, 0, -1], 0),
+      plane([1, 0, 0], 30),
+      ...radii.map((r) => cyl([30 - r, 0, r], r)),
+    ];
+    const bounds = [at([15, 10, 0]), at([30, 10, 7]), ...radii.map((r) => at([30 - r, 10, r]))];
+    const b = findBlends(surfaces, bounds, 0.05);
+    const shared = b.edges.map((e) => e.r);
+    expect(shared).toHaveLength(4);
+    shared.forEach((r, i) => expect(Math.abs(r - (radii[i] ?? 0))).toBeLessThanOrEqual(0.05));
+    expect(shared[0]).toBeCloseTo(3.02, 12);
+    expect(shared[3]).toBeCloseTo(3.1, 12);
+  });
+});
+
 describe('filletBlends', () => {
   it('rounds the box edges the blends are tangent to', () => {
     using sharp = box(30, 20, 15);

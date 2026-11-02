@@ -387,6 +387,18 @@ pub fn reassign(mesh: &Mesh, seg: &mut Segmentation, params: &Params, tri_body: 
     if moved == 0 {
         return 0;
     }
+    rebuild_members(seg);
+    for r in &mut seg.regions {
+        let (pts, _) = samples(mesh, &r.tris);
+        r.surface = refit(r.surface, &pts, params);
+        r.max_residual = max_residual(&r.surface, &pts);
+    }
+    moved
+}
+
+/// Rebuild each region's triangle list from `region_of`, dropping regions
+/// left with none (an empty region has no extent to build a patch over).
+fn rebuild_members(seg: &mut Segmentation) {
     for r in &mut seg.regions {
         r.tris.clear();
     }
@@ -395,12 +407,12 @@ pub fn reassign(mesh: &Mesh, seg: &mut Segmentation, params: &Params, tri_body: 
             seg.regions[r as usize].tris.push(t as u32);
         }
     }
-    for r in &mut seg.regions {
-        let (pts, _) = samples(mesh, &r.tris);
-        r.surface = refit(r.surface, &pts, params);
-        r.max_residual = max_residual(&r.surface, &pts);
+    seg.regions.retain(|r| !r.tris.is_empty());
+    for (k, r) in seg.regions.iter().enumerate() {
+        for &t in &r.tris {
+            seg.region_of[t as usize] = k as u32;
+        }
     }
-    moved
 }
 
 /// Kinds that can stand for their neighbours' points: noise rarely fakes one,
@@ -549,20 +561,7 @@ pub fn dissolve_redundant(
             *r = remap[*r as usize];
         }
     }
-    for r in &mut seg.regions {
-        r.tris.clear();
-    }
-    for (t, &r) in seg.region_of.iter().enumerate() {
-        if r != u32::MAX {
-            seg.regions[r as usize].tris.push(t as u32);
-        }
-    }
-    seg.regions.retain(|r| !r.tris.is_empty());
-    for (k, r) in seg.regions.iter().enumerate() {
-        for &t in &r.tris {
-            seg.region_of[t as usize] = k as u32;
-        }
-    }
+    rebuild_members(seg);
     for r in &mut seg.regions {
         let (pts, _) = samples(mesh, &r.tris);
         r.max_residual = max_residual(&r.surface, &pts);
@@ -1678,6 +1677,38 @@ mod tests {
         n: [0.0, 0.0, 1.0],
         d: -50.0,
     };
+
+    #[test]
+    fn reassigning_every_triangle_away_drops_the_region() {
+        // A fragment fitted 0.03 mm above a face it lies on: each of its
+        // triangles is nearer the face, so it is left with none.
+        let mesh = grid(10);
+        let tris = mesh.triangles.len() as u32;
+        let mut seg = regions_from(
+            &mesh,
+            vec![
+                (FLAT, (4..tris).collect()),
+                (
+                    Surface::Plane {
+                        n: [0.0, 0.0, 1.0],
+                        d: 0.03,
+                    },
+                    (0..4).collect(),
+                ),
+            ],
+        );
+        let params = Params {
+            tol: 0.06,
+            ..scan_params()
+        };
+        assert_eq!(
+            reassign(&mesh, &mut seg, &params, &vec![0; tris as usize]),
+            4
+        );
+        assert_eq!(seg.regions.len(), 1);
+        assert!(seg.region_of.iter().all(|&r| r == 0));
+        assert_eq!(seg.regions[0].tris.len(), tris as usize);
+    }
 
     #[test]
     fn strips_of_one_fillet_merge_into_its_cylinder() {

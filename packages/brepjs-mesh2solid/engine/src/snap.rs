@@ -404,7 +404,14 @@ fn onto(p: V3, foot: V3, d: V3) -> V3 {
 /// countersink and its hole, a boss and its fillet), so their intersections
 /// are exact circles instead of near-circle splines. Sphere centers on that
 /// axis move onto it.
-fn coaxial(s: &mut [Surface], weights: &[f64], tol: f64, max_angle: f64) {
+/// Surfaces `coaxial` put on one exact axis (spheres centred on it included),
+/// and that axis's direction.
+struct CoaxialGroup {
+    members: Vec<usize>,
+    d: V3,
+}
+
+fn coaxial(s: &mut [Surface], weights: &[f64], tol: f64, max_angle: f64) -> Vec<CoaxialGroup> {
     let min_cos = max_angle.cos();
     let n = s.len();
     let near = 10.0 * tol;
@@ -440,6 +447,7 @@ fn coaxial(s: &mut [Surface], weights: &[f64], tol: f64, max_angle: f64) {
             members.entry(find(&mut group, i)).or_default().push(i);
         }
     }
+    let mut out = Vec::new();
     for list in members.values().filter(|l| l.len() > 1) {
         let Some(&(_, a0)) = list.first().and_then(|&i| axis_of(&s[i])).as_ref() else {
             continue;
@@ -489,13 +497,81 @@ fn coaxial(s: &mut [Surface], weights: &[f64], tol: f64, max_angle: f64) {
                 other => other,
             };
         }
-        for sph in s.iter_mut() {
+        let mut group = list.clone();
+        for (k, sph) in s.iter_mut().enumerate() {
             if let Surface::Sphere { c, r } = *sph {
                 let on = onto(c, foot, d);
                 if norm(sub(c, on)) <= near {
                     *sph = Surface::Sphere { c: on, r };
+                    group.push(k);
                 }
             }
+        }
+        out.push(CoaxialGroup { members: group, d });
+    }
+    out
+}
+
+/// Turn every direction within `within` of a world axis onto it. A surface
+/// turns about the point of it nearest its region's centroid (`anchors`); a
+/// coaxial group turns as one, about its members' weighted centroid, so its
+/// surfaces keep one axis rather than ending up parallel but apart.
+fn align_to_world(
+    s: &mut [Surface],
+    groups: &[CoaxialGroup],
+    anchors: &[V3],
+    weights: &[f64],
+    within: f64,
+) {
+    let mut grouped = vec![false; s.len()];
+    for g in groups {
+        let b = to_world(g.d, within);
+        let (mut sum, mut w) = ([0.0; 3], 0.0);
+        for &i in &g.members {
+            sum = add(sum, scale(anchors[i], weights[i]));
+            w += weights[i];
+            grouped[i] = true;
+        }
+        if w <= 0.0 {
+            continue;
+        }
+        let anchor = scale(sum, 1.0 / w);
+        let d = g.d;
+        // A point on the shared line turned about the anchor's foot on it.
+        let turn = |x: V3| {
+            let pivot = add(x, scale(d, dot(sub(anchor, x), d)));
+            add(pivot, scale(b, dot(sub(x, pivot), d)))
+        };
+        for &i in &g.members {
+            s[i] = match s[i] {
+                Surface::Cylinder { o, a, r } => Surface::Cylinder {
+                    o: turn(o),
+                    a: with_sign(b, a),
+                    r,
+                },
+                Surface::Cone {
+                    apex,
+                    a,
+                    half_angle,
+                } => Surface::Cone {
+                    apex: turn(apex),
+                    a: with_sign(b, a),
+                    half_angle,
+                },
+                Surface::Torus { c, a, major, minor } => Surface::Torus {
+                    c: turn(c),
+                    a: with_sign(b, a),
+                    major,
+                    minor,
+                },
+                Surface::Sphere { c, r } => Surface::Sphere { c: turn(c), r },
+                other => other,
+            };
+        }
+    }
+    for (i, si) in s.iter_mut().enumerate() {
+        if !grouped[i] {
+            *si = world_aligned(*si, within, anchors[i]);
         }
     }
 }
@@ -701,12 +777,15 @@ pub fn snap(
     // A scan's fitted axes come back milliradians off; a CAD export's, nanoradians.
     let within = if robust { 1e-2 } else { 1e-6 };
     let coaxial_angle = if robust { 1e-2 } else { COAXIAL_ANGLE };
-    coaxial(&mut s, &weights, tol, coaxial_angle);
-    for (si, pts) in s.iter_mut().zip(&verts) {
-        let k = pts.len().max(1) as f64;
-        let centroid = pts.iter().fold([0.0; 3], |c, &p| add(c, scale(p, 1.0 / k)));
-        *si = world_aligned(*si, within, centroid);
-    }
+    let groups = coaxial(&mut s, &weights, tol, coaxial_angle);
+    let anchors: Vec<V3> = verts
+        .iter()
+        .map(|pts| {
+            let k = pts.len().max(1) as f64;
+            pts.iter().fold([0.0; 3], |c, &p| add(c, scale(p, 1.0 / k)))
+        })
+        .collect();
+    align_to_world(&mut s, &groups, &anchors, &weights, within);
     for i in 0..n {
         if let Surface::Cylinder { o, a, r } = s[i] {
             if let Some(c) = snap_cylinder(o, a, r, &planes_of(i, &s)) {
@@ -907,6 +986,41 @@ mod tests {
         };
         assert_eq!(a, [0.0, 0.0, 1.0]);
         assert!(lineish(centre, o, a) < 1e-12, "axis left its region");
+    }
+
+    #[test]
+    fn a_coaxial_group_turns_onto_an_axis_as_one() {
+        // Two steps of a scanned shaft on one axis 0.005 rad off Z, their
+        // regions 40 mm apart along it: turning each about its own region
+        // would leave the axes 0.2 mm apart.
+        let d = normalize([0.005, 0.0, 1.0]).unwrap();
+        let mut s = vec![
+            Surface::Cylinder {
+                o: [10.0, 10.0, 0.0],
+                a: d,
+                r: 5.0,
+            },
+            Surface::Cylinder {
+                o: add([10.0, 10.0, 0.0], scale(d, 40.0)),
+                a: d,
+                r: 8.0,
+            },
+        ];
+        let groups = coaxial(&mut s, &[1.0, 1.0], 1e-3, 1e-2);
+        assert_eq!(groups.len(), 1);
+        let anchors = [
+            add([10.0, 10.0, 0.0], scale(d, 5.0)),
+            add([10.0, 10.0, 0.0], scale(d, 45.0)),
+        ];
+        align_to_world(&mut s, &groups, &anchors, &[1.0, 1.0], 1e-2);
+        let (Surface::Cylinder { o: o1, a: a1, .. }, Surface::Cylinder { o: o2, a: a2, .. }) =
+            (s[0], s[1])
+        else {
+            panic!("kinds changed");
+        };
+        assert_eq!(a1, [0.0, 0.0, 1.0]);
+        assert_eq!(a2, [0.0, 0.0, 1.0]);
+        assert!(lineish(o2, o1, a1) < 1e-12, "axes {o1:?} and {o2:?} apart");
     }
 
     #[test]

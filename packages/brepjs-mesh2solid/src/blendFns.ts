@@ -90,20 +90,23 @@ export function findBlends(
 /**
  * Fillets fitted to within `tol` of one radius were drawn with one radius:
  * give each such group its mean. Unequal radii meeting at a corner make the
- * kernel build a general vertex blend instead of a ball.
+ * kernel build a general vertex blend instead of a ball. A group spans at
+ * most `tol` from its smallest radius, so no fillet's radius moves further
+ * than that from its fit (a looser group would leave the fillet off the
+ * edge `filletBlends` matches it to).
  */
 function shareRadii(edges: readonly EdgeBlend[], tol: number): EdgeBlend[] {
   const order = edges.map((_, i) => i).sort((a, b) => (edges[a]?.r ?? 0) - (edges[b]?.r ?? 0));
   const shared = edges.map((e) => e.r);
   let start = 0;
-  for (let k = 1; k <= order.length; k++) {
-    const prev = edges[order[k - 1] ?? 0]?.r ?? 0;
-    const next = k < order.length ? (edges[order[k] ?? 0]?.r ?? 0) : Infinity;
-    if (next - prev <= tol) continue;
-    const group = order.slice(start, k);
+  while (start < order.length) {
+    const low = edges[order[start] ?? 0]?.r ?? 0;
+    let end = start + 1;
+    while (end < order.length && (edges[order[end] ?? 0]?.r ?? 0) - low <= tol) end++;
+    const group = order.slice(start, end);
     const mean = group.reduce((sum, i) => sum + (edges[i]?.r ?? 0), 0) / group.length;
     for (const i of group) shared[i] = mean;
-    start = k;
+    start = end;
   }
   return edges.map((e, i) => ({ ...e, r: shared[i] ?? e.r }));
 }
