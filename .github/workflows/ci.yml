@@ -47,6 +47,7 @@ jobs:
               - 'src/**'
               - 'tests/**'
               - 'packages/**'
+              - 'apps/mesh2solid/**'
               - 'scripts/**'
               - 'package.json'
               - 'package-lock.json'

@@ -26,6 +26,16 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
+/** One closed body is a solid; several come back as a compound, and an open one as a shell. */
+function resultLabel(report: ConversionReport, solid: boolean): string {
+  if (solid) return 'Closed solid';
+  const bodies = report.bodies.length;
+  const open = report.bodies.filter((b) => !b.closed).length;
+  if (open === 0) return `${count(bodies)} closed bodies`;
+  if (bodies === 1) return 'Open shell (the mesh has holes)';
+  return `${count(bodies)} bodies, ${count(open)} with holes`;
+}
+
 export function ReportPanel({ report, solid }: { report: ConversionReport; solid: boolean }) {
   const tier = TIER[report.tierReached];
   const units = report.units;
@@ -39,7 +49,7 @@ export function ReportPanel({ report, solid }: { report: ConversionReport; solid
       <h2>{tier.title}</h2>
       <p className="muted">{tier.detail}</p>
       <dl className="rows">
-        <Row label="Result">{solid ? 'Closed solid' : 'Open shell (the mesh has holes)'}</Row>
+        <Row label="Result">{resultLabel(report, solid)}</Row>
         <Row label="Faces">
           {count(report.faces.triangles)} triangles in, {count(report.faces.faces)} faces out
         </Row>

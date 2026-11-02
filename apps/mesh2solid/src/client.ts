@@ -1,7 +1,7 @@
 import type { MeshInspection, MeshUnit } from 'brepjs-mesh2solid';
 import type { Conversion, FromWorker, ToWorker } from './protocol';
 
-type Pending = { resolve: (msg: FromWorker) => void };
+type Pending = { resolve: (msg: FromWorker) => void; reject: (e: Error) => void };
 
 /** Requests to the conversion worker, one promise per message. */
 export class ConversionClient {
@@ -15,11 +15,28 @@ export class ConversionClient {
       this.#pending.delete(e.data.id);
       p?.resolve(e.data);
     };
+    // A worker that fails to load (or a reply that can't be decoded) never
+    // answers; fail what is waiting instead of leaving the page spinning.
+    this.#worker.onerror = (e) =>
+      this.#failAll(new Error(e.message || 'the worker failed to load'));
+    this.#worker.onmessageerror = () =>
+      this.#failAll(new Error('the worker sent an unreadable reply'));
+  }
+
+  #failAll(error: Error): void {
+    for (const p of this.#pending.values()) p.reject(error);
+    this.#pending.clear();
+  }
+
+  /** Stop the worker and fail anything still waiting on it. */
+  terminate(): void {
+    this.#worker.terminate();
+    this.#failAll(new Error('the conversion was stopped'));
   }
 
   #send(msg: ToWorker, transfer: Transferable[]): Promise<FromWorker> {
-    return new Promise((resolve) => {
-      this.#pending.set(msg.id, { resolve });
+    return new Promise((resolve, reject) => {
+      this.#pending.set(msg.id, { resolve, reject });
       this.#worker.postMessage(msg, transfer);
     });
   }

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MeshInspection, MeshUnit } from 'brepjs-mesh2solid';
 import { EdgeRenderer, Renderer, ViewerCanvas } from 'brepjs-viewer';
 import { ConversionClient } from './client';
@@ -228,35 +228,43 @@ function Result({
 }
 
 export function App() {
-  const client = useMemo(() => new ConversionClient(), []);
+  // Created in an effect, not a memo: StrictMode runs memos twice and would
+  // leave a second worker loading the kernel with nothing to stop it.
+  const client = useRef<ConversionClient | null>(null);
+  useEffect(() => {
+    const c = new ConversionClient();
+    client.current = c;
+    return () => {
+      c.terminate();
+      client.current = null;
+    };
+  }, []);
   const [state, setState] = useState<State>({ kind: 'idle' });
 
-  const open = useCallback(
-    (file: File) => {
-      setState({ kind: 'reading', file });
-      client.inspect(file).then(
-        (info) => setState({ kind: 'confirm', file, info }),
-        (e: unknown) =>
-          setState({ kind: 'idle', error: `Couldn't read ${file.name}: ${(e as Error).message}` })
-      );
-    },
-    [client]
-  );
+  const open = useCallback((file: File) => {
+    const c = client.current;
+    if (c === null) return;
+    setState({ kind: 'reading', file });
+    c.inspect(file).then(
+      (info) => setState({ kind: 'confirm', file, info }),
+      (e: unknown) =>
+        setState({ kind: 'idle', error: `Couldn't read ${file.name}: ${(e as Error).message}` })
+    );
+  }, []);
 
-  const convert = useCallback(
-    (file: File, units: MeshUnit) => {
-      setState({ kind: 'converting', file, units });
-      client.convert(file, units).then(
-        (result) => setState({ kind: 'done', file, result }),
-        (e: unknown) =>
-          setState({
-            kind: 'idle',
-            error: `Couldn't convert ${file.name}: ${(e as Error).message}`,
-          })
-      );
-    },
-    [client]
-  );
+  const convert = useCallback((file: File, units: MeshUnit) => {
+    const c = client.current;
+    if (c === null) return;
+    setState({ kind: 'converting', file, units });
+    c.convert(file, units).then(
+      (result) => setState({ kind: 'done', file, result }),
+      (e: unknown) =>
+        setState({
+          kind: 'idle',
+          error: `Couldn't convert ${file.name}: ${(e as Error).message}`,
+        })
+    );
+  }, []);
 
   return (
     <main>

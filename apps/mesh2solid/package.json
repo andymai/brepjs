@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "build:deps": "npm -C ../../packages/brepjs-mesh2solid run build && npm -C ../../packages/brepjs-viewer run build",
+    "build:deps": "npm -C ../.. run build && npm -C ../../packages/brepjs-mesh2solid run build && npm -C ../../packages/brepjs-viewer run build",
     "predev": "npm run build:deps",
     "dev": "vite",
     "build": "tsgo -b && vite build",
