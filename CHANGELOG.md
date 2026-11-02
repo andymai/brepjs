@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.17.0](https://github.com/andymai/brepjs/compare/brepjs-v20.16.0...brepjs-v20.17.0) (2026-11-02)
+
+
+### Features
+
+* **topology:** fill N-sided faces and lay edges on faces (occt-wasm 5.12.0) ([#2601](https://github.com/andymai/brepjs/issues/2601)) ([5703c49](https://github.com/andymai/brepjs/commit/5703c49f69fd98a0f3b068c94a1ca63cc37d30fe))
+
 ## [20.16.0](https://github.com/andymai/brepjs/compare/brepjs-v20.15.0...brepjs-v20.16.0) (2026-11-02)
 
 
