@@ -274,7 +274,7 @@ export class Tier1Session {
         return v1;
     }
     /**
-     * The Tier 0 result, for bodies Tier 1 can't rebuild.
+     * The whole-mesh Tier 0 result, the fallback when Tier 1 can't rebuild.
      * @returns {Tier0Result}
      */
     tier0() {

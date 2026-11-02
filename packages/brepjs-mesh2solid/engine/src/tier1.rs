@@ -7,7 +7,7 @@ use crate::fit::Surface;
 use crate::json::{array, Obj};
 use crate::math::{add, scale, Bbox, V3};
 use crate::mesh::{Mesh, Topology};
-use crate::pipeline::{run_tier0, Options, Tier0};
+use crate::pipeline::{run_tier0, Options, Tier0, MAX_DEVIATION_SAMPLES};
 use crate::segment::{absorb, segment, Params, Segmentation};
 use crate::snap::{dissolve_kinks, snap, SnapReport};
 
@@ -34,14 +34,19 @@ pub fn run_tier1(bytes: &[u8], opts: &Options) -> Result<Tier1, String> {
         MeshKind::Scan => t0.tolerance,
     };
     let topo = Topology::build(&t0.mesh);
-    let mut seg = segment(
-        &t0.mesh,
-        &topo,
-        &Params {
-            tol,
-            crease_deg: CREASE_DEG,
-        },
-    );
+    // Tier 1 fits CAD tessellations; scan noise needs Tier 3's segmentation.
+    let mut seg = if matches!(t0.kind, MeshKind::Scan) {
+        Segmentation::unfit(t0.mesh.triangles.len())
+    } else {
+        segment(
+            &t0.mesh,
+            &topo,
+            &Params {
+                tol,
+                crease_deg: CREASE_DEG,
+            },
+        )
+    };
     dissolve_kinks(&t0.mesh, &topo, &mut seg, tol);
     absorb(&t0.mesh, &topo, &mut seg, tol);
     let snapped = snap(&t0.mesh, &topo, &mut seg, tol);
@@ -71,9 +76,10 @@ pub fn run_tier1(bytes: &[u8], opts: &Options) -> Result<Tier1, String> {
     })
 }
 
-/// Sampled at centroids and edge midpoints, where a triangle sits farthest from
-/// a surface its corners lie on. This bounds how far the exact rebuild can sit
-/// from the mesh, which a percentile chord estimate does not.
+/// Sampled at centroids and edge midpoints, near where a triangle sits farthest
+/// from a surface its corners lie on: an estimate of how far the exact rebuild
+/// can sit from the mesh (callers add a margin), which a percentile chord
+/// estimate undershoots.
 fn input_sag(mesh: &Mesh, seg: &Segmentation) -> f64 {
     let mut sag = 0.0f64;
     for r in &seg.regions {
@@ -163,7 +169,7 @@ impl Tier1 {
             out_tris,
             self.t0.tolerance,
             per_vertex,
-            200_000,
+            MAX_DEVIATION_SAMPLES,
         );
         Obj::new()
             .num("max", d.max)

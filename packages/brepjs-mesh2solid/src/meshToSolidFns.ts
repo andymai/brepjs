@@ -232,6 +232,9 @@ export async function meshToSolid(
 
 /** Rebuild from the session's fitted surfaces, with gates scaled to the mesh's own sag. */
 function runTier1(session: Tier1Session, engineReport: EngineReport): AnalyticResult {
+  if (engineReport.estimate.kind === 'scan') {
+    return { ok: false, reason: 'the mesh looks like a scan; tier 1 rebuilds CAD exports' };
+  }
   // Exact surfaces sit up to the mesh's sag away from it; our own
   // triangulation of the result adds its chord on the forward side.
   const sag = session.sag;

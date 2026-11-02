@@ -47,7 +47,7 @@ export class Tier1Session {
      */
     nearest(points: Float64Array): Float64Array;
     /**
-     * The Tier 0 result, for bodies Tier 1 can't rebuild.
+     * The whole-mesh Tier 0 result, the fallback when Tier 1 can't rebuild.
      */
     tier0(): Tier0Result;
     /**

@@ -113,7 +113,8 @@ impl Bvh {
         self.nearest(p, stack).0
     }
 
-    /// (distance, index of the nearest triangle) — `u32::MAX` when empty.
+    /// (distance, index of the nearest triangle). The index is `u32::MAX` when
+    /// no triangle is nearer than infinity: an empty tree or a non-finite point.
     pub fn nearest(&self, p: V3, stack: &mut Vec<u32>) -> (f64, u32) {
         if self.tris.is_empty() {
             return (f64::INFINITY, u32::MAX);

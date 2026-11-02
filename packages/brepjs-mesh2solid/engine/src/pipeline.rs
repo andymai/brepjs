@@ -55,7 +55,7 @@ pub struct Tier0 {
     pub quantization: f64,
 }
 
-const MAX_DEVIATION_SAMPLES: usize = 200_000;
+pub const MAX_DEVIATION_SAMPLES: usize = 200_000;
 /// A billion kilometers. Anything larger is a corrupt or misread file, and
 /// squaring such coordinates would overflow.
 const MAX_COORDINATE_MM: f64 = 1e15;

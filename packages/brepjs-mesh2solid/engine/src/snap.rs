@@ -222,7 +222,8 @@ pub fn dissolve_kinks(mesh: &Mesh, topo: &Topology, seg: &mut Segmentation, tol:
                 hi = hi.max(c);
             }
         }
-        if hi < TANGENT_COS && lo > KINK_COS {
+        // lo > hi: no vertex gave both normals, so nothing is known about the pair.
+        if lo <= hi && hi < TANGENT_COS && lo > KINK_COS {
             // A fragment beside a much larger surface is the fragment's fault;
             // two similar ones are both facets of something freeform.
             let (ni, nj) = (seg.regions[i].tris.len(), seg.regions[j].tris.len());

@@ -125,6 +125,7 @@ describe('tier 0 eval: scan-like meshes', () => {
       expect(res.solid, summary).toBe(true);
       expect(isValid(shape), summary).toBe(true);
       expect(r.estimate.kind, summary).toBe('scan');
+      expect(r.tier1?.fallbackReason, summary).toMatch(/looks like a scan/);
       expect(r.decimation.applied, summary).toBe(true);
       if (r.decimation.applied) expect(r.decimation.after, summary).toBeLessThanOrEqual(20_000);
       expect(r.deviation.p95, summary).toBeLessThan(4 * sigma);

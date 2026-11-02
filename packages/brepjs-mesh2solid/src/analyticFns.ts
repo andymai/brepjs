@@ -368,6 +368,9 @@ function onlySolid(shape: AnyShape<Dimension>, owned: Owned[]): Solid | null {
 function unify(s: Solid, owned: Owned[]): Solid {
   const u = simplify(s);
   if (!u.ok) return s;
+  // A kernel can hand back the same shape in a new wrapper; owning both would
+  // free the result when `s` is released.
+  if (u.value.wrapped === s.wrapped) return s;
   owned.push(u.value);
   return isSolid(u.value) && isValid(u.value) ? u.value : s;
 }

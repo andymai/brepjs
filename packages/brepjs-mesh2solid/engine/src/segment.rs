@@ -28,6 +28,17 @@ pub struct Segmentation {
     pub unfit_triangles: usize,
 }
 
+impl Segmentation {
+    /// Every triangle unfit, no surfaces.
+    pub fn unfit(triangles: usize) -> Segmentation {
+        Segmentation {
+            regions: Vec::new(),
+            region_of: vec![u32::MAX; triangles],
+            unfit_triangles: triangles,
+        }
+    }
+}
+
 pub struct Params {
     /// Largest allowed vertex distance from a region's surface.
     pub tol: f64,
@@ -414,9 +425,15 @@ fn simplest(mesh: &Mesh, tris: &[u32], s: Surface, tol: f64) -> Surface {
         .filter(|c| c.kind() < s.kind())
         .collect();
     cands.sort_by_key(|c| c.kind());
+    // Planes elsewhere face the way their triangles do; a plane found here must too.
+    let facing = tris.iter().fold([0.0; 3], |acc, &t| {
+        let [a, b, c] = mesh.tri(t as usize);
+        add(acc, tri_cross(a, b, c))
+    });
+    let facing_plane = Surface::Plane { n: facing, d: 0.0 };
     for c in cands {
         let c = if c.kind() == Kind::Plane {
-            c
+            orient_like(c, facing_plane)
         } else {
             refine(c, &sub_p)
         };

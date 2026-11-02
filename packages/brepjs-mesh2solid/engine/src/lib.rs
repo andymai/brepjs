@@ -365,7 +365,7 @@ impl Tier1Session {
         json
     }
 
-    /// The Tier 0 result, for bodies Tier 1 can't rebuild.
+    /// The whole-mesh Tier 0 result, the fallback when Tier 1 can't rebuild.
     pub fn tier0(&self) -> Tier0Result {
         pack(&self.inner.t0, self.heatmap)
     }

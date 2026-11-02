@@ -57,9 +57,9 @@ cylinder rather than dozens of strips.
 4. **Sews** each body's pieces into a solid, subtracts cavities, unifies faces, and checks the result
    against the mesh in both directions.
 
-It falls back to tier 0 when any triangles fit no analytic surface (freeform shapes), or when the
-rebuild fails or strays from the mesh. `report.tier1.fallbackReason` says why, and `report.warnings`
-records the fallback.
+It falls back to tier 0 when any triangles fit no analytic surface (freeform shapes), when a body is
+open, or when the rebuild fails or strays from the mesh. Meshes that look like scans skip tier 1.
+`report.tier1.fallbackReason` says why, and `report.warnings` records the fallback.
 
 ## Options
 
