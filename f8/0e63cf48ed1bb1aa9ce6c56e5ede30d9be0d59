@@ -1,0 +1,88 @@
+packages/brepjs-mesh2solid/engine/src/segment.rs
+  s_4164cd16e48c0e::t_8085212ee4ef6e 580,584,596,600-606,620,699,701-702,721-723
+  s_4164cd16e48c0e::t_c05416522992fa 742-743,750-757,759-764
+  s_4164cd16e48c0e::t_f39af1a463e534 1758-1759,1764-1767
+  s_4164cd16e48c0e::t_ccdb72adfe4ce4 348-350,359-362
+  s_4164cd16e48c0e::t_a5c5cbd56cb6dd 412-435,452,486,509,665,674-677,679,681-683
+  s_4164cd16e48c0e::t_22b0975554dd24 520
+  s_4164cd16e48c0e::t_31fbc5727fec1e 686
+  s_4164cd16e48c0e::t_22b3dd1529d68d 464,485,499-501,515-519,521-532
+  s_4164cd16e48c0e::t_4b107dd15d57b8 406-411,487-488,490-494,678
+  s_4164cd16e48c0e::t_a2f38d48a19659 577-579
+  s_4164cd16e48c0e::t_79036c6d1513a4 611-613
+  s_4164cd16e48c0e::t_66c0394f29f81a 574-576,581-583,586-595,597-599,607-610,614-619,621-627,633-664,666-667,669-671,700,703-720,724-730,737-741
+  s_4164cd16e48c0e::t_fd72ab018d59c6 333-347,351-358,363-405
+  s_4164cd16e48c0e::t_db7da441203a76 672-673,680,684-685,687-698
+  s_4164cd16e48c0e::t_cf2ca0d76cba73 436,441-446,456,495-498,502-504,508,510-514
+  s_4164cd16e48c0e::t_67bed999b60c91 744-749,758
+  s_4164cd16e48c0e::t_5a74a736501d5a 12,585
+  s_4164cd16e48c0e::t_fbbfe58ee35369 437-440,447-451,453-455,457-463,465-484,489,505-507,533-573
+  s_4164cd16e48c0e::t_d3ee1799516b86 1587-1757,1760-1763,1768
+  s_4164cd16e48c0e::t_563914b6b61ad5 628-632,668,734-736
+  s_4164cd16e48c0e::t_d147a7b3f4f4a3 731-733
+packages/brepjs-mesh2solid/engine/src/tier1.rs
+  s_4164cd16e48c0e::t_5a74a736501d5a 83-84
+  s_4164cd16e48c0e::t_67bed999b60c91 79,90
+  s_4164cd16e48c0e::t_8af01d68e77993 11,14
+  s_4164cd16e48c0e::t_3404c8fec1505b 74-77,85-86
+  s_4164cd16e48c0e::t_ef9f3b7abbe501 61-67
+  s_4164cd16e48c0e::t_a5c5cbd56cb6dd 81-82
+  s_4164cd16e48c0e::t_bbd5bc2f413895 108-109,125-127,129-135,139,142-143,159-160
+  s_4164cd16e48c0e::t_ccdb72adfe4ce4 88
+  s_4164cd16e48c0e::t_ab9e49873faa8f 12-13
+  s_4164cd16e48c0e::t_7d08fa7536a141 73,89,110-124,128,136-138,140-141,144-158
+  s_4164cd16e48c0e::t_5043ea5f73a7cc 78,87
+  s_4164cd16e48c0e::t_4e8ad9f8a334fb 80
+packages/brepjs-mesh2solid/tests/eval.test.ts
+  s_4164cd16e48c0e::t_4561a3dcc1c635 144-145,149
+packages/brepjs-mesh2solid/README.md
+  s_4164cd16e48c0e::t_313555c8ca54ce 75-90
+  s_4164cd16e48c0e::t_38f30255d2b9ec 154-156
+packages/brepjs-mesh2solid/tests/corpus.ts
+  s_4164cd16e48c0e::t_f1ec92b6ba14ab 206-209,211-236,238-244,246,248-259,261-276,279-280
+packages/brepjs-mesh2solid/src/blendFns.ts
+  s_4164cd16e48c0e::t_19559c1e79ee6b 61-62,74-76,149-152
+  s_4164cd16e48c0e::t_a34c7abc70a069 87-108
+  s_4164cd16e48c0e::t_9d60584e2a3008 1-44,48-60,63-71,86,109-148,153-154
+  s_4164cd16e48c0e::t_a7534c9c9b2b6d 45-47,72-73,77-85
+packages/brepjs-mesh2solid/src/analyticFns.ts
+  s_4164cd16e48c0e::t_4122a7529e960f 257-261,266
+  s_4164cd16e48c0e::t_f3d76bf3b69eec 480,483,487-488,491-492
+  s_4164cd16e48c0e::t_2be88f0f4f8d52 534-539
+  s_4164cd16e48c0e::t_bace63b98b29ad 406-413
+  s_4164cd16e48c0e::t_19559c1e79ee6b 414
+  s_4164cd16e48c0e::t_045709db689a17 445,450
+packages/brepjs-mesh2solid/engine/src/fit.rs
+  s_4164cd16e48c0e::t_5a74a736501d5a 633-642,644-647,650-652
+packages/brepjs-mesh2solid/tests/blendFns.test.ts
+  s_4164cd16e48c0e::t_6e0dafb9999d41 1-91,94-101
+  s_4164cd16e48c0e::t_7170478eee8de3 92-93
+packages/brepjs-mesh2solid/src/meshToSolidFns.ts
+  s_4164cd16e48c0e::t_19559c1e79ee6b 15-22
+  s_4164cd16e48c0e::t_d45bbe3d11be31 307-324,326,335-339,341-343
+  s_4164cd16e48c0e::t_d53da26f0fc607 325,327-334,340
+packages/brepjs-mesh2solid/engine/src/snap.rs
+  s_4164cd16e48c0e::t_39d5840609aa47 534-537
+  s_4164cd16e48c0e::t_03a81216f57ba2 883,885,887-911
+  s_4164cd16e48c0e::t_a07cd378d4691d 884,886
+  s_4164cd16e48c0e::t_67bed999b60c91 744-746,754-756
+  s_4164cd16e48c0e::t_e033e25c4c6388 705-708
+  s_4164cd16e48c0e::t_be2479fb6e2874 524-529,531-533,538,540,548-556
+  s_4164cd16e48c0e::t_6d957497ed245d 882
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f80e63cf48ed1bb1aa9ce6c56e5ede30d9be0d59",
+  "prompts": {},
+  "sessions": {
+    "s_4164cd16e48c0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39b56ca7-b90d-49fe-ad28-4c54a3c049c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
