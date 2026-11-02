@@ -1,0 +1,79 @@
+packages/brepjs-mesh2solid/wasm/index_bg.wasm.d.ts
+  s_4164cd16e48c0e::t_9971b0c0d58e08 25
+  s_4164cd16e48c0e::t_537017634b5efb 33
+packages/brepjs-mesh2solid/engine/src/tier1.rs
+  s_4164cd16e48c0e::t_e39fb4b6b9b90f 53-54,57
+  s_4164cd16e48c0e::t_33ae383df0f939 49,51-52,58-60,235
+  s_4164cd16e48c0e::t_7442d41d541054 11,55
+  s_4164cd16e48c0e::t_2abf2e8516ec2f 4,111-137
+packages/brepjs-mesh2solid/README.md
+  s_4164cd16e48c0e::t_89d6cf2a69cde5 64-83
+  s_4164cd16e48c0e::t_8b6a8369132a39 147-148
+packages/brepjs-mesh2solid/engine/src/snap.rs
+  s_4164cd16e48c0e::t_9cbe1f25aa1ed9 84-115,586-592
+  s_4164cd16e48c0e::t_33ae383df0f939 17-26,126,560-566,585,803,807
+  s_4164cd16e48c0e::t_05795ca4bd5ec2 130-134,407-408,431,526-529,554-555,684-685,851-853,876
+  s_4164cd16e48c0e::t_e9f422beca2e08 199-216
+  s_4164cd16e48c0e::t_0532d3a8dcb20c 613,925-973,975-976,982-1039
+  s_4164cd16e48c0e::t_4486f03a52b1d9 974,978-981
+  s_4164cd16e48c0e::t_b7df249f81df58 116-119,596-611
+  s_4164cd16e48c0e::t_8c305beef2242c 120-125,129,135,343,504,513,524,532,541,546,682-683,687
+  s_4164cd16e48c0e::t_b6860b989c8844 10,13,333-342,344-387,578-581,583,612
+  s_4164cd16e48c0e::t_34bd67643a5f0b 746
+  s_4b9adb1d9473fb::t_7bd4e63228106c 977
+packages/brepjs-mesh2solid/tests/eval.test.ts
+  s_4164cd16e48c0e::t_39dde1b5792f8c 142,144-155,163-164,166,170,175,184-191
+packages/brepjs-mesh2solid/engine/src/lib.rs
+  s_4164cd16e48c0e::t_2abf2e8516ec2f 312-316,318-322
+  s_4164cd16e48c0e::t_33ae383df0f939 291-296
+  s_4164cd16e48c0e::t_9971b0c0d58e08 317
+packages/brepjs-mesh2solid/wasm/index.d.ts
+  s_4164cd16e48c0e::t_9971b0c0d58e08 50-53,140
+  s_4164cd16e48c0e::t_537017634b5efb 49,91-94,148
+packages/brepjs-mesh2solid/src/analyticFns.ts
+  s_4164cd16e48c0e::t_33ae383df0f939 53-54,397-401,411
+packages/brepjs-mesh2solid/src/meshToSolidFns.ts
+  s_4164cd16e48c0e::t_33ae383df0f939 274,277-279,295,306
+  s_4164cd16e48c0e::t_9971b0c0d58e08 307-311
+packages/brepjs-mesh2solid/wasm/index.js
+  s_4164cd16e48c0e::t_537017634b5efb 321-327
+  s_4164cd16e48c0e::t_9971b0c0d58e08 237-249
+  s_4164cd16e48c0e::t_d03df597e24a74 236,320
+packages/brepjs-mesh2solid/engine/src/segment.rs
+  s_4164cd16e48c0e::t_8b48f6fc8c71c1 861
+  s_4164cd16e48c0e::t_0448dd6730981d 129-136
+  s_4164cd16e48c0e::t_77547d50a31528 667-671,681-686,691-717,720
+  s_4164cd16e48c0e::t_432485f3409728 953-1068
+  s_4164cd16e48c0e::t_f023135b46950d 175-177
+  s_4164cd16e48c0e::t_33ae383df0f939 39-42,57-69,127-128,137-141,150,152,206-221,228,236-237,239,241,256-257,273,287,289,291-310,362,371,421,461,502-506,518,533,589,619-621,649,651,746,841,881,898,915,948
+  s_4164cd16e48c0e::t_7442d41d541054 225-226,229-235,238,240,242-255,258-272,274-286,288,290
+  s_4164cd16e48c0e::t_a91805cc67d6fe 144-148,193-202
+  s_4164cd16e48c0e::t_48582ae0a62def 180-192,203-205,459,462-464,590-594
+  s_4164cd16e48c0e::t_64dba32a384845 227
+  s_4164cd16e48c0e::t_99f423974f1a46 151
+  s_4b9adb1d9473fb::t_04ed989a81171f 718-719
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6adb534c6adc9f08bf36f1bfe24f9b26b40c05d3",
+  "prompts": {},
+  "sessions": {
+    "s_4164cd16e48c0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39b56ca7-b90d-49fe-ad28-4c54a3c049c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    },
+    "s_4b9adb1d9473fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d026ead-d5ae-43ff-b7af-cd5e2a5d65dd",
+        "model": "unknown"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
