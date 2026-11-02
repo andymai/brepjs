@@ -1256,6 +1256,16 @@ export function makeConstructionOps(bk: BrepkitKernel) {
     makeBoxFromCorners: (p1, p2) => makeBoxFromCorners(bk, p1, p2),
     solidFromShell: (shell) => solidFromShell(bk, shell),
     makeNonPlanarFace: (wire) => makeNonPlanarFace(bk, wire),
+    fillNSided: () => {
+      throw new UnsupportedKernelOperationError(
+        'fillNSided is only available with the occt-wasm kernel'
+      );
+    },
+    edgeOnSurface: () => {
+      throw new UnsupportedKernelOperationError(
+        'edgeOnSurface is only available with the occt-wasm kernel'
+      );
+    },
     addHolesInFace: (face, holeWires) => addHolesInFace(bk, face, holeWires),
     removeHolesFromFace: (face) => removeHolesFromFace(bk, face),
     makeFaceOnSurface: (surface, wire) => makeFaceOnSurface(bk, surface, wire),
@@ -1300,6 +1310,8 @@ export function makeConstructionOps(bk: BrepkitKernel) {
     | 'makeBoxFromCorners'
     | 'solidFromShell'
     | 'makeNonPlanarFace'
+    | 'fillNSided'
+    | 'edgeOnSurface'
     | 'addHolesInFace'
     | 'removeHolesFromFace'
     | 'makeFaceOnSurface'

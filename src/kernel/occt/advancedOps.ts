@@ -8,6 +8,7 @@
  * Used by DefaultAdapter.
  */
 
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import type { KernelInstance, KernelShape, KernelType, OperationResult } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import { transformWithEvolution } from './evolutionOps.js';
@@ -1216,6 +1217,16 @@ export function makeAdvancedOps(oc: KernelInstance) {
     circularPattern: (shape, center, axis, angleStep, count) =>
       circularPattern(oc, shape, center, axis, angleStep, count),
     makeNonPlanarFace: (wire) => makeNonPlanarFace(oc, wire),
+    fillNSided: () => {
+      throw new UnsupportedKernelOperationError(
+        'fillNSided is only available with the occt-wasm kernel'
+      );
+    },
+    edgeOnSurface: () => {
+      throw new UnsupportedKernelOperationError(
+        'edgeOnSurface is only available with the occt-wasm kernel'
+      );
+    },
     addHolesInFace: (face, holeWires) => addHolesInFace(oc, face, holeWires),
     removeHolesFromFace: (face) => removeHolesFromFace(oc, face),
     makeFaceOnSurface: (surface, wire) => makeFaceOnSurface(oc, surface, wire),
@@ -1248,6 +1259,8 @@ export function makeAdvancedOps(oc: KernelInstance) {
     | 'linearPattern'
     | 'circularPattern'
     | 'makeNonPlanarFace'
+    | 'fillNSided'
+    | 'edgeOnSurface'
     | 'addHolesInFace'
     | 'removeHolesFromFace'
     | 'makeFaceOnSurface'

@@ -11,6 +11,41 @@
 
 import type { KernelShape, KernelType } from '@/kernel/types.js';
 
+/**
+ * One boundary edge of an N-sided filling: met in position only, or, with a
+ * `support` face, met tangentially (`G1`, the default) or with matching
+ * curvature (`G2`).
+ */
+export interface FillBoundaryEdge {
+  readonly edge: KernelShape;
+  readonly support?: KernelShape | undefined;
+  readonly continuity?: 'G1' | 'G2' | undefined;
+}
+
+/** Interior constraints and solver controls for an N-sided filling; omitted controls take OCCT's defaults. */
+export interface FillSurfaceOptions {
+  /** Points the face must pass through. */
+  readonly points?: readonly (readonly [number, number, number])[] | undefined;
+  /** Edges the face must pass through that are not part of its boundary. */
+  readonly guides?: readonly KernelShape[] | undefined;
+  /** A face whose surface seeds the solver. */
+  readonly initSurface?: KernelShape | undefined;
+  /** Degree of the energy-minimizing surface (default 3). */
+  readonly degree?: number | undefined;
+  /** Points sampled on each constraint curve (default 15). */
+  readonly pointsOnCurve?: number | undefined;
+  /** Solver iterations (default 2). */
+  readonly iterations?: number | undefined;
+  /** 3D tolerance (default 1e-4). */
+  readonly tolerance?: number | undefined;
+  /** Angular tolerance in radians for tangent constraints (default 1e-2). */
+  readonly angularTolerance?: number | undefined;
+  /** Highest degree of the approximating B-spline (default 8). */
+  readonly maxDegree?: number | undefined;
+  /** Most segments of the approximating B-spline (default 9). */
+  readonly maxSegments?: number | undefined;
+}
+
 export interface KernelBuilderOps {
   // --- Basic construction ---
   makeVertex(x: number, y: number, z: number): KernelShape;
@@ -87,6 +122,21 @@ export interface KernelBuilderOps {
   // --- Surface construction ---
   /** Build a non-planar face by filling a wire's boundary. */
   makeNonPlanarFace(wire: KernelShape): KernelShape;
+  /**
+   * Fill a closed boundary with a smooth face (N-sided filling), meeting
+   * support faces tangentially where given and passing through `options.points`.
+   */
+  fillNSided(boundary: readonly FillBoundaryEdge[], options?: FillSurfaceOptions): KernelShape;
+  /**
+   * An edge lying on `face`'s surface through `points`, approximated within
+   * `tolerance`; points off the surface are projected onto it.
+   */
+  edgeOnSurface(
+    face: KernelShape,
+    points: readonly (readonly [number, number, number])[],
+    tolerance: number,
+    closed: boolean
+  ): KernelShape;
   /** Add hole wires to an existing face. */
   addHolesInFace(face: KernelShape, holeWires: KernelShape[]): KernelShape;
   /** Remove all inner wires (holes) from a face. Returns a new face with only the outer boundary. */

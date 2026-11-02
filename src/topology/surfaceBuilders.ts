@@ -8,8 +8,8 @@ import type { Vec3 } from '@/core/types.js';
 import { type Result, ok, err, andThen } from '@/core/result.js';
 import { validationError, kernelError } from '@/core/errors.js';
 import { DisposalScope } from '@/core/disposal.js';
-import type { Dimension, ClosedWire, Face, OrientedFace } from '@/core/shapeTypes.js';
-import { createFace, isFace } from '@/core/shapeTypes.js';
+import type { Dimension, ClosedWire, Edge, Face, OrientedFace } from '@/core/shapeTypes.js';
+import { createEdge, createFace, isFace } from '@/core/shapeTypes.js';
 import type { PlanarFace, PlanarWire } from '@/core/validityTypes.js';
 import { isPlanarFace } from '@/core/validityTypes.js';
 import { cast } from './cast.js';
@@ -106,6 +106,139 @@ export function makeNonPlanarFace<D extends Dimension = '3D'>(
     });
   } catch (e) {
     return err(kernelError('FACE_BUILD_FAILED', 'Failed to create a non-planar face', e));
+  }
+}
+
+/**
+ * One boundary edge of {@link makeNSidedFace}: met in position only, or, with
+ * a `support` face, met tangentially (`'G1'`, the default) or with matching
+ * curvature (`'G2'`).
+ */
+export interface NSidedBoundaryEdge {
+  readonly edge: Edge;
+  readonly support?: Face | undefined;
+  readonly continuity?: 'G1' | 'G2' | undefined;
+}
+
+/** Interior constraints and solver controls for {@link makeNSidedFace}; omitted controls take OCCT's defaults. */
+export interface NSidedFaceOptions {
+  /** Points the face must pass through. */
+  readonly points?: readonly Vec3[] | undefined;
+  /** Edges the face must pass through that are not part of its boundary. */
+  readonly guides?: readonly Edge[] | undefined;
+  /** A face whose surface seeds the solver, for patches far from planar. */
+  readonly initSurface?: Face | undefined;
+  /** Degree of the energy-minimizing surface (default 3). */
+  readonly degree?: number | undefined;
+  /** Points sampled on each constraint curve (default 15). */
+  readonly pointsOnCurve?: number | undefined;
+  /** Solver iterations (default 2). */
+  readonly iterations?: number | undefined;
+  /** 3D tolerance (default 1e-4). */
+  readonly tolerance?: number | undefined;
+  /** Angular tolerance in radians for tangent constraints (default 1e-2). */
+  readonly angularTolerance?: number | undefined;
+  /** Highest degree of the approximating B-spline (default 8). */
+  readonly maxDegree?: number | undefined;
+  /** Most segments of the approximating B-spline (default 9). */
+  readonly maxSegments?: number | undefined;
+}
+
+/**
+ * Fill a closed boundary with a smooth face (OCCT's N-sided filling). Bare
+ * edges are matched in position; an edge with a `support` face is met
+ * tangentially, so the face blends into its neighbour. `options.points` and
+ * `options.guides` pull the interior through given points and curves.
+ * Needs the occt-wasm kernel (5.12.0 or later).
+ */
+export function makeNSidedFace(
+  boundary: readonly (Edge | NSidedBoundaryEdge)[],
+  options: NSidedFaceOptions = {}
+): Result<Face> {
+  if (boundary.length === 0) {
+    return err(
+      validationError(
+        'FILL_EMPTY_BOUNDARY',
+        'An N-sided face needs at least one boundary edge',
+        undefined,
+        undefined,
+        'Pass the edges that close the region to fill'
+      )
+    );
+  }
+  const { points, guides, initSurface, ...controls } = options;
+  try {
+    const shape = getKernel().fillNSided(
+      boundary.map((b) =>
+        'edge' in b
+          ? { edge: b.edge.wrapped, support: b.support?.wrapped, continuity: b.continuity }
+          : { edge: b.wrapped }
+      ),
+      {
+        ...controls,
+        points,
+        guides: guides?.map((g) => g.wrapped),
+        initSurface: initSurface?.wrapped,
+      }
+    );
+    return ok(createFace(shape));
+  } catch (e) {
+    return err(kernelError('FACE_BUILD_FAILED', 'Failed to fill the boundary with a face', e));
+  }
+}
+
+/** Options for {@link makeEdgeOnFace}. */
+export interface EdgeOnFaceOptions {
+  /** How closely the curve follows the points, in model units (default 1e-3). */
+  readonly tolerance?: number | undefined;
+  /** Join the last point back to the first. */
+  readonly closed?: boolean | undefined;
+}
+
+/**
+ * An edge lying exactly on `face`'s surface through `points`, which are first
+ * approximated by a curve within `options.tolerance`; points off the surface
+ * are projected onto it. Seams of periodic surfaces are handled. Needs the
+ * occt-wasm kernel (5.12.0 or later).
+ */
+export function makeEdgeOnFace(
+  face: Face,
+  points: readonly Vec3[],
+  options: EdgeOnFaceOptions = {}
+): Result<Edge> {
+  const tolerance = options.tolerance ?? 1e-3;
+  if (points.length < 2) {
+    return err(
+      validationError(
+        'EDGE_ON_FACE_MIN_POINTS',
+        `An edge on a face needs at least 2 points, got ${points.length}`,
+        undefined,
+        undefined,
+        'Pass two or more points along the curve'
+      )
+    );
+  }
+  if (!(tolerance > 0)) {
+    return err(
+      validationError(
+        'EDGE_ON_FACE_BAD_TOLERANCE',
+        `The tolerance must be positive, got ${tolerance}`,
+        undefined,
+        undefined,
+        'Use a small positive distance in model units, such as 1e-3'
+      )
+    );
+  }
+  try {
+    const shape = getKernel().edgeOnSurface(
+      face.wrapped,
+      points,
+      tolerance,
+      options.closed ?? false
+    );
+    return ok(createEdge(shape));
+  } catch (e) {
+    return err(kernelError('EDGE_ON_FACE_FAILED', 'Failed to build an edge on the face', e));
   }
 }
 

@@ -67,6 +67,7 @@ import type {
 import type { BulkMeasurement, Matrix3 } from '@/kernel/interfaces/measureOps.js';
 import type { TransformEntry } from '@/kernel/interfaces/transformOps.js';
 import type { ChamferDistAngleEdge } from '@/kernel/interfaces/modifierOps.js';
+import type { FillBoundaryEdge, FillSurfaceOptions } from '@/kernel/interfaces/builderOps.js';
 import type { Curve2dHandle, BBox2dHandle } from '@/kernel/kernel2dTypes.js';
 import type { OcctWasmModule, OcctKernelWasm } from './occtWasmTypes.js';
 import { isOcctWasmHandle, unwrap, wrapResult } from './helpers.js';
@@ -528,6 +529,19 @@ export class OcctWasmAdapter implements KernelAdapter {
 
   makeNonPlanarFace(wire: KernelShape): KernelShape {
     return constructionOps.makeNonPlanarFace(this.k, wire);
+  }
+
+  fillNSided(boundary: readonly FillBoundaryEdge[], options?: FillSurfaceOptions): KernelShape {
+    return constructionOps.fillNSided(this.k, this.Module, boundary, options);
+  }
+
+  edgeOnSurface(
+    face: KernelShape,
+    points: readonly (readonly [number, number, number])[],
+    tolerance: number,
+    closed: boolean
+  ): KernelShape {
+    return constructionOps.edgeOnSurface(this.k, this.Module, face, points, tolerance, closed);
   }
 
   addHolesInFace(face: KernelShape, holeWires: KernelShape[]): KernelShape {

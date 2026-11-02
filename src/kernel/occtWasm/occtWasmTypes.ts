@@ -466,6 +466,24 @@ export interface OcctKernelWasm {
   makeWire(edgeIds: EmVectorUint32): number;
   makeFace(wireId: number): number;
   makeNonPlanarFace(wireId: number): number;
+  /** occt-wasm 5.12.0 and later. */
+  fillSurface?(
+    freeEdgeIds: EmVectorUint32,
+    supportedEdgeIds: EmVectorUint32,
+    supportFaceIds: EmVectorUint32,
+    supportOrders: EmVectorInt,
+    guideEdgeIds: EmVectorUint32,
+    flatPoints: EmVectorDouble,
+    initFaceId: number,
+    params: EmVectorDouble
+  ): number;
+  /** occt-wasm 5.12.0 and later. */
+  edgeOnSurface?(
+    faceId: number,
+    flatPoints: EmVectorDouble,
+    tolerance: number,
+    closed: boolean
+  ): number;
   addHolesInFace(faceId: number, holeWireIds: EmVectorUint32): number;
   removeHolesFromFace(faceId: number, holeIndices: EmVectorInt): number;
   solidFromShell(shellId: number): number;

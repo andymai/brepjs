@@ -50,6 +50,8 @@ export {
   wireLoop,
   face,
   filledFace,
+  nSidedFace,
+  edgeOnFace,
   subFace,
   polygon,
   vertex,

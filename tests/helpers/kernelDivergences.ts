@@ -44,6 +44,15 @@ export const isBrepkit: boolean = currentKernelId === 'brepkit';
 
 export const divergences: DivergenceMap = {
   manifold: {
+    // primitiveFns.test.ts: N-sided filling and edges on a surface need occt-wasm 5.12.0+
+    'primitiveFns.nSidedFace': {
+      kind: 'not-implemented',
+      reason: 'fillNSided is only available with the occt-wasm kernel.',
+    },
+    'primitiveFns.edgeOnFace': {
+      kind: 'not-implemented',
+      reason: 'edgeOnSurface is only available with the occt-wasm kernel.',
+    },
     // -----------------------------------------------------------------------
     // csgPath.test.ts — no B-rep wire/edge vocabulary on the mesh kernel
     // -----------------------------------------------------------------------
@@ -230,6 +239,15 @@ export const divergences: DivergenceMap = {
     },
   },
   brepkit: {
+    // primitiveFns.test.ts: N-sided filling and edges on a surface need occt-wasm 5.12.0+
+    'primitiveFns.nSidedFace': {
+      kind: 'not-implemented',
+      reason: 'fillNSided is only available with the occt-wasm kernel.',
+    },
+    'primitiveFns.edgeOnFace': {
+      kind: 'not-implemented',
+      reason: 'edgeOnSurface is only available with the occt-wasm kernel.',
+    },
     // -----------------------------------------------------------------------
     // csgPath.test.ts: a clockwise ellipse arc keeps its curve's direction
     // -----------------------------------------------------------------------
@@ -592,6 +610,15 @@ export const divergences: DivergenceMap = {
   },
 
   occt: {
+    // primitiveFns.test.ts: N-sided filling and edges on a surface need occt-wasm 5.12.0+
+    'primitiveFns.nSidedFace': {
+      kind: 'not-implemented',
+      reason: 'fillNSided is only available with the occt-wasm kernel.',
+    },
+    'primitiveFns.edgeOnFace': {
+      kind: 'not-implemented',
+      reason: 'edgeOnSurface is only available with the occt-wasm kernel.',
+    },
     // -----------------------------------------------------------------------
     // dxfImport.test.ts
     // -----------------------------------------------------------------------
