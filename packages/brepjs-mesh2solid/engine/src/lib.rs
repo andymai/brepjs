@@ -288,6 +288,12 @@ impl Tier1Session {
         self.inner.seg.unfit_triangles as u32
     }
 
+    /// Share of the mesh area no fitted surface covers.
+    #[wasm_bindgen(getter)]
+    pub fn unfit_area(&self) -> f64 {
+        segment::unfit_area(&self.inner.t0.mesh, &self.inner.seg)
+    }
+
     #[wasm_bindgen(getter)]
     pub fn tier1_report(&self) -> String {
         self.inner.report_json()
@@ -298,6 +304,17 @@ impl Tier1Session {
         let pts: Vec<math::V3> = points.as_chunks::<3>().0.to_vec();
         self.inner
             .nearest(&pts)
+            .into_iter()
+            .flat_map(|(s, d)| [s as f64, d])
+            .collect()
+    }
+
+    /// Like `nearest`, but labels each point with the fitted surface closest
+    /// to its nearest mesh point (robust to fuzzy region boundaries on scans).
+    pub fn nearest_by_surface(&self, points: &[f64]) -> Vec<f64> {
+        let pts: Vec<math::V3> = points.as_chunks::<3>().0.to_vec();
+        self.inner
+            .nearest_by_surface(&pts)
             .into_iter()
             .flat_map(|(s, d)| [s as f64, d])
             .collect()

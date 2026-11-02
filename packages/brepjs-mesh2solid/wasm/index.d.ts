@@ -47,6 +47,11 @@ export class Tier1Session {
      */
     nearest(points: Float64Array): Float64Array;
     /**
+     * Like `nearest`, but labels each point with the fitted surface closest
+     * to its nearest mesh point (robust to fuzzy region boundaries on scans).
+     */
+    nearest_by_surface(points: Float64Array): Float64Array;
+    /**
      * The whole-mesh Tier 0 result, the fallback when Tier 1 can't rebuild.
      */
     tier0(): Tier0Result;
@@ -83,6 +88,10 @@ export class Tier1Session {
     readonly surface_params: Float64Array;
     readonly tier1_report: string;
     readonly tolerance: number;
+    /**
+     * Share of the mesh area no fitted surface covers.
+     */
+    readonly unfit_area: number;
     readonly unfit_triangles: number;
 }
 
@@ -128,6 +137,7 @@ export interface InitOutput {
     readonly tier1session_deviation: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly tier1session_measured_deviation: (a: number) => [number, number];
     readonly tier1session_nearest: (a: number, b: number, c: number) => [number, number];
+    readonly tier1session_nearest_by_surface: (a: number, b: number, c: number) => [number, number];
     readonly tier1session_sag: (a: number) => number;
     readonly tier1session_surface_bounds: (a: number) => [number, number];
     readonly tier1session_surface_kinds: (a: number) => [number, number];
@@ -135,6 +145,7 @@ export interface InitOutput {
     readonly tier1session_tier0: (a: number) => number;
     readonly tier1session_tier1_report: (a: number) => [number, number];
     readonly tier1session_tolerance: (a: number) => number;
+    readonly tier1session_unfit_area: (a: number) => number;
     readonly tier1session_unfit_triangles: (a: number) => number;
     readonly version: () => [number, number];
     readonly __wbindgen_externrefs: WebAssembly.Table;

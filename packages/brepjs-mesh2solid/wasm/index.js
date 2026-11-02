@@ -234,6 +234,20 @@ export class Tier1Session {
         return v2;
     }
     /**
+     * Like `nearest`, but labels each point with the fitted surface closest
+     * to its nearest mesh point (robust to fuzzy region boundaries on scans).
+     * @param {Float64Array} points
+     * @returns {Float64Array}
+     */
+    nearest_by_surface(points) {
+        const ptr0 = passArrayF64ToWasm0(points, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.tier1session_nearest_by_surface(this.__wbg_ptr, ptr0, len0);
+        var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v2;
+    }
+    /**
      * Largest gap between a fitted mesh triangle and its exact surface.
      * @returns {number}
      */
@@ -301,6 +315,14 @@ export class Tier1Session {
      */
     get tolerance() {
         const ret = wasm.tier1session_tolerance(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Share of the mesh area no fitted surface covers.
+     * @returns {number}
+     */
+    get unfit_area() {
+        const ret = wasm.tier1session_unfit_area(this.__wbg_ptr);
         return ret;
     }
     /**

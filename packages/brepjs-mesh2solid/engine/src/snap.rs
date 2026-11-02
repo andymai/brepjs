@@ -7,13 +7,23 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::fit::{max_residual, solve, Surface};
+use crate::fit::{max_residual, solve, Kind, Surface};
 use crate::math::{add, cross, dot, norm, normalize, scale, sub, V3};
 use crate::mesh::{Mesh, Topology};
-use crate::segment::{unique_vertices, Segmentation, APEX_REACH};
+use crate::segment::{fits, unique_vertices, Segmentation, APEX_REACH};
 
 /// Surface normals within about a degree along a shared boundary mark a tangent pair.
 const TANGENT_COS: f64 = 0.99985;
+/// On a scan, surfaces fitted to noisy neighbours agree to a few degrees (4°).
+const NOISY_TANGENT_COS: f64 = 0.99756;
+
+fn tangent_cos(robust: bool) -> f64 {
+    if robust {
+        NOISY_TANGENT_COS
+    } else {
+        TANGENT_COS
+    }
+}
 /// Planes closer to parallel than this cannot fix a cylinder axis together.
 const PARALLEL_COS: f64 = 0.999;
 
@@ -71,12 +81,58 @@ fn shared_boundaries(
         .collect()
 }
 
-fn tangent(a: &Surface, b: &Surface, pts: &[V3]) -> bool {
-    !pts.is_empty()
-        && pts.iter().all(|&p| match (a.normal(p), b.normal(p)) {
-            (Some(na), Some(nb)) => dot(na, nb).abs() >= TANGENT_COS,
+/// On a scan the boundary between two regions wanders up the fillet, so
+/// tangency is read off the fitted surfaces instead: an axis parallel to a
+/// plane at one radius from it, a center one radius from a plane, a center on
+/// an axis with equal radii. `None` for pairs this doesn't cover.
+fn tangent_by_fit(a: &Surface, b: &Surface, tol: f64) -> Option<bool> {
+    let near = 3.0 * tol;
+    let parallel = 0.035; // about 2°
+    let plane_dist = |n: V3, d: f64, p: V3| (dot(n, p) - d).abs();
+    let axis_dist = |o: V3, a: V3, p: V3| {
+        let v = sub(p, o);
+        norm(sub(v, scale(a, dot(v, a))))
+    };
+    let pair = match (*a, *b) {
+        (x @ Surface::Plane { .. }, y) | (y, x @ Surface::Plane { .. }) => (x, y),
+        (x @ Surface::Cylinder { .. }, y @ Surface::Sphere { .. })
+        | (y @ Surface::Sphere { .. }, x @ Surface::Cylinder { .. }) => (x, y),
+        _ => return None,
+    };
+    match pair {
+        (Surface::Plane { n, d }, Surface::Cylinder { o, a, r }) => {
+            Some(dot(n, a).abs() <= parallel && (plane_dist(n, d, o) - r).abs() <= near)
+        }
+        (Surface::Plane { n, d }, Surface::Sphere { c, r }) => {
+            Some((plane_dist(n, d, c) - r).abs() <= near)
+        }
+        (Surface::Cylinder { o, a, r: rc }, Surface::Sphere { c, r }) => {
+            Some(axis_dist(o, a, c) <= near && (rc - r).abs() <= near)
+        }
+        _ => None,
+    }
+}
+
+fn boxes_near(a: &crate::math::Bbox, b: &crate::math::Bbox, gap: f64) -> bool {
+    (0..3).all(|k| a.min[k] - gap <= b.max[k] && b.min[k] - gap <= a.max[k])
+}
+
+/// Tangent along their shared boundary: every vertex agrees, or on a scan
+/// nine in ten (a few boundary vertices always sit in the noise).
+fn tangent(a: &Surface, b: &Surface, pts: &[V3], cos: f64, robust: bool) -> bool {
+    let agree = pts
+        .iter()
+        .filter(|&&p| match (a.normal(p), b.normal(p)) {
+            (Some(na), Some(nb)) => dot(na, nb).abs() >= cos,
             _ => false,
         })
+        .count();
+    let need = if robust {
+        (pts.len() * 9).div_ceil(10)
+    } else {
+        pts.len()
+    };
+    !pts.is_empty() && agree >= need
 }
 
 fn radius(s: &Surface) -> Option<f64> {
@@ -139,6 +195,24 @@ fn snap_cylinder(o: V3, a: V3, r: f64, planes: &[(V3, f64)]) -> Option<Surface> 
 fn snap_center(c: V3, r: f64, axes: &[(V3, V3)], planes: &[(V3, f64)]) -> Option<V3> {
     if axes.is_empty() && planes.is_empty() {
         return None;
+    }
+    // Three planes that meet at a corner fix the center exactly, and the
+    // fillet axes were placed from the same planes, so they stay consistent.
+    for (i, &(n1, d1)) in planes.iter().enumerate() {
+        for (j, &(n2, d2)) in planes.iter().enumerate().skip(i + 1) {
+            for &(n3, d3) in planes.iter().skip(j + 1) {
+                let det = dot(n1, cross(n2, n3));
+                if det.abs() < 0.5 {
+                    continue;
+                }
+                let offset = |n: V3, d: f64| d + side(dot(n, c) - d) * r;
+                let x = solve(
+                    vec![n1.to_vec(), n2.to_vec(), n3.to_vec()],
+                    vec![offset(n1, d1), offset(n2, d2), offset(n3, d3)],
+                )?;
+                return Some([x[0], x[1], x[2]]);
+            }
+        }
     }
     let prior = 1e-9;
     let mut m = vec![vec![0.0; 3]; 3];
@@ -256,6 +330,61 @@ fn kink_doom(ni: usize, nj: usize) -> (bool, bool) {
     (ni < 4 * nj, nj < 4 * ni)
 }
 
+/// On a scan, a corner where fillets meet comes back as whatever curved
+/// surface fits its noisy patch best (a torus, a cone). Bordered by two or more
+/// fillet cylinders of one radius, it is the ball rolling between them:
+/// centered where their axes meet, with their radius, if that fits the patch.
+fn corner_spheres(
+    seg: &mut Segmentation,
+    boundaries: &BTreeMap<(usize, usize), Vec<u32>>,
+    verts: &[Vec<V3>],
+    tol: f64,
+) {
+    for (i, pts) in verts.iter().enumerate() {
+        if !matches!(
+            seg.regions[i].surface.kind(),
+            Kind::Torus | Kind::Cone | Kind::Sphere
+        ) {
+            continue;
+        }
+        let cyls: Vec<(V3, V3, f64)> = boundaries
+            .keys()
+            .filter_map(|&(a, b)| {
+                let j = if a == i {
+                    b
+                } else if b == i {
+                    a
+                } else {
+                    return None;
+                };
+                match seg.regions[j].surface {
+                    Surface::Cylinder { o, a, r } => Some((o, a, r)),
+                    _ => None,
+                }
+            })
+            .collect();
+        if cyls.len() < 2 {
+            continue;
+        }
+        let r = cyls.iter().map(|c| c.2).sum::<f64>() / cyls.len() as f64;
+        if cyls.iter().any(|c| (c.2 - r).abs() > 0.1 * r) {
+            continue;
+        }
+        let n = pts.len().max(1) as f64;
+        let start = pts
+            .iter()
+            .fold([0.0; 3], |acc, &p| add(acc, scale(p, 1.0 / n)));
+        let axes: Vec<(V3, V3)> = cyls.iter().map(|c| (c.0, c.1)).collect();
+        let Some(c) = snap_center(start, r, &axes, &[]) else {
+            continue;
+        };
+        let ball = Surface::Sphere { c, r };
+        if fits(&ball, pts, tol, true) {
+            seg.regions[i].surface = ball;
+        }
+    }
+}
+
 /// A surface of revolution's axis: a point on it and its direction.
 fn axis_of(s: &Surface) -> Option<(V3, V3)> {
     match *s {
@@ -275,7 +404,8 @@ fn onto(p: V3, foot: V3, d: V3) -> V3 {
 /// countersink and its hole, a boss and its fillet), so their intersections
 /// are exact circles instead of near-circle splines. Sphere centers on that
 /// axis move onto it.
-fn coaxial(s: &mut [Surface], weights: &[f64], tol: f64) {
+fn coaxial(s: &mut [Surface], weights: &[f64], tol: f64, max_angle: f64) {
+    let min_cos = max_angle.cos();
     let n = s.len();
     let near = 10.0 * tol;
     let mut group: Vec<usize> = (0..n).collect();
@@ -298,7 +428,7 @@ fn coaxial(s: &mut [Surface], weights: &[f64], tol: f64) {
             };
             let v = sub(pj, pi);
             let off = norm(sub(v, scale(ai, dot(v, ai))));
-            if dot(ai, aj).abs() >= COAXIAL_COS && off <= near {
+            if dot(ai, aj).abs() >= min_cos && off <= near {
                 let (a, b) = (find(&mut group, i), find(&mut group, j));
                 group[b] = a;
             }
@@ -371,7 +501,7 @@ fn coaxial(s: &mut [Surface], weights: &[f64], tol: f64) {
 }
 
 /// A unit direction within a microradian of a world axis, as that axis.
-fn to_world(d: V3) -> V3 {
+fn to_world(d: V3, within: f64) -> V3 {
     let i = (0..3)
         .max_by(|&x, &y| d[x].abs().total_cmp(&d[y].abs()))
         .unwrap_or(2);
@@ -380,7 +510,7 @@ fn to_world(d: V3) -> V3 {
         .map(|k| d[k] * d[k])
         .sum::<f64>()
         .sqrt();
-    if off > 1e-6 {
+    if off > within {
         return d;
     }
     let mut out = [0.0; 3];
@@ -391,12 +521,15 @@ fn to_world(d: V3) -> V3 {
 /// Parts are drawn on world axes; fitted directions come back a few
 /// nanoradians off, which is enough for the kernel to intersect two coaxial
 /// surfaces as a spline instead of a circle.
-fn world_aligned(s: Surface) -> Surface {
+fn world_aligned(s: Surface, within: f64) -> Surface {
     match s {
-        Surface::Plane { n, d } => Surface::Plane { n: to_world(n), d },
+        Surface::Plane { n, d } => Surface::Plane {
+            n: to_world(n, within),
+            d,
+        },
         Surface::Cylinder { o, a, r } => Surface::Cylinder {
             o,
-            a: to_world(a),
+            a: to_world(a, within),
             r,
         },
         Surface::Cone {
@@ -405,12 +538,12 @@ fn world_aligned(s: Surface) -> Surface {
             half_angle,
         } => Surface::Cone {
             apex,
-            a: to_world(a),
+            a: to_world(a, within),
             half_angle,
         },
         Surface::Torus { c, a, major, minor } => Surface::Torus {
             c,
-            a: to_world(a),
+            a: to_world(a, within),
             major,
             minor,
         },
@@ -418,13 +551,19 @@ fn world_aligned(s: Surface) -> Surface {
     }
 }
 
-/// Axes within about a milliradian count as the same direction.
-const COAXIAL_COS: f64 = 0.9999995;
+/// Axes within a milliradian count as the same direction.
+const COAXIAL_ANGLE: f64 = 1e-3;
 
 /// Shallowest crease a CAD model plausibly has between two faces (20°).
 const KINK_COS: f64 = 0.9397;
 
-pub fn snap(mesh: &Mesh, topo: &Topology, seg: &mut Segmentation, tol: f64) -> SnapReport {
+pub fn snap(
+    mesh: &Mesh,
+    topo: &Topology,
+    seg: &mut Segmentation,
+    tol: f64,
+    robust: bool,
+) -> SnapReport {
     let n = seg.regions.len();
     let verts: Vec<Vec<V3>> = seg
         .regions
@@ -436,11 +575,40 @@ pub fn snap(mesh: &Mesh, topo: &Topology, seg: &mut Segmentation, tol: f64) -> S
                 .collect()
         })
         .collect();
+    let boundaries = shared_boundaries(mesh, topo, seg);
+    if robust {
+        corner_spheres(seg, &boundaries, &verts, tol);
+    }
     let mut pairs: Vec<(usize, usize)> = Vec::new();
-    for ((i, j), vs) in shared_boundaries(mesh, topo, seg) {
+    for (&(i, j), vs) in &boundaries {
         let pts: Vec<V3> = vs.iter().map(|&v| mesh.positions[v as usize]).collect();
-        if tangent(&seg.regions[i].surface, &seg.regions[j].surface, &pts) {
+        let cos = tangent_cos(robust);
+        let (a, b) = (&seg.regions[i].surface, &seg.regions[j].surface);
+        let geometric = if robust {
+            tangent_by_fit(a, b, tol)
+        } else {
+            None
+        };
+        if geometric.unwrap_or_else(|| tangent(a, b, &pts, cos, robust)) {
             pairs.push((i, j));
+        }
+    }
+    if robust {
+        // A scan's regions can be eroded apart by noise along a tangent seam;
+        // neighbours close in space whose fits are tangent count as well.
+        let boxes: Vec<crate::math::Bbox> =
+            verts.iter().map(|v| crate::math::Bbox::of(v)).collect();
+        let gap = 10.0 * tol;
+        for i in 0..boxes.len() {
+            for j in i + 1..boxes.len() {
+                if pairs.contains(&(i, j)) || !boxes_near(&boxes[i], &boxes[j], gap) {
+                    continue;
+                }
+                let (a, b) = (&seg.regions[i].surface, &seg.regions[j].surface);
+                if tangent_by_fit(a, b, tol) == Some(true) {
+                    pairs.push((i, j));
+                }
+            }
         }
     }
     let original: Vec<Surface> = seg.regions.iter().map(|r| r.surface).collect();
@@ -511,9 +679,12 @@ pub fn snap(mesh: &Mesh, topo: &Topology, seg: &mut Segmentation, tol: f64) -> S
     };
 
     let weights: Vec<f64> = seg.regions.iter().map(|r| r.tris.len() as f64).collect();
-    coaxial(&mut s, &weights, tol);
+    // A scan's fitted axes come back milliradians off; a CAD export's, nanoradians.
+    let within = if robust { 1e-2 } else { 1e-6 };
+    let coaxial_angle = if robust { 1e-2 } else { COAXIAL_ANGLE };
+    coaxial(&mut s, &weights, tol, coaxial_angle);
     for si in s.iter_mut() {
-        *si = world_aligned(*si);
+        *si = world_aligned(*si, within);
     }
     for i in 0..n {
         if let Surface::Cylinder { o, a, r } = s[i] {
@@ -572,7 +743,7 @@ pub fn snap(mesh: &Mesh, topo: &Topology, seg: &mut Segmentation, tol: f64) -> S
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::segment::{segment, Params};
+    use crate::segment::{segment, Params, Region};
 
     /// Closed prism over a convex counter-clockwise profile, caps fanned from the centroid.
     fn prism(profile: &[[f64; 2]], h: f64) -> Mesh {
@@ -629,10 +800,11 @@ mod tests {
                 tol,
                 max_sag: f64::INFINITY,
                 crease_deg: 50.0,
+                robust: false,
             },
         );
         let dissolved = dissolve_kinks(mesh, &topo, &mut seg, tol);
-        let report = snap(mesh, &topo, &mut seg, tol);
+        let report = snap(mesh, &topo, &mut seg, tol, false);
         (seg, dissolved, report)
     }
 
@@ -676,9 +848,9 @@ mod tests {
 
     #[test]
     fn near_axis_directions_snap_onto_world_axes() {
-        assert_eq!(to_world([1e-8, 0.0, 1.0]), [0.0, 0.0, 1.0]);
-        assert_eq!(to_world([0.0, -1.0, 2e-7]), [0.0, -1.0, 0.0]);
-        assert_eq!(to_world([0.6, 0.8, 0.0]), [0.6, 0.8, 0.0]);
+        assert_eq!(to_world([1e-8, 0.0, 1.0], 1e-6), [0.0, 0.0, 1.0]);
+        assert_eq!(to_world([0.0, -1.0, 2e-7], 1e-6), [0.0, -1.0, 0.0]);
+        assert_eq!(to_world([0.6, 0.8, 0.0], 1e-6), [0.6, 0.8, 0.0]);
     }
 
     #[test]
@@ -701,7 +873,7 @@ mod tests {
                 r: 1.0,
             },
         ];
-        coaxial(&mut s, &[10.0, 30.0, 10.0], 1e-4);
+        coaxial(&mut s, &[10.0, 30.0, 10.0], 1e-4, COAXIAL_ANGLE);
         let (Surface::Cylinder { o, a, .. }, Surface::Cone { apex, a: b, .. }) = (s[0], s[1])
         else {
             panic!("kinds changed");
@@ -749,5 +921,120 @@ mod tests {
             .filter(|reg| matches!(reg.surface, Surface::Plane { n, .. } if n[2].abs() > 0.99))
             .count();
         assert_eq!(caps, 2);
+    }
+
+    #[test]
+    fn tangency_on_a_scan_reads_off_the_fitted_surfaces() {
+        let tol = 0.06;
+        let floor = Surface::Plane {
+            n: [0.0, 0.0, 1.0],
+            d: 0.0,
+        };
+        let fillet = |z: f64, a: V3, r: f64| Surface::Cylinder {
+            o: [0.0, 5.0, z],
+            a,
+            r,
+        };
+        let x = [1.0, 0.0, 0.0];
+        assert_eq!(
+            tangent_by_fit(&floor, &fillet(2.1, x, 2.0), tol),
+            Some(true)
+        );
+        assert_eq!(
+            tangent_by_fit(&fillet(2.1, x, 2.0), &floor, tol),
+            Some(true)
+        );
+        assert_eq!(
+            tangent_by_fit(&floor, &fillet(2.5, x, 2.0), tol),
+            Some(false)
+        );
+        let tilted = normalize([1.0, 0.0, 0.09]).unwrap(); // about 5°
+        assert_eq!(
+            tangent_by_fit(&floor, &fillet(2.0, tilted, 2.0), tol),
+            Some(false)
+        );
+        let ball = Surface::Sphere {
+            c: [3.0, 5.0, 2.05],
+            r: 2.0,
+        };
+        assert_eq!(tangent_by_fit(&floor, &ball, tol), Some(true));
+        assert_eq!(tangent_by_fit(&fillet(2.0, x, 2.0), &ball, tol), Some(true));
+        assert_eq!(
+            tangent_by_fit(&fillet(2.0, x, 2.5), &ball, tol),
+            Some(false)
+        );
+        let cone = Surface::Cone {
+            apex: [0.0; 3],
+            a: [0.0, 0.0, 1.0],
+            half_angle: 0.5,
+        };
+        assert_eq!(tangent_by_fit(&floor, &cone, tol), None);
+    }
+
+    type Corner = (
+        Segmentation,
+        BTreeMap<(usize, usize), Vec<u32>>,
+        Vec<Vec<V3>>,
+    );
+
+    /// A corner region bordered by fillets along X and Y meeting at (5, 5, 5).
+    fn corner(r: f64, ry: f64) -> Corner {
+        let c = [5.0, 5.0, 5.0];
+        let patch: Vec<V3> = (0..6)
+            .flat_map(|i| {
+                (0..6).map(move |j| {
+                    let (th, ph) = (0.1 + 0.25 * i as f64, 0.1 + 0.25 * j as f64);
+                    add(
+                        c,
+                        scale([th.cos() * ph.sin(), th.sin() * ph.sin(), ph.cos()], r),
+                    )
+                })
+            })
+            .collect();
+        let region = |surface| Region {
+            surface,
+            tris: Vec::new(),
+            max_residual: 0.0,
+        };
+        let seg = Segmentation {
+            regions: vec![
+                region(Surface::Torus {
+                    c: [5.0, 5.0, 4.0],
+                    a: [0.0, 0.0, 1.0],
+                    major: 0.5,
+                    minor: 1.8,
+                }),
+                region(Surface::Cylinder {
+                    o: [0.0, 5.0, 5.0],
+                    a: [1.0, 0.0, 0.0],
+                    r,
+                }),
+                region(Surface::Cylinder {
+                    o: [5.0, 0.0, 5.0],
+                    a: [0.0, 1.0, 0.0],
+                    r: ry,
+                }),
+            ],
+            region_of: Vec::new(),
+            unfit_triangles: 0,
+        };
+        let boundaries = BTreeMap::from([((0, 1), Vec::new()), ((0, 2), Vec::new())]);
+        (seg, boundaries, vec![patch, Vec::new(), Vec::new()])
+    }
+
+    #[test]
+    fn a_corner_between_equal_fillets_becomes_their_ball() {
+        let (mut seg, boundaries, verts) = corner(2.0, 2.0);
+        corner_spheres(&mut seg, &boundaries, &verts, 0.06);
+        let Surface::Sphere { c, r } = seg.regions[0].surface else {
+            panic!("corner stayed {:?}", seg.regions[0].surface);
+        };
+        assert!((r - 2.0).abs() < 1e-12);
+        assert!(norm(sub(c, [5.0, 5.0, 5.0])) < 1e-6, "center {c:?}");
+
+        // Fillets of different radii have no single ball between them.
+        let (mut seg, boundaries, verts) = corner(2.0, 3.0);
+        corner_spheres(&mut seg, &boundaries, &verts, 0.06);
+        assert_eq!(seg.regions[0].surface.kind(), Kind::Torus);
     }
 }

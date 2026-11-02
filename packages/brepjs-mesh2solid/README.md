@@ -61,9 +61,26 @@ cylinder rather than dozens of strips.
 4. **Sews** each body's pieces into a solid, subtracts cavities, unifies faces, and checks the result
    against the mesh in both directions.
 
-It falls back to tier 0 when any triangles fit no analytic surface (freeform shapes), when a body is
-open, or when the rebuild fails or strays from the mesh. Meshes that look like scans skip tier 1.
-`report.tier1.fallbackReason` says why, and `report.warnings` records the fallback.
+It falls back to tier 0 when triangles fit no analytic surface (freeform shapes), when a body is
+open, or when the rebuild fails or strays from the mesh. `report.tier1.fallbackReason` says why, and
+`report.warnings` records the fallback.
+
+### Scans
+
+On a scan the fit tolerance is three times the measured noise, and every test allows for a few
+points past it:
+
+- A surface fits a region when 95% of its points are within tolerance. A triangle joins a region when
+  its centroid lies on the surface and its corners are within twice the tolerance.
+- Regions covering less than 0.2% of the area are noise fragments. Each of their triangles goes to the
+  face that accepts it, and up to 3% of the area may fit no surface (decimated triangles that bridge
+  a crease).
+- Tangency is read off the fitted surfaces rather than the noisy boundary between their regions. A
+  corner between fillets of one radius becomes the ball that rolls between them. Directions within
+  0.01 rad of a world axis snap onto it.
+
+A scanned box, a plate with a drilled hole, and a sphere come back at tier 2 with their drawn
+dimensions. A scanned filleted part still falls back to tier 0.
 
 ## What tier 2 does
 
@@ -127,7 +144,8 @@ subdivided, noise-perturbed versions (scans), and gates validity, volume, deviat
 The tier 1 cases also gate the fitted surface kinds and require the source solid's volume to within
 one part in a million. The tier 2 cases import each generated program, run it, and require the
 calls a person would write (`box(30, 20, 15)`, `fillet(slab1, 3)`) and the source solid's volume to
-within one part in a billion.
+within one part in a billion. The scan cases run at the default tier and require the same calls and
+volume from the scanned box, plate, and sphere.
 Set `MESH2SOLID_SCORECARD=<path>` when running it to write per-case metrics.
 
 ## Developing the engine
