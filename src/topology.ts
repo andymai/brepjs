@@ -69,6 +69,11 @@ export {
   type EllipseArcOptions,
   type BSplineApproximationOptions,
 } from './topology/primitiveFns.js';
+export type {
+  NSidedBoundaryEdge,
+  NSidedFaceOptions,
+  EdgeOnFaceOptions,
+} from './topology/surfaceBuilders.js';
 
 // ── Boolean operations ──
 
