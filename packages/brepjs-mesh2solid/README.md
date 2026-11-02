@@ -76,9 +76,28 @@ cylinder rather than dozens of strips.
 4. **Sews** each body's pieces into a solid, subtracts cavities, unifies faces, and checks the result
    against the mesh in both directions.
 
-It falls back to tier 0 when triangles fit no analytic surface (freeform shapes), when a body is
-open, or when the rebuild fails or strays from the mesh. `report.tier1.fallbackReason` says why, and
-`report.warnings` records the fallback.
+When triangles fit no analytic surface, a closed mesh is rebuilt from B-spline faces instead (see
+Freeform shapes below). Tier 1 falls back to tier 0 when a body is open, or when both rebuilds fail
+or stray from the mesh. `report.tier1.fallbackReason` says why, and `report.warnings` records the
+fallback.
+
+### Freeform shapes
+
+A sculpted or organic shape has no planes or cylinders to find, so tier 1 rebuilds it from B-spline
+faces:
+
+1. **Charts** each body: splits it into discs whose facets stay within about 40° of the disc's mean
+   direction and that span at most half the body's diagonal (flat discs can be any size). Edges
+   sharper than 50° bound them.
+2. **Fits** one cubic B-spline surface to each chart: the mesh points on it and just past its edge,
+   and the boundaries it shares with its neighbours.
+3. **Trims** each surface along its chart's boundary, then sews each body's faces into a solid
+   within their fit error and checks it against the mesh in both directions.
+
+The blob, peanut, and bumpy ring in the eval come back as valid solids of 18 to 57 faces, with their
+volume within 0.015% of the smooth shape the mesh was sampled from. A part with a freeform region
+is rebuilt this way throughout, flat faces included, and tier 2 has no feature program for it. On a
+scan, more than 16 sphere and torus fits mark a freeform part, and the analytic rebuild stops there.
 
 ### Scans
 
@@ -156,8 +175,9 @@ mesh; `report.tier2.fallbackReason` says why.
 percentile distance from the input to the result (`reverseMax` is the other direction, sampled at each output triangle's corners and centroid).
 `report.faces` counts triangles in and faces out, and `report.warnings` lists every repair and
 fallback that happened. `report.tier1` lists the fitted surfaces with their residuals, the tangent
-pairs found, and the arrangement's piece counts. `report.tier2.features` lists the recognized
-features in build order.
+pairs found, and the arrangement's piece counts; after a freeform rebuild, `report.tier1.freeform`
+counts the charts, the boundaries between them, and the faces, and says why the analytic rebuild
+failed. `report.tier2.features` lists the recognized features in build order.
 
 ## Quality gate
 
@@ -168,7 +188,10 @@ one part in a million. The tier 2 cases import each generated program, run it, a
 calls a person would write (`box(30, 20, 15)`, `fillet(slab1, 3)`) and the source solid's volume to
 within one part in a billion. The scan cases sample each solid evenly by area, as a scanner does, add
 Gaussian noise, run at the default tier, and require the same calls and volume from the scanned box,
-plate, sphere, and filleted box.
+plate, sphere, and filleted box. The organic cases (a blob, a peanut, and a bumpy ring, sampled
+from formulas, clean and with scan noise) require a valid tier 1 solid of B-spline faces, at most 64
+of them, and the smooth shape's volume; on the clean meshes it must land at least four times closer
+to it than the mesh's own facets do.
 Set `MESH2SOLID_SCORECARD=<path>` when running it to write per-case metrics.
 
 ## Developing the engine
