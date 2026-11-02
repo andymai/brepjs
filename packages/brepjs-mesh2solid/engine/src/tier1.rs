@@ -8,7 +8,7 @@ use crate::json::{array, Obj};
 use crate::math::{add, scale, Bbox, V3};
 use crate::mesh::{Mesh, Topology};
 use crate::pipeline::{run_tier0, Options, Tier0};
-use crate::segment::{segment, Params, Segmentation};
+use crate::segment::{absorb, segment, Params, Segmentation};
 use crate::snap::{dissolve_kinks, snap, SnapReport};
 
 pub struct Tier1 {
@@ -42,7 +42,8 @@ pub fn run_tier1(bytes: &[u8], opts: &Options) -> Result<Tier1, String> {
             crease_deg: CREASE_DEG,
         },
     );
-    dissolve_kinks(&t0.mesh, &topo, &mut seg);
+    dissolve_kinks(&t0.mesh, &topo, &mut seg, tol);
+    absorb(&t0.mesh, &topo, &mut seg, tol);
     let snapped = snap(&t0.mesh, &topo, &mut seg, tol);
     // Same mesh and adjacency as Tier 0's classify_components, so the same order.
     let mut tri_body = vec![u32::MAX; t0.mesh.triangles.len()];

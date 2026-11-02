@@ -186,7 +186,12 @@ export async function meshToSolid(
     let fallback: { note: string; tier1: ConversionReport['tier1'] } | undefined;
     if (session !== undefined) {
       const tier1Report = JSON.parse(session.tier1_report) as Tier1EngineReport;
-      const analytic = runTier1(session, engineReport);
+      let analytic: AnalyticResult;
+      try {
+        analytic = runTier1(session, engineReport);
+      } catch (e) {
+        analytic = { ok: false, reason: `the rebuild failed: ${message(e)}` };
+      }
       if (analytic.ok) {
         const shape = analytic.value.shape;
         const faces = {
@@ -244,6 +249,7 @@ function runTier1(session: Tier1Session, engineReport: EngineReport): AnalyticRe
       nearest: (pts) => session.nearest(pts),
       bodiesOf: (pts) => session.bodies_of(pts),
       bodyParent: session.body_parent,
+      bodyClosed: session.body_closed,
       deviation: (p, i) => session.deviation(p, i),
     },
     {

@@ -56,6 +56,8 @@ export interface Segmentation {
   readonly bodiesOf: (points: Float64Array) => Float64Array;
   /** Per mesh body: the body whose cavity it is, or -1. */
   readonly bodyParent: Int32Array;
+  /** Per mesh body: 1 when closed. */
+  readonly bodyClosed: Uint8Array;
   /** Deviation JSON between the input mesh and a triangulation. */
   readonly deviation: (positions: Float64Array, indices: Uint32Array) => string;
 }
@@ -191,7 +193,8 @@ function patch(
     }
     case 'cone': {
       const [h0, h1] = axialRange(s.apex, s.a, b);
-      const start = Math.max(h0 - margin, (h1 - h0) * 1e-3);
+      // A region that reaches the apex gets a pointed patch; otherwise a frustum below it.
+      const start = Math.max(h0 - margin, 0);
       const end = h1 + margin;
       const t = Math.tan(s.halfAngle);
       return lateral(
@@ -461,6 +464,8 @@ export function buildAnalytic(seg: Segmentation, opts: AnalyticOptions): Analyti
 
     const solids = new Map<number, Solid>();
     for (const [body, g] of groups) {
+      // Exact surfaces would close an open body's holes; tier 0 keeps it a shell.
+      if (seg.bodyClosed[body] !== 1) return { ok: false, reason: `body ${body} is open` };
       const built = bodySolid(g.faces, g.own, seg.surfaces, owned);
       if (!built.ok)
         return groups.size > 1 ? { ok: false, reason: `body ${body}: ${built.reason}` } : built;
@@ -490,21 +495,19 @@ export function buildAnalytic(seg: Segmentation, opts: AnalyticOptions): Analyti
     }
     const first = tops[0];
     if (first === undefined) return { ok: false, reason: 'no outer body was rebuilt' };
-    const result: Solid | Compound = tops.length === 1 ? first : compound(tops);
+    const result: Solid | Compound = tops.length === 1 ? first : keep(compound(tops));
     const tri = triangulate(result, opts.triangulation);
     const dev = JSON.parse(
       seg.deviation(tri.positions, tri.indices)
     ) as ConversionReport['deviation'];
     if (!(dev.max <= opts.maxDeviation && dev.reverseMax <= opts.maxDeviation)) {
-      if (result !== first) owned.push(result);
       return {
         ok: false,
         reason: `rebuilt solid deviates ${Math.max(dev.max, dev.reverseMax).toPrecision(3)} mm from the mesh`,
       };
     }
     // `result` is returned to the caller; everything else is released.
-    const i = owned.indexOf(first);
-    if (result === first && i >= 0) owned.splice(i, 1);
+    owned.splice(owned.indexOf(result), 1);
     return {
       ok: true,
       value: {

@@ -111,8 +111,9 @@ fn accepts(
     match (s, facing[t]) {
         (Surface::Plane { .. }, Some(n)) => dot(n, reference) > 0.0,
         (_, Some(n)) => tri.iter().all(|&p| {
-            s.normal(p)
-                .is_none_or(|sn| dot(sn, n).abs() >= MIN_FACET_COS)
+            s.near_singular(p, APEX_REACH * tol)
+                || s.normal(p)
+                    .is_none_or(|sn| dot(sn, n).abs() >= MIN_FACET_COS)
         }),
         _ => true,
     }
@@ -122,6 +123,58 @@ fn accepts(
 /// approximates (CAD exporters stay well under it). Without the limit, a large
 /// flat face plus one fillet strip (three parallel lines) fits a cylinder.
 const MIN_FACET_COS: f64 = std::f64::consts::FRAC_1_SQRT_2;
+
+/// How close to a cone's apex (in fit tolerances) the facet normal check is skipped.
+pub const APEX_REACH: f64 = 10.0;
+
+/// Hand unfit triangles to a neighbouring region whose surface accepts them,
+/// until none moves: fragments a dissolve removed beside a well-supported
+/// surface usually belong to it. Returns how many were absorbed.
+pub fn absorb(mesh: &Mesh, topo: &Topology, seg: &mut Segmentation, tol: f64) -> usize {
+    let facing = normals(mesh);
+    let mut total = 0;
+    loop {
+        let mut moved = 0;
+        for t in 0..mesh.triangles.len() {
+            if seg.region_of[t] != u32::MAX {
+                continue;
+            }
+            for i in 0..3 {
+                let Some(nb) = topo.neighbor(t, i) else {
+                    continue;
+                };
+                let r = seg.region_of[nb];
+                if r == u32::MAX {
+                    continue;
+                }
+                let s = seg.regions[r as usize].surface;
+                let reference = match s {
+                    Surface::Plane { n, .. } => n,
+                    _ => [0.0, 0.0, 1.0],
+                };
+                if accepts(mesh, &s, t, tol, &facing, reference) {
+                    seg.region_of[t] = r;
+                    seg.regions[r as usize].tris.push(t as u32);
+                    moved += 1;
+                    break;
+                }
+            }
+        }
+        if moved == 0 {
+            break;
+        }
+        total += moved;
+    }
+    if total > 0 {
+        for r in &mut seg.regions {
+            r.tris.sort_unstable();
+            let (pts, _) = samples(mesh, &r.tris);
+            r.max_residual = max_residual(&r.surface, &pts);
+        }
+        seg.unfit_triangles = seg.region_of.iter().filter(|&&r| r == u32::MAX).count();
+    }
+    total
+}
 
 /// Refit `s` to the samples (planes by PCA, curved surfaces by LM on a
 /// subsample) and keep the refit only if every sample stays within `tol`.

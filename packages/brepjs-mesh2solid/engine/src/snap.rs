@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::fit::{max_residual, solve, Surface};
 use crate::math::{add, cross, dot, normalize, scale, sub, V3};
 use crate::mesh::{Mesh, Topology};
-use crate::segment::{unique_vertices, Segmentation};
+use crate::segment::{unique_vertices, Segmentation, APEX_REACH};
 
 /// Surface normals within about a degree along a shared boundary mark a tangent pair.
 const TANGENT_COS: f64 = 0.99985;
@@ -204,7 +204,7 @@ fn snap_torus(s: Surface, cylinders: &[(V3, V3, f64)], planes: &[(V3, f64)]) -> 
 /// Fitted surfaces that meet at a shallow kink all along their boundary are
 /// facets of a freeform surface that happened to fit locally; their triangles
 /// go back to unfit. Returns how many regions were dissolved.
-pub fn dissolve_kinks(mesh: &Mesh, topo: &Topology, seg: &mut Segmentation) -> usize {
+pub fn dissolve_kinks(mesh: &Mesh, topo: &Topology, seg: &mut Segmentation, tol: f64) -> usize {
     let mut doomed = vec![false; seg.regions.len()];
     for ((i, j), vs) in shared_boundaries(mesh, topo, seg) {
         let (a, b) = (&seg.regions[i].surface, &seg.regions[j].surface);
@@ -212,6 +212,10 @@ pub fn dissolve_kinks(mesh: &Mesh, topo: &Topology, seg: &mut Segmentation) -> u
         let mut hi = -1.0f64;
         for &v in &vs {
             let p = mesh.positions[v as usize];
+            let reach = APEX_REACH * tol;
+            if a.near_singular(p, reach) || b.near_singular(p, reach) {
+                continue;
+            }
             if let (Some(na), Some(nb)) = (a.normal(p), b.normal(p)) {
                 let c = dot(na, nb).abs();
                 lo = lo.min(c);
@@ -219,8 +223,11 @@ pub fn dissolve_kinks(mesh: &Mesh, topo: &Topology, seg: &mut Segmentation) -> u
             }
         }
         if hi < TANGENT_COS && lo > KINK_COS {
-            doomed[i] = true;
-            doomed[j] = true;
+            // A fragment beside a much larger surface is the fragment's fault;
+            // two similar ones are both facets of something freeform.
+            let (ni, nj) = (seg.regions[i].tris.len(), seg.regions[j].tris.len());
+            doomed[i] |= nj < 4 * ni;
+            doomed[j] |= ni < 4 * nj;
         }
     }
     let dissolved = doomed.iter().filter(|&&d| d).count();
@@ -447,7 +454,7 @@ mod tests {
                 crease_deg: 50.0,
             },
         );
-        let dissolved = dissolve_kinks(mesh, &topo, &mut seg);
+        let dissolved = dissolve_kinks(mesh, &topo, &mut seg, tol);
         let report = snap(mesh, &topo, &mut seg, tol);
         (seg, dissolved, report)
     }

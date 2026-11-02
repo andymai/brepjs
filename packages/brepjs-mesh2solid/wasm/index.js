@@ -168,6 +168,16 @@ export class Tier1Session {
         return v2;
     }
     /**
+     * 1 per closed body, 0 per open one, as in the Tier 0 result.
+     * @returns {Uint8Array}
+     */
+    get body_closed() {
+        const ret = wasm.tier1session_body_closed(this.__wbg_ptr);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
      * Cavity parent per body (-1 for a top-level body), as in the Tier 0 result.
      * @returns {Int32Array}
      */

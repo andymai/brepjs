@@ -313,6 +313,17 @@ impl Tier1Session {
             .collect()
     }
 
+    /// 1 per closed body, 0 per open one, as in the Tier 0 result.
+    #[wasm_bindgen(getter)]
+    pub fn body_closed(&self) -> Vec<u8> {
+        self.inner
+            .t0
+            .bodies
+            .iter()
+            .map(|b| u8::from(b.closed))
+            .collect()
+    }
+
     /// Cavity parent per body (-1 for a top-level body), as in the Tier 0 result.
     #[wasm_bindgen(getter)]
     pub fn body_parent(&self) -> Vec<i32> {

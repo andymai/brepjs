@@ -77,6 +77,7 @@ export const CAD_CORPUS: readonly CorpusCase[] = [
   },
   { name: 'cylinder', build: () => cylinder(10, 25), surfaces: { plane: 2, cylinder: 1 } },
   { name: 'cone frustum', build: () => cone(12, 6, 20), surfaces: { plane: 2, cone: 1 } },
+  { name: 'pointed cone', build: () => cone(10, 0, 20), surfaces: { plane: 1, cone: 1 } },
   { name: 'sphere', build: () => sphere(15), surfaces: { sphere: 1 } },
   { name: 'torus', build: () => torus(20, 5), surfaces: { torus: 1 } },
   {

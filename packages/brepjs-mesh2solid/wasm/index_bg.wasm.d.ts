@@ -17,6 +17,7 @@ export const tier0result_report: (a: number) => [number, number];
 export const tier0result_triangle_offsets: (a: number) => [number, number];
 export const tier0result_triangles: (a: number) => [number, number];
 export const tier1session_bodies_of: (a: number, b: number, c: number) => [number, number];
+export const tier1session_body_closed: (a: number) => [number, number];
 export const tier1session_body_parent: (a: number) => [number, number];
 export const tier1session_deviation: (a: number, b: number, c: number, d: number, e: number) => [number, number];
 export const tier1session_measured_deviation: (a: number) => [number, number];

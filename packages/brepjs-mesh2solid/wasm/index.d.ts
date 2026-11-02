@@ -51,6 +51,10 @@ export class Tier1Session {
      */
     tier0(): Tier0Result;
     /**
+     * 1 per closed body, 0 per open one, as in the Tier 0 result.
+     */
+    readonly body_closed: Uint8Array;
+    /**
      * Cavity parent per body (-1 for a top-level body), as in the Tier 0 result.
      */
     readonly body_parent: Int32Array;
@@ -119,6 +123,7 @@ export interface InitOutput {
     readonly tier0result_triangle_offsets: (a: number) => [number, number];
     readonly tier0result_triangles: (a: number) => [number, number];
     readonly tier1session_bodies_of: (a: number, b: number, c: number) => [number, number];
+    readonly tier1session_body_closed: (a: number) => [number, number];
     readonly tier1session_body_parent: (a: number) => [number, number];
     readonly tier1session_deviation: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly tier1session_measured_deviation: (a: number) => [number, number];

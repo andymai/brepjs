@@ -96,6 +96,15 @@ impl Surface {
         self.signed_distance(p).abs()
     }
 
+    /// Within `eps` of where the normal is undefined (a cone's apex). A fitted
+    /// apex sits a hair off the mesh's apex vertex, where the normal is noise.
+    pub fn near_singular(&self, p: V3, eps: f64) -> bool {
+        match *self {
+            Surface::Cone { apex, .. } => norm(sub(p, apex)) <= eps,
+            _ => false,
+        }
+    }
+
     /// Unit normal (gradient of the signed distance) at a point on or near the
     /// surface; `None` where it is undefined (on an axis, at a center or apex).
     pub fn normal(&self, p: V3) -> Option<V3> {

@@ -319,6 +319,21 @@ describe('meshToSolid tier 1', () => {
     expect(vol(shape)).toBeCloseTo(8000 - 64, 6);
   });
 
+  it('keeps an open body open instead of closing it with the exact surface', async () => {
+    using s = sphere(10);
+    const full = await stlOf(s);
+    // Binary STL: 80-byte header, triangle count, 50 bytes per triangle. Drop the last one.
+    const view = new DataView(full.buffer, full.byteOffset, full.byteLength);
+    const count = view.getUint32(80, true);
+    const open = full.slice(0, 84 + 50 * (count - 1));
+    new DataView(open.buffer).setUint32(80, count - 1, true);
+    const res = unwrap(await meshToSolid(open, { fillHoles: false }));
+    using shape = res.shape;
+    expect(res.report.tierReached).toBe(0);
+    expect(res.report.tier1?.fallbackReason).toBe('body 0 is open');
+    expect(isShell(shape)).toBe(true);
+  });
+
   it('falls back to tier 0 with a reason when a surface is freeform', async () => {
     const res = unwrap(await meshToSolid(saddleBlockStl(16)));
     using shape = res.shape;
