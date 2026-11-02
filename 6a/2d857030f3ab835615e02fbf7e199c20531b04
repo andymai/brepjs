@@ -1,0 +1,22 @@
+packages/brepjs-mesh2solid/engine/src/segment.rs
+  s_4164cd16e48c0e::t_1f196ecb74b747 1117,1138-1149,1169-1189,1240-1246
+packages/brepjs-mesh2solid/tests/corpus.ts
+  s_4164cd16e48c0e::t_40b8f74eee257f 92-106
+  s_4164cd16e48c0e::t_e6f7303a70e332 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6a2d857030f3ab835615e02fbf7e199c20531b04",
+  "prompts": {},
+  "sessions": {
+    "s_4164cd16e48c0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39b56ca7-b90d-49fe-ad28-4c54a3c049c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
