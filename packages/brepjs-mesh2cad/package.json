@@ -1,0 +1,61 @@
+{
+  "name": "brepjs-mesh2cad",
+  "version": "0.1.0",
+  "description": "Mesh-to-solid conversion for brepjs: turn STL, OBJ, PLY and 3MF meshes (CAD exports or 3D scans) into B-Rep solids",
+  "keywords": [
+    "mesh",
+    "stl",
+    "step",
+    "3mf",
+    "cad",
+    "brep",
+    "reverse-engineering",
+    "3d-scan"
+  ],
+  "author": "Andy Aragon",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andymai/brepjs",
+    "directory": "packages/brepjs-mesh2cad"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=24"
+  },
+  "main": "./dist/brepjs-mesh2cad.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/brepjs-mesh2cad.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsgo --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src tests"
+  },
+  "dependencies": {
+    "brepjs-mesh2cad-wasm": ">=0.1.0"
+  },
+  "peerDependencies": {
+    "brepjs": ">=20.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "*",
+    "@types/node": "26.6.5",
+    "eslint": "*",
+    "typescript": "*",
+    "typescript-eslint": "*",
+    "vite": "^8.0.0",
+    "vite-plugin-dts": "^5.0.0",
+    "vitest": "^5.0.0"
+  }
+}

@@ -32,6 +32,8 @@
     "packages/create-brepjs",
     "packages/brepjs-voxel-wasm",
     "packages/brepjs-voxel",
+    "packages/brepjs-mesh2cad-wasm",
+    "packages/brepjs-mesh2cad",
     "packages/brepjs-cad",
     "packages/brepjs-viewer",
     "packages/brepjs-vscode",

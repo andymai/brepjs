@@ -27,6 +27,9 @@ const alwaysExclude = [
   'packages/brepjs-cad/**',
   // brepjs-viewer likewise aliases `@`→its own src and runs via its own vitest config + CI job.
   'packages/brepjs-viewer/**',
+  // brepjs-mesh2cad runs via its own vitest config + CI job; its tests need the
+  // occt-wasm mesh importer, not every kernel project.
+  'packages/brepjs-mesh2cad/**',
   // Scaffold payload, not repo code: the template's test runs inside generated projects
   // (and in the registry smoke), never against the workspace kernels.
   'packages/create-brepjs/templates/**',

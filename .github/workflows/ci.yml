@@ -22,6 +22,7 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
       site: ${{ steps.filter.outputs.site }}
       voxel: ${{ steps.filter.outputs.voxel }}
+      mesh2cad: ${{ steps.filter.outputs.mesh2cad }}
       release_please: ${{ steps.release-please.outputs.skip }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -76,6 +77,9 @@ jobs:
               - '.github/actions/**'
             voxel:
               - 'packages/brepjs-voxel-wasm/**'
+              - '.github/workflows/ci.yml'
+            mesh2cad:
+              - 'packages/brepjs-mesh2cad-wasm/**'
               - '.github/workflows/ci.yml'
             docs:
               - 'apps/docs/**'
@@ -260,6 +264,23 @@ jobs:
       - run: npm run test --workspace=brepjs-sheetmetal
       - run: npm run build --workspace=brepjs-sheetmetal
 
+  packages-mesh2cad:
+    # Mesh-to-solid domain. Tests drive the committed brepjs-mesh2cad-wasm pkg/
+    # through the TS package and resolve `brepjs` to source via the vitest alias;
+    # typecheck and build resolve it through package exports, so build root first.
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - run: npm run build
+      - run: npm run typecheck --workspace=brepjs-mesh2cad
+      - run: npm run lint --workspace=brepjs-mesh2cad
+      - run: npm run test --workspace=brepjs-mesh2cad
+      - run: npm run build --workspace=brepjs-mesh2cad
+
   packages-families:
     # Declarative family layer satellite (element trees over the CSG IR).
     # Build root brepjs first so the package typecheck resolves `brepjs` via
@@ -342,6 +363,25 @@ jobs:
     defaults:
       run:
         working-directory: packages/brepjs-voxel-wasm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Use latest stable Rust + clippy
+        run: rustup update stable && rustup default stable && rustup component add clippy
+      - run: cargo test
+      - run: cargo clippy --all-targets -- -D warnings
+
+  mesh2cad-wasm-rust:
+    # The engine's correctness (ingest, repair, decimation, region and snapping
+    # invariants) lives in cargo tests; the vitest suite only drives the
+    # committed pkg/ wasm. Same rationale as voxel-wasm-rust: gate the source,
+    # don't rebuild-and-diff pkg/ (wasm-opt output varies by version).
+    needs: changes
+    if: needs.changes.outputs.mesh2cad == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: packages/brepjs-mesh2cad-wasm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Use latest stable Rust + clippy
@@ -606,10 +646,12 @@ jobs:
         packages-viewer,
         packages-verify,
         packages-sheetmetal,
+        packages-mesh2cad,
         packages-bim,
         packages-families,
         packages-create,
         voxel-wasm-rust,
+        mesh2cad-wasm-rust,
         test,
         docs-tests,
         size,
