@@ -1,6 +1,6 @@
 {
   "name": "brepjs-mesh2cad-wasm",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Mesh-to-solid engine for brepjs (Rust → WASM): STL/OBJ/PLY/3MF ingest, repair, decimation, planar regions",
   "keywords": [
     "mesh",
