@@ -2,6 +2,52 @@
 /* eslint-disable */
 
 /**
+ * Freeform charts: each a disc of the mesh bounded by runs (polylines between
+ * corners) it shares with its neighbours. Call `free()` when done.
+ */
+export class FreeformCharts {
+    private constructor();
+    free(): void;
+    [Symbol.dispose](): void;
+    /**
+     * Body (as in the Tier 0 result) of each chart.
+     */
+    readonly chart_bodies: Uint32Array;
+    /**
+     * Largest height of a chart's fitted points off its surface, per chart.
+     */
+    readonly fit_errors: Float64Array;
+    /**
+     * Start of each run in `run_points` (in points), plus the end.
+     */
+    readonly run_offsets: Uint32Array;
+    /**
+     * Flat xyz of every run, corner to corner.
+     */
+    readonly run_points: Float64Array;
+    /**
+     * Start of each chart's sides in `sides`, plus the end.
+     */
+    readonly side_offsets: Uint32Array;
+    /**
+     * Each chart's boundary loop in order: a run id, or `-(id + 1)` for a run
+     * traversed backwards.
+     */
+    readonly sides: Int32Array;
+    /**
+     * Start of each chart's surface poles in `surface_poles` (in points),
+     * plus the end. A chart's surface is a uniform cubic B-spline with k × k poles,
+     * row by row, and knots -3, -2, ..., k each of multiplicity 1; none for
+     * a chart too small to fit.
+     */
+    readonly surface_offsets: Uint32Array;
+    /**
+     * Flat xyz surface poles, chart by chart.
+     */
+    readonly surface_poles: Float64Array;
+}
+
+/**
  * Tier 0 conversion output. Region `r` owns loops in `loops` (encoded as
  * `[loopCount, len0, ...ids0, len1, ...ids1, ...]` per region, in order) and
  * triangles `triangle_offsets[r]..triangle_offsets[r + 1]`, counted in
@@ -38,6 +84,11 @@ export class Tier1Session {
      * Body index (as in the Tier 0 result's bodies) nearest each flat xyz point, or -1.
      */
     bodies_of(points: Float64Array): Float64Array;
+    /**
+     * Every body split into freeform charts for a B-spline rebuild, or
+     * `undefined` when the mesh doesn't split into few enough discs.
+     */
+    charts(): FreeformCharts | undefined;
     /**
      * Deviation JSON between the input mesh and a candidate triangulation.
      */
@@ -122,10 +173,19 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
+    readonly __wbg_freeformcharts_free: (a: number, b: number) => void;
     readonly __wbg_tier0result_free: (a: number, b: number) => void;
     readonly __wbg_tier1session_free: (a: number, b: number) => void;
     readonly convert_tier0: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number];
     readonly convert_tier1: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number];
+    readonly freeformcharts_chart_bodies: (a: number) => [number, number];
+    readonly freeformcharts_fit_errors: (a: number) => [number, number];
+    readonly freeformcharts_run_offsets: (a: number) => [number, number];
+    readonly freeformcharts_run_points: (a: number) => [number, number];
+    readonly freeformcharts_side_offsets: (a: number) => [number, number];
+    readonly freeformcharts_sides: (a: number) => [number, number];
+    readonly freeformcharts_surface_offsets: (a: number) => [number, number];
+    readonly freeformcharts_surface_poles: (a: number) => [number, number];
     readonly inspect: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly tier0result_body_closed: (a: number) => [number, number];
     readonly tier0result_body_parent: (a: number) => [number, number];
@@ -141,6 +201,7 @@ export interface InitOutput {
     readonly tier1session_bodies_of: (a: number, b: number, c: number) => [number, number];
     readonly tier1session_body_closed: (a: number) => [number, number];
     readonly tier1session_body_parent: (a: number) => [number, number];
+    readonly tier1session_charts: (a: number) => number;
     readonly tier1session_deviation: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly tier1session_measured_deviation: (a: number) => [number, number];
     readonly tier1session_nearest: (a: number, b: number, c: number) => [number, number];

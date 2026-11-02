@@ -11,7 +11,7 @@ export type EngineReport = Omit<
 /** The engine's Tier 1 segmentation summary. */
 export type Tier1EngineReport = Omit<
   NonNullable<ConversionReport['tier1']>,
-  'arrangement' | 'fallbackReason'
+  'arrangement' | 'freeform' | 'fallbackReason'
 >;
 
 const MM_PER: Record<MeshUnit, number> = { um: 0.001, mm: 1, cm: 10, m: 1000, in: 25.4, ft: 304.8 };

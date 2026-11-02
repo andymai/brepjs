@@ -323,3 +323,181 @@ export function scanLike(
   }
   return writeBinarySTL(out, Uint32Array.from(tris));
 }
+
+type V = readonly [number, number, number];
+
+/** A unit icosphere, `level` times subdivided: directions and triangles. */
+function icosphere(level: number): { dirs: V[]; tris: number[] } {
+  const t = (1 + Math.sqrt(5)) / 2;
+  const dirs: V[] = [];
+  const add = (p: V): number => {
+    const l = Math.hypot(p[0], p[1], p[2]);
+    dirs.push([p[0] / l, p[1] / l, p[2] / l]);
+    return dirs.length - 1;
+  };
+  for (const [a, b] of [
+    [-1, t],
+    [1, t],
+    [-1, -t],
+    [1, -t],
+  ] as const) {
+    add([a, b, 0]);
+  }
+  for (const [a, b] of [
+    [-1, t],
+    [1, t],
+    [-1, -t],
+    [1, -t],
+  ] as const) {
+    add([0, a, b]);
+  }
+  for (const [a, b] of [
+    [-1, t],
+    [1, t],
+    [-1, -t],
+    [1, -t],
+  ] as const) {
+    add([b, 0, a]);
+  }
+  // prettier-ignore
+  let tris = [
+    0, 11, 5, 0, 5, 1, 0, 1, 7, 0, 7, 10, 0, 10, 11, 1, 5, 9, 5, 11, 4, 11, 10, 2, 10, 7, 6, 7, 1, 8,
+    3, 9, 4, 3, 4, 2, 3, 2, 6, 3, 6, 8, 3, 8, 9, 4, 9, 5, 2, 4, 11, 6, 2, 10, 8, 6, 7, 9, 8, 1,
+  ];
+  for (let l = 0; l < level; l++) {
+    const mids = new Map<string, number>();
+    const mid = (a: number, b: number): number => {
+      const k = a < b ? `${a}_${b}` : `${b}_${a}`;
+      let m = mids.get(k);
+      if (m === undefined) {
+        const [p, q] = [dirs[a] as V, dirs[b] as V];
+        m = add([(p[0] + q[0]) / 2, (p[1] + q[1]) / 2, (p[2] + q[2]) / 2]);
+        mids.set(k, m);
+      }
+      return m;
+    };
+    const next: number[] = [];
+    for (let i = 0; i < tris.length; i += 3) {
+      const [a, b, c] = [tris[i] ?? 0, tris[i + 1] ?? 0, tris[i + 2] ?? 0];
+      const [x, y, z] = [mid(a, b), mid(b, c), mid(c, a)];
+      next.push(a, x, z, x, b, y, z, y, c, x, y, z);
+    }
+    tris = next;
+  }
+  return { dirs, tris };
+}
+
+/** A grid over the torus parameters (u around the axis, v around the tube). */
+function torusGrid(nu: number, nv: number): { uv: [number, number][]; tris: number[] } {
+  const uv: [number, number][] = [];
+  for (let i = 0; i < nu; i++)
+    for (let j = 0; j < nv; j++) uv.push([(2 * Math.PI * i) / nu, (2 * Math.PI * j) / nv]);
+  const id = (i: number, j: number) => (i % nu) * nv + (j % nv);
+  const tris: number[] = [];
+  for (let i = 0; i < nu; i++)
+    for (let j = 0; j < nv; j++) {
+      const [a, b, c, d] = [id(i, j), id(i + 1, j), id(i + 1, j + 1), id(i, j + 1)];
+      tris.push(a, b, c, a, c, d);
+    }
+  return { uv, tris };
+}
+
+export interface OrganicCase {
+  readonly name: string;
+  /** Vertices and triangles at a resolution: finer levels approach the smooth surface. */
+  readonly mesh: (fine: number) => { positions: Float64Array; triangles: Uint32Array };
+}
+
+function organicFromDirs(level: number, at: (d: V) => V) {
+  const { dirs, tris } = icosphere(level);
+  return {
+    positions: Float64Array.from(dirs.flatMap((d) => [...at(d)])),
+    triangles: Uint32Array.from(tris),
+  };
+}
+
+export const ORGANIC_CORPUS: readonly OrganicCase[] = [
+  {
+    name: 'blob',
+    mesh: (fine) =>
+      organicFromDirs(4 + fine, ([x, y, z]) => {
+        const r = 20 * (1 + 0.12 * x * y + 0.1 * Math.sin(2.5 * z + 1) + 0.08 * Math.cos(3 * x));
+        return [r * x, r * y, r * z];
+      }),
+  },
+  {
+    name: 'peanut',
+    mesh: (fine) =>
+      organicFromDirs(4 + fine, ([x, y, z]) => {
+        const r = 14 * (1 + 0.45 * x * x - 0.15 * y * y);
+        return [1.4 * r * x, r * y, 0.8 * r * z];
+      }),
+  },
+  {
+    name: 'bumpy ring',
+    mesh: (fine) => {
+      const n = 2 ** fine;
+      const { uv, tris } = torusGrid(96 * n, 32 * n);
+      const pos = uv.flatMap(([u, v]) => {
+        const minor = 7 * (1 + 0.2 * Math.sin(3 * u));
+        const major = 25 + 2 * Math.cos(2 * u);
+        const rho = major + minor * Math.cos(v);
+        return [rho * Math.cos(u), rho * Math.sin(u), minor * Math.sin(v) + 2 * Math.sin(u)];
+      });
+      return { positions: Float64Array.from(pos), triangles: Uint32Array.from(tris) };
+    },
+  },
+];
+
+/** Enclosed volume of an outward-facing closed mesh. */
+export function meshVolume(m: { positions: Float64Array; triangles: Uint32Array }): number {
+  let v = 0;
+  const p = m.positions;
+  for (let i = 0; i < m.triangles.length; i += 3) {
+    const [a, b, c] = [
+      3 * (m.triangles[i] ?? 0),
+      3 * (m.triangles[i + 1] ?? 0),
+      3 * (m.triangles[i + 2] ?? 0),
+    ];
+    const [ax, ay, az] = [p[a] ?? 0, p[a + 1] ?? 0, p[a + 2] ?? 0];
+    const [bx, by, bz] = [p[b] ?? 0, p[b + 1] ?? 0, p[b + 2] ?? 0];
+    const [cx, cy, cz] = [p[c] ?? 0, p[c + 1] ?? 0, p[c + 2] ?? 0];
+    v += (ax * (by * cz - bz * cy) - ay * (bx * cz - bz * cx) + az * (bx * cy - by * cx)) / 6;
+  }
+  return v;
+}
+
+export function organicSTL(m: { positions: Float64Array; triangles: Uint32Array }): Uint8Array {
+  return writeBinarySTL(m.positions, m.triangles);
+}
+
+/** `m` with Gaussian noise of `sigma` mm along its vertex normals, as a scan would carry. */
+export function noisy(
+  m: { positions: Float64Array; triangles: Uint32Array },
+  sigma: number,
+  seed: number
+): { positions: Float64Array; triangles: Uint32Array } {
+  const pos = m.positions;
+  const normals = new Float64Array(pos.length);
+  for (let t = 0; t < m.triangles.length; t += 3) {
+    const [a, b, c] = [m.triangles[t] ?? 0, m.triangles[t + 1] ?? 0, m.triangles[t + 2] ?? 0];
+    const u = [0, 1, 2].map((k) => (pos[3 * b + k] ?? 0) - (pos[3 * a + k] ?? 0));
+    const w = [0, 1, 2].map((k) => (pos[3 * c + k] ?? 0) - (pos[3 * a + k] ?? 0));
+    const n = [
+      (u[1] ?? 0) * (w[2] ?? 0) - (u[2] ?? 0) * (w[1] ?? 0),
+      (u[2] ?? 0) * (w[0] ?? 0) - (u[0] ?? 0) * (w[2] ?? 0),
+      (u[0] ?? 0) * (w[1] ?? 0) - (u[1] ?? 0) * (w[0] ?? 0),
+    ];
+    for (const v of [a, b, c])
+      for (let k = 0; k < 3; k++) normals[3 * v + k] = (normals[3 * v + k] ?? 0) + (n[k] ?? 0);
+  }
+  const g = gaussian(seed);
+  const out = new Float64Array(pos);
+  for (let v = 0; v < pos.length / 3; v++) {
+    const n = [normals[3 * v] ?? 0, normals[3 * v + 1] ?? 0, normals[3 * v + 2] ?? 0];
+    const len = Math.hypot(n[0] ?? 0, n[1] ?? 0, n[2] ?? 0) || 1;
+    const d = g() * sigma;
+    for (let k = 0; k < 3; k++) out[3 * v + k] = (out[3 * v + k] ?? 0) + ((n[k] ?? 0) / len) * d;
+  }
+  return { positions: out, triangles: m.triangles };
+}

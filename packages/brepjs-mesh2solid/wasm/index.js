@@ -1,6 +1,114 @@
 /* @ts-self-types="./index.d.ts" */
 
 /**
+ * Freeform charts: each a disc of the mesh bounded by runs (polylines between
+ * corners) it shares with its neighbours. Call `free()` when done.
+ */
+export class FreeformCharts {
+    static __wrap(ptr) {
+        const obj = Object.create(FreeformCharts.prototype);
+        obj.__wbg_ptr = ptr;
+        FreeformChartsFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        FreeformChartsFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_freeformcharts_free(ptr, 0);
+    }
+    /**
+     * Body (as in the Tier 0 result) of each chart.
+     * @returns {Uint32Array}
+     */
+    get chart_bodies() {
+        const ret = wasm.freeformcharts_chart_bodies(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Largest height of a chart's fitted points off its surface, per chart.
+     * @returns {Float64Array}
+     */
+    get fit_errors() {
+        const ret = wasm.freeformcharts_fit_errors(this.__wbg_ptr);
+        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v1;
+    }
+    /**
+     * Start of each run in `run_points` (in points), plus the end.
+     * @returns {Uint32Array}
+     */
+    get run_offsets() {
+        const ret = wasm.freeformcharts_run_offsets(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Flat xyz of every run, corner to corner.
+     * @returns {Float64Array}
+     */
+    get run_points() {
+        const ret = wasm.freeformcharts_run_points(this.__wbg_ptr);
+        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v1;
+    }
+    /**
+     * Start of each chart's sides in `sides`, plus the end.
+     * @returns {Uint32Array}
+     */
+    get side_offsets() {
+        const ret = wasm.freeformcharts_side_offsets(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Each chart's boundary loop in order: a run id, or `-(id + 1)` for a run
+     * traversed backwards.
+     * @returns {Int32Array}
+     */
+    get sides() {
+        const ret = wasm.freeformcharts_sides(this.__wbg_ptr);
+        var v1 = getArrayI32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Start of each chart's surface poles in `surface_poles` (in points),
+     * plus the end. A chart's surface is a uniform cubic B-spline with k × k poles,
+     * row by row, and knots -3, -2, ..., k each of multiplicity 1; none for
+     * a chart too small to fit.
+     * @returns {Uint32Array}
+     */
+    get surface_offsets() {
+        const ret = wasm.freeformcharts_surface_offsets(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Flat xyz surface poles, chart by chart.
+     * @returns {Float64Array}
+     */
+    get surface_poles() {
+        const ret = wasm.freeformcharts_surface_poles(this.__wbg_ptr);
+        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v1;
+    }
+}
+if (Symbol.dispose) FreeformCharts.prototype[Symbol.dispose] = FreeformCharts.prototype.free;
+
+/**
  * Tier 0 conversion output. Region `r` owns loops in `loops` (encoded as
  * `[loopCount, len0, ...ids0, len1, ...ids1, ...]` per region, in order) and
  * triangles `triangle_offsets[r]..triangle_offsets[r + 1]`, counted in
@@ -186,6 +294,15 @@ export class Tier1Session {
         var v1 = getArrayI32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
+    }
+    /**
+     * Every body split into freeform charts for a B-spline rebuild, or
+     * `undefined` when the mesh doesn't split into few enough discs.
+     * @returns {FreeformCharts | undefined}
+     */
+    charts() {
+        const ret = wasm.tier1session_charts(this.__wbg_ptr);
+        return ret === 0 ? undefined : FreeformCharts.__wrap(ret);
     }
     /**
      * Deviation JSON between the input mesh and a candidate triangulation.
@@ -461,6 +578,9 @@ function __wbg_get_imports() {
     };
 }
 
+const FreeformChartsFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_freeformcharts_free(ptr, 1));
 const Tier0ResultFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_tier0result_free(ptr, 1));

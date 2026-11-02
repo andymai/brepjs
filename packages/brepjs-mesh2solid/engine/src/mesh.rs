@@ -76,7 +76,7 @@ impl Mesh {
 }
 
 #[inline]
-fn edge_key(a: u32, b: u32) -> u64 {
+pub(crate) fn edge_key(a: u32, b: u32) -> u64 {
     let (lo, hi) = if a < b { (a, b) } else { (b, a) };
     ((lo as u64) << 32) | hi as u64
 }

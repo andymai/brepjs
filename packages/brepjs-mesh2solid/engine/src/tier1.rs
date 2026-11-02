@@ -1,6 +1,7 @@
 //! Tier 1 driver: segment the repaired mesh into analytic surfaces on top of
 //! the Tier 0 result, which stays available as the fallback.
 
+use crate::charts::{self, ChartInput, ChartParams, Charts};
 use crate::deviation::{closest_on_triangle, measure, Bvh};
 use crate::estimate::MeshKind;
 use crate::fit::Surface;
@@ -181,7 +182,47 @@ fn input_sag(mesh: &Mesh, seg: &Segmentation) -> f64 {
     sag
 }
 
+/// Freeform charts stay within this angle of their mean normal, so each is a
+/// height field over its mean plane that one fitted surface can follow.
+const CHART_CONE_DEG: f64 = 40.0;
+/// A curved chart spans at most this share of its body's diagonal.
+const CHART_EXTENT: f64 = 0.5;
+/// Runs are cut to at most this share of their body's diagonal.
+const CHART_RUN: f64 = 0.1;
+const MAX_CHARTS: usize = 512;
+
 impl Tier1 {
+    /// Every body split into freeform charts, for rebuilding it from filled
+    /// B-spline faces when the analytic rebuild fails; `None` when the mesh
+    /// doesn't split into few enough disc-shaped charts.
+    pub fn charts(&self) -> Option<Charts> {
+        let mesh = &self.t0.mesh;
+        let topo = Topology::build(mesh);
+        let robust = matches!(self.t0.kind, MeshKind::Scan);
+        let params = ChartParams {
+            cone_deg: CHART_CONE_DEG,
+            // Decimated scan triangles tilt with the noise.
+            cone_slack: if robust { 0.05 } else { 0.0 },
+            crease_deg: CREASE_DEG,
+            noise: if robust { self.t0.tolerance } else { 0.0 },
+            max_extent: CHART_EXTENT,
+            max_run: CHART_RUN,
+            max_charts: MAX_CHARTS,
+        };
+        let input = &self.t0.input;
+        let mask = vec![true; mesh.triangles.len()];
+        let src = ChartInput {
+            mesh,
+            topo: &topo,
+            mask: &mask,
+            tri_body: &self.tri_body,
+            bvh: &self.bvh,
+            input,
+            stride: input.positions.len().div_ceil(MAX_DEVIATION_SAMPLES).max(1),
+        };
+        charts::build(&src, &params)
+    }
+
     /// For each point: the fitted surface closest to the nearest point on the
     /// mesh (or -1 with no surfaces), and the distance to the mesh. On a scan
     /// the segmentation's region boundaries are fuzzy; the surfaces aren't.

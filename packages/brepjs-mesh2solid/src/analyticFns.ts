@@ -8,26 +8,19 @@ import {
   type Vec3,
   compound,
   cone,
-  cut,
   cylinder,
-  flipFaceOrientation,
   fuseAll,
-  clone,
   getFaces,
   getKernel,
-  getSolids,
-  isShell,
   isSolid,
   isValid,
-  measureVolume,
   mesh,
   polygon,
-  sewShells,
   simplify,
-  solidFromShell,
   sphere,
   torus,
 } from 'brepjs';
+import { type Built, type Owned, cutCavities, outwardSolid } from './solidFns.js';
 import type { ConversionReport } from './types.js';
 
 /** Engine surface encoding: kind code plus eight parameter slots (see `Tier1Session`). */
@@ -153,8 +146,6 @@ function axialRange(origin: Vec3, axis: Vec3, b: readonly [Vec3, Vec3]): [number
   const hs = corners(b).map((c) => dot(sub(c, origin), axis));
   return [Math.min(...hs), Math.max(...hs)];
 }
-
-type Owned = { [Symbol.dispose](): void };
 
 /** An oversized face on `s` that covers its region plus `margin`. */
 function patch(
@@ -292,29 +283,6 @@ export function deviationOf(
   return JSON.parse(deviation(tri.positions, tri.indices)) as ConversionReport['deviation'];
 }
 
-function volumeOf(s: Solid): number {
-  const v = measureVolume(s);
-  return v.ok ? v.value : Number.NaN;
-}
-
-/** Sew faces into one closed shell and make it a solid. */
-function closeShell(
-  faces: Face[],
-  owned: Owned[]
-): { ok: true; value: Solid } | { ok: false; reason: string } {
-  const sewn = sewShells(faces, true);
-  if (!sewn.ok) return { ok: false, reason: `pieces could not be sewn: ${sewn.error.message}` };
-  owned.push(sewn.value);
-  if (!isShell(sewn.value)) return { ok: false, reason: 'covered pieces do not form one shell' };
-  const solid = solidFromShell(sewn.value);
-  if (!solid.ok)
-    return { ok: false, reason: `covered pieces do not close: ${solid.error.message}` };
-  owned.push(solid.value);
-  return { ok: true, value: solid.value };
-}
-
-type Built = { ok: true; value: Solid } | { ok: false; reason: string };
-
 function majority(values: Float64Array, start: number, count: number): number {
   const tally = new Map<number, number>();
   let best = -1;
@@ -353,32 +321,7 @@ function bodySolid(
     const prim = s === undefined ? null : closedPrimitive(s, owned);
     if (prim !== null) return { ok: true, value: prim };
   }
-  let solid = closeShell(faces, owned);
-  if (!solid.ok) return solid;
-  // Sewing orients the shell after whichever piece came first; turn it outward.
-  if (volumeOf(solid.value) < 0) {
-    const flipped = faces.map((f) => flipFaceOrientation(f));
-    owned.push(...flipped);
-    solid = closeShell(flipped, owned);
-    if (!solid.ok) return solid;
-  }
-  if (!(volumeOf(solid.value) > 0))
-    return { ok: false, reason: 'rebuilt solid has no positive volume' };
-  return solid;
-}
-
-/** The single solid of a boolean result, which the kernel may wrap in a compound. */
-function onlySolid(shape: AnyShape<Dimension>, owned: Owned[]): Solid | null {
-  if (isSolid(shape)) return shape;
-  const solids = getSolids(shape);
-  const [one] = solids;
-  if (one === undefined || solids.length !== 1 || getFaces(one).length !== getFaces(shape).length)
-    return null;
-  // Sub-shapes are borrowed from the parent's topology cache; own a copy.
-  const copy = clone(one);
-  if (!copy.ok) return null;
-  owned.push(copy.value);
-  return copy.value;
+  return outwardSolid(faces, owned);
 }
 
 function unify(s: Solid, owned: Owned[]): Solid {
@@ -404,6 +347,13 @@ export interface AnalyticOptions {
    */
   readonly maxUnfitArea: number;
   /**
+   * Most sphere and torus patches the arrangement takes. Each is a whole closed
+   * surface that meets every other patch, so the fuse grows steeply with them;
+   * a scan's noise lets small tori fit any smooth stretch of a freeform part,
+   * which would arrange dozens of them for minutes and cover nothing.
+   */
+  readonly maxClosedPatches?: number | undefined;
+  /**
    * Surfaces left out of the arrangement because `finish` puts them back
    * (blends a fillet recreates). Mesh points they own don't count for or
    * against a piece.
@@ -423,6 +373,15 @@ export function buildAnalytic(seg: Segmentation, opts: AnalyticOptions): Analyti
   if (seg.surfaces.length === 0) return { ok: false, reason: 'no surfaces were fitted' };
   if (seg.unfitTriangles > 0 && seg.unfitArea > opts.maxUnfitArea) {
     return { ok: false, reason: `${seg.unfitTriangles} triangles fit no analytic surface` };
+  }
+  const closed = seg.surfaces.filter(
+    (s, i) => (s.kind === 'sphere' || s.kind === 'torus') && opts.skip?.has(i) !== true
+  ).length;
+  if (closed > (opts.maxClosedPatches ?? Infinity)) {
+    return {
+      ok: false,
+      reason: `${closed} sphere and torus patches are past the arrangement's ${opts.maxClosedPatches} (a freeform part)`,
+    };
   }
   const all = seg.bounds.reduce<[Vec3, Vec3]>(
     (acc, b) => [
@@ -513,24 +472,11 @@ export function buildAnalytic(seg: Segmentation, opts: AnalyticOptions): Analyti
         return groups.size > 1 ? { ok: false, reason: `body ${body}: ${built.reason}` } : built;
       solids.set(body, built.value);
     }
-    const parentOf = (b: number): number => (b >= 0 ? (seg.bodyParent[b] ?? -1) : -1);
-    for (const [body, s] of solids) {
-      const p = parentOf(body);
-      if (p < 0) continue;
-      const outer = solids.get(p);
-      if (outer === undefined)
-        return { ok: false, reason: `cavity body ${body} has no rebuilt outer body` };
-      const hollowed = cut(outer, s);
-      if (!hollowed.ok)
-        return { ok: false, reason: `cavity could not be cut: ${hollowed.error.message}` };
-      owned.push(hollowed.value);
-      const only = onlySolid(hollowed.value, owned);
-      if (only === null) return { ok: false, reason: 'cutting a cavity did not leave one solid' };
-      solids.set(p, only);
-    }
+    const hollow = cutCavities(solids, seg.bodyParent, owned);
+    if (!hollow.ok) return hollow;
     const tops: Solid[] = [];
     for (const [body, s] of solids) {
-      if (parentOf(body) >= 0) continue;
+      if ((seg.bodyParent[body] ?? -1) >= 0) continue;
       let u = unify(s, owned);
       if (opts.finish !== undefined && isSolid(u)) {
         const done = opts.finish(u);

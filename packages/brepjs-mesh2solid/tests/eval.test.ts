@@ -1,7 +1,8 @@
 /**
  * Synthetic round-trip gate: known brepjs solids → mesh → meshToSolid → compare.
  * CAD cases use the solid's own tessellation; scan cases subdivide it to scanner
- * density and add normal noise.
+ * density and add normal noise. Organic cases are smooth closed meshes no
+ * analytic surface fits, sampled from formulas.
  */
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -9,7 +10,15 @@ import { fileURLToPath } from 'node:url';
 import { type AnyShape, type Dimension, getFaces, isValid, measureVolume, unwrap } from 'brepjs';
 import { afterAll, describe, expect, it } from 'vitest';
 import { meshToSolid } from '../src/index.js';
-import { CAD_CORPUS, scanLike, stlOf } from './corpus.js';
+import {
+  CAD_CORPUS,
+  ORGANIC_CORPUS,
+  meshVolume,
+  noisy,
+  organicSTL,
+  scanLike,
+  stlOf,
+} from './corpus.js';
 
 function vol(shape: AnyShape<Dimension>): number {
   return unwrap(measureVolume(shape as Parameters<typeof measureVolume>[0]));
@@ -185,5 +194,58 @@ describe('scan eval: noisy, decimated meshes', () => {
       for (const call of code) expect(res.code ?? '', summary).toContain(call);
       expect(volumeError, summary).toBeLessThan(1e-9);
     });
+  }
+});
+
+describe('freeform eval: organic meshes', () => {
+  const sigma = 0.02;
+  for (const c of ORGANIC_CORPUS) {
+    for (const scan of [false, true]) {
+      it(scan ? `${c.name} (σ=${sigma} mm)` : c.name, async () => {
+        const m = scan ? noisy(c.mesh(2), sigma, 7) : c.mesh(1);
+        // Chord error in volume quarters per level, so two levels extrapolate the smooth body's.
+        const smooth = (4 * meshVolume(c.mesh(3)) - meshVolume(c.mesh(2))) / 3;
+        const t0 = performance.now();
+        const res = unwrap(await meshToSolid(organicSTL(m)));
+        const ms = performance.now() - t0;
+        using shape = res.shape;
+        const r = res.report;
+        const ff = r.tier1?.freeform;
+        const diag = Math.hypot(...r.input.bboxMax.map((v, i) => v - (r.input.bboxMin[i] ?? 0)));
+        const volumeError = Math.abs(vol(shape) - smooth) / smooth;
+        const d = r.deviation;
+        const summary = `${c.name}${scan ? ' scan' : ''}: tier ${r.tierReached} ${r.tier1?.fallbackReason ?? ''} ${JSON.stringify(ff)}, volume error ${volumeError.toExponential(2)}, dev max ${d.max.toFixed(4)} p95 ${d.p95.toFixed(4)} reverse ${d.reverseMax.toFixed(4)} mm, ${ms.toFixed(0)} ms`;
+        scorecard.push({
+          case: c.name,
+          kind: scan ? 'organic-scan' : 'organic',
+          triangles: r.input.triangles,
+          charts: ff?.charts,
+          faces: getFaces(shape).length,
+          volumeError,
+          devMax: d.max,
+          devP95: d.p95,
+          devReverseMax: d.reverseMax,
+          ms: Math.round(ms),
+        });
+        expect(r.estimate.kind, summary).toBe(scan ? 'scan' : 'cad');
+        expect(r.tierReached, summary).toBe(1);
+        expect(res.solid, summary).toBe(true);
+        expect(isValid(shape), summary).toBe(true);
+        expect(ff?.faces, summary).toBe(getFaces(shape).length);
+        // One face per smooth disc of the body, not per patch of triangles.
+        expect(getFaces(shape).length, summary).toBeLessThanOrEqual(64);
+        expect(volumeError, summary).toBeLessThan(2e-4);
+        if (scan) {
+          // The faces follow the surface under the noise, so the scan reads its noise.
+          expect(d.p95, summary).toBeLessThan(4 * sigma);
+          expect(Math.max(d.max, d.reverseMax), summary).toBeLessThan(8 * sigma);
+        } else {
+          // The faces follow the smooth body, not the mesh's facets.
+          const meshError = Math.abs(meshVolume(m) - smooth) / smooth;
+          expect(volumeError, summary).toBeLessThan(meshError / 4);
+          expect(Math.max(d.max, d.reverseMax), summary).toBeLessThan(4e-4 * diag);
+        }
+      });
+    }
   }
 });

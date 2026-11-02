@@ -20,6 +20,7 @@ import {
   deviationOf,
 } from './analyticFns.js';
 import { filletBlends, findBlends } from './blendFns.js';
+import { type FreeformResult, buildFreeform, decodeCharts } from './freeformFns.js';
 import { type Tier2Result, buildTier2 } from './tier2Fns.js';
 import { buildShape } from './buildFns.js';
 import { loadMeshEngine } from './engine.js';
@@ -196,14 +197,25 @@ export async function meshToSolid(
       } catch (e) {
         analytic = { ok: false, reason: `the rebuild failed: ${message(e)}` };
       }
-      if (analytic.ok) {
-        let shape: Shape = analytic.value.shape;
-        let deviation = analytic.value.deviation;
+      const surfaces: Surfaces = analytic.ok
+        ? analytic
+        : freeformTier1(session, engineReport, analytic.reason);
+      if (surfaces.ok) {
+        let shape: Shape = surfaces.value.shape;
+        let deviation = surfaces.value.deviation;
         let tierReached: 1 | 2 = 1;
         let code: string | undefined;
         let tier2: ConversionReport['tier2'];
         const warnings: string[] = [];
-        if (tier >= 2) {
+        const freeform = surfaces.freeform;
+        if (freeform !== undefined) {
+          warnings.push(
+            `rebuilt from ${freeform.faces} B-spline faces: no analytic rebuild (${freeform.analyticReason})`
+          );
+          if (tier >= 2) {
+            tier2 = { features: [], fallbackReason: 'B-spline faces have no feature program' };
+          }
+        } else if (tier >= 2) {
           const program = runTier2(shape, session, gates);
           if (program.ok) {
             shape[Symbol.dispose]();
@@ -225,9 +237,13 @@ export async function meshToSolid(
           unified: true,
         };
         const timings = { engineMs, buildMs: performance.now() - buildStart };
+        const tier1: ConversionReport['tier1'] =
+          freeform === undefined
+            ? { ...tier1Report, arrangement: analytic.ok ? analytic.value.stats : undefined }
+            : { ...tier1Report, freeform };
         const report = finishReport({ ...engineReport, deviation }, faces, timings, warnings, {
           tierReached,
-          tier1: { ...tier1Report, arrangement: analytic.value.stats },
+          tier1,
           tier2,
         });
         // The heatmap measures the shape actually returned (the last one measured).
@@ -235,9 +251,10 @@ export async function meshToSolid(
           heatmap === undefined ? undefined : { ...heatmap, deviation: session.measured_deviation };
         return ok({ shape, solid: isSolid(shape), report, heatmap: measured, code });
       }
+      const reason = surfaces.reason;
       fallback = {
-        note: `tier 1 fell back to tier 0: ${analytic.reason}`,
-        tier1: { ...tier1Report, fallbackReason: analytic.reason },
+        note: `tier 1 fell back to tier 0: ${reason}`,
+        tier1: { ...tier1Report, fallbackReason: reason },
       };
     }
     const built = await buildShape(positions, triangles);
@@ -262,10 +279,16 @@ interface Gates {
   readonly maxDeviation: number;
   readonly triangulation: number;
   readonly maxUnfitArea: number;
+  readonly maxClosedPatches: number;
 }
 
 /** A scan's decimated triangles bridge its creases; this much of its area may fit nothing. */
 const SCAN_UNFIT_AREA = 0.03;
+/**
+ * Sphere and torus patches a scan's arrangement takes: twice a box with every
+ * edge filleted (eight corner blends). Organic scans fit 27 to 51.
+ */
+const SCAN_CLOSED_PATCHES = 16;
 
 /** How close exact surfaces must come to the mesh, scaled to the mesh's own sag. */
 function gatesFor(session: Tier1Session, engineReport: EngineReport): Gates {
@@ -283,6 +306,7 @@ function gatesFor(session: Tier1Session, engineReport: EngineReport): Gates {
     maxDeviation: 1.25 * Math.max(sag, triangulation) + 20 * tol,
     triangulation,
     maxUnfitArea: engineReport.estimate.kind === 'scan' ? SCAN_UNFIT_AREA : 0,
+    maxClosedPatches: engineReport.estimate.kind === 'scan' ? SCAN_CLOSED_PATCHES : Infinity,
   };
 }
 
@@ -324,6 +348,77 @@ function runTier1(session: Tier1Session, engineReport: EngineReport, gates: Gate
   return plain.ok
     ? plain
     : { ok: false, reason: `${plain.reason} (filleting the blends last: ${last.reason})` };
+}
+
+type Surfaces =
+  | {
+      ok: true;
+      value: { shape: Shape; deviation: ConversionReport['deviation'] };
+      freeform?: NonNullable<ConversionReport['tier1']>['freeform'];
+    }
+  | { ok: false; reason: string };
+
+/**
+ * When no analytic surfaces rebuild the mesh, split each body into smooth
+ * disc-shaped charts and rebuild it from one trimmed B-spline face per chart.
+ */
+function freeformTier1(
+  session: Tier1Session,
+  engineReport: EngineReport,
+  analyticReason: string
+): Surfaces {
+  // Faces sewn from charts only close a closed body.
+  if (session.body_closed.includes(0)) return { ok: false, reason: analyticReason };
+  let built: FreeformResult;
+  try {
+    built = runFreeform(session, engineReport);
+  } catch (e) {
+    built = { ok: false, reason: `the B-spline rebuild failed: ${message(e)}` };
+  }
+  if (!built.ok) {
+    return { ok: false, reason: `${analyticReason}; no B-spline rebuild either: ${built.reason}` };
+  }
+  return {
+    ok: true,
+    value: built.value,
+    freeform: { ...built.value.stats, analyticReason },
+  };
+}
+
+function runFreeform(session: Tier1Session, engineReport: EngineReport): FreeformResult {
+  const packed = session.charts();
+  if (packed === undefined) {
+    return { ok: false, reason: 'the mesh does not split into few enough smooth charts' };
+  }
+  let charts;
+  try {
+    charts = decodeCharts(packed);
+  } finally {
+    packed.free();
+  }
+  const tol = session.tolerance;
+  const chord = engineReport.estimate.chordError;
+  const { bboxMin, bboxMax } = engineReport.input;
+  const diag = Math.hypot(...bboxMax.map((v, i) => v - (bboxMin[i] ?? 0)));
+  // As loose as the analytic fits' chord cap: a chart's face follows the mesh
+  // between its points about as closely as an analytic surface does.
+  const maxDeviation = Math.max(8 * chord, 20 * tol, 1e-3 * diag);
+  const runTolerance = Math.max(tol, chord);
+  return buildFreeform(
+    charts,
+    {
+      bodyParent: session.body_parent,
+      bodyClosed: session.body_closed,
+      deviation: (p, i) => session.deviation(p, i),
+    },
+    {
+      runTolerance,
+      maxDeviation,
+      // The measuring mesh's own chord adds to the deviation it reports; at
+      // half the mesh's noise or chord, a scan's report reads its noise.
+      triangulation: Math.max(runTolerance / 2, 1e-6 * diag),
+    }
+  );
 }
 
 function runTier2(shape: Shape, session: Tier1Session, gates: Gates): Tier2Result {
