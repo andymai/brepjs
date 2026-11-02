@@ -37,6 +37,7 @@
     "packages/brepjs-viewer",
     "packages/brepjs-vscode",
     "apps/playground",
+    "apps/mesh2solid",
     "apps/docs"
   ],
   "main": "./dist/brepjs.cjs",
