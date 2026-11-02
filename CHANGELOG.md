@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.16.0](https://github.com/andymai/brepjs/compare/brepjs-v20.15.0...brepjs-v20.16.0) (2026-11-02)
+
+
+### Features
+
+* **mesh2solid:** add the /mesh-to-solid page as an undeployed app ([#2598](https://github.com/andymai/brepjs/issues/2598)) ([f740865](https://github.com/andymai/brepjs/commit/f740865c46b9d8a0dad083701d872ef6ea66e586))
+
 ## [20.15.0](https://github.com/andymai/brepjs/compare/brepjs-v20.14.0...brepjs-v20.15.0) (2026-11-02)
 
 
