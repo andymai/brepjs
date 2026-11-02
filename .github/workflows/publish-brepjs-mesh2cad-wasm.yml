@@ -1,0 +1,41 @@
+name: Publish brepjs-mesh2cad-wasm
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (pack only, skip publish)'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+
+      # pkg/ is committed (built locally by scripts/build.sh), so there is no
+      # build step; pack shows exactly what would ship.
+      - name: Pack brepjs-mesh2cad-wasm
+        working-directory: packages/brepjs-mesh2cad-wasm
+        run: npm pack --dry-run
+
+      # Authenticates via OIDC trusted publisher (configured for this exact
+      # workflow filename on npmjs.com -> brepjs-mesh2cad-wasm -> Trusted Publisher Mgmt).
+      - name: Publish brepjs-mesh2cad-wasm
+        if: ${{ inputs.dry_run != true }}
+        working-directory: packages/brepjs-mesh2cad-wasm
+        run: npm publish --provenance

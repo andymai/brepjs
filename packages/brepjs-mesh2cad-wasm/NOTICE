@@ -1,0 +1,18 @@
+brepjs-mesh2cad-wasm
+Copyright 2026 Andy Aragon
+
+This package contains a WebAssembly mesh-processing engine compiled from
+original Rust source in this directory, distributed under the Apache License
+2.0 (see LICENSE).
+
+Algorithms are clean-room implementations of published methods:
+
+- Mesh decimation: Garland & Heckbert, "Surface Simplification Using Quadric
+  Error Metrics", SIGGRAPH 1997.
+- Polygon triangulation: ear clipping with hole bridging (Eberly, "Triangulation
+  by Ear Clipping", Geometric Tools, 2002).
+- Closest point on triangle: Ericson, "Real-Time Collision Detection", 2005,
+  section 5.1.5.
+
+Bundled Rust dependencies (MIT OR Apache-2.0): wasm-bindgen, miniz_oxide,
+quick-xml.

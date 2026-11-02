@@ -1,0 +1,24 @@
+[package]
+name = "brepjs-mesh2cad-wasm"
+version = "0.1.0"
+edition = "2021"
+description = "Mesh-to-solid preparation and analysis engine for brepjs (Rust → WASM)"
+license = "Apache-2.0"
+repository = "https://github.com/andymai/brepjs"
+# The npm package is published; the crate itself is not pushed to crates.io.
+publish = false
+
+[lib]
+# cdylib: linked into the wasm-bindgen artifact. rlib: lets `cargo test` run the
+# pipeline natively without a wasm runtime.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Pinned exactly: the wasm-bindgen CLI that generates pkg/ must match this version.
+wasm-bindgen = "=0.2.128"
+miniz_oxide = "0.8"
+quick-xml = "0.37"
+
+[profile.release]
+opt-level = "s"
+lto = true
