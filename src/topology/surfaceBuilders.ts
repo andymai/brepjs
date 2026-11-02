@@ -242,15 +242,22 @@ function checkNurbs(data: NurbsSurfaceInput): Result<never> | null {
       'Pass poles[i][j] for the i-th pole along u and the j-th along v'
     );
   }
+  if (data.poles.some((row) => row.some((p) => !p.every(Number.isFinite)))) {
+    return nurbsInvalid(
+      'NURBS_BAD_POLES',
+      'Pole coordinates must be finite',
+      'Check the poles for NaN or Infinity'
+    );
+  }
   const { weights } = data;
   if (
     weights !== undefined &&
     (weights.length !== nbU ||
-      weights.some((row) => row.length !== nbV || row.some((w) => !(w > 0))))
+      weights.some((row) => row.length !== nbV || row.some((w) => !(w > 0) || !Number.isFinite(w))))
   ) {
     return nurbsInvalid(
       'NURBS_BAD_WEIGHTS',
-      'Weights must be positive, one per pole in the same grid',
+      'Weights must be positive and finite, one per pole in the same grid',
       'Omit weights for a non-rational surface'
     );
   }
@@ -259,10 +266,11 @@ function checkNurbs(data: NurbsSurfaceInput): Result<never> | null {
     ['v', data.knotsV, data.multiplicitiesV, data.degreeV, data.isPeriodicV === true, nbV],
   ] as const) {
     const increasing = knots.every((k, i) => i === 0 || k > (knots[i - 1] ?? k));
-    if (knots.length < 2 || knots.length !== mults.length || !increasing) {
+    const finite = knots.every(Number.isFinite);
+    if (knots.length < 2 || knots.length !== mults.length || !increasing || !finite) {
       return nurbsInvalid(
         'NURBS_BAD_KNOTS',
-        `The ${dir} knots must be two or more increasing values, each with a multiplicity`,
+        `The ${dir} knots must be two or more finite increasing values, each with a multiplicity`,
         'List each distinct knot once and its repeat count in the multiplicities'
       );
     }
