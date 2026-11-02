@@ -67,7 +67,7 @@ export const CAD_CORPUS: readonly CorpusCase[] = [
         unwrap(cut(keep(box(40, 30, 6)), keep(translate(keep(cylinder(5, 20)), [20, 15, -5]))))
       ),
     surfaces: { plane: 6, cylinder: 1 },
-    code: ['box(40, 30, 6', 'cylinder(5, 6, { at: [20, 15, 0] })'],
+    code: ['box(40, 30, 6)', 'cylinder(5, 6, { at: [20, 15, 0] })'],
   },
   {
     name: 'L-bracket with two holes',
@@ -85,7 +85,7 @@ export const CAD_CORPUS: readonly CorpusCase[] = [
     name: 'filleted box',
     build: () => owned((keep) => unwrap(fillet(keep(box(30, 20, 15)), 3))),
     surfaces: { plane: 6, cylinder: 12, sphere: 8 },
-    code: ['box(30, 20, 15)', 'fillet(part1, 3)'],
+    code: ['box(30, 20, 15)', 'fillet(slab1, 3)'],
   },
   {
     name: 'cylinder',
@@ -115,6 +115,12 @@ export const CAD_CORPUS: readonly CorpusCase[] = [
       ),
     surfaces: { plane: 12 },
     code: ['box(20, 20, 20)', 'box(6, 6, 6, { at: [10, 10, 10] })', 'cut('],
+  },
+  {
+    name: 'hollow sphere',
+    build: () => owned((keep) => unwrap(cut(keep(sphere(15)), keep(sphere(10))))),
+    surfaces: { sphere: 2 },
+    code: ['sphere(15)', 'sphere(10)', 'cut('],
   },
 ];
 

@@ -70,7 +70,8 @@ export function canonicalize(model: FeatureModel, tol: number): FeatureModel {
     s.kind === 'line'
       ? { kind: 'line', from: p2(s.from), to: p2(s.to) }
       : s.kind === 'arc'
-        ? { kind: 'arc', from: p2(s.from), via: s.via, to: p2(s.to) }
+        ? // The midpoint of an arc between round endpoints is rarely round itself; keep it measured.
+          { kind: 'arc', from: p2(s.from), via: s.via, to: p2(s.to) }
         : { kind: 'circle', center: p2(s.center), r: n(s.r) };
   const profile = (p: Profile): Profile => ({
     outer: p.outer.map(seg),
@@ -174,7 +175,7 @@ class Writer {
   readonly lines: string[] = [];
   readonly imports = new Set<string>(['unwrap']);
   readonly owned: Owned[] = [];
-  needsLoop = false;
+  needsProfile = false;
   private readonly counts = new Map<string, number>();
 
   name(prefix: string): string {
@@ -188,8 +189,9 @@ class Writer {
     return x;
   }
 
+  /** `using name = expr;`: every intermediate shape is released when the program returns. */
   bind(name: string, expr: string): string {
-    this.lines.push(`  const ${name} = ${expr};`);
+    this.lines.push(`  using ${name} = ${expr};`);
     return name;
   }
 }
@@ -226,10 +228,11 @@ function edgesOf(l: Loop, f: Frame, w: Writer): { code: string[]; edges: Edge[] 
   return { code, edges };
 }
 
-function planarLoop(edges: Edge[]) {
+function planarLoop(edges: Edge[], w: Writer) {
   const wl = wireLoop(edges);
-  if (!wl.ok || !isPlanarWire(wl.value)) return null;
-  return wl.value;
+  if (!wl.ok) return null;
+  w.keep(wl.value);
+  return isPlanarWire(wl.value) ? wl.value : null;
 }
 
 /** A profile as a planar face, bound to a name in the code. */
@@ -241,26 +244,20 @@ function emitFace(
 ): { code: string; face: Face } | null {
   const o = edgesOf(outer, f, w);
   const hs = holes.map((l) => edgesOf(l, f, w));
-  const ow = planarLoop(o.edges);
+  const ow = planarLoop(o.edges, w);
   if (ow === null) return null;
   const hws = [];
   for (const h of hs) {
-    const hw = planarLoop(h.edges);
+    const hw = planarLoop(h.edges, w);
     if (hw === null) return null;
     hws.push(hw);
   }
   const fc = face(ow, hws);
   if (!fc.ok) return null;
-  w.imports.add('face');
-  w.needsLoop = true;
-  const block = (edges: string[], indent: string) =>
-    `loop([\n${edges.map((e) => `${indent}  ${e},`).join('\n')}\n${indent}])`;
-  const holeArg =
-    hs.length > 0 ? `,\n      [${hs.map((x) => block(x.code, '        ')).join(', ')}]` : '';
-  const name = w.bind(
-    w.name('profile'),
-    `unwrap(\n    face(\n      ${block(o.code, '      ')}${holeArg}\n    )\n  )`
-  );
+  w.needsProfile = true;
+  const block = (edges: string[]) => `[\n${edges.map((e) => `    ${e},`).join('\n')}\n  ]`;
+  const args = [o, ...hs].map((x) => block(x.code)).join(', ');
+  const name = w.bind(w.name('profile'), `profile(${args})`);
   return { code: name, face: w.keep(fc.value) };
 }
 
@@ -280,7 +277,8 @@ function emitExtrude(f: Frame, p: Profile, h: number, w: Writer): Built | null {
     const tool = w.bind(w.name('hole'), `cylinder(${fmt(c.r)}, ${fmt(h)}${placement(at, f.z)})`);
     const next = cut(part.shape, w.keep(cylinder(c.r, h, { at, axis: f.z })));
     if (!next.ok) return null;
-    part = { code: `unwrap(cut(${part.code}, ${tool}))`, shape: w.keep(next.value) };
+    const name = w.bind(w.name('slab'), `unwrap(cut(${part.code}, ${tool}))`);
+    part = { code: name, shape: w.keep(next.value) };
   }
   return part;
 }
@@ -300,21 +298,21 @@ function emitOutline(
     const at: Vec3 = [c[0], c[1], c[2] + h / 2];
     w.imports.add('box');
     // box() without options spans from the origin; `at` is its center.
-    const fromOrigin = lo[0] === 0 && lo[1] === 0 && f.origin[2] === 0;
+    const fromOrigin = isOrigin(at3(f, lo));
     const opts = fromOrigin ? '' : `, { at: ${fv(at)} }`;
-    return {
-      code: `box(${fmt(size[0])}, ${fmt(size[1])}, ${fmt(size[2])}${opts})`,
-      shape: w.keep(
-        fromOrigin ? box(size[0], size[1], size[2]) : box(size[0], size[1], size[2], { at })
-      ),
-    };
+    const shape = fromOrigin
+      ? box(size[0], size[1], size[2])
+      : box(size[0], size[1], size[2], { at });
+    const code = `box(${fmt(size[0])}, ${fmt(size[1])}, ${fmt(size[2])}${opts})`;
+    return { code: w.bind(w.name('slab'), code), shape: w.keep(shape) };
   }
   const only = outer[0];
   if (holes.length === 0 && outer.length === 1 && only?.kind === 'circle') {
     const at = at3(f, only.center);
     w.imports.add('cylinder');
+    const code = `cylinder(${fmt(only.r)}, ${fmt(h)}${placement(at, f.z)})`;
     return {
-      code: `cylinder(${fmt(only.r)}, ${fmt(h)}${placement(at, f.z)})`,
+      code: w.bind(w.name('slab'), code),
       shape: w.keep(cylinder(only.r, h, { at, axis: f.z })),
     };
   }
@@ -324,7 +322,8 @@ function emitOutline(
   const solid = extrude(profile.face as Parameters<typeof extrude>[0], v);
   if (!solid.ok) return null;
   w.imports.add('extrude');
-  return { code: `unwrap(extrude(${profile.code}, ${fv(v)}))`, shape: w.keep(solid.value) };
+  const code = `unwrap(extrude(${profile.code}, ${fv(v)}))`;
+  return { code: w.bind(w.name('slab'), code), shape: w.keep(solid.value) };
 }
 
 function emitRevolve(f: Frame, p: Profile, w: Writer): Built | null {
@@ -337,27 +336,26 @@ function emitRevolve(f: Frame, p: Profile, w: Writer): Built | null {
   if (!solid.ok) return null;
   w.imports.add('revolve');
   const shape = w.keep(solid.value);
-  return {
-    // revolve() defaults to a full turn about +Z through the origin.
-    code: `unwrap(revolve(${profile.code}${placement(f.origin, f.y)}))`,
-    shape: shape as Solid,
-  };
+  // revolve() defaults to a full turn about +Z through the origin.
+  const code = `unwrap(revolve(${profile.code}${placement(f.origin, f.y)}))`;
+  return { code: w.bind(w.name('turned'), code), shape: shape as Solid };
 }
 
 function emitBase(b: BaseFeature, w: Writer): Built | null {
   switch (b.op) {
-    case 'sphere':
+    case 'sphere': {
       w.imports.add('sphere');
-      return {
-        code: `sphere(${fmt(b.r)}${placement(b.center)})`,
-        shape: w.keep(sphere(b.r, { at: b.center })),
-      };
-    case 'torus':
+      const code = `sphere(${fmt(b.r)}${placement(b.center)})`;
+      return { code: w.bind(w.name('ball'), code), shape: w.keep(sphere(b.r, { at: b.center })) };
+    }
+    case 'torus': {
       w.imports.add('torus');
+      const code = `torus(${fmt(b.major)}, ${fmt(b.minor)}${placement(b.center, b.axis)})`;
       return {
-        code: `torus(${fmt(b.major)}, ${fmt(b.minor)}${placement(b.center, b.axis)})`,
+        code: w.bind(w.name('ring'), code),
         shape: w.keep(torus(b.major, b.minor, { at: b.center, axis: b.axis })),
       };
+    }
     case 'extrude':
       return emitExtrude(b.frame, b.profile, b.height, w);
     case 'revolve':
@@ -372,7 +370,7 @@ function emitModel(model: FeatureModel, prefix: string, w: Writer): Built | { re
     const next = emitBase(b, w);
     if (next === null) return { reason: `could not build a ${b.op} feature` };
     if (part === null) {
-      part = { code: w.bind(w.name(prefix), next.code), shape: next.shape };
+      part = next;
       continue;
     }
     // Simplify merges the coplanar faces where slabs meet.
@@ -432,7 +430,12 @@ export function writeProgram(model: FeatureModel): ProgramResult {
     if (shape === null) return { ok: false, reason: 'the program does not build one solid' };
     const i = w.owned.indexOf(shape);
     if (i >= 0) w.owned.splice(i, 1);
-    return { ok: true, value: { code: render(w, part.code, shape), shape } };
+    const code = render(w, part.code, shape);
+    if (code === null) {
+      shape[Symbol.dispose]();
+      return { ok: false, reason: 'the program does not end in its result' };
+    }
+    return { ok: true, value: { code, shape } };
   } finally {
     for (const o of w.owned) o[Symbol.dispose]();
   }
@@ -450,15 +453,16 @@ function soleSolid(shape: Solid): Solid | null {
 
 const r3 = (v: number) => fmt(Math.round(v * 1000) / 1000);
 
-function render(w: Writer, result: string, shape: Solid): string {
+function render(w: Writer, result: string, shape: Solid): string | null {
   const volume = measureVolume(shape);
   const area = measureArea(shape);
   const b = getBounds(shape);
-  const imports = [...w.imports, ...(w.needsLoop ? ['isPlanarWire', 'wireLoop'] : [])].sort();
+  const helpers = w.needsProfile ? ['face', 'isPlanarWire', 'wireLoop'] : [];
+  const imports = [...new Set([...w.imports, ...helpers])].sort();
   const lines = [
     '// Rebuilt from a mesh by brepjs-mesh2solid. Dimensions in millimeters.',
     `import { ${imports.join(', ')} } from 'brepjs';`,
-    ...(w.needsLoop ? ["import type { Edge } from 'brepjs';"] : []),
+    ...(w.needsProfile ? ["import type { Edge } from 'brepjs';"] : []),
     '',
     'export const expected = {',
     `  volume: ${fmt(Number((volume.ok ? volume.value : 0).toPrecision(6)))},`,
@@ -468,23 +472,33 @@ function render(w: Writer, result: string, shape: Solid): string {
     '};',
     '',
   ];
-  if (w.needsLoop) {
+  if (w.needsProfile) {
     lines.push(
-      '/** A closed planar wire from edges, for `face`. */',
-      'function loop(edges: Edge[]) {',
-      '  const w = unwrap(wireLoop(edges));',
-      "  if (!isPlanarWire(w)) throw new Error('profile is not planar');",
-      '  return w;',
+      '/** A planar face from closed edge loops, outer first. Its edges and wires are released once it exists. */',
+      'function profile(outer: Edge[], ...holes: Edge[][]) {',
+      '  const wires = [outer, ...holes].map((edges) => {',
+      '    const w = unwrap(wireLoop(edges));',
+      '    for (const e of edges) e[Symbol.dispose]();',
+      "    if (!isPlanarWire(w)) throw new Error('profile is not planar');",
+      '    return w;',
+      '  });',
+      '  try {',
+      '    const [first, ...rest] = wires;',
+      "    if (first === undefined) throw new Error('profile needs an outer loop');",
+      '    return unwrap(face(first, rest));',
+      '  } finally {',
+      '    for (const w of wires) w[Symbol.dispose]();',
+      '  }',
       '}',
       ''
     );
   }
-  // The last binding is the result; return its expression instead of re-binding it.
+  // The last binding is the result: return its expression instead of binding (and releasing) it.
   const body = [...w.lines];
   const last = body[body.length - 1];
-  const prefix = `  const ${result} = `;
-  if (last?.startsWith(prefix)) body[body.length - 1] = `  return ${last.slice(prefix.length)}`;
-  else body.push(`  return ${result};`);
+  const prefix = `  using ${result} = `;
+  if (last?.startsWith(prefix) !== true) return null;
+  body[body.length - 1] = `  return ${last.slice(prefix.length)}`;
   lines.push('export default () => {', ...body, '};', '');
   return lines.join('\n');
 }

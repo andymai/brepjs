@@ -109,7 +109,7 @@ function message(e: unknown): string {
  * from the body around them. The report measures how far the result is from the
  * input in both directions.
  *
- * Tier 1 (the default) goes further: it segments the mesh into planes,
+ * Tier 1 goes further: it segments the mesh into planes,
  * cylinders, cones, spheres and tori, makes fillets exactly tangent, and
  * rebuilds the solid from those exact surfaces, trimmed by their intersections.
  * When a region fits no analytic surface or the rebuild misses the mesh, the

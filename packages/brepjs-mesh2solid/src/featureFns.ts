@@ -9,7 +9,6 @@ import {
   curvePointAt,
   cut,
   extrude,
-  faceCenter,
   facesOfEdge,
   flipFaceOrientation,
   getBounds,
@@ -518,11 +517,37 @@ function shellSolid(shell: Shell): Solid | null {
   }
 }
 
-/** Does `surface` carry one of `shape`'s faces (a face center lies on it)? */
-function onShape(shape: Solid, surface: AnalyticSurface, tol: number): boolean {
-  return getFaces(shape).some(
-    (f) => surfaceDistance(surface, faceCenter(f)) <= Math.max(tol, 1e-6)
-  );
+/**
+ * Does `surface` carry one of `faces`? Probed at the middle of each
+ * face's parameter range, a point on its own surface (a center of mass would
+ * sit at a sphere's center).
+ */
+function onFaces(faces: readonly Face[], surface: AnalyticSurface, tol: number): boolean {
+  const k = getKernel();
+  return faces.some((f) => {
+    const b = k.uvBounds(f.wrapped);
+    const p = k.pointOnSurface(f.wrapped, (b.uMin + b.uMax) / 2, (b.vMin + b.vMax) / 2);
+    return surfaceDistance(surface, p) <= Math.max(tol, 1e-6);
+  });
+}
+
+/** Recognize one shell on its own; a single closed face is the primitive it lies on. */
+function shellModel(
+  shell: Shell,
+  surfaces: readonly AnalyticSurface[],
+  tol: number
+): FeatureResult {
+  const faces = getFaces(shell);
+  const own = surfaces.filter((x) => onFaces(faces, x, tol));
+  const only = faces.length === 1 ? primitive(own[0]) : null;
+  if (only !== null) return { ok: true, value: { base: [only], fillets: [], cavities: [] } };
+  const solid = shellSolid(shell);
+  if (solid === null) return { ok: false, reason: 'a shell of the solid does not close' };
+  try {
+    return recognizeFeatures(solid, own, tol);
+  } finally {
+    solid[Symbol.dispose]();
+  }
 }
 
 function withCavities(
@@ -530,32 +555,22 @@ function withCavities(
   surfaces: readonly AnalyticSurface[],
   tol: number
 ): FeatureResult {
-  const solids: Solid[] = [];
-  try {
-    for (const sh of shells) {
-      const s = shellSolid(sh);
-      if (s === null) return { ok: false, reason: 'a shell of the solid does not close' };
-      solids.push(s);
-    }
-    const volume = (s: Solid) => {
-      const v = measureVolume(s);
-      return v.ok ? v.value : 0;
-    };
-    const outer = solids.reduce((a, b) => (volume(b) > volume(a) ? b : a));
-    const own = (s: Solid) => surfaces.filter((x) => onShape(s, x, tol));
-    const main = recognizeFeatures(outer, own(outer), tol);
-    if (!main.ok) return main;
-    const cavities: FeatureModel[] = [];
-    for (const s of solids) {
-      if (s === outer) continue;
-      const c = recognizeFeatures(s, own(s), tol);
-      if (!c.ok) return { ok: false, reason: `cavity: ${c.reason}` };
-      cavities.push(c.value);
-    }
-    return { ok: true, value: { ...main.value, cavities } };
-  } finally {
-    for (const s of solids) s[Symbol.dispose]();
+  // The outer shell encloses the others, so its bounding box is the largest.
+  const size = (sh: Shell) => {
+    const b = getBounds(sh);
+    return Math.hypot(b.xMax - b.xMin, b.yMax - b.yMin, b.zMax - b.zMin);
+  };
+  const outer = shells.reduce((a, b) => (size(b) > size(a) ? b : a));
+  const main = shellModel(outer, surfaces, tol);
+  if (!main.ok) return main;
+  const cavities: FeatureModel[] = [];
+  for (const sh of shells) {
+    if (sh === outer) continue;
+    const c = shellModel(sh, surfaces, tol);
+    if (!c.ok) return { ok: false, reason: `cavity: ${c.reason}` };
+    cavities.push(c.value);
   }
+  return { ok: true, value: { ...main.value, cavities } };
 }
 
 /**

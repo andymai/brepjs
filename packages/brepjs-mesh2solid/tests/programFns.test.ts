@@ -42,4 +42,37 @@ describe('canonicalize', () => {
     });
     expect(tilted).toMatchObject({ axis: [0, 0.6, 0.8] });
   });
+
+  it('snaps extrude frames, profiles, fillet edges, and cavities', () => {
+    const model: FeatureModel = {
+      base: [
+        {
+          op: 'extrude',
+          frame: { origin: [0, 0, 9.9999999], x: [1, 2e-9, 0], y: [-2e-9, 1, 0], z: [0, 0, 1] },
+          profile: {
+            outer: [{ kind: 'circle', center: [20.0000001, 15], r: 4.9999998 }],
+            holes: [],
+          },
+          height: 6.0000002,
+        },
+      ],
+      fillets: [{ op: 'fillet', radius: 2.9999994, edges: [[15.0000002, 0, 9.9999998]] }],
+      cavities: [
+        {
+          base: [{ op: 'sphere', center: [10.0000001, 10, 10], r: 1.9999999 }],
+          fillets: [],
+          cavities: [],
+        },
+      ],
+    };
+    const c = canonicalize(model, 1e-5);
+    expect(c.base[0]).toEqual({
+      op: 'extrude',
+      frame: { origin: [0, 0, 10], x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] },
+      profile: { outer: [{ kind: 'circle', center: [20, 15], r: 5 }], holes: [] },
+      height: 6,
+    });
+    expect(c.fillets).toEqual([{ op: 'fillet', radius: 3, edges: [[15, 0, 10]] }]);
+    expect(c.cavities[0]?.base).toEqual([{ op: 'sphere', center: [10, 10, 10], r: 2 }]);
+  });
 });

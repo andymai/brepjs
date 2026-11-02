@@ -358,7 +358,7 @@ describe('meshToSolid tier 2', () => {
     expect(res.code).toContain('box(40, 30, 10)');
     expect(res.code).toContain('cylinder(6, 10, { at: [20, 15, 0] })');
     expect(res.report.tier2?.features).toEqual(['extrude 10 mm with 1 hole(s)']);
-    expect(vol(shape)).toBe(vol(part));
+    expect(Math.abs(vol(shape) - vol(part)) / vol(part)).toBeLessThan(1e-9);
   });
 
   it('stops at tier 1 with a reason when no feature describes the part', async () => {

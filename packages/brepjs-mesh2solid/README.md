@@ -70,8 +70,8 @@ it. A filleted 30 by 20 by 15 mm block comes back as:
 
 ```ts
 export default () => {
-  const part1 = box(30, 20, 15);
-  return unwrap(fillet(part1, 3));
+  using slab1 = box(30, 20, 15);
+  return unwrap(fillet(slab1, 3));
 };
 ```
 
@@ -85,7 +85,8 @@ export default () => {
    every direction within a microradian of an axis onto it.
 5. **Checks** the solid the program builds against the mesh, with the same gate tier 1 uses, and
    returns that solid. `res.value.code` holds the source, with an `expected` block (volume, area,
-   bounds) that brepjs-cad's verifier reads.
+   bounds) that brepjs-cad's verifier reads. Every intermediate shape in it is bound with `using`,
+   so running it repeatedly releases them.
 
 It stops at tier 1 when no direction or axis describes every face, or when the program misses the
 mesh; `report.tier2.fallbackReason` says why.
@@ -118,7 +119,7 @@ features in build order.
 subdivided, noise-perturbed versions (scans), and gates validity, volume, deviation, and face count.
 The tier 1 cases also gate the fitted surface kinds and require the source solid's volume to within
 one part in a million. The tier 2 cases import each generated program, run it, and require the
-calls a person would write (`box(30, 20, 15)`, `fillet(part1, 3)`) and the source solid's volume to
+calls a person would write (`box(30, 20, 15)`, `fillet(slab1, 3)`) and the source solid's volume to
 within one part in a billion.
 Set `MESH2SOLID_SCORECARD=<path>` when running it to write per-case metrics.
 
