@@ -37,6 +37,20 @@ pub struct Params {
 
 const NEIGHBOURHOOD_SIZES: [usize; 8] = [2, 4, 8, 16, 32, 64, 128, 256];
 
+/// Every seed claims at least its own triangle, so a freeform mesh would seed
+/// once per triangle. Past this many surfaces the arrangement could not split
+/// them in reasonable time anyway; the rest stays unfit and Tier 1 falls back.
+pub const MAX_REGIONS: usize = 1024;
+
+/// Seeds go largest triangle first, so on a CAD part the first regions are its
+/// big faces. When this many cover under a quarter of the area, the mesh is
+/// freeform and seeding stops early.
+const EARLY_REGIONS: usize = 128;
+
+fn within(s: &Surface, pts: &[V3], tol: f64) -> bool {
+    pts.iter().all(|&p| s.distance(p) <= tol)
+}
+
 pub(crate) fn unique_vertices(mesh: &Mesh, tris: &[u32]) -> Vec<u32> {
     let mut v: Vec<u32> = tris
         .iter()
@@ -190,7 +204,14 @@ pub fn segment(mesh: &Mesh, topo: &Topology, params: &Params) -> Segmentation {
     let mut regions: Vec<Region> = Vec::new();
     let mut tried = vec![false; n];
 
+    let total_area: f64 = areas.iter().sum();
+    let mut claimed = 0.0;
     for &seed in &order {
+        if regions.len() >= MAX_REGIONS
+            || (regions.len() == EARLY_REGIONS && claimed < 0.25 * total_area)
+        {
+            break;
+        }
         if region_of[seed] != u32::MAX || tried[seed] || facing[seed].is_none() {
             continue;
         }
@@ -257,6 +278,7 @@ pub fn segment(mesh: &Mesh, topo: &Topology, params: &Params) -> Segmentation {
         let id = regions.len() as u32;
         for &t in &tris {
             region_of[t as usize] = id;
+            claimed += areas[t as usize];
         }
         let (pts, _) = samples(mesh, &tris);
         let max_res = max_residual(&surface, &pts);
@@ -395,8 +417,8 @@ fn merge_equivalent(
             if regions[i].surface.kind() != regions[j].surface.kind() {
                 continue;
             }
-            let fits_ij = max_residual(&regions[i].surface, &verts[j]) <= tol;
-            let fits_ji = max_residual(&regions[j].surface, &verts[i]) <= tol;
+            let fits_ij = within(&regions[i].surface, &verts[j], tol);
+            let fits_ji = fits_ij && within(&regions[j].surface, &verts[i], tol);
             let same_side = match (regions[i].surface, regions[j].surface) {
                 (Surface::Plane { n: a, .. }, Surface::Plane { n: b, .. }) => dot(a, b) > 0.0,
                 _ => true,
@@ -484,6 +506,24 @@ mod tests {
         let mut k: Vec<Kind> = seg.regions.iter().map(|r| r.surface.kind()).collect();
         k.sort();
         k
+    }
+
+    #[test]
+    fn freeform_stops_seeding_early() {
+        // A finely faceted ellipsoid: no primitive fits more than a few facets,
+        // so seeding would otherwise go on once per facet.
+        let mut mesh = sphere(10.0, 48, 96);
+        for p in &mut mesh.positions {
+            p[0] *= 1.6;
+        }
+        let topo = Topology::build(&mesh);
+        let params = Params {
+            tol: 1e-9,
+            crease_deg: 50.0,
+        };
+        let seg = segment(&mesh, &topo, &params);
+        assert!(seg.regions.len() <= EARLY_REGIONS);
+        assert!(seg.unfit_triangles > mesh.triangles.len() / 2);
     }
 
     #[test]
