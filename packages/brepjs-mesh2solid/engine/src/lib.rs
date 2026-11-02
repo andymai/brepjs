@@ -139,6 +139,13 @@ fn options(
     })
 }
 
+/// Format, declared unit, triangle count, and bounding box of a mesh file, as
+/// JSON (see `pipeline::inspect`).
+#[wasm_bindgen]
+pub fn inspect(bytes: &[u8], format_hint: &str) -> Result<String, JsError> {
+    pipeline::inspect(bytes, format_hint).map_err(|e| JsError::new(&e))
+}
+
 /// Run the Tier 0 pipeline on raw file bytes.
 ///
 /// `unit`: "auto" or one of um/mm/cm/m/in/ft. `tolerance`: millimeters, or

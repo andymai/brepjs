@@ -5,6 +5,7 @@ export const __wbg_tier0result_free: (a: number, b: number) => void;
 export const __wbg_tier1session_free: (a: number, b: number) => void;
 export const convert_tier0: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number];
 export const convert_tier1: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number];
+export const inspect: (a: number, b: number, c: number, d: number) => [number, number, number, number];
 export const tier0result_body_closed: (a: number) => [number, number];
 export const tier0result_body_parent: (a: number) => [number, number];
 export const tier0result_input_deviation: (a: number) => [number, number];

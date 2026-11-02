@@ -1,6 +1,9 @@
 import initWasm, * as wasm from '../wasm/index.js';
 
-export type MeshEngine = Pick<typeof wasm, 'convert_tier0' | 'convert_tier1' | 'version'>;
+export type MeshEngine = Pick<
+  typeof wasm,
+  'convert_tier0' | 'convert_tier1' | 'inspect' | 'version'
+>;
 
 /** Where to load the engine's `.wasm` from: a URL, a fetch Response, or the bytes. */
 export type MeshEngineSource = URL | string | Response | BufferSource | WebAssembly.Module;
@@ -40,6 +43,7 @@ async function instantiate(source?: MeshEngineSource): Promise<MeshEngine> {
   return {
     convert_tier0: wasm.convert_tier0,
     convert_tier1: wasm.convert_tier1,
+    inspect: wasm.inspect,
     version: wasm.version,
   };
 }
