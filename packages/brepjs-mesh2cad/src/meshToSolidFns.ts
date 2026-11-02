@@ -106,7 +106,12 @@ export async function meshToSolid(
       )
     );
   }
-  const bytes = await toBytes(input);
+  let bytes: Uint8Array;
+  try {
+    bytes = await toBytes(input);
+  } catch (e) {
+    return err(ioError('MESH_READ_FAILED', `could not read the mesh input: ${message(e)}`, e));
+  }
   const engineStart = performance.now();
   let raw;
   try {

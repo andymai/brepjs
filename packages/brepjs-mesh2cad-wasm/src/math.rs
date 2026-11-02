@@ -48,6 +48,20 @@ pub fn normalize(a: V3) -> Option<V3> {
     }
 }
 
+/// Newell normal of a polygon (length = 2 × area); the polygon winds
+/// counter-clockwise about it.
+pub fn newell_normal(pts: &[V3]) -> V3 {
+    let mut n = [0.0; 3];
+    for i in 0..pts.len() {
+        let a = pts[i];
+        let b = pts[(i + 1) % pts.len()];
+        n[0] += (a[1] - b[1]) * (a[2] + b[2]);
+        n[1] += (a[2] - b[2]) * (a[0] + b[0]);
+        n[2] += (a[0] - b[0]) * (a[1] + b[1]);
+    }
+    n
+}
+
 /// Unnormalized triangle normal (length = 2 × area).
 #[inline]
 pub fn tri_cross(a: V3, b: V3, c: V3) -> V3 {

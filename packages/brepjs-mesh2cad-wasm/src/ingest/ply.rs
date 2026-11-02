@@ -248,7 +248,7 @@ pub fn parse(bytes: &[u8]) -> Result<Ingested, String> {
                         if take {
                             saw_faces = true;
                             if face.len() >= 3 {
-                                super::push_fan(&mut mesh, &face);
+                                super::push_polygon(&mut mesh, &face);
                             }
                         }
                     }
@@ -287,13 +287,18 @@ pub fn parse(bytes: &[u8]) -> Result<Ingested, String> {
 /// (end of header text, start of body). The body begins after the newline that
 /// ends the `end_header` line.
 fn find_header_end(bytes: &[u8]) -> Option<(usize, usize)> {
-    let needle = b"end_header";
-    let at = bytes.windows(needle.len()).position(|w| w == needle)?;
-    let mut i = at + needle.len();
-    while i < bytes.len() && bytes[i] != b'\n' {
-        i += 1;
+    let mut start = 0;
+    while start < bytes.len() {
+        let end = bytes[start..]
+            .iter()
+            .position(|&b| b == b'\n')
+            .map_or(bytes.len(), |i| start + i);
+        if bytes[start..end].trim_ascii() == b"end_header" {
+            return Some((start, (end + 1).min(bytes.len())));
+        }
+        start = end + 1;
     }
-    Some((at, (i + 1).min(bytes.len())))
+    None
 }
 
 #[cfg(test)]
@@ -304,8 +309,11 @@ mod tests {
     fn ascii_with_extra_properties() {
         let src = "ply\nformat ascii 1.0\nelement vertex 4\nproperty float x\nproperty float y\nproperty float z\nproperty uchar red\nelement face 1\nproperty list uchar int vertex_indices\nend_header\n0 0 0 255\n1 0 0 0\n1 1 0 0\n0 1 0 0\n4 0 1 2 3\n";
         let got = parse(src.as_bytes()).unwrap();
-        assert_eq!(got.mesh.positions.len(), 4);
-        assert_eq!(got.mesh.triangles, vec![[0, 1, 2], [0, 2, 3]]);
+        let m = &got.mesh;
+        assert_eq!(m.positions.len(), 4);
+        assert_eq!(m.triangles.len(), 2);
+        let area: f64 = (0..2).map(|t| m.area(t)).sum();
+        assert!((area - 1.0).abs() < 1e-12);
     }
 
     #[test]
@@ -345,6 +353,13 @@ mod tests {
     fn huge_binary_count_rejected_without_reading() {
         let src = b"ply\nformat binary_little_endian 1.0\nelement vertex 4000000000\nproperty float x\nproperty float y\nproperty float z\nelement face 0\nproperty list uchar int vertex_indices\nend_header\n";
         assert!(parse(src).unwrap_err().contains("ended early"));
+    }
+
+    #[test]
+    fn end_header_inside_a_comment_is_not_the_end() {
+        let src = "ply\nformat ascii 1.0\ncomment exported with end_header marker\nelement vertex 3\nproperty float x\nproperty float y\nproperty float z\nelement face 1\nproperty list uchar int vertex_indices\nend_header\n0 0 0\n1 0 0\n0 1 0\n3 0 1 2\n";
+        let got = parse(src.as_bytes()).unwrap();
+        assert_eq!(got.mesh.triangles, vec![[0, 1, 2]]);
     }
 
     #[test]

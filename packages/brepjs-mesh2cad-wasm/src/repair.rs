@@ -203,18 +203,6 @@ fn boundary_loops(mesh: &Mesh, topo: &Topology) -> (Vec<Vec<u32>>, usize) {
     (loops, broken)
 }
 
-fn newell_normal(pts: &[V3]) -> V3 {
-    let mut n = [0.0; 3];
-    for i in 0..pts.len() {
-        let a = pts[i];
-        let b = pts[(i + 1) % pts.len()];
-        n[0] += (a[1] - b[1]) * (a[2] + b[2]);
-        n[1] += (a[2] - b[2]) * (a[0] + b[0]);
-        n[2] += (a[0] - b[0]) * (a[1] + b[1]);
-    }
-    n
-}
-
 fn fill_holes(mesh: &mut Mesh, topo: &Topology, fill: HoleFill) -> (usize, usize, usize) {
     let (loops, broken) = boundary_loops(mesh, topo);
     let mut filled = 0;
@@ -234,7 +222,7 @@ fn fill_holes(mesh: &mut Mesh, topo: &Topology, fill: HoleFill) -> (usize, usize
             added += 1;
             continue;
         }
-        let tris = normalize(newell_normal(&pts))
+        let tris = normalize(crate::math::newell_normal(&pts))
             .and_then(|n| earcut::triangulate_3d(std::slice::from_ref(&pts), n));
         match tris {
             Some(ts) if ts.len() == lp.len() - 2 => {

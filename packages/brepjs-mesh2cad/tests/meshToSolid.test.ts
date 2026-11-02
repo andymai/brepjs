@@ -192,6 +192,41 @@ describe('meshToSolid tier 0', () => {
     expect(open.report.warnings.some((w) => w.includes('open body'))).toBe(true);
   });
 
+  it('returns a compound of shells for several open bodies', async () => {
+    const openBox = async (dx: number): Promise<Uint8Array> => {
+      using b0 = box(10, 10, 10);
+      using b = translate(b0, [dx, 0, 0]);
+      const stl = await stlOf(b);
+      const n = new DataView(stl.buffer, stl.byteOffset).getUint32(80, true);
+      const cropped = new Uint8Array(84 + (n - 2) * 50);
+      cropped.set(stl.subarray(0, 84 + (n - 2) * 50));
+      new DataView(cropped.buffer).setUint32(80, n - 2, true);
+      return cropped;
+    };
+    const a = await openBox(0);
+    const b = await openBox(30);
+    const na = new DataView(a.buffer).getUint32(80, true);
+    const nb = new DataView(b.buffer).getUint32(80, true);
+    const both = new Uint8Array(84 + (na + nb) * 50);
+    both.set(a.subarray(0, 84 + na * 50));
+    both.set(b.subarray(84), 84 + na * 50);
+    new DataView(both.buffer).setUint32(80, na + nb, true);
+    const res = unwrap(await meshToSolid(both, { fillHoles: false }));
+    using shape = res.shape;
+    expect(isCompound(shape)).toBe(true);
+    expect(res.solid).toBe(false);
+    expect(res.report.bodies.every((body) => !body.closed)).toBe(true);
+  });
+
+  it('returns an error instead of throwing when the input cannot be read', async () => {
+    const unreadable = Object.assign(new Blob(['x']), {
+      arrayBuffer: () => Promise.reject(new Error('file was removed')),
+    });
+    const res = await meshToSolid(unreadable);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error.message).toContain('file was removed');
+  });
+
   it('reports a deviation heatmap on request', async () => {
     using b = box(10, 10, 10);
     const res = unwrap(await meshToSolid(await stlOf(b), { heatmap: true }));

@@ -80,7 +80,7 @@ fn parse_ascii(bytes: &[u8]) -> Result<Ingested, String> {
                     let base = mesh.positions.len() as u32;
                     mesh.positions.extend_from_slice(&corner);
                     let face: Vec<u32> = (0..corner.len() as u32).map(|k| base + k).collect();
-                    super::push_fan(&mut mesh, &face);
+                    super::push_polygon(&mut mesh, &face);
                 } else {
                     skipped += 1;
                 }

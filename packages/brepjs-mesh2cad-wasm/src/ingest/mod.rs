@@ -227,8 +227,27 @@ pub fn parse(bytes: &[u8], format: Format) -> Result<Ingested, String> {
     Ok(out)
 }
 
-/// Fan-triangulate a polygon given as vertex indices.
-pub(crate) fn push_fan(mesh: &mut Mesh, face: &[u32]) {
+/// Triangulate a polygon face given as vertex indices. Ear clipping in the
+/// face's own plane keeps concave faces inside their outline; a fan is the
+/// fallback when the face's vertices aren't read yet or it isn't simple.
+pub(crate) fn push_polygon(mesh: &mut Mesh, face: &[u32]) {
+    if face.len() == 3 {
+        mesh.triangles.push([face[0], face[1], face[2]]);
+        return;
+    }
+    let n = mesh.positions.len();
+    if face.len() > 3 && face.iter().all(|&v| (v as usize) < n) {
+        let pts: Vec<crate::math::V3> = face.iter().map(|&v| mesh.positions[v as usize]).collect();
+        if let Some(normal) = crate::math::normalize(crate::math::newell_normal(&pts)) {
+            if let Some(tris) = crate::earcut::triangulate_3d(&[pts], normal) {
+                if tris.len() == face.len() - 2 {
+                    mesh.triangles
+                        .extend(tris.iter().map(|t| [face[t[0]], face[t[1]], face[t[2]]]));
+                    return;
+                }
+            }
+        }
+    }
     for i in 1..face.len().saturating_sub(1) {
         mesh.triangles.push([face[0], face[i], face[i + 1]]);
     }

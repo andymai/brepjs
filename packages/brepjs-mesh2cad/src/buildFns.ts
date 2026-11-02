@@ -70,10 +70,10 @@ function decimalSTL(positions: Float64Array, triangles: Uint32Array): string {
   return out.join('\n');
 }
 
-function allSolidsValid(shape: AnyShape<Dimension>): boolean {
-  if (isSolid(shape)) return isValid(shape);
-  if (isCompound(shape)) return getSolids(shape).every((s) => isValid(s));
-  return isValid(shape);
+/** Every solid and every shell in `shape` passes the kernel validity check. */
+function allPartsValid(shape: AnyShape<Dimension>): boolean {
+  if (!isCompound(shape)) return isValid(shape);
+  return getSolids(shape).every((s) => isValid(s)) && getShells(shape).every((s) => isValid(s));
 }
 
 /** A compound holding exactly one solid and nothing else (how the importer returns a body with a cavity), unwrapped. */
@@ -124,7 +124,7 @@ export async function buildShape(
   let shape: Solid | Shell | Compound = raw;
   let unified = false;
   const merged = simplify(raw);
-  if (merged.ok && merged.value !== raw && allSolidsValid(merged.value)) {
+  if (merged.ok && merged.value !== raw && allPartsValid(merged.value)) {
     const next = asResult(merged.value);
     if (next !== null) {
       raw[Symbol.dispose]();
@@ -144,7 +144,7 @@ export async function buildShape(
   const solid = isSolid(shape) && isValid(shape);
   if (isSolid(shape) && !solid)
     warnings.push('the reconstructed solid failed the kernel validity check');
-  if (isCompound(shape) && !allSolidsValid(shape)) {
+  if (isCompound(shape) && !allPartsValid(shape)) {
     warnings.push('a reconstructed solid failed the kernel validity check');
   }
   return ok({

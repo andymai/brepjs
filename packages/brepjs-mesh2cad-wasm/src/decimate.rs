@@ -205,6 +205,28 @@ impl State<'_> {
         if common != shared.len() {
             return false;
         }
+        // The link condition alone lets a tetrahedron (or any closed piece whose
+        // collapse leaves two triangles on the same three vertices) fold into a
+        // zero-volume double face. Refuse any collapse that duplicates a face.
+        let mut after: Vec<[u32; 3]> = Vec::new();
+        for moving in [u, v] {
+            for &t in &self.vtris[moving as usize] {
+                if !self.alive[t as usize] {
+                    continue;
+                }
+                let tri = self.tris[t as usize];
+                if tri.contains(&u) && tri.contains(&v) {
+                    continue;
+                }
+                let mut k = tri.map(|w| if w == u { v } else { w });
+                k.sort_unstable();
+                after.push(k);
+            }
+        }
+        after.sort_unstable();
+        if after.windows(2).any(|w| w[0] == w[1]) {
+            return false;
+        }
         for (moving, other) in [(u, v), (v, u)] {
             for &t in &self.vtris[moving as usize] {
                 if !self.alive[t as usize] {
@@ -432,6 +454,29 @@ mod tests {
         assert_eq!(m.triangles.len(), 12);
         let all: Vec<u32> = (0..m.triangles.len() as u32).collect();
         assert!((m.signed_volume_of(&all) - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn tetrahedra_never_collapse_flat() {
+        let tet = |o: f64| Mesh {
+            positions: vec![
+                [o, 0.0, 0.0],
+                [o + 1.0, 0.0, 0.0],
+                [o, 1.0, 0.0],
+                [o, 0.0, 1.0],
+            ],
+            triangles: vec![[0, 2, 1], [0, 1, 3], [1, 2, 3], [0, 3, 2]],
+        };
+        let mut m = tet(0.0);
+        let other = tet(5.0);
+        let base = m.positions.len() as u32;
+        m.positions.extend(other.positions);
+        m.triangles
+            .extend(other.triangles.iter().map(|t| t.map(|v| v + base)));
+        decimate(&mut m, 4, 0.0);
+        let all: Vec<u32> = (0..m.triangles.len() as u32).collect();
+        assert_eq!(m.triangles.len(), 8);
+        assert!((m.signed_volume_of(&all) - 2.0 / 6.0).abs() < 1e-12);
     }
 
     #[test]
