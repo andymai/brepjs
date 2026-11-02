@@ -1114,6 +1114,8 @@ export {
   wireLoop,
   face,
   filledFace,
+  nSidedFace,
+  edgeOnFace,
   subFace,
   polygon,
   vertex,
@@ -1134,6 +1136,11 @@ export {
   type HelixOptions,
   type EllipseArcOptions,
 } from './topology/primitiveFns.js';
+export type {
+  NSidedBoundaryEdge,
+  NSidedFaceOptions,
+  EdgeOnFaceOptions,
+} from './topology/surfaceBuilders.js';
 
 export { fill } from './topology/surfaceBuilders.js';
 

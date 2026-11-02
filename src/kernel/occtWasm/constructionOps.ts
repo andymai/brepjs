@@ -4,6 +4,7 @@
  * @module
  */
 
+import type { FillBoundaryEdge, FillSurfaceOptions } from '@/kernel/interfaces/builderOps.js';
 import type { KernelShape, KernelType } from '@/kernel/types.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
 import {
@@ -354,6 +355,104 @@ export function buildSolidFromFaces(
 
 export function makeNonPlanarFace(k: OcctKernelWasm, wire: KernelShape): KernelShape {
   return handle('face', k.makeNonPlanarFace(unwrap(wire)));
+}
+
+/** OCCT's `BRepOffsetAPI_MakeFilling` controls, in the order the facade packs them. */
+function fillParams(o: FillSurfaceOptions): number[] {
+  const tuned = [
+    o.degree,
+    o.pointsOnCurve,
+    o.iterations,
+    o.tolerance,
+    o.angularTolerance,
+    o.maxDegree,
+    o.maxSegments,
+  ].some((v) => v !== undefined);
+  if (!tuned) return [];
+  // [degree, nbPtsOnCur, nbIter, anisotropy, tol2d, tol3d, tolAng, tolCurv, maxDeg, maxSegments]
+  return [
+    o.degree ?? 3,
+    o.pointsOnCurve ?? 15,
+    o.iterations ?? 2,
+    0,
+    1e-5,
+    o.tolerance ?? 1e-4,
+    o.angularTolerance ?? 1e-2,
+    0.1,
+    o.maxDegree ?? 8,
+    o.maxSegments ?? 9,
+  ];
+}
+
+export function fillNSided(
+  k: OcctKernelWasm,
+  Module: OcctWasmModule,
+  boundary: readonly FillBoundaryEdge[],
+  options: FillSurfaceOptions = {}
+): KernelShape {
+  if (typeof k.fillSurface !== 'function') {
+    throw new Error('occt-wasm: fillNSided needs occt-wasm 5.12.0 or later');
+  }
+  const free = boundary.filter((b) => b.support === undefined);
+  const supported = boundary.filter(
+    (b): b is FillBoundaryEdge & { support: KernelShape } => b.support !== undefined
+  );
+  const vecs = [
+    makeVecU32(
+      Module,
+      free.map((b) => unwrap(b.edge))
+    ),
+    makeVecU32(
+      Module,
+      supported.map((b) => unwrap(b.edge))
+    ),
+    makeVecU32(
+      Module,
+      supported.map((b) => unwrap(b.support))
+    ),
+    makeVecInt(
+      Module,
+      supported.map((b) => (b.continuity === 'G2' ? 2 : 1))
+    ),
+    makeVecU32(Module, (options.guides ?? []).map(unwrap)),
+    makeVecDouble(
+      Module,
+      (options.points ?? []).flatMap((p) => [p[0], p[1], p[2]])
+    ),
+    makeVecDouble(Module, fillParams(options)),
+  ] as const;
+  try {
+    const [freeVec, edgeVec, faceVec, orderVec, guideVec, pointVec, paramVec] = vecs;
+    const init = options.initSurface === undefined ? 0 : unwrap(options.initSurface);
+    return handle(
+      'face',
+      k.fillSurface(freeVec, edgeVec, faceVec, orderVec, guideVec, pointVec, init, paramVec)
+    );
+  } finally {
+    for (const v of vecs) v.delete();
+  }
+}
+
+export function edgeOnSurface(
+  k: OcctKernelWasm,
+  Module: OcctWasmModule,
+  face: KernelShape,
+  points: readonly (readonly [number, number, number])[],
+  tolerance: number,
+  closed: boolean
+): KernelShape {
+  if (typeof k.edgeOnSurface !== 'function') {
+    throw new Error('occt-wasm: edgeOnSurface needs occt-wasm 5.12.0 or later');
+  }
+  const flat = makeVecDouble(
+    Module,
+    points.flatMap((p) => [p[0], p[1], p[2]])
+  );
+  try {
+    return handle('edge', k.edgeOnSurface(unwrap(face), flat, tolerance, closed));
+  } finally {
+    flat.delete();
+  }
 }
 
 export function addHolesInFace(

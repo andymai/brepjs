@@ -27,6 +27,13 @@ import type { PlanarFace, PlanarWire } from '@/core/validityTypes.js';
 import { DEG2RAD } from '@/core/constants.js';
 import { vecNormalize, vecScale } from '@/core/vecOps.js';
 import {
+  makeNSidedFace as _makeNSidedFace,
+  makeEdgeOnFace as _makeEdgeOnFace,
+  type NSidedBoundaryEdge,
+  type NSidedFaceOptions,
+  type EdgeOnFaceOptions,
+} from './surfaceBuilders.js';
+import {
   makeLine as _makeLine,
   makeCircle as _makeCircle,
   makeEllipse as _makeEllipse,
@@ -413,6 +420,30 @@ export function face(
  */
 export function filledFace(w: ClosedWire): Result<OrientedFace> {
   return _makeNonPlanarFace(w);
+}
+
+/**
+ * Fill a closed boundary with a smooth face that blends into the faces given
+ * as each edge's `support` (OCCT's N-sided filling), optionally through
+ * points and guide curves. Needs the occt-wasm kernel.
+ */
+export function nSidedFace(
+  boundary: readonly (Edge | NSidedBoundaryEdge)[],
+  options?: NSidedFaceOptions
+): Result<Face> {
+  return _makeNSidedFace(boundary, options);
+}
+
+/**
+ * An edge lying exactly on a face's surface through the given points.
+ * Needs the occt-wasm kernel.
+ */
+export function edgeOnFace(
+  face: Face,
+  points: readonly Vec3[],
+  options?: EdgeOnFaceOptions
+): Result<Edge> {
+  return _makeEdgeOnFace(face, points, options);
 }
 
 /**
