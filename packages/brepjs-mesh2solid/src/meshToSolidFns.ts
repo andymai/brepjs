@@ -271,7 +271,11 @@ interface Gates {
   readonly coverage: number;
   readonly maxDeviation: number;
   readonly triangulation: number;
+  readonly maxUnfitArea: number;
 }
+
+/** A scan's decimated triangles bridge its creases; this much of its area may fit nothing. */
+const SCAN_UNFIT_AREA = 0.03;
 
 /** How close exact surfaces must come to the mesh, scaled to the mesh's own sag. */
 function gatesFor(session: Tier1Session, engineReport: EngineReport): Gates {
@@ -288,20 +292,23 @@ function gatesFor(session: Tier1Session, engineReport: EngineReport): Gates {
     coverage: 1.25 * sag + 10 * tol,
     maxDeviation: 1.25 * Math.max(sag, triangulation) + 20 * tol,
     triangulation,
+    maxUnfitArea: engineReport.estimate.kind === 'scan' ? SCAN_UNFIT_AREA : 0,
   };
 }
 
 function runTier1(session: Tier1Session, engineReport: EngineReport, gates: Gates): AnalyticResult {
-  if (engineReport.estimate.kind === 'scan') {
-    return { ok: false, reason: 'the mesh looks like a scan; tier 1 rebuilds CAD exports' };
-  }
   return buildAnalytic(
     {
       surfaces: decodeSurfaces(session.surface_kinds, session.surface_params),
       bounds: boundsOf(session.surface_bounds),
       tolerance: gates.tolerance,
       unfitTriangles: session.unfit_triangles,
-      nearest: (pts) => session.nearest(pts),
+      unfitArea: session.unfit_area,
+      // On a scan, label by the nearest surface rather than the fuzzy region.
+      nearest: (pts) =>
+        engineReport.estimate.kind === 'scan'
+          ? session.nearest_by_surface(pts)
+          : session.nearest(pts),
       bodiesOf: (pts) => session.bodies_of(pts),
       bodyParent: session.body_parent,
       bodyClosed: session.body_closed,

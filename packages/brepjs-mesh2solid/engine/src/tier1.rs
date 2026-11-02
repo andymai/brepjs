@@ -1,14 +1,14 @@
 //! Tier 1 driver: segment the repaired mesh into analytic surfaces on top of
 //! the Tier 0 result, which stays available as the fallback.
 
-use crate::deviation::{measure, Bvh};
+use crate::deviation::{closest_on_triangle, measure, Bvh};
 use crate::estimate::MeshKind;
 use crate::fit::Surface;
 use crate::json::{array, Obj};
 use crate::math::{add, scale, Bbox, V3};
 use crate::mesh::{Mesh, Topology};
 use crate::pipeline::{run_tier0, Options, Tier0, MAX_DEVIATION_SAMPLES};
-use crate::segment::{absorb, segment, Params, Segmentation};
+use crate::segment::{absorb, consolidate, segment, unfit_area, Params, Segmentation};
 use crate::snap::{dissolve_kinks, snap, SnapReport};
 
 pub struct Tier1 {
@@ -46,16 +46,8 @@ pub fn run_tier1(bytes: &[u8], opts: &Options) -> Result<Tier1, String> {
         tol,
         max_sag: max_sag(&t0, tol),
         crease_deg: CREASE_DEG,
+        robust: matches!(t0.kind, MeshKind::Scan),
     };
-    // Tier 1 fits CAD tessellations; scan noise needs Tier 3's segmentation.
-    let mut seg = if matches!(t0.kind, MeshKind::Scan) {
-        Segmentation::unfit(t0.mesh.triangles.len())
-    } else {
-        segment(&t0.mesh, &topo, &params)
-    };
-    dissolve_kinks(&t0.mesh, &topo, &mut seg, tol);
-    absorb(&t0.mesh, &topo, &mut seg, &params);
-    let snapped = snap(&t0.mesh, &topo, &mut seg, tol);
     // Same mesh and adjacency as Tier 0's classify_components, so the same order.
     let mut tri_body = vec![u32::MAX; t0.mesh.triangles.len()];
     for (b, comp) in topo.components().iter().enumerate() {
@@ -63,6 +55,16 @@ pub fn run_tier1(bytes: &[u8], opts: &Options) -> Result<Tier1, String> {
             tri_body[t as usize] = b as u32;
         }
     }
+    let mut seg = segment(&t0.mesh, &topo, &params);
+    if params.robust {
+        // Noisy fits of tangent neighbours meet a few degrees apart, which
+        // would read as a kink, so a scan skips the dissolve.
+        consolidate(&t0.mesh, &mut seg, &params, &tri_body);
+    } else {
+        dissolve_kinks(&t0.mesh, &topo, &mut seg, tol);
+        absorb(&t0.mesh, &topo, &mut seg, &params);
+    }
+    let snapped = snap(&t0.mesh, &topo, &mut seg, tol, params.robust, &tri_body);
     let bvh = Bvh::new(
         t0.mesh
             .triangles
@@ -106,6 +108,33 @@ fn input_sag(mesh: &Mesh, seg: &Segmentation) -> f64 {
 }
 
 impl Tier1 {
+    /// For each point: the fitted surface closest to the nearest point on the
+    /// mesh (or -1 with no surfaces), and the distance to the mesh. On a scan
+    /// the segmentation's region boundaries are fuzzy; the surfaces aren't.
+    pub fn nearest_by_surface(&self, points: &[V3]) -> Vec<(i64, f64)> {
+        let mut stack = Vec::new();
+        let m = &self.t0.mesh;
+        points
+            .iter()
+            .map(|&p| {
+                let (d, t) = self.bvh.nearest(p, &mut stack);
+                if (t as usize) >= m.triangles.len() {
+                    return (-1, d);
+                }
+                let [a, b, c] = m.tri(t as usize);
+                let q = closest_on_triangle(p, a, b, c);
+                let best = self
+                    .seg
+                    .regions
+                    .iter()
+                    .enumerate()
+                    .map(|(i, r)| (i, r.surface.distance(q)))
+                    .min_by(|x, y| x.1.total_cmp(&y.1));
+                (best.map_or(-1, |(i, _)| i as i64), d)
+            })
+            .collect()
+    }
+
     /// For each point: (surface id or -1 where the nearest triangle fit none, distance).
     pub fn nearest(&self, points: &[V3]) -> Vec<(i64, f64)> {
         let mut stack = Vec::new();
@@ -203,6 +232,7 @@ impl Tier1 {
         Obj::new()
             .num("fitTolerance", self.tol)
             .int("unfitTriangles", self.seg.unfit_triangles)
+            .num("unfitArea", unfit_area(&self.t0.mesh, &self.seg))
             .int("tangentPairs", self.snapped.tangent_pairs.len())
             .int("snappedSurfaces", self.snapped.snapped)
             .raw("surfaces", &array(&surfaces))

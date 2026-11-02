@@ -50,6 +50,8 @@ export interface Segmentation {
   readonly bounds: readonly (readonly [Vec3, Vec3])[];
   readonly tolerance: number;
   readonly unfitTriangles: number;
+  /** Share of the mesh area no fitted surface covers. */
+  readonly unfitArea: number;
   /** For flat xyz points: [surface id or -1, distance to the mesh] per point. */
   readonly nearest: (points: Float64Array) => Float64Array;
   /** For flat xyz points: the mesh body nearest each point, or -1. */
@@ -392,6 +394,11 @@ export interface AnalyticOptions {
   readonly maxDeviation: number;
   /** Chord tolerance for triangulating the result to measure that distance. */
   readonly triangulation: number;
+  /**
+   * Largest share of the mesh area allowed to fit no surface: none for a CAD
+   * export, a little for a scan, whose decimated triangles bridge its creases.
+   */
+  readonly maxUnfitArea: number;
 }
 
 /**
@@ -401,7 +408,7 @@ export interface AnalyticOptions {
  */
 export function buildAnalytic(seg: Segmentation, opts: AnalyticOptions): AnalyticResult {
   if (seg.surfaces.length === 0) return { ok: false, reason: 'no surfaces were fitted' };
-  if (seg.unfitTriangles > 0) {
+  if (seg.unfitTriangles > 0 && seg.unfitArea > opts.maxUnfitArea) {
     return { ok: false, reason: `${seg.unfitTriangles} triangles fit no analytic surface` };
   }
   const all = seg.bounds.reduce<[Vec3, Vec3]>(
@@ -474,6 +481,11 @@ export function buildAnalytic(seg: Segmentation, opts: AnalyticOptions): Analyti
       kept++;
     }
     if (kept === 0) return { ok: false, reason: 'no arrangement piece is covered by the mesh' };
+    // A body with no pieces would vanish, and the distance check can't see it
+    // when another body lies within the deviation limit.
+    for (let b = 0; b < seg.bodyClosed.length; b++) {
+      if (!groups.has(b)) return { ok: false, reason: `no arrangement piece covers body ${b}` };
+    }
 
     const solids = new Map<number, Solid>();
     for (const [body, g] of groups) {

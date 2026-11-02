@@ -28,17 +28,6 @@ pub struct Segmentation {
     pub unfit_triangles: usize,
 }
 
-impl Segmentation {
-    /// Every triangle unfit, no surfaces.
-    pub fn unfit(triangles: usize) -> Segmentation {
-        Segmentation {
-            regions: Vec::new(),
-            region_of: vec![u32::MAX; triangles],
-            unfit_triangles: triangles,
-        }
-    }
-}
-
 pub struct Params {
     /// Largest allowed vertex distance from a region's surface.
     pub tol: f64,
@@ -47,6 +36,10 @@ pub struct Params {
     pub max_sag: f64,
     /// Edges sharper than this separate neighbourhoods.
     pub crease_deg: f64,
+    /// Measurement noise (a scan): judge fits by their 95th-percentile
+    /// residual and triangles by their centroid, since a few vertices past any
+    /// noise threshold are expected.
+    pub robust: bool,
 }
 
 const NEIGHBOURHOOD_SIZES: [usize; 8] = [2, 4, 8, 16, 32, 64, 128, 256];
@@ -61,8 +54,19 @@ pub const MAX_REGIONS: usize = 1024;
 /// freeform and seeding stops early.
 const EARLY_REGIONS: usize = 128;
 
-fn within(s: &Surface, pts: &[V3], tol: f64) -> bool {
-    pts.iter().all(|&p| s.distance(p) <= tol)
+/// Does `s` fit `pts` within `tol`: every point, or 95% of them when robust.
+pub(crate) fn fits(s: &Surface, pts: &[V3], tol: f64, robust: bool) -> bool {
+    if !robust {
+        return pts.iter().all(|&p| s.distance(p) <= tol);
+    }
+    // Too few points for a percentile: allow the same slack a triangle's corners get.
+    if pts.len() < 20 {
+        return pts.iter().all(|&p| s.distance(p) <= 2.0 * tol);
+    }
+    let mut d: Vec<f64> = pts.iter().map(|&p| s.distance(p)).collect();
+    let k = (d.len() * 95 / 100).min(d.len() - 1);
+    let (_, kth, _) = d.select_nth_unstable_by(k, f64::total_cmp);
+    *kth <= tol
 }
 
 pub(crate) fn unique_vertices(mesh: &Mesh, tris: &[u32]) -> Vec<u32> {
@@ -120,11 +124,32 @@ fn accepts(
 ) -> bool {
     let tol = params.tol;
     let tri = mesh.tri(t);
-    if !tri.iter().all(|&p| s.distance(p) <= tol) {
+    let on = if params.robust {
+        let [a, b, c] = tri;
+        // A decimated chord sits inside a curved surface by its sag; only the
+        // corners are bounded by the decimation tolerance.
+        let centroid_tol = if s.kind() == Kind::Plane {
+            tol
+        } else {
+            2.0 * tol
+        };
+        s.distance(scale(add(add(a, b), c), 1.0 / 3.0)) <= centroid_tol
+            && tri.iter().all(|&p| s.distance(p) <= 2.0 * tol)
+    } else {
+        tri.iter().all(|&p| s.distance(p) <= tol)
+    };
+    if !on {
         return false;
     }
+    // A scan's tolerance is three noise sigmas; under ten sigmas of altitude a
+    // facet's normal is mostly noise, so only its distance counts.
+    if params.robust && min_altitude(tri) < 3.3 * tol {
+        return true;
+    }
     match (s, facing[t]) {
-        (Surface::Plane { .. }, Some(n)) => dot(n, reference) > 0.0,
+        (Surface::Plane { n: pn, .. }, Some(n)) => {
+            dot(n, reference) > 0.0 && (!params.robust || dot(n, *pn).abs() >= MIN_FACET_COS)
+        }
         (_, Some(n)) => {
             let [a, b, c] = tri;
             // Three rings of vertices fit some torus; a tessellator would not
@@ -147,11 +172,181 @@ fn accepts(
 
 /// A tessellator never lets a facet turn more than this from the surface it
 /// approximates (CAD exporters stay well under it). Without the limit, a large
-/// flat face plus one fillet strip (three parallel lines) fits a cylinder.
+/// flat face plus one fillet strip (three parallel lines) fits a cylinder. On
+/// a scan planes get the limit too: noise lets a plane's corners reach the
+/// start of a fillet, but not the facets there.
 const MIN_FACET_COS: f64 = std::f64::consts::FRAC_1_SQRT_2;
+
+/// A curved surface so gentle over the patch it was fitted to that it is a
+/// plane soaking up noise (a cylinder of radius 1.5 m over 30 mm of a face).
+fn nearly_flat(s: &Surface, pts: &[V3], extent: f64) -> bool {
+    let far = 10.0 * extent;
+    match *s {
+        Surface::Plane { .. } => false,
+        Surface::Cylinder { r, .. } | Surface::Sphere { r, .. } => r > far,
+        Surface::Torus { minor, .. } => minor > far,
+        Surface::Cone { apex, .. } => {
+            let n = pts.len().max(1) as f64;
+            let c = pts.iter().fold([0.0; 3], |a, &p| add(a, scale(p, 1.0 / n)));
+            crate::math::dist(apex, c) > far
+        }
+    }
+}
+
+/// A triangle's shortest altitude.
+fn min_altitude([a, b, c]: [V3; 3]) -> f64 {
+    let longest = dist(a, b).max(dist(b, c)).max(dist(c, a));
+    if longest == 0.0 {
+        0.0
+    } else {
+        2.0 * crate::math::tri_area(a, b, c) / longest
+    }
+}
+
+/// A grown region's size discounted 15% per step of surface complexity.
+fn score(tris: usize, kind: Kind) -> f64 {
+    tris as f64 / 1.15f64.powi(kind as i32)
+}
+
+/// The 95th-percentile distance of `pts` from `s`.
+fn p95(s: &Surface, pts: &[V3]) -> f64 {
+    let mut d: Vec<f64> = pts.iter().map(|&p| s.distance(p)).collect();
+    if d.is_empty() {
+        return 0.0;
+    }
+    let k = (d.len() * 95 / 100).min(d.len() - 1);
+    let (_, kth, _) = d.select_nth_unstable_by(k, f64::total_cmp);
+    *kth
+}
 
 /// How close to a cone's apex (in fit tolerances) the facet normal check is skipped.
 pub const APEX_REACH: f64 = 10.0;
+
+/// On a scan, regions covering at least this share of their body's surface
+/// area are faces; smaller ones are noise fragments or slivers bridging a crease.
+const MAJOR_AREA: f64 = 0.002;
+
+/// The mesh bodies each region's triangles lie in, sorted. Merging can join
+/// faces of separate bodies that share one surface, so there may be several.
+pub fn region_bodies(regions: &[Region], tri_body: &[u32]) -> Vec<Vec<u32>> {
+    regions
+        .iter()
+        .map(|r| {
+            let mut b: Vec<u32> = r.tris.iter().map(|&t| tri_body[t as usize]).collect();
+            b.sort_unstable();
+            b.dedup();
+            b
+        })
+        .collect()
+}
+
+/// Keep the major regions of a scan (see `MAJOR_AREA`) and hand every other
+/// triangle to the major surface in its own body that accepts it with its
+/// centroid closest; what none accepts stays unfit. Returns how many regions
+/// were folded in.
+pub fn consolidate(
+    mesh: &Mesh,
+    seg: &mut Segmentation,
+    params: &Params,
+    tri_body: &[u32],
+) -> usize {
+    let areas: Vec<f64> = (0..mesh.triangles.len()).map(|t| mesh.area(t)).collect();
+    let bodies = tri_body.iter().map(|&b| b as usize + 1).max().unwrap_or(0);
+    let mut body_area = vec![0.0; bodies];
+    for (t, &b) in tri_body.iter().enumerate() {
+        body_area[b as usize] += areas[t];
+    }
+    // Judged per body, so a small part beside a large one keeps its faces.
+    let major: Vec<bool> = seg
+        .regions
+        .iter()
+        .map(|r| {
+            let mut by_body: Vec<(u32, f64)> = r
+                .tris
+                .iter()
+                .map(|&t| (tri_body[t as usize], areas[t as usize]))
+                .collect();
+            by_body.sort_unstable_by_key(|x| x.0);
+            by_body.chunk_by(|x, y| x.0 == y.0).any(|run| {
+                let a: f64 = run.iter().map(|x| x.1).sum();
+                a >= MAJOR_AREA * body_area[run[0].0 as usize]
+            })
+        })
+        .collect();
+    let folded = major.iter().filter(|&&m| !m).count();
+    let old = std::mem::take(&mut seg.regions);
+    let mut regions: Vec<Region> = Vec::new();
+    let mut remap = vec![u32::MAX; old.len()];
+    for (k, r) in old.into_iter().enumerate() {
+        if major[k] {
+            remap[k] = regions.len() as u32;
+            regions.push(r);
+        }
+    }
+    let homes = region_bodies(&regions, tri_body);
+    let facing = normals(mesh);
+    for (t, body) in tri_body.iter().enumerate() {
+        let r = seg.region_of[t];
+        let kept = r != u32::MAX && remap[r as usize] != u32::MAX;
+        if kept {
+            seg.region_of[t] = remap[r as usize];
+            continue;
+        }
+        let [a, b, c] = mesh.tri(t);
+        let centroid = scale(add(add(a, b), c), 1.0 / 3.0);
+        let mut best: Option<(usize, f64)> = None;
+        for (i, reg) in regions.iter().enumerate() {
+            if homes[i].binary_search(body).is_err() {
+                continue;
+            }
+            let reference = match reg.surface {
+                Surface::Plane { n, .. } => n,
+                _ => [0.0, 0.0, 1.0],
+            };
+            if !accepts(mesh, &reg.surface, t, params, &facing, reference) {
+                continue;
+            }
+            let d = reg.surface.distance(centroid);
+            if best.is_none_or(|(_, bd)| d < bd) {
+                best = Some((i, d));
+            }
+        }
+        seg.region_of[t] = best.map_or(u32::MAX, |(i, _)| i as u32);
+    }
+    for r in &mut regions {
+        r.tris.clear();
+    }
+    for (t, &r) in seg.region_of.iter().enumerate() {
+        if r != u32::MAX {
+            regions[r as usize].tris.push(t as u32);
+        }
+    }
+    for r in &mut regions {
+        let (pts, _) = samples(mesh, &r.tris);
+        r.max_residual = max_residual(&r.surface, &pts);
+    }
+    seg.regions = regions;
+    seg.unfit_triangles = seg.region_of.iter().filter(|&&r| r == u32::MAX).count();
+    folded
+}
+
+/// Share of the mesh area no region covers.
+pub fn unfit_area(mesh: &Mesh, seg: &Segmentation) -> f64 {
+    let mut total = 0.0;
+    let mut unfit = 0.0;
+    for t in 0..mesh.triangles.len() {
+        let a = mesh.area(t);
+        total += a;
+        if seg.region_of[t] == u32::MAX {
+            unfit += a;
+        }
+    }
+    if total > 0.0 {
+        unfit / total
+    } else {
+        0.0
+    }
+}
 
 /// Hand unfit triangles to a neighbouring region whose surface accepts them,
 /// until none moves: fragments a dissolve removed beside a well-supported
@@ -204,7 +399,7 @@ pub fn absorb(mesh: &Mesh, topo: &Topology, seg: &mut Segmentation, params: &Par
 
 /// Refit `s` to the samples (planes by PCA, curved surfaces by LM on a
 /// subsample) and keep the refit only if every sample stays within `tol`.
-fn refit(s: Surface, pts: &[V3], tol: f64) -> Surface {
+fn refit(s: Surface, pts: &[V3], params: &Params) -> Surface {
     let stride = pts.len().div_ceil(MAX_REFIT_SAMPLES).max(1);
     let sub: Vec<V3> = pts.iter().step_by(stride).copied().collect();
     let r = match s.kind() {
@@ -213,7 +408,7 @@ fn refit(s: Surface, pts: &[V3], tol: f64) -> Surface {
             .unwrap_or(s),
         _ => refine(s, &sub),
     };
-    if max_residual(&r, pts) <= tol {
+    if fits(&r, pts, params.tol, params.robust) {
         r
     } else {
         s
@@ -235,7 +430,6 @@ fn grow(
     facing: &[Option<V3>],
     reference: V3,
 ) -> (Surface, Vec<u32>) {
-    let tol = params.tol;
     let mut surface = start;
     let mut inside = std::collections::HashSet::new();
     inside.insert(seed as u32);
@@ -264,7 +458,7 @@ fn grow(
             break;
         }
         let (pts, _) = samples(mesh, &tris);
-        surface = refit(surface, &pts, tol);
+        surface = refit(surface, &pts, params);
     }
     (surface, tris)
 }
@@ -302,8 +496,12 @@ pub fn segment(mesh: &Mesh, topo: &Topology, params: &Params) -> Segmentation {
         for &size in &NEIGHBOURHOOD_SIZES {
             let take = &hood[..size.min(hood.len())];
             let (pts, nrm) = samples(mesh, take);
+            let extent = crate::math::Bbox::of(&pts).diag();
             for (s, res) in fit_candidates(&pts, &nrm) {
-                if res > params.tol {
+                if res > params.tol && !(params.robust && fits(&s, &pts, params.tol, true)) {
+                    continue;
+                }
+                if params.robust && nearly_flat(&s, &pts, extent) {
                     continue;
                 }
                 match cands.iter_mut().find(|c| c.kind() == s.kind()) {
@@ -341,6 +539,11 @@ pub fn segment(mesh: &Mesh, topo: &Topology, params: &Params) -> Segmentation {
             let (s, tris) = grow(mesh, topo, &region_of, seed, c, params, &facing, reference);
             let better = match &best {
                 None => true,
+                Some((bs, bt)) if params.robust => {
+                    // Noise lets a richer surface absorb a few more triangles;
+                    // each step up in kind must pay for itself.
+                    score(tris.len(), s.kind()) > score(bt.len(), bs.kind())
+                }
                 Some((bs, bt)) => {
                     tris.len() > bt.len() || (tris.len() == bt.len() && s.kind() < bs.kind())
                 }
@@ -352,7 +555,7 @@ pub fn segment(mesh: &Mesh, topo: &Topology, params: &Params) -> Segmentation {
         let Some((surface, tris)) = best else {
             continue;
         };
-        let surface = simplest(mesh, &tris, surface, params.tol);
+        let surface = simplest(mesh, &tris, surface, params);
         let id = regions.len() as u32;
         for &t in &tris {
             region_of[t as usize] = id;
@@ -367,7 +570,7 @@ pub fn segment(mesh: &Mesh, topo: &Topology, params: &Params) -> Segmentation {
         });
     }
 
-    merge_equivalent(mesh, topo, &mut regions, &mut region_of, params.tol);
+    merge_equivalent(mesh, topo, &mut regions, &mut region_of, params);
     let unfit_triangles = region_of.iter().filter(|&&r| r == u32::MAX).count();
     Segmentation {
         regions,
@@ -423,10 +626,12 @@ fn neighbourhood(
 /// The simplest kind that still fits the grown region. On a CAD tessellation a
 /// curved face often has vertices only on its boundary curves (a fillet's two
 /// end arcs), which a cylinder and a degenerate torus fit equally well.
-fn simplest(mesh: &Mesh, tris: &[u32], s: Surface, tol: f64) -> Surface {
-    // Only the flexible kinds degenerate this way; a sphere region on a
-    // cylinder would need its vertices on one circle.
-    if !matches!(s.kind(), Kind::Torus | Kind::Cone) {
+fn simplest(mesh: &Mesh, tris: &[u32], s: Surface, params: &Params) -> Surface {
+    // Only the flexible kinds degenerate this way on a CAD mesh (a sphere
+    // region on a cylinder would need its vertices on one circle); on a scan any
+    // curved fit may be a simpler surface plus noise.
+    let flexible = matches!(s.kind(), Kind::Torus | Kind::Cone);
+    if s.kind() == Kind::Plane || !(flexible || params.robust) {
         return s;
     }
     let (pts, nrm) = samples(mesh, tris);
@@ -451,7 +656,9 @@ fn simplest(mesh: &Mesh, tris: &[u32], s: Surface, tol: f64) -> Surface {
         } else {
             refine(c, &sub_p)
         };
-        if max_residual(&c, &pts) <= tol {
+        // On a scan the simpler kind wins when it fits about as well.
+        let close = params.robust && p95(&c, &pts) <= 1.2 * p95(&s, &pts);
+        if close || fits(&c, &pts, params.tol, params.robust) {
             return c;
         }
     }
@@ -479,8 +686,9 @@ fn merge_equivalent(
     _topo: &Topology,
     regions: &mut Vec<Region>,
     region_of: &mut [u32],
-    tol: f64,
+    params: &Params,
 ) {
+    let (tol, robust) = (params.tol, params.robust);
     let mut parent: Vec<usize> = (0..regions.len()).collect();
     fn find(p: &mut [usize], x: usize) -> usize {
         let mut r = x;
@@ -496,19 +704,57 @@ fn merge_equivalent(
         r
     }
     let verts: Vec<Vec<V3>> = regions.iter().map(|r| samples(mesh, &r.tris).0).collect();
+    // On a scan a small fragment's own fit is tilted by noise, so the larger
+    // region's surface carrying it is enough. Such a fragment only attaches to
+    // one region and never links two: a rim sliver lies on both a face and the
+    // hole wall beside it.
+    let mut attach: Vec<Option<usize>> = vec![None; regions.len()];
     for i in 0..regions.len() {
         for j in i + 1..regions.len() {
             if regions[i].surface.kind() != regions[j].surface.kind() {
                 continue;
             }
-            let fits_ij = within(&regions[i].surface, &verts[j], tol);
-            let fits_ji = fits_ij && within(&regions[j].surface, &verts[i], tol);
             let same_side = match (regions[i].surface, regions[j].surface) {
                 (Surface::Plane { n: a, .. }, Surface::Plane { n: b, .. }) => dot(a, b) > 0.0,
                 _ => true,
             };
-            if fits_ij && fits_ji && same_side {
+            if !same_side {
+                continue;
+            }
+            let fits_ij = fits(&regions[i].surface, &verts[j], tol, robust);
+            let fits_ji = fits(&regions[j].surface, &verts[i], tol, robust);
+            if fits_ij && fits_ji {
                 let (a, b) = (find(&mut parent, i), find(&mut parent, j));
+                if a != b {
+                    parent[b] = a;
+                }
+                continue;
+            }
+            let (big, small, carried) = if verts[i].len() >= verts[j].len() {
+                (i, j, fits_ij)
+            } else {
+                (j, i, fits_ji)
+            };
+            if robust && carried && verts[small].len() * 5 <= verts[big].len() {
+                let better = attach[small].is_none_or(|b| verts[b].len() < verts[big].len());
+                if better {
+                    attach[small] = Some(big);
+                }
+            }
+        }
+    }
+    let sizes: Vec<usize> = (0..regions.len())
+        .map(|i| {
+            let r = find(&mut parent, i);
+            (0..regions.len())
+                .filter(|&k| find(&mut parent, k) == r)
+                .count()
+        })
+        .collect();
+    for (small, big) in attach.iter().enumerate() {
+        if let Some(big) = *big {
+            if sizes[small] == 1 {
+                let (a, b) = (find(&mut parent, big), find(&mut parent, small));
                 if a != b {
                     parent[b] = a;
                 }
@@ -537,7 +783,7 @@ fn merge_equivalent(
                     .unwrap_or(base),
                 _ => refine(base, &pts),
             };
-            if max_residual(&r, &pts) <= tol {
+            if fits(&r, &pts, tol, robust) {
                 r
             } else {
                 base
@@ -632,6 +878,7 @@ mod tests {
             tol: 1e-6,
             max_sag: 0.05,
             crease_deg: 50.0,
+            robust: false,
         };
         let seg = segment(&mesh, &topo, &params);
         assert_eq!(seg.unfit_triangles, 0);
@@ -651,6 +898,7 @@ mod tests {
             tol: 1e-6,
             max_sag: 0.03,
             crease_deg: 50.0,
+            robust: false,
         };
         let seg = segment(&mesh, &topo, &params);
         assert_eq!(seg.unfit_triangles, 0);
@@ -670,6 +918,7 @@ mod tests {
             tol: 1e-9,
             max_sag: f64::INFINITY,
             crease_deg: 50.0,
+            robust: false,
         };
         let seg = segment(&mesh, &topo, &params);
         assert!(seg.regions.len() <= EARLY_REGIONS);
@@ -686,6 +935,7 @@ mod tests {
                 tol: 1e-6,
                 max_sag: f64::INFINITY,
                 crease_deg: 30.0,
+                robust: false,
             },
         );
         assert_eq!(kinds(&seg), vec![Kind::Plane; 6]);
@@ -702,6 +952,7 @@ mod tests {
                 tol: 1e-6,
                 max_sag: f64::INFINITY,
                 crease_deg: 30.0,
+                robust: false,
             },
         );
         assert_eq!(
@@ -734,8 +985,171 @@ mod tests {
                 tol: 1e-6,
                 max_sag: f64::INFINITY,
                 crease_deg: 30.0,
+                robust: false,
             },
         );
         assert_eq!(kinds(&seg), vec![Kind::Sphere]);
+    }
+
+    const FLAT: Surface = Surface::Plane {
+        n: [0.0, 0.0, 1.0],
+        d: 0.0,
+    };
+
+    #[test]
+    fn a_robust_fit_tolerates_a_few_outliers() {
+        let tol = 0.06;
+        let mut pts: Vec<V3> = (0..100)
+            .map(|i| [i as f64, 0.0, 0.5 * tol * ((i % 3) as f64 - 1.0)])
+            .collect();
+        for p in pts.iter_mut().take(4) {
+            p[2] = 5.0 * tol;
+        }
+        assert!(fits(&FLAT, &pts, tol, true));
+        assert!(!fits(&FLAT, &pts, tol, false));
+        // Too few points for a percentile: each may stray two tolerances, no further.
+        let few = [[0.0, 0.0, 1.9 * tol], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]];
+        assert!(fits(&FLAT, &few, tol, true));
+        assert!(!fits(&FLAT, &[[0.0, 0.0, 2.1 * tol]], tol, true));
+    }
+
+    #[test]
+    fn min_altitude_is_the_shortest_height() {
+        let right = [[0.0, 0.0, 0.0], [3.0, 0.0, 0.0], [0.0, 4.0, 0.0]];
+        assert!((min_altitude(right) - 2.4).abs() < 1e-12);
+        assert_eq!(min_altitude([[1.0, 1.0, 1.0]; 3]), 0.0);
+    }
+
+    /// `n` by `n` cells over a 10 mm square on z = 0, facing +Z.
+    fn grid(n: u32) -> Mesh {
+        let step = 10.0 / n as f64;
+        let mut positions = Vec::new();
+        for j in 0..=n {
+            for i in 0..=n {
+                positions.push([i as f64 * step, j as f64 * step, 0.0]);
+            }
+        }
+        let at = |i: u32, j: u32| j * (n + 1) + i;
+        let mut triangles = Vec::new();
+        for j in 0..n {
+            for i in 0..n {
+                triangles.push([at(i, j), at(i + 1, j), at(i + 1, j + 1)]);
+                triangles.push([at(i, j), at(i + 1, j + 1), at(i, j + 1)]);
+            }
+        }
+        Mesh {
+            positions,
+            triangles,
+        }
+    }
+
+    #[test]
+    fn consolidate_folds_fragments_into_the_face_that_accepts_them() {
+        let mut mesh = grid(30);
+        // A spike no surface accepts: the six triangles around the centre vertex.
+        let spike = 15 * 31 + 15;
+        mesh.positions[spike as usize][2] = 1.0;
+        let tris = mesh.triangles.len();
+        let on_spike: Vec<bool> = mesh.triangles.iter().map(|t| t.contains(&spike)).collect();
+        let fragment = [0u32, 1];
+        let mut region_of = vec![0u32; tris];
+        for t in fragment {
+            region_of[t as usize] = 1;
+        }
+        for (t, &s) in on_spike.iter().enumerate() {
+            if s {
+                region_of[t] = u32::MAX;
+            }
+        }
+        let collect = |k: u32| -> Vec<u32> {
+            (0..tris as u32)
+                .filter(|&t| region_of[t as usize] == k)
+                .collect()
+        };
+        let mut seg = Segmentation {
+            regions: vec![
+                Region {
+                    surface: FLAT,
+                    tris: collect(0),
+                    max_residual: 0.0,
+                },
+                // A noise fragment that fitted its two triangles to a tilted plane.
+                Region {
+                    surface: Surface::Plane {
+                        n: normalize([0.1, 0.0, 1.0]).unwrap(),
+                        d: 0.0,
+                    },
+                    tris: collect(1),
+                    max_residual: 0.0,
+                },
+            ],
+            region_of,
+            unfit_triangles: 6,
+        };
+        let params = Params {
+            tol: 0.06,
+            max_sag: f64::INFINITY,
+            crease_deg: 50.0,
+            robust: true,
+        };
+        assert_eq!(consolidate(&mesh, &mut seg, &params, &vec![0; tris]), 1);
+        assert_eq!(seg.regions.len(), 1);
+        assert_eq!(seg.unfit_triangles, 6);
+        assert_eq!(seg.regions[0].tris.len(), tris - 6);
+        for (t, &s) in on_spike.iter().enumerate() {
+            assert_eq!(seg.region_of[t] == u32::MAX, s);
+        }
+        let unfit: f64 = (0..tris)
+            .filter(|&t| on_spike[t])
+            .map(|t| mesh.area(t))
+            .sum();
+        let total: f64 = (0..tris).map(|t| mesh.area(t)).sum();
+        assert!((unfit_area(&mesh, &seg) - unfit / total).abs() < 1e-12);
+    }
+
+    #[test]
+    fn a_small_body_keeps_its_faces() {
+        // A 0.2 mm square plate beside a 10 mm one: 0.04% of the mesh area, but
+        // all of its own body. Its triangles also lie on the big plate's plane
+        // extended, and must not be handed across.
+        let mut mesh = grid(30);
+        let big = mesh.triangles.len() as u32;
+        let small = grid(2);
+        let base = mesh.positions.len() as u32;
+        mesh.positions.extend(
+            small
+                .positions
+                .iter()
+                .map(|p| [20.0 + 0.02 * p[0], 0.02 * p[1], 0.0]),
+        );
+        mesh.triangles
+            .extend(small.triangles.iter().map(|t| t.map(|v| v + base)));
+        let total = mesh.triangles.len() as u32;
+        let tri_body: Vec<u32> = (0..total).map(|t| u32::from(t >= big)).collect();
+        let mut seg = Segmentation {
+            regions: vec![
+                Region {
+                    surface: FLAT,
+                    tris: (0..big).collect(),
+                    max_residual: 0.0,
+                },
+                Region {
+                    surface: FLAT,
+                    tris: (big..total).collect(),
+                    max_residual: 0.0,
+                },
+            ],
+            region_of: (0..total).map(|t| u32::from(t >= big)).collect(),
+            unfit_triangles: 0,
+        };
+        let params = Params {
+            tol: 0.06,
+            max_sag: f64::INFINITY,
+            crease_deg: 50.0,
+            robust: true,
+        };
+        assert_eq!(consolidate(&mesh, &mut seg, &params, &tri_body), 0);
+        assert_eq!(seg.regions.len(), 2);
+        assert_eq!(seg.regions[1].tris, (big..total).collect::<Vec<_>>());
     }
 }

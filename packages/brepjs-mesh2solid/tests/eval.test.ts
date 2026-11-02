@@ -139,12 +139,20 @@ describe('tier 2 eval: feature programs', () => {
   }
 });
 
-describe('tier 0 eval: scan-like meshes', () => {
+describe('scan eval: noisy, decimated meshes', () => {
   const sigma = 0.02;
-  for (const c of CAD_CORPUS.filter((k) =>
-    ['box', 'plate with hole', 'sphere', 'filleted box'].includes(k.name)
-  )) {
-    it(`${c.name} (σ=${sigma} mm)`, async () => {
+  // The calls each scan's feature program should contain; null where a scan
+  // still falls back (fillets on a scan don't rebuild yet).
+  const cases: { name: string; code: string[] | null }[] = [
+    { name: 'box', code: ['box(40, 30, 10)'] },
+    { name: 'plate with hole', code: ['box(40, 30, 6)', 'cylinder(5, 6, { at: [20, 15, 0] })'] },
+    { name: 'sphere', code: ['sphere(15)'] },
+    { name: 'filleted box', code: null },
+  ];
+  for (const { name, code } of cases) {
+    it(`${name} (σ=${sigma} mm)`, async () => {
+      const c = CAD_CORPUS.find((k) => k.name === name);
+      if (c === undefined) throw new Error(`no corpus case ${name}`);
       using src = c.build();
       const stl = scanLike(src, { targetTriangles: 60_000, sigma, seed: 7 });
       const t0 = performance.now();
@@ -152,29 +160,35 @@ describe('tier 0 eval: scan-like meshes', () => {
       const ms = performance.now() - t0;
       using shape = res.shape;
       const r = res.report;
-      const summary = `${c.name}: ${r.input.triangles} tris → ${getFaces(shape).length} faces, σ̂ ${r.estimate.noiseSigma.toFixed(4)}, tol ${r.tolerance.value.toFixed(4)}, dev p95 ${r.deviation.p95.toFixed(4)} max ${r.deviation.max.toFixed(4)} mm, ${ms.toFixed(0)} ms`;
+      const volumeError = Math.abs(vol(shape) - vol(src)) / vol(src);
+      const summary = `${name}: tier ${r.tierReached} ${r.tier1?.fallbackReason ?? ''} ${r.tier2?.fallbackReason ?? ''}, σ̂ ${r.estimate.noiseSigma.toFixed(4)}, dev p95 ${r.deviation.p95.toFixed(4)} mm, volume error ${volumeError.toExponential(2)}, ${ms.toFixed(0)} ms`;
       scorecard.push({
-        case: c.name,
+        case: name,
         kind: 'scan',
         sigma,
         sigmaHat: r.estimate.noiseSigma,
+        tierReached: r.tierReached,
         triangles: r.input.triangles,
         faces: getFaces(shape).length,
-        unified: r.faces.unified,
         devP95: r.deviation.p95,
         devMax: r.deviation.max,
-        volumeError: Math.abs(vol(shape) - vol(src)) / vol(src),
+        volumeError,
         ms: Math.round(ms),
       });
       expect(res.solid, summary).toBe(true);
       expect(isValid(shape), summary).toBe(true);
       expect(r.estimate.kind, summary).toBe('scan');
-      expect(r.tier1?.fallbackReason, summary).toMatch(/looks like a scan/);
       expect(r.decimation.applied, summary).toBe(true);
       if (r.decimation.applied) expect(r.decimation.after, summary).toBeLessThanOrEqual(20_000);
       expect(r.deviation.p95, summary).toBeLessThan(4 * sigma);
-      const err = Math.abs(vol(shape) - vol(src)) / vol(src);
-      expect(err, summary).toBeLessThan(0.01);
+      if (code === null) {
+        expect(volumeError, summary).toBeLessThan(0.01);
+        return;
+      }
+      // Snapping recovers the drawn dimensions through the noise.
+      expect(r.tierReached, summary).toBe(2);
+      for (const call of code) expect(res.code ?? '', summary).toContain(call);
+      expect(volumeError, summary).toBeLessThan(1e-9);
     });
   }
 });
