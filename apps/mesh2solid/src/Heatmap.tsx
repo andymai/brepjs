@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import type { ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
-import type { Heatmap as HeatmapData } from './protocol';
+import type { Heatmap as HeatmapData } from './protocol.js';
 
 /**
  * Sequential blue ramp, from zero deviation to the scale's top. On the viewer's

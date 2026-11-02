@@ -1,5 +1,5 @@
 import type { MeshInspection, MeshUnit } from 'brepjs-mesh2solid';
-import type { Conversion, FromWorker, ToWorker } from './protocol';
+import type { Conversion, FromWorker, ToWorker } from './protocol.js';
 
 type Pending = { resolve: (msg: FromWorker) => void; reject: (e: Error) => void };
 

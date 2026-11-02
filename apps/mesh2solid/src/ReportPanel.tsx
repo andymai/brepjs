@@ -1,5 +1,5 @@
 import type { ConversionReport } from 'brepjs-mesh2solid';
-import { count, length, unitLabel } from './format';
+import { count, length, unitLabel } from './format.js';
 
 const TIER: Record<ConversionReport['tierReached'], { title: string; detail: string }> = {
   2: {
@@ -29,7 +29,8 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 /** One closed body is a solid; several come back as a compound, and an open one as a shell. */
 function resultLabel(report: ConversionReport, solid: boolean): string {
   if (solid) return 'Closed solid';
-  const bodies = report.bodies.length;
+  // Cavities are bodies of their own in the report but not separate parts.
+  const bodies = report.bodies.filter((b) => b.parent < 0).length;
   const open = report.bodies.filter((b) => !b.closed).length;
   if (open === 0) return `${count(bodies)} closed bodies`;
   if (bodies === 1) return 'Open shell (the mesh has holes)';

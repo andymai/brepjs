@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MeshInspection, MeshUnit } from 'brepjs-mesh2solid';
 import { EdgeRenderer, Renderer, ViewerCanvas } from 'brepjs-viewer';
-import { ConversionClient } from './client';
-import { count, length, size, stem, UNITS, unitLabel } from './format';
-import { Heatmap, RAMP, scaleFor } from './Heatmap';
-import type { Conversion } from './protocol';
-import { ReportPanel } from './ReportPanel';
+import { ConversionClient } from './client.js';
+import { count, length, size, stem, UNITS, unitLabel } from './format.js';
+import { Heatmap, RAMP, scaleFor } from './Heatmap.js';
+import type { Conversion } from './protocol.js';
+import { ReportPanel } from './ReportPanel.js';
 
 type State =
   | { readonly kind: 'idle'; readonly error?: string }

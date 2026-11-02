@@ -13,7 +13,7 @@ import engineWasm from 'brepjs-mesh2solid/index_bg.wasm?url';
 import { OcctKernel } from 'occt-wasm';
 import createModule from 'occt-wasm/dist/occt-wasm.js';
 import occtWasm from 'occt-wasm/dist/occt-wasm.wasm?url';
-import type { Conversion, FromWorker, ToWorker } from './protocol';
+import type { Conversion, FromWorker, ToWorker } from './protocol.js';
 
 declare const self: DedicatedWorkerGlobalScope;
 
