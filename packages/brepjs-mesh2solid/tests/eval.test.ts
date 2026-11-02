@@ -27,7 +27,7 @@ describe('tier 0 eval: CAD tessellations', () => {
       using src = c.build();
       const stl = await stlOf(src);
       const t0 = performance.now();
-      const res = unwrap(await meshToSolid(stl));
+      const res = unwrap(await meshToSolid(stl, { tier: 0 }));
       const ms = performance.now() - t0;
       using shape = res.shape;
       const r = res.report;
@@ -54,6 +54,43 @@ describe('tier 0 eval: CAD tessellations', () => {
       expect(r.faces.unified, summary).toBe(true);
       if (c.planarFaces !== undefined) expect(getFaces(shape).length, summary).toBe(c.planarFaces);
       expect(getFaces(shape).length, summary).toBeLessThan(r.input.triangles);
+    });
+  }
+});
+
+describe('tier 1 eval: CAD tessellations', () => {
+  for (const c of CAD_CORPUS) {
+    it(c.name, async () => {
+      using src = c.build();
+      const stl = await stlOf(src);
+      const t0 = performance.now();
+      const res = unwrap(await meshToSolid(stl));
+      const ms = performance.now() - t0;
+      using shape = res.shape;
+      const r = res.report;
+      const t1 = r.tier1;
+      const kinds: Record<string, number> = {};
+      for (const s of t1?.surfaces ?? []) kinds[s.kind] = (kinds[s.kind] ?? 0) + 1;
+      const volumeError = Math.abs(vol(shape) - vol(src)) / vol(src);
+      const summary = `${c.name}: tier ${r.tierReached} ${t1?.fallbackReason ?? ''} ${JSON.stringify(kinds)} → ${getFaces(shape).length} faces, volume error ${volumeError.toExponential(2)}, ${ms.toFixed(0)} ms`;
+      scorecard.push({
+        case: c.name,
+        kind: 'cad-tier1',
+        tierReached: r.tierReached,
+        surfaces: kinds,
+        faces: getFaces(shape).length,
+        sourceFaces: getFaces(src).length,
+        volumeError,
+        devMax: r.deviation.max,
+        ms: Math.round(ms),
+      });
+      expect(r.tierReached, summary).toBe(1);
+      expect(res.solid, summary).toBe(true);
+      expect(isValid(shape), summary).toBe(true);
+      expect(kinds, summary).toEqual(c.surfaces);
+      // Exact surfaces recover the source solid, not its tessellation.
+      expect(volumeError, summary).toBeLessThan(1e-6);
+      expect(getFaces(shape).length, summary).toBeLessThanOrEqual(getFaces(src).length);
     });
   }
 });

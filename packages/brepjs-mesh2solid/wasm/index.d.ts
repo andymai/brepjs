@@ -26,6 +26,63 @@ export class Tier0Result {
 }
 
 /**
+ * Tier 1 session: the Tier 0 result plus the analytic segmentation, kept in
+ * wasm memory so B-Rep assembly can ask which surface a sample point lies on.
+ * Call `free()` when done.
+ */
+export class Tier1Session {
+    private constructor();
+    free(): void;
+    [Symbol.dispose](): void;
+    /**
+     * Body index (as in the Tier 0 result's bodies) nearest each flat xyz point, or -1.
+     */
+    bodies_of(points: Float64Array): Float64Array;
+    /**
+     * Deviation JSON between the input mesh and a candidate triangulation.
+     */
+    deviation(positions: Float64Array, indices: Uint32Array): string;
+    /**
+     * For flat xyz `points`: (surface id or -1, distance to the mesh) per point.
+     */
+    nearest(points: Float64Array): Float64Array;
+    /**
+     * The Tier 0 result, for bodies Tier 1 can't rebuild.
+     */
+    tier0(): Tier0Result;
+    /**
+     * Cavity parent per body (-1 for a top-level body), as in the Tier 0 result.
+     */
+    readonly body_parent: Int32Array;
+    /**
+     * Per input vertex distance to the last triangulation passed to `deviation`
+     * (empty unless the session was created with a heatmap).
+     */
+    readonly measured_deviation: Float32Array;
+    /**
+     * Largest gap between a fitted mesh triangle and its exact surface.
+     */
+    readonly sag: number;
+    /**
+     * Bounding box (min xyz, max xyz) of each surface's mesh region.
+     */
+    readonly surface_bounds: Float64Array;
+    /**
+     * Kind per surface: 0 plane, 1 cylinder, 2 sphere, 3 cone, 4 torus.
+     */
+    readonly surface_kinds: Uint8Array;
+    /**
+     * Eight parameter slots per surface. Plane: normal, offset. Cylinder: axis
+     * point, axis, radius. Sphere: center, radius. Cone: apex, axis (into the
+     * opening), half-angle. Torus: center, axis, major, minor.
+     */
+    readonly surface_params: Float64Array;
+    readonly tier1_report: string;
+    readonly tolerance: number;
+    readonly unfit_triangles: number;
+}
+
+/**
  * Run the Tier 0 pipeline on raw file bytes.
  *
  * `unit`: "auto" or one of um/mm/cm/m/in/ft. `tolerance`: millimeters, or
@@ -35,6 +92,11 @@ export class Tier0Result {
  */
 export function convert_tier0(bytes: Uint8Array, format_hint: string, unit: string, tolerance: number, max_triangles: number, fill_holes: number, heatmap: boolean): Tier0Result;
 
+/**
+ * Run Tier 0 and the Tier 1 segmentation. Arguments as for `convert_tier0`.
+ */
+export function convert_tier1(bytes: Uint8Array, format_hint: string, unit: string, tolerance: number, max_triangles: number, fill_holes: number, heatmap: boolean): Tier1Session;
+
 export function version(): string;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
@@ -42,7 +104,9 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_tier0result_free: (a: number, b: number) => void;
+    readonly __wbg_tier1session_free: (a: number, b: number) => void;
     readonly convert_tier0: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number];
+    readonly convert_tier1: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number];
     readonly tier0result_body_closed: (a: number) => [number, number];
     readonly tier0result_body_parent: (a: number) => [number, number];
     readonly tier0result_input_deviation: (a: number) => [number, number];
@@ -54,6 +118,19 @@ export interface InitOutput {
     readonly tier0result_report: (a: number) => [number, number];
     readonly tier0result_triangle_offsets: (a: number) => [number, number];
     readonly tier0result_triangles: (a: number) => [number, number];
+    readonly tier1session_bodies_of: (a: number, b: number, c: number) => [number, number];
+    readonly tier1session_body_parent: (a: number) => [number, number];
+    readonly tier1session_deviation: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+    readonly tier1session_measured_deviation: (a: number) => [number, number];
+    readonly tier1session_nearest: (a: number, b: number, c: number) => [number, number];
+    readonly tier1session_sag: (a: number) => number;
+    readonly tier1session_surface_bounds: (a: number) => [number, number];
+    readonly tier1session_surface_kinds: (a: number) => [number, number];
+    readonly tier1session_surface_params: (a: number) => [number, number];
+    readonly tier1session_tier0: (a: number) => number;
+    readonly tier1session_tier1_report: (a: number) => [number, number];
+    readonly tier1session_tolerance: (a: number) => number;
+    readonly tier1session_unfit_triangles: (a: number) => number;
     readonly version: () => [number, number];
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __wbindgen_malloc: (a: number, b: number) => number;

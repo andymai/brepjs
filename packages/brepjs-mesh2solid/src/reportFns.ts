@@ -1,9 +1,18 @@
 import type { ConversionReport, MeshUnit, UnitSuggestion } from './types.js';
 
 /** The report as the engine serializes it, before the TS-side fields are added. */
-export type EngineReport = Omit<ConversionReport, 'tierReached' | 'units' | 'faces' | 'timings'> & {
+export type EngineReport = Omit<
+  ConversionReport,
+  'tierReached' | 'units' | 'faces' | 'timings' | 'tier1'
+> & {
   readonly units: Omit<ConversionReport['units'], 'suggestions'>;
 };
+
+/** The engine's Tier 1 segmentation summary. */
+export type Tier1EngineReport = Omit<
+  NonNullable<ConversionReport['tier1']>,
+  'arrangement' | 'fallbackReason'
+>;
 
 const MM_PER: Record<MeshUnit, number> = { um: 0.001, mm: 1, cm: 10, m: 1000, in: 25.4, ft: 304.8 };
 
@@ -39,7 +48,10 @@ export function finishReport(
   engine: EngineReport,
   faces: ConversionReport['faces'],
   timings: ConversionReport['timings'],
-  extraWarnings: readonly string[]
+  extraWarnings: readonly string[],
+  tiers: { tierReached: ConversionReport['tierReached']; tier1?: ConversionReport['tier1'] } = {
+    tierReached: 0,
+  }
 ): ConversionReport {
   const size = engine.input.bboxMax.map((v, i) => v - (engine.input.bboxMin[i] ?? 0));
   const largestMm = Math.max(...size);
@@ -52,7 +64,8 @@ export function finishReport(
   }
   return {
     ...engine,
-    tierReached: 0,
+    tierReached: tiers.tierReached,
+    ...(tiers.tier1 !== undefined ? { tier1: tiers.tier1 } : {}),
     units: { ...engine.units, suggestions },
     faces,
     timings,

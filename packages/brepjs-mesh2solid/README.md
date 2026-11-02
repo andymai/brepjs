@@ -20,6 +20,9 @@ if (res.ok && res.value.solid) {
 }
 ```
 
+`meshToSolid` runs tier 1 by default and falls back to tier 0 when tier 1 can't rebuild the part;
+`report.tierReached` says which one you got.
+
 ## What tier 0 does
 
 1. **Reads** the file and converts units to millimeters (3MF units are honored; other formats assume
@@ -39,10 +42,30 @@ if (res.ok && res.value.solid) {
 
 A closed body becomes a `Solid`, an open one a `Shell`, and several bodies a `Compound`.
 
+## What tier 1 does
+
+Tier 1 rebuilds the part from exact surfaces instead of facets, so a drilled hole comes back as one
+cylinder rather than dozens of strips.
+
+1. **Segments** the repaired mesh into regions that each lie on one plane, cylinder, cone, sphere, or
+   torus, within a tolerance derived from the file's coordinate precision. Regions grow from the
+   largest triangles; a facet that turns more than 45° from a candidate surface can't join it.
+2. **Snaps** surfaces that meet tangentially (fillets) so they touch exactly: fillet axes sit one
+   radius from their planes, corner spheres share the fillet radius and sit on the fillet axes.
+3. **Arranges** the surfaces: one oversized patch per surface, split along every exact intersection by
+   the kernel, then keeps the pieces that lie on the mesh.
+4. **Sews** each body's pieces into a solid, subtracts cavities, unifies faces, and checks the result
+   against the mesh in both directions.
+
+It falls back to tier 0 when any triangles fit no analytic surface (freeform shapes), or when the
+rebuild fails or strays from the mesh. `report.tier1.fallbackReason` says why, and `report.warnings`
+records the fallback.
+
 ## Options
 
 | Option         | Default  | Meaning                                                               |
 | -------------- | -------- | --------------------------------------------------------------------- |
+| `tier`         | `1`      | `0` skips tier 1 and returns the faceted tier 0 solid                 |
 | `units`        | `'auto'` | `'um' \| 'mm' \| 'cm' \| 'm' \| 'in' \| 'ft'`, or read from the file  |
 | `tolerance`    | `'auto'` | Merge and decimation tolerance in mm                                  |
 | `maxTriangles` | 200,000  | Triangle budget after decimation                                      |
@@ -56,12 +79,15 @@ A closed body becomes a `Solid`, an open one a `Shell`, and several bodies a `Co
 `report.tolerance` which tolerance was used. `report.deviation` gives the max, RMS, and 95th
 percentile distance from the input to the result (`reverseMax` is the other direction, sampled at each output triangle's corners and centroid).
 `report.faces` counts triangles in and faces out, and `report.warnings` lists every repair and
-fallback that happened.
+fallback that happened. `report.tier1` lists the fitted surfaces with their residuals, the tangent
+pairs found, and the arrangement's piece counts.
 
 ## Quality gate
 
 `tests/eval.test.ts` round-trips known brepjs solids through their own tessellation (CAD) and through
 subdivided, noise-perturbed versions (scans), and gates validity, volume, deviation, and face count.
+The tier 1 cases also gate the fitted surface kinds and require the source solid's volume to within
+one part in a million.
 Set `MESH2SOLID_SCORECARD=<path>` when running it to write per-case metrics.
 
 ## Developing the engine

@@ -48,6 +48,11 @@ pub struct Tier0 {
     pub input: Mesh,
     pub input_deviation: Vec<f32>,
     pub report: String,
+    /// The repaired (and, for scans, decimated) mesh the regions were built on.
+    pub mesh: Mesh,
+    pub kind: MeshKind,
+    pub tolerance: f64,
+    pub quantization: f64,
 }
 
 const MAX_DEVIATION_SAMPLES: usize = 200_000;
@@ -194,6 +199,10 @@ pub fn run_tier0(bytes: &[u8], opts: &Options) -> Result<Tier0, String> {
         input,
         input_deviation: per_vertex,
         report,
+        mesh,
+        kind: est.kind,
+        tolerance,
+        quantization: est.quantization,
     })
 }
 

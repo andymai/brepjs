@@ -110,10 +110,16 @@ impl Bvh {
     }
 
     pub fn distance(&self, p: V3, stack: &mut Vec<u32>) -> f64 {
+        self.nearest(p, stack).0
+    }
+
+    /// (distance, index of the nearest triangle) — `u32::MAX` when empty.
+    pub fn nearest(&self, p: V3, stack: &mut Vec<u32>) -> (f64, u32) {
         if self.tris.is_empty() {
-            return f64::INFINITY;
+            return (f64::INFINITY, u32::MAX);
         }
         let mut best = f64::INFINITY;
+        let mut best_t = u32::MAX;
         stack.clear();
         stack.push(0);
         while let Some(n) = stack.pop() {
@@ -126,7 +132,11 @@ impl Bvh {
                     let [a, b, c] = self.tris[t as usize];
                     let q = closest_on_triangle(p, a, b, c);
                     let d = sub(p, q);
-                    best = best.min(dot(d, d));
+                    let d2 = dot(d, d);
+                    if d2 < best {
+                        best = d2;
+                        best_t = t;
+                    }
                 }
             } else {
                 let (l, r) = (node.start, node.start + 1);
@@ -141,7 +151,7 @@ impl Bvh {
                 }
             }
         }
-        best.sqrt()
+        (best.sqrt(), best_t)
     }
 }
 

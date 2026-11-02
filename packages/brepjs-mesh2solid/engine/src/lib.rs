@@ -7,6 +7,7 @@ pub mod decimate;
 pub mod deviation;
 pub mod earcut;
 pub mod estimate;
+pub mod fit;
 pub mod ingest;
 mod json;
 pub mod math;
@@ -14,6 +15,9 @@ pub mod mesh;
 pub mod pipeline;
 pub mod regions;
 pub mod repair;
+pub mod segment;
+pub mod snap;
+pub mod tier1;
 
 use wasm_bindgen::prelude::*;
 
@@ -104,6 +108,37 @@ impl Tier0Result {
     }
 }
 
+fn options(
+    format_hint: &str,
+    unit: &str,
+    tolerance: f64,
+    max_triangles: u32,
+    fill_holes: i32,
+    heatmap: bool,
+) -> Result<Options, JsError> {
+    let unit = if unit.eq_ignore_ascii_case("auto") || unit.is_empty() {
+        None
+    } else {
+        Some(Unit::parse(unit).ok_or_else(|| JsError::new(&format!("unknown unit {unit:?}")))?)
+    };
+    Ok(Options {
+        format_hint: format_hint.to_string(),
+        unit,
+        tolerance: if tolerance.is_finite() && tolerance > 0.0 {
+            Some(tolerance)
+        } else {
+            None
+        },
+        max_triangles: max_triangles.max(4) as usize,
+        fill_holes: match fill_holes {
+            n if n < 0 => HoleFill::All,
+            0 => HoleFill::None,
+            n => HoleFill::UpTo(n as usize),
+        },
+        heatmap,
+    })
+}
+
 /// Run the Tier 0 pipeline on raw file bytes.
 ///
 /// `unit`: "auto" or one of um/mm/cm/m/in/ft. `tolerance`: millimeters, or
@@ -120,33 +155,20 @@ pub fn convert_tier0(
     fill_holes: i32,
     heatmap: bool,
 ) -> Result<Tier0Result, JsError> {
-    let unit = if unit.eq_ignore_ascii_case("auto") || unit.is_empty() {
-        None
-    } else {
-        Some(Unit::parse(unit).ok_or_else(|| JsError::new(&format!("unknown unit {unit:?}")))?)
-    };
-    let opts = Options {
-        format_hint: format_hint.to_string(),
+    let opts = options(
+        format_hint,
         unit,
-        tolerance: if tolerance.is_finite() && tolerance > 0.0 {
-            Some(tolerance)
-        } else {
-            None
-        },
-        max_triangles: max_triangles.max(4) as usize,
-        fill_holes: match fill_holes {
-            n if n < 0 => HoleFill::All,
-            0 => HoleFill::None,
-            n => HoleFill::UpTo(n as usize),
-        },
+        tolerance,
+        max_triangles,
+        fill_holes,
         heatmap,
-    };
+    )?;
     let out = run_tier0(bytes, &opts).map_err(|e| JsError::new(&e))?;
-    Ok(pack(out, heatmap))
+    Ok(pack(&out, heatmap))
 }
 
-fn pack(out: pipeline::Tier0, heatmap: bool) -> Tier0Result {
-    let rm = out.regions;
+fn pack(out: &pipeline::Tier0, heatmap: bool) -> Tier0Result {
+    let rm = &out.regions;
     let mut loops = Vec::new();
     let mut triangles = Vec::new();
     let mut triangle_offsets = vec![0u32];
@@ -198,7 +220,169 @@ fn pack(out: pipeline::Tier0, heatmap: bool) -> Tier0Result {
             .collect(),
         input_positions,
         input_indices,
-        input_deviation: out.input_deviation,
-        report: out.report,
+        input_deviation: out.input_deviation.clone(),
+        report: out.report.clone(),
     }
+}
+
+/// Tier 1 session: the Tier 0 result plus the analytic segmentation, kept in
+/// wasm memory so B-Rep assembly can ask which surface a sample point lies on.
+/// Call `free()` when done.
+#[wasm_bindgen]
+pub struct Tier1Session {
+    inner: tier1::Tier1,
+    heatmap: bool,
+    /// Per input vertex distance to the last triangulation `deviation` measured.
+    measured: Vec<f32>,
+}
+
+#[wasm_bindgen]
+impl Tier1Session {
+    /// Kind per surface: 0 plane, 1 cylinder, 2 sphere, 3 cone, 4 torus.
+    #[wasm_bindgen(getter)]
+    pub fn surface_kinds(&self) -> Vec<u8> {
+        self.inner
+            .seg
+            .regions
+            .iter()
+            .map(|r| tier1::pack_surface(&r.surface).0)
+            .collect()
+    }
+
+    /// Eight parameter slots per surface. Plane: normal, offset. Cylinder: axis
+    /// point, axis, radius. Sphere: center, radius. Cone: apex, axis (into the
+    /// opening), half-angle. Torus: center, axis, major, minor.
+    #[wasm_bindgen(getter)]
+    pub fn surface_params(&self) -> Vec<f64> {
+        self.inner
+            .seg
+            .regions
+            .iter()
+            .flat_map(|r| tier1::pack_surface(&r.surface).1)
+            .collect()
+    }
+
+    /// Bounding box (min xyz, max xyz) of each surface's mesh region.
+    #[wasm_bindgen(getter)]
+    pub fn surface_bounds(&self) -> Vec<f64> {
+        self.inner
+            .surface_bounds()
+            .iter()
+            .flat_map(|b| [b.min[0], b.min[1], b.min[2], b.max[0], b.max[1], b.max[2]])
+            .collect()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn tolerance(&self) -> f64 {
+        self.inner.tol
+    }
+
+    /// Largest gap between a fitted mesh triangle and its exact surface.
+    #[wasm_bindgen(getter)]
+    pub fn sag(&self) -> f64 {
+        self.inner.sag
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn unfit_triangles(&self) -> u32 {
+        self.inner.seg.unfit_triangles as u32
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn tier1_report(&self) -> String {
+        self.inner.report_json()
+    }
+
+    /// For flat xyz `points`: (surface id or -1, distance to the mesh) per point.
+    pub fn nearest(&self, points: &[f64]) -> Vec<f64> {
+        let pts: Vec<math::V3> = points.as_chunks::<3>().0.to_vec();
+        self.inner
+            .nearest(&pts)
+            .into_iter()
+            .flat_map(|(s, d)| [s as f64, d])
+            .collect()
+    }
+
+    /// Body index (as in the Tier 0 result's bodies) nearest each flat xyz point, or -1.
+    pub fn bodies_of(&self, points: &[f64]) -> Vec<f64> {
+        let pts: Vec<math::V3> = points.as_chunks::<3>().0.to_vec();
+        self.inner
+            .bodies_of(&pts)
+            .into_iter()
+            .map(|b| b as f64)
+            .collect()
+    }
+
+    /// Cavity parent per body (-1 for a top-level body), as in the Tier 0 result.
+    #[wasm_bindgen(getter)]
+    pub fn body_parent(&self) -> Vec<i32> {
+        self.inner
+            .t0
+            .bodies
+            .iter()
+            .map(|b| b.parent.map(|p| p as i32).unwrap_or(-1))
+            .collect()
+    }
+
+    /// Per input vertex distance to the last triangulation passed to `deviation`
+    /// (empty unless the session was created with a heatmap).
+    #[wasm_bindgen(getter)]
+    pub fn measured_deviation(&self) -> Vec<f32> {
+        self.measured.clone()
+    }
+
+    /// Deviation JSON between the input mesh and a candidate triangulation.
+    pub fn deviation(&mut self, positions: &[f64], indices: &[u32]) -> String {
+        let p: Vec<math::V3> = positions.as_chunks::<3>().0.to_vec();
+        let tris: Vec<[math::V3; 3]> = indices
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .filter_map(|t| {
+                Some([
+                    *p.get(t[0] as usize)?,
+                    *p.get(t[1] as usize)?,
+                    *p.get(t[2] as usize)?,
+                ])
+            })
+            .collect();
+        let mut per_vertex = Vec::new();
+        let json = self
+            .inner
+            .deviation_json(&tris, self.heatmap.then_some(&mut per_vertex));
+        self.measured = per_vertex;
+        json
+    }
+
+    /// The Tier 0 result, for bodies Tier 1 can't rebuild.
+    pub fn tier0(&self) -> Tier0Result {
+        pack(&self.inner.t0, self.heatmap)
+    }
+}
+
+/// Run Tier 0 and the Tier 1 segmentation. Arguments as for `convert_tier0`.
+#[wasm_bindgen]
+pub fn convert_tier1(
+    bytes: &[u8],
+    format_hint: &str,
+    unit: &str,
+    tolerance: f64,
+    max_triangles: u32,
+    fill_holes: i32,
+    heatmap: bool,
+) -> Result<Tier1Session, JsError> {
+    let opts = options(
+        format_hint,
+        unit,
+        tolerance,
+        max_triangles,
+        fill_holes,
+        heatmap,
+    )?;
+    let inner = tier1::run_tier1(bytes, &opts).map_err(|e| JsError::new(&e))?;
+    Ok(Tier1Session {
+        inner,
+        heatmap,
+        measured: Vec::new(),
+    })
 }
