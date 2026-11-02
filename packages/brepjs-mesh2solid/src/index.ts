@@ -1,4 +1,5 @@
 export { meshToSolid } from './meshToSolidFns.js';
+export { inspectMesh } from './inspectFns.js';
 export { loadMeshEngine, type MeshEngine, type MeshEngineSource } from './engine.js';
 export { unitSuggestions } from './reportFns.js';
 export type {
@@ -7,6 +8,7 @@ export type {
   DeviationHeatmap,
   MeshFormat,
   MeshInput,
+  MeshInspection,
   MeshToSolidOptions,
   MeshToSolidResult,
   MeshUnit,

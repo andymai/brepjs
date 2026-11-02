@@ -25,6 +25,18 @@ export interface MeshToSolidOptions {
   readonly heatmap?: boolean | undefined;
 }
 
+/** What `inspectMesh` reads off a mesh file before any conversion. */
+export interface MeshInspection {
+  readonly format: MeshFormat;
+  /** The unit the file declares (3MF), or `null` when it declares none. */
+  readonly unit: MeshUnit | null;
+  readonly triangles: number;
+  /** Bounding-box size in the file's own units. */
+  readonly size: readonly [number, number, number];
+  /** Units worth offering when the file declares none and its size as millimeters looks implausible. */
+  readonly suggestions: readonly UnitSuggestion[];
+}
+
 export interface UnitSuggestion {
   readonly unit: MeshUnit;
   /** Largest dimension in millimeters if the file were in `unit`. */

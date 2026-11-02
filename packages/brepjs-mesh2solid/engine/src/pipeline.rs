@@ -62,6 +62,30 @@ pub const MAX_DEVIATION_SAMPLES: usize = 200_000;
 /// squaring such coordinates would overflow.
 const MAX_COORDINATE_MM: f64 = 1e15;
 
+/// Read a mesh only far enough to confirm its units before a run: its format,
+/// the unit it declares (3MF; `null` otherwise), its triangle count, and its
+/// bounding box in its own units, as JSON.
+pub fn inspect(bytes: &[u8], format_hint: &str) -> Result<String, String> {
+    let format = ingest::detect(bytes, format_hint)
+        .ok_or("unrecognized mesh format (expected STL, OBJ, PLY, or 3MF)")?;
+    let ingested = ingest::parse(bytes, format)?;
+    let mesh = &ingested.mesh;
+    if mesh.triangles.is_empty() {
+        return Err("the mesh has no triangles".into());
+    }
+    let bb = mesh.bbox();
+    let obj = Obj::new().str("format", format.name());
+    let obj = match ingested.unit {
+        Some(u) => obj.str("unit", u.name()),
+        None => obj.raw("unit", "null"),
+    };
+    Ok(obj
+        .int("triangles", mesh.triangles.len())
+        .nums("bboxMin", &bb.min)
+        .nums("bboxMax", &bb.max)
+        .finish())
+}
+
 pub fn run_tier0(bytes: &[u8], opts: &Options) -> Result<Tier0, String> {
     let format = ingest::detect(bytes, &opts.format_hint)
         .ok_or("unrecognized mesh format (expected STL, OBJ, PLY, or 3MF)")?;
@@ -386,6 +410,17 @@ mod tests {
     use super::*;
     use crate::ingest::stl_bytes;
     use crate::mesh::fixtures::{cube, sphere};
+
+    #[test]
+    fn inspect_reports_format_size_and_no_unit_for_stl() {
+        // 25 survives binary STL's float32 exactly.
+        let json = inspect(&stl_bytes(&cube(25.0)), "part.stl").unwrap();
+        assert!(json.contains(r#""format":"stl""#), "{json}");
+        assert!(json.contains(r#""unit":null"#), "{json}");
+        assert!(json.contains(r#""triangles":12"#), "{json}");
+        assert!(json.contains(r#""bboxMax":[25,25,25]"#), "{json}");
+        assert!(inspect(b"not a mesh at all", "").is_err());
+    }
 
     #[test]
     fn binary_stl_cube_end_to_end() {

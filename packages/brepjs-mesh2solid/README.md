@@ -24,6 +24,21 @@ if (res.ok && res.value.solid) {
 `meshToSolid` runs tier 2 by default. Each tier falls back to the one below when it can't rebuild
 the part, and `report.tierReached` says which one you got.
 
+To confirm units before converting, `inspectMesh` reads only the file's format, the unit it declares
+(3MF), its triangle count, and its size in its own units, with the units worth offering when it
+declares none and its size as millimeters looks implausible:
+
+```ts
+import { inspectMesh, meshToSolid } from 'brepjs-mesh2solid';
+
+const info = await inspectMesh(file);
+if (info.ok) {
+  // info.value.size: [x, y, z] in the file's units; info.value.unit: 'cm' (3MF) or null
+  // info.value.suggestions: e.g. [{ unit: 'm', largestDimensionMm: 40, reason: '...' }]
+  const res = await meshToSolid(file, { units: info.value.unit ?? 'mm' });
+}
+```
+
 ## What tier 0 does
 
 1. **Reads** the file and converts units to millimeters (3MF units are honored; other formats assume

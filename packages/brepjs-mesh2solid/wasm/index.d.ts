@@ -95,6 +95,13 @@ export class Tier1Session {
     readonly unfit_triangles: number;
 }
 
+export function convert_tier0(bytes: Uint8Array, format_hint: string, unit: string, tolerance: number, max_triangles: number, fill_holes: number, heatmap: boolean): Tier0Result;
+
+/**
+ * Run Tier 0 and the Tier 1 segmentation. Arguments as for `convert_tier0`.
+ */
+export function convert_tier1(bytes: Uint8Array, format_hint: string, unit: string, tolerance: number, max_triangles: number, fill_holes: number, heatmap: boolean): Tier1Session;
+
 /**
  * Run the Tier 0 pipeline on raw file bytes.
  *
@@ -102,13 +109,10 @@ export class Tier1Session {
  * NaN/≤0 to estimate it. `fill_holes`: -1 fills every hole, 0 none, n > 0
  * holes with at most n edges. `heatmap` returns the welded input mesh with each
  * vertex's distance to the result.
+ * Format, declared unit, triangle count, and bounding box of a mesh file, as
+ * JSON (see `pipeline::inspect`).
  */
-export function convert_tier0(bytes: Uint8Array, format_hint: string, unit: string, tolerance: number, max_triangles: number, fill_holes: number, heatmap: boolean): Tier0Result;
-
-/**
- * Run Tier 0 and the Tier 1 segmentation. Arguments as for `convert_tier0`.
- */
-export function convert_tier1(bytes: Uint8Array, format_hint: string, unit: string, tolerance: number, max_triangles: number, fill_holes: number, heatmap: boolean): Tier1Session;
+export function inspect(bytes: Uint8Array, format_hint: string): string;
 
 export function version(): string;
 
@@ -120,6 +124,7 @@ export interface InitOutput {
     readonly __wbg_tier1session_free: (a: number, b: number) => void;
     readonly convert_tier0: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number];
     readonly convert_tier1: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number];
+    readonly inspect: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly tier0result_body_closed: (a: number) => [number, number];
     readonly tier0result_body_parent: (a: number) => [number, number];
     readonly tier0result_input_deviation: (a: number) => [number, number];

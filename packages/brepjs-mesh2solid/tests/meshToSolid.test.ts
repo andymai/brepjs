@@ -24,7 +24,7 @@ import {
   fuse,
 } from 'brepjs';
 import { describe, expect, it } from 'vitest';
-import { meshToSolid, unitSuggestions } from '../src/index.js';
+import { inspectMesh, meshToSolid, unitSuggestions } from '../src/index.js';
 
 async function stlOf(shape: AnyShape, tolerance?: number): Promise<Uint8Array> {
   const blob = unwrap(exportSTL(shape, { binary: true, ...(tolerance ? { tolerance } : {}) }));
@@ -449,6 +449,41 @@ function saddleBlockStl(n: number): Uint8Array {
   lines.push('endsolid saddle');
   return new TextEncoder().encode(lines.join('\n'));
 }
+
+describe('inspectMesh', () => {
+  it('reads format, size, and no unit from an STL', async () => {
+    using b = box(40, 30, 10);
+    const info = unwrap(await inspectMesh(await stlOf(b), { fileName: 'part.stl' }));
+    expect(info.format).toBe('stl');
+    expect(info.unit).toBeNull();
+    expect(info.triangles).toBeGreaterThanOrEqual(12);
+    expect(info.size[0]).toBeCloseTo(40, 4);
+    expect(info.size[1]).toBeCloseTo(30, 4);
+    expect(info.size[2]).toBeCloseTo(10, 4);
+    expect(info.suggestions).toEqual([]);
+  });
+
+  it('reads the unit a 3MF declares', async () => {
+    using b = box(1, 2, 3);
+    const threemf = exportThreeMF(mesh(b), { unit: 'centimeter' });
+    const info = unwrap(await inspectMesh(new Uint8Array(threemf)));
+    expect(info.format).toBe('3mf');
+    expect(info.unit).toBe('cm');
+    expect(info.size[2]).toBeCloseTo(3, 4);
+    expect(info.suggestions).toEqual([]);
+  });
+
+  it('offers meters for a part far under 2 mm as millimeters', async () => {
+    using b = box(0.04, 0.03, 0.01);
+    const info = unwrap(await inspectMesh(await stlOf(b, 1e-5)));
+    expect(info.suggestions.map((x) => x.unit)).toContain('m');
+  });
+
+  it('fails on bytes that are no mesh', async () => {
+    const res = await inspectMesh(new TextEncoder().encode('not a mesh at all'));
+    expect(res.ok).toBe(false);
+  });
+});
 
 describe('unitSuggestions', () => {
   it('suggests meters for a sub-millimeter part and inches for a tiny one', () => {

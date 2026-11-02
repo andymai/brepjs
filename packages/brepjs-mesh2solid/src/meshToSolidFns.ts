@@ -23,6 +23,7 @@ import { filletBlends, findBlends } from './blendFns.js';
 import { type Tier2Result, buildTier2 } from './tier2Fns.js';
 import { buildShape } from './buildFns.js';
 import { loadMeshEngine } from './engine.js';
+import { hintFor, message, toBytes } from './inputFns.js';
 import { type EngineReport, type Tier1EngineReport, finishReport } from './reportFns.js';
 import type {
   ConversionReport,
@@ -85,24 +86,6 @@ function engineArgs(o: MeshToSolidOptions): Result<EngineArgs> {
     maxTriangles,
     fillHoles: fill === true ? -1 : fill === false ? 0 : fill,
   });
-}
-
-async function toBytes(input: MeshInput): Promise<Uint8Array> {
-  if (input instanceof Uint8Array) return input;
-  if (ArrayBuffer.isView(input))
-    return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
-  if (input instanceof ArrayBuffer) return new Uint8Array(input);
-  return new Uint8Array(await input.arrayBuffer());
-}
-
-function hintFor(input: MeshInput, o: MeshToSolidOptions): string {
-  if (o.fileName !== undefined) return o.fileName;
-  if (typeof File !== 'undefined' && input instanceof File) return input.name;
-  return '';
-}
-
-function message(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
 }
 
 /**
