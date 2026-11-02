@@ -1,0 +1,74 @@
+src/topology/primitiveFns.ts
+  s_4164cd16e48c0e::t_9140d354bbb0da 30-35,425-447
+  s_4164cd16e48c0e::t_50a1d3b62fc0ba 29,448
+src/topology/surfaceBuilders.ts
+  s_4164cd16e48c0e::t_ab67a4c75ce502 11-12,112-243
+  s_4164cd16e48c0e::t_efc75f61f0eaa0 244
+tests/public-api-types.test.ts
+  s_4164cd16e48c0e::t_cf71a9e92bd96f 310,542
+src/kernel/occtWasm/occtWasmTypes.ts
+  s_4164cd16e48c0e::t_4ee29bf210c255 469-486
+src/core/errors.ts
+  s_4164cd16e48c0e::t_ab67a4c75ce502 39,63-65
+src/kernel/interfaces/index.ts
+  s_4164cd16e48c0e::t_4ee29bf210c255 48
+src/ns/primitives.ts
+  s_4164cd16e48c0e::t_9140d354bbb0da 24-25
+src/kernel/brepkit/constructionOps.ts
+  s_4164cd16e48c0e::t_aae1bf9d85119f 1260,1262-1268
+  s_4164cd16e48c0e::t_4f375b42f0846a 1259,1261,1313-1314
+src/kernel/occt/advancedOps.ts
+  s_4164cd16e48c0e::t_aae1bf9d85119f 11,1221,1223-1229,1263
+  s_4164cd16e48c0e::t_4f375b42f0846a 1220,1222,1262
+src/kernel/interfaces/builderOps.ts
+  s_4164cd16e48c0e::t_4f375b42f0846a 129
+  s_4164cd16e48c0e::t_4ee29bf210c255 14-48,125-128,130-139
+src/index.ts
+  s_4164cd16e48c0e::t_9140d354bbb0da 1117-1118,1139-1143
+docs/kernel-conformance.md
+  s_4164cd16e48c0e::t_5dd42d1881123e 3
+  s_4164cd16e48c0e::t_dae76c58f6682e 117-118
+tests/primitiveFns.test.ts
+  s_4164cd16e48c0e::t_6557821d7f6f0e 23-38,125-135,137-231
+  s_4164cd16e48c0e::t_edebe77fd41cbc 136
+src/kernel/occtWasm/occtWasmAdapter.ts
+  s_4164cd16e48c0e::t_e410bf44ddb7ea 536-546
+  s_4164cd16e48c0e::t_aae1bf9d85119f 70
+  s_4164cd16e48c0e::t_4f375b42f0846a 534-535
+src/kernel/manifold/builderOps.ts
+  s_4164cd16e48c0e::t_4f375b42f0846a 102
+  s_4164cd16e48c0e::t_aae1bf9d85119f 103
+src/topology.ts
+  s_4164cd16e48c0e::t_9140d354bbb0da 53-54
+src/kernel/occtWasm/constructionOps.ts
+  s_4164cd16e48c0e::t_4f375b42f0846a 387,394
+  s_4164cd16e48c0e::t_aae1bf9d85119f 401-416,418-421
+  s_4164cd16e48c0e::t_e410bf44ddb7ea 7,360-386,388-393,395-400,417,422-456
+  s_4164cd16e48c0e::t_63bdac59fd94dd 457
+tests/helpers/kernelDivergences.ts
+  s_4164cd16e48c0e::t_6557821d7f6f0e 47-55,242-250,613-621
+.size-limit.json
+  s_4164cd16e48c0e::t_de962d49122ea5 2
+docs/function-lookup.md
+  s_4164cd16e48c0e::t_5dd42d1881123e 3,186,376,591
+package-lock.json
+  s_4164cd16e48c0e::t_399cf31876a051 54,11511-11513
+package.json
+  s_4164cd16e48c0e::t_26a0ec98918705 286
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6446cd17bbedd81e044be27f44087952f90fa9a",
+  "prompts": {},
+  "sessions": {
+    "s_4164cd16e48c0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39b56ca7-b90d-49fe-ad28-4c54a3c049c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
