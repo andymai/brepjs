@@ -1,0 +1,32 @@
+{
+  "name": "brepjs-mesh2solid-app",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build:deps": "npm -C ../.. run build && npm -C ../../packages/brepjs-mesh2solid run build && npm -C ../../packages/brepjs-viewer run build",
+    "predev": "npm run build:deps",
+    "dev": "vite",
+    "build": "tsgo -b && vite build",
+    "typecheck": "tsgo -b",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@react-three/drei": "10.7.9",
+    "@react-three/fiber": "9.8.2",
+    "brepjs": "*",
+    "brepjs-mesh2solid": "*",
+    "brepjs-viewer": "*",
+    "occt-wasm": "*",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/three": "0.186.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "typescript": "6.0.3"
+  }
+}

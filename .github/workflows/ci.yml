@@ -47,6 +47,7 @@ jobs:
               - 'src/**'
               - 'tests/**'
               - 'packages/**'
+              - 'apps/mesh2solid/**'
               - 'scripts/**'
               - 'package.json'
               - 'package-lock.json'
@@ -280,6 +281,10 @@ jobs:
       - run: npm run lint --workspace=brepjs-mesh2solid
       - run: npm run test --workspace=brepjs-mesh2solid
       - run: npm run build --workspace=brepjs-mesh2solid
+      # The /mesh-to-solid page (not deployed yet, so not in build:site):
+      # typecheck + vite build against the package and viewer builds.
+      - run: npm run build --workspace=brepjs-viewer
+      - run: npm run build --workspace=apps/mesh2solid
 
   packages-families:
     # Declarative family layer satellite (element trees over the CSG IR).
