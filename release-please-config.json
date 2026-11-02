@@ -41,19 +41,6 @@
         }
       ]
     },
-    "packages/brepjs-mesh2solid": {
-      "release-type": "node",
-      "changelog-path": "CHANGELOG.md",
-      "component": "brepjs-mesh2solid",
-      "bump-minor-pre-major": true,
-      "extra-files": [
-        {
-          "type": "toml",
-          "path": "engine/Cargo.toml",
-          "jsonpath": "$.package.version"
-        }
-      ]
-    },
     "packages/brepjs-cad": {
       "release-type": "node",
       "changelog-path": "CHANGELOG.md",

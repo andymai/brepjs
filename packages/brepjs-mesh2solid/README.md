@@ -1,10 +1,7 @@
 # brepjs-mesh2solid
 
-> Experimental satellite package, published to npm. Early-stage: the API may change.
-
-```bash
-npm install brepjs brepjs-mesh2solid
-```
+> In development in the brepjs monorepo. It stays off npm until every tier of the plan is done, and
+> the API will change until then.
 
 Turn a triangle mesh into a [brepjs](https://github.com/andymai/brepjs) B-Rep shape you can measure,
 boolean, and export as STEP. Reads STL (binary and text), OBJ, PLY, and 3MF, from CAD exports or 3D
