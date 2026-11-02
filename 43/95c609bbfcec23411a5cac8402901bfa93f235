@@ -1,0 +1,48 @@
+packages/brepjs-mesh2solid/src/types.ts
+  s_4164cd16e48c0e::t_b7532dd17cca64 28-39
+packages/brepjs-mesh2solid/engine/src/lib.rs
+  s_4164cd16e48c0e::t_06f261c0b3b6cb 148-154
+packages/brepjs-mesh2solid/src/engine.ts
+  s_4164cd16e48c0e::t_b7532dd17cca64 3-6,46
+packages/brepjs-mesh2solid/tests/meshToSolid.test.ts
+  s_4164cd16e48c0e::t_371f45b36150f4 27,453-486
+  s_4164cd16e48c0e::t_286dc7b93756fe 487
+packages/brepjs-mesh2solid/src/index.ts
+  s_4164cd16e48c0e::t_b7532dd17cca64 2,11
+packages/brepjs-mesh2solid/src/meshToSolidFns.ts
+  s_4164cd16e48c0e::t_b7532dd17cca64 26
+packages/brepjs-mesh2solid/engine/src/pipeline.rs
+  s_4164cd16e48c0e::t_06f261c0b3b6cb 65-88,414-415,418-420,422-423
+  s_4164cd16e48c0e::t_8542da73b20c9a 416-417,421
+  s_4164cd16e48c0e::t_9964651b11860e 424
+packages/brepjs-mesh2solid/wasm/index_bg.wasm.d.ts
+  s_4164cd16e48c0e::t_8542da73b20c9a 8
+packages/brepjs-mesh2solid/README.md
+  s_4164cd16e48c0e::t_2590dd40a20f0b 27-41
+packages/brepjs-mesh2solid/src/inputFns.ts
+  s_4164cd16e48c0e::t_b7532dd17cca64 1-20
+packages/brepjs-mesh2solid/wasm/index.d.ts
+  s_4164cd16e48c0e::t_8542da73b20c9a 98-104,112-113,115,127
+packages/brepjs-mesh2solid/src/inspectFns.ts
+  s_4164cd16e48c0e::t_b7532dd17cca64 1-47,53-61
+  s_4164cd16e48c0e::t_3f8f99136b2954 48-52
+packages/brepjs-mesh2solid/wasm/index.js
+  s_4164cd16e48c0e::t_8542da73b20c9a 387-420
+  s_4164cd16e48c0e::t_159b900a185a8d 421-422
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4395c609bbfcec23411a5cac8402901bfa93f235",
+  "prompts": {},
+  "sessions": {
+    "s_4164cd16e48c0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39b56ca7-b90d-49fe-ad28-4c54a3c049c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
