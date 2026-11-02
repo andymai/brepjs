@@ -224,11 +224,9 @@ pub fn dissolve_kinks(mesh: &Mesh, topo: &Topology, seg: &mut Segmentation, tol:
         }
         // lo > hi: no vertex gave both normals, so nothing is known about the pair.
         if lo <= hi && hi < TANGENT_COS && lo > KINK_COS {
-            // A fragment beside a much larger surface is the fragment's fault;
-            // two similar ones are both facets of something freeform.
-            let (ni, nj) = (seg.regions[i].tris.len(), seg.regions[j].tris.len());
-            doomed[i] |= nj < 4 * ni;
-            doomed[j] |= ni < 4 * nj;
+            let (di, dj) = kink_doom(seg.regions[i].tris.len(), seg.regions[j].tris.len());
+            doomed[i] |= di;
+            doomed[j] |= dj;
         }
     }
     let dissolved = doomed.iter().filter(|&&d| d).count();
@@ -249,6 +247,13 @@ pub fn dissolve_kinks(mesh: &Mesh, topo: &Topology, seg: &mut Segmentation, tol:
     }
     seg.unfit_triangles = seg.region_of.iter().filter(|&&r| r == u32::MAX).count();
     dissolved
+}
+
+/// Which of two kinked regions (by triangle count) to dissolve. A fragment
+/// beside a surface at least four times its size is the fragment's fault; two
+/// similar ones are both facets of something freeform.
+fn kink_doom(ni: usize, nj: usize) -> (bool, bool) {
+    (ni < 4 * nj, nj < 4 * ni)
 }
 
 /// Shallowest crease a CAD model plausibly has between two faces (20°).
@@ -496,6 +501,13 @@ mod tests {
                 .count();
             assert_eq!(tangent, 2, "axis {o:?}");
         }
+    }
+
+    #[test]
+    fn a_kink_dissolves_the_fragment_not_the_surface() {
+        assert_eq!(kink_doom(1000, 10), (false, true));
+        assert_eq!(kink_doom(10, 1000), (true, false));
+        assert_eq!(kink_doom(12, 10), (true, true));
     }
 
     #[test]
