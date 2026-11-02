@@ -1,0 +1,19 @@
+packages/brepjs-mesh2solid/engine/src/pipeline.rs
+  s_4164cd16e48c0e::t_d9949621463291 78-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "87af94a1a70a8c272f007a38e716b30109acc2c4",
+  "prompts": {},
+  "sessions": {
+    "s_4164cd16e48c0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39b56ca7-b90d-49fe-ad28-4c54a3c049c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
