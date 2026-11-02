@@ -20,6 +20,8 @@ export interface CorpusCase {
   readonly build: () => ValidSolid;
   /** Exact face count when every face of the source is planar. */
   readonly planarFaces?: number;
+  /** Calls the tier 2 program should contain, as written. */
+  readonly code: readonly string[];
   /** Surfaces Tier 1 should fit, by kind. */
   readonly surfaces: Readonly<
     Partial<Record<'plane' | 'cylinder' | 'sphere' | 'cone' | 'torus', number>>
@@ -41,7 +43,13 @@ function owned(fn: (keep: <S extends Owned>(s: S) => S) => ValidSolid): ValidSol
 }
 
 export const CAD_CORPUS: readonly CorpusCase[] = [
-  { name: 'box', build: () => box(40, 30, 10), planarFaces: 6, surfaces: { plane: 6 } },
+  {
+    name: 'box',
+    build: () => box(40, 30, 10),
+    planarFaces: 6,
+    surfaces: { plane: 6 },
+    code: ['box(40, 30, 10)'],
+  },
   {
     name: 'stepped block',
     build: () =>
@@ -50,6 +58,7 @@ export const CAD_CORPUS: readonly CorpusCase[] = [
       ),
     planarFaces: 8,
     surfaces: { plane: 8 },
+    code: ['extrude('],
   },
   {
     name: 'plate with hole',
@@ -58,6 +67,7 @@ export const CAD_CORPUS: readonly CorpusCase[] = [
         unwrap(cut(keep(box(40, 30, 6)), keep(translate(keep(cylinder(5, 20)), [20, 15, -5]))))
       ),
     surfaces: { plane: 6, cylinder: 1 },
+    code: ['box(40, 30, 6', 'cylinder(5, 6, { at: [20, 15, 0] })'],
   },
   {
     name: 'L-bracket with two holes',
@@ -69,17 +79,34 @@ export const CAD_CORPUS: readonly CorpusCase[] = [
         return unwrap(cut(keep(unwrap(cut(base, h1))), h2));
       }),
     surfaces: { plane: 8, cylinder: 2 },
+    code: ['cylinder(3, 6, { at: [40, 15, 0] })', 'cylinder(3, 6, { at: [20, 15, 0] })', 'fuse('],
   },
   {
     name: 'filleted box',
     build: () => owned((keep) => unwrap(fillet(keep(box(30, 20, 15)), 3))),
     surfaces: { plane: 6, cylinder: 12, sphere: 8 },
+    code: ['box(30, 20, 15)', 'fillet(part1, 3)'],
   },
-  { name: 'cylinder', build: () => cylinder(10, 25), surfaces: { plane: 2, cylinder: 1 } },
-  { name: 'cone frustum', build: () => cone(12, 6, 20), surfaces: { plane: 2, cone: 1 } },
-  { name: 'pointed cone', build: () => cone(10, 0, 20), surfaces: { plane: 1, cone: 1 } },
-  { name: 'sphere', build: () => sphere(15), surfaces: { sphere: 1 } },
-  { name: 'torus', build: () => torus(20, 5), surfaces: { torus: 1 } },
+  {
+    name: 'cylinder',
+    build: () => cylinder(10, 25),
+    surfaces: { plane: 2, cylinder: 1 },
+    code: ['cylinder(10, 25)'],
+  },
+  {
+    name: 'cone frustum',
+    build: () => cone(12, 6, 20),
+    surfaces: { plane: 2, cone: 1 },
+    code: ['revolve('],
+  },
+  {
+    name: 'pointed cone',
+    build: () => cone(10, 0, 20),
+    surfaces: { plane: 1, cone: 1 },
+    code: ['revolve('],
+  },
+  { name: 'sphere', build: () => sphere(15), surfaces: { sphere: 1 }, code: ['sphere(15)'] },
+  { name: 'torus', build: () => torus(20, 5), surfaces: { torus: 1 }, code: ['torus(20, 5)'] },
   {
     name: 'hollow cube',
     build: () =>
@@ -87,6 +114,7 @@ export const CAD_CORPUS: readonly CorpusCase[] = [
         unwrap(cut(keep(box(20, 20, 20)), keep(translate(keep(box(6, 6, 6)), [7, 7, 7]))))
       ),
     surfaces: { plane: 12 },
+    code: ['box(20, 20, 20)', 'box(6, 6, 6, { at: [10, 10, 10] })', 'cut('],
   },
 ];
 

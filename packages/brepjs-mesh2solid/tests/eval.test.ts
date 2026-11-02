@@ -3,7 +3,9 @@
  * CAD cases use the solid's own tessellation; scan cases subdivide it to scanner
  * density and add normal noise.
  */
-import { writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { type AnyShape, type Dimension, getFaces, isValid, measureVolume, unwrap } from 'brepjs';
 import { afterAll, describe, expect, it } from 'vitest';
 import { meshToSolid } from '../src/index.js';
@@ -64,7 +66,7 @@ describe('tier 1 eval: CAD tessellations', () => {
       using src = c.build();
       const stl = await stlOf(src);
       const t0 = performance.now();
-      const res = unwrap(await meshToSolid(stl));
+      const res = unwrap(await meshToSolid(stl, { tier: 1 }));
       const ms = performance.now() - t0;
       using shape = res.shape;
       const r = res.report;
@@ -91,6 +93,48 @@ describe('tier 1 eval: CAD tessellations', () => {
       // Exact surfaces recover the source solid, not its tessellation.
       expect(volumeError, summary).toBeLessThan(1e-6);
       expect(getFaces(shape).length, summary).toBeLessThanOrEqual(getFaces(src).length);
+    });
+  }
+});
+
+describe('tier 2 eval: feature programs', () => {
+  // Generated modules import 'brepjs', so they must live inside the package to resolve it.
+  const dir = mkdtempSync(join(dirname(fileURLToPath(import.meta.url)), '.programs-'));
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+  for (const c of CAD_CORPUS) {
+    it(c.name, async () => {
+      using src = c.build();
+      const t0 = performance.now();
+      const res = unwrap(await meshToSolid(await stlOf(src)));
+      const ms = performance.now() - t0;
+      using shape = res.shape;
+      const r = res.report;
+      const summary = `${c.name}: tier ${r.tierReached} ${r.tier2?.fallbackReason ?? ''} ${JSON.stringify(r.tier2?.features)}, ${ms.toFixed(0)} ms`;
+      expect(r.tierReached, summary).toBe(2);
+      const code = res.code ?? '';
+      for (const call of c.code) expect(code, summary).toContain(call);
+      // Snapping recovers the drawn dimensions, so the program is the source solid.
+      const volumeError = Math.abs(vol(shape) - vol(src)) / vol(src);
+      expect(volumeError, summary).toBeLessThan(1e-9);
+      scorecard.push({
+        case: c.name,
+        kind: 'cad-tier2',
+        features: r.tier2?.features,
+        volumeError,
+        ms: Math.round(ms),
+      });
+
+      // The code itself rebuilds the same part.
+      const file = join(dir, `${c.name.replace(/\W+/g, '-')}.brep.ts`);
+      writeFileSync(file, code);
+      const mod = (await import(/* @vite-ignore */ file)) as {
+        default: () => AnyShape<Dimension>;
+        expected: { volume: number };
+      };
+      using rebuilt = mod.default();
+      expect(isValid(rebuilt), summary).toBe(true);
+      expect(Math.abs(vol(rebuilt) - vol(shape)) / vol(shape), summary).toBeLessThan(1e-12);
+      expect(Math.abs(mod.expected.volume - vol(shape)) / vol(shape), summary).toBeLessThan(1e-5);
     });
   }
 });

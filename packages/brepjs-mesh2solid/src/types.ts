@@ -6,11 +6,11 @@ export type MeshInput = Blob | ArrayBuffer | ArrayBufferView;
 
 export interface MeshToSolidOptions {
   /**
-   * Highest tier to attempt (default 1). Tier 0 builds a faceted solid with coplanar faces merged;
-   * tier 1 rebuilds the part from fitted planes, cylinders, cones, spheres and tori, falling back to
-   * tier 0 when it can't.
+   * Highest tier to attempt (default 2). Tier 0 builds a faceted solid with coplanar faces merged;
+   * tier 1 rebuilds the part from fitted planes, cylinders, cones, spheres and tori; tier 2 also
+   * writes it as an editable `.brep.ts` feature program. Each falls back to the tier below.
    */
-  readonly tier?: 0 | 1 | undefined;
+  readonly tier?: 0 | 1 | 2 | undefined;
   /** File name or extension, used when the content alone doesn't identify the format. */
   readonly fileName?: string | undefined;
   /** Source units. `'auto'` (default) reads 3MF units and assumes millimeters otherwise. */
@@ -46,7 +46,7 @@ export interface BodyReport {
 
 export interface ConversionReport {
   readonly engineVersion: string;
-  readonly tierReached: 0 | 1;
+  readonly tierReached: 0 | 1 | 2;
   /** Present when tier 1 was attempted. */
   readonly tier1?:
     | {
@@ -69,6 +69,15 @@ export interface ConversionReport {
             }
           | undefined;
         /** Why the result fell back to tier 0. */
+        readonly fallbackReason?: string | undefined;
+      }
+    | undefined;
+  /** Present when tier 2 was attempted on a tier 1 result. */
+  readonly tier2?:
+    | {
+        /** The recognized features, in build order. */
+        readonly features: readonly string[];
+        /** Why the result stopped at tier 1. */
         readonly fallbackReason?: string | undefined;
       }
     | undefined;
@@ -183,4 +192,9 @@ export interface MeshToSolidResult {
   readonly solid: boolean;
   readonly report: ConversionReport;
   readonly heatmap?: DeviationHeatmap | undefined;
+  /**
+   * The part as a `.brep.ts` module (tier 2): its default export rebuilds `shape`, with every
+   * dimension as an editable number.
+   */
+  readonly code?: string | undefined;
 }

@@ -276,6 +276,16 @@ function triangulate(
   return { positions: Float64Array.from(m.vertices), indices: Uint32Array.from(m.triangles) };
 }
 
+/** Input mesh against a shape, triangulated at `tolerance`, in the report's format. */
+export function deviationOf(
+  shape: AnyShape<Dimension>,
+  deviation: Segmentation['deviation'],
+  tolerance: number
+): ConversionReport['deviation'] {
+  const tri = triangulate(shape, tolerance);
+  return JSON.parse(deviation(tri.positions, tri.indices)) as ConversionReport['deviation'];
+}
+
 function volumeOf(s: Solid): number {
   const v = measureVolume(s);
   return v.ok ? v.value : Number.NaN;
@@ -499,10 +509,7 @@ export function buildAnalytic(seg: Segmentation, opts: AnalyticOptions): Analyti
     const first = tops[0];
     if (first === undefined) return { ok: false, reason: 'no outer body was rebuilt' };
     const result: Solid | Compound = tops.length === 1 ? first : keep(compound(tops));
-    const tri = triangulate(result, opts.triangulation);
-    const dev = JSON.parse(
-      seg.deviation(tri.positions, tri.indices)
-    ) as ConversionReport['deviation'];
+    const dev = deviationOf(result, seg.deviation, opts.triangulation);
     if (!(dev.max <= opts.maxDeviation && dev.reverseMax <= opts.maxDeviation)) {
       return {
         ok: false,
