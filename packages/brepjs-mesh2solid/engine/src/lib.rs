@@ -139,12 +139,6 @@ fn options(
     })
 }
 
-/// Run the Tier 0 pipeline on raw file bytes.
-///
-/// `unit`: "auto" or one of um/mm/cm/m/in/ft. `tolerance`: millimeters, or
-/// NaN/≤0 to estimate it. `fill_holes`: -1 fills every hole, 0 none, n > 0
-/// holes with at most n edges. `heatmap` returns the welded input mesh with each
-/// vertex's distance to the result.
 /// Format, declared unit, triangle count, and bounding box of a mesh file, as
 /// JSON (see `pipeline::inspect`).
 #[wasm_bindgen]
@@ -152,6 +146,12 @@ pub fn inspect(bytes: &[u8], format_hint: &str) -> Result<String, JsError> {
     pipeline::inspect(bytes, format_hint).map_err(|e| JsError::new(&e))
 }
 
+/// Run the Tier 0 pipeline on raw file bytes.
+///
+/// `unit`: "auto" or one of um/mm/cm/m/in/ft. `tolerance`: millimeters, or
+/// NaN/≤0 to estimate it. `fill_holes`: -1 fills every hole, 0 none, n > 0
+/// holes with at most n edges. `heatmap` returns the welded input mesh with each
+/// vertex's distance to the result.
 #[wasm_bindgen]
 pub fn convert_tier0(
     bytes: &[u8],

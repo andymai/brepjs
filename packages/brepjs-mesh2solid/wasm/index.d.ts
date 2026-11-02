@@ -95,6 +95,14 @@ export class Tier1Session {
     readonly unfit_triangles: number;
 }
 
+/**
+ * Run the Tier 0 pipeline on raw file bytes.
+ *
+ * `unit`: "auto" or one of um/mm/cm/m/in/ft. `tolerance`: millimeters, or
+ * NaN/≤0 to estimate it. `fill_holes`: -1 fills every hole, 0 none, n > 0
+ * holes with at most n edges. `heatmap` returns the welded input mesh with each
+ * vertex's distance to the result.
+ */
 export function convert_tier0(bytes: Uint8Array, format_hint: string, unit: string, tolerance: number, max_triangles: number, fill_holes: number, heatmap: boolean): Tier0Result;
 
 /**
@@ -103,12 +111,6 @@ export function convert_tier0(bytes: Uint8Array, format_hint: string, unit: stri
 export function convert_tier1(bytes: Uint8Array, format_hint: string, unit: string, tolerance: number, max_triangles: number, fill_holes: number, heatmap: boolean): Tier1Session;
 
 /**
- * Run the Tier 0 pipeline on raw file bytes.
- *
- * `unit`: "auto" or one of um/mm/cm/m/in/ft. `tolerance`: millimeters, or
- * NaN/≤0 to estimate it. `fill_holes`: -1 fills every hole, 0 none, n > 0
- * holes with at most n edges. `heatmap` returns the welded input mesh with each
- * vertex's distance to the result.
  * Format, declared unit, triangle count, and bounding box of a mesh file, as
  * JSON (see `pipeline::inspect`).
  */

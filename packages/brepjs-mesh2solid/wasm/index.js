@@ -336,6 +336,12 @@ export class Tier1Session {
 if (Symbol.dispose) Tier1Session.prototype[Symbol.dispose] = Tier1Session.prototype.free;
 
 /**
+ * Run the Tier 0 pipeline on raw file bytes.
+ *
+ * `unit`: "auto" or one of um/mm/cm/m/in/ft. `tolerance`: millimeters, or
+ * NaN/≤0 to estimate it. `fill_holes`: -1 fills every hole, 0 none, n > 0
+ * holes with at most n edges. `heatmap` returns the welded input mesh with each
+ * vertex's distance to the result.
  * @param {Uint8Array} bytes
  * @param {string} format_hint
  * @param {string} unit
@@ -385,12 +391,6 @@ export function convert_tier1(bytes, format_hint, unit, tolerance, max_triangles
 }
 
 /**
- * Run the Tier 0 pipeline on raw file bytes.
- *
- * `unit`: "auto" or one of um/mm/cm/m/in/ft. `tolerance`: millimeters, or
- * NaN/≤0 to estimate it. `fill_holes`: -1 fills every hole, 0 none, n > 0
- * holes with at most n edges. `heatmap` returns the welded input mesh with each
- * vertex's distance to the result.
  * Format, declared unit, triangle count, and bounding box of a mesh file, as
  * JSON (see `pipeline::inspect`).
  * @param {Uint8Array} bytes

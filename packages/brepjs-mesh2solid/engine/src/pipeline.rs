@@ -73,7 +73,15 @@ pub fn inspect(bytes: &[u8], format_hint: &str) -> Result<String, String> {
     if mesh.triangles.is_empty() {
         return Err("the mesh has no triangles".into());
     }
-    let bb = mesh.bbox();
+    // Only vertices a triangle uses: an OBJ or PLY can keep stray ones, which
+    // conversion drops.
+    let used: Vec<V3> = mesh
+        .triangles
+        .iter()
+        .flatten()
+        .map(|&v| mesh.positions[v as usize])
+        .collect();
+    let bb = crate::math::Bbox::of(&used);
     let obj = Obj::new().str("format", format.name());
     let obj = match ingested.unit {
         Some(u) => obj.str("unit", u.name()),
@@ -420,6 +428,14 @@ mod tests {
         assert!(json.contains(r#""triangles":12"#), "{json}");
         assert!(json.contains(r#""bboxMax":[25,25,25]"#), "{json}");
         assert!(inspect(b"not a mesh at all", "").is_err());
+    }
+
+    #[test]
+    fn inspect_ignores_vertices_no_triangle_uses() {
+        let obj = "v 0 0 0\nv 10 0 0\nv 0 10 0\nv 0 0 10\nv 1000 1000 1000\n\
+                   f 1 3 2\nf 1 2 4\nf 1 4 3\nf 2 3 4\n";
+        let json = inspect(obj.as_bytes(), "part.obj").unwrap();
+        assert!(json.contains(r#""bboxMax":[10,10,10]"#), "{json}");
     }
 
     #[test]
