@@ -72,15 +72,22 @@ points past it:
 
 - A surface fits a region when 95% of its points are within tolerance. A triangle joins a region when
   its centroid lies on the surface and its corners are within twice the tolerance.
-- Regions covering less than 0.2% of the area are noise fragments. Each of their triangles goes to the
-  face that accepts it, and up to 3% of the area may fit no surface (decimated triangles that bridge
-  a crease).
-- Tangency is read off the fitted surfaces rather than the noisy boundary between their regions. A
-  corner between fillets of one radius becomes the ball that rolls between them. Directions within
-  0.01 rad of a world axis snap onto it.
+- Regions are found on the decimated mesh, but surfaces are fitted to the scan's own vertices: each
+  goes to the region of its nearest decimated triangle. Decimation leaves a flat face a few large
+  triangles and flattens the start of each fillet, so fits to the decimated vertices are biased.
+- Regions covering less than 0.2% of the area are noise fragments, and each of their triangles goes to
+  the face that accepts it. Neighbouring regions merge while one plane, cylinder, or sphere fits the
+  points no other surface explains (a fillet split into strips), and small regions whose points their
+  neighbours explain are dropped. Up to 3% of the area may fit no surface (decimated triangles that
+  bridge a crease).
+- Tangency is read off the fitted surfaces rather than the noisy boundary between their regions.
+  Directions within 0.01 rad of a world axis snap onto it, turning about the region they fit.
+- A part with fillets is built sharp from its other surfaces and then filleted by the kernel with the
+  fitted radii (radii within the tolerance of each other share their mean), since along a scanned
+  fillet both the face and the blend lie within noise of the mesh.
 
-A scanned box, a plate with a drilled hole, and a sphere come back at tier 2 with their drawn
-dimensions. A scanned filleted part still falls back to tier 0.
+A scanned box, a plate with a drilled hole, a sphere, and a filleted box come back at tier 2 with
+their drawn dimensions.
 
 ## What tier 2 does
 
@@ -144,8 +151,9 @@ subdivided, noise-perturbed versions (scans), and gates validity, volume, deviat
 The tier 1 cases also gate the fitted surface kinds and require the source solid's volume to within
 one part in a million. The tier 2 cases import each generated program, run it, and require the
 calls a person would write (`box(30, 20, 15)`, `fillet(slab1, 3)`) and the source solid's volume to
-within one part in a billion. The scan cases run at the default tier and require the same calls and
-volume from the scanned box, plate, and sphere.
+within one part in a billion. The scan cases sample each solid evenly by area, as a scanner does, add
+Gaussian noise, run at the default tier, and require the same calls and volume from the scanned box,
+plate, sphere, and filleted box.
 Set `MESH2SOLID_SCORECARD=<path>` when running it to write per-case metrics.
 
 ## Developing the engine

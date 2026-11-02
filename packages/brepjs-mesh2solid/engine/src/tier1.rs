@@ -8,7 +8,10 @@ use crate::json::{array, Obj};
 use crate::math::{add, scale, Bbox, V3};
 use crate::mesh::{Mesh, Topology};
 use crate::pipeline::{run_tier0, Options, Tier0, MAX_DEVIATION_SAMPLES};
-use crate::segment::{absorb, consolidate, segment, unfit_area, Params, Segmentation};
+use crate::segment::{
+    absorb, consolidate, dissolve_redundant, merge_adjacent, reassign, refit_from, segment,
+    unfit_area, Params, RegionPoints, Segmentation,
+};
 use crate::snap::{dissolve_kinks, snap, SnapReport};
 
 pub struct Tier1 {
@@ -55,16 +58,6 @@ pub fn run_tier1(bytes: &[u8], opts: &Options) -> Result<Tier1, String> {
             tri_body[t as usize] = b as u32;
         }
     }
-    let mut seg = segment(&t0.mesh, &topo, &params);
-    if params.robust {
-        // Noisy fits of tangent neighbours meet a few degrees apart, which
-        // would read as a kink, so a scan skips the dissolve.
-        consolidate(&t0.mesh, &mut seg, &params, &tri_body);
-    } else {
-        dissolve_kinks(&t0.mesh, &topo, &mut seg, tol);
-        absorb(&t0.mesh, &topo, &mut seg, &params);
-    }
-    let snapped = snap(&t0.mesh, &topo, &mut seg, tol, params.robust, &tri_body);
     let bvh = Bvh::new(
         t0.mesh
             .triangles
@@ -72,6 +65,34 @@ pub fn run_tier1(bytes: &[u8], opts: &Options) -> Result<Tier1, String> {
             .map(|t| t.map(|v| t0.mesh.positions[v as usize]))
             .collect(),
     );
+    let mut seg = segment(&t0.mesh, &topo, &params);
+    if params.robust {
+        // Noisy fits of tangent neighbours meet a few degrees apart, which
+        // would read as a kink, so a scan skips the dissolve.
+        consolidate(&t0.mesh, &mut seg, &params, &tri_body);
+        let normals = vertex_normals(&t0.input);
+        // A fillet split into strips must be whole before its neighbours can
+        // be judged against it, and dropping a fragment can let strips join,
+        // so the two alternate.
+        for _ in 0..3 {
+            let mut measured = measured_points(&t0, &normals, &bvh, &seg, None);
+            refit_from(&t0.mesh, &mut seg, &measured.pts, &params);
+            merge_adjacent(&t0.mesh, &topo, &mut seg, &params, &tri_body, &mut measured);
+            let dropped =
+                dissolve_redundant(&t0.mesh, &topo, &mut seg, &params, &tri_body, &measured);
+            // Merging runs to a fixed point; only a dropped fragment opens new merges.
+            if dropped == 0 {
+                break;
+            }
+        }
+        reassign(&t0.mesh, &mut seg, &params, &tri_body);
+        let measured = measured_points(&t0, &normals, &bvh, &seg, Some(2.0 * tol));
+        refit_from(&t0.mesh, &mut seg, &measured.pts, &params);
+    } else {
+        dissolve_kinks(&t0.mesh, &topo, &mut seg, tol);
+        absorb(&t0.mesh, &topo, &mut seg, &params);
+    }
+    let snapped = snap(&t0.mesh, &topo, &mut seg, tol, params.robust, &tri_body);
     let sag = input_sag(&t0.mesh, &seg);
     Ok(Tier1 {
         t0,
@@ -82,6 +103,59 @@ pub fn run_tier1(bytes: &[u8], opts: &Options) -> Result<Tier1, String> {
         snapped,
         bvh,
     })
+}
+
+/// Decimation spends a scan's triangle budget on its curves and leaves a flat
+/// face a few large triangles, whose corners sit mostly along the seams where
+/// a fillet pulls them inward, and it flattens the start of each fillet; fits
+/// to decimated vertices are biased. The input's own vertices cover every
+/// surface evenly: each goes to the region of its nearest decimated triangle,
+/// when it lies `within` that region's surface if given.
+fn measured_points(
+    t0: &Tier0,
+    normals: &[V3],
+    bvh: &Bvh,
+    seg: &Segmentation,
+    within: Option<f64>,
+) -> RegionPoints {
+    let mut out = RegionPoints {
+        pts: vec![Vec::new(); seg.regions.len()],
+        nrm: vec![Vec::new(); seg.regions.len()],
+    };
+    let input = &t0.input.positions;
+    let stride = input.len().div_ceil(MAX_DEVIATION_SAMPLES).max(1);
+    let mut stack = Vec::new();
+    for (v, &p) in input.iter().enumerate().step_by(stride) {
+        let (_, t) = bvh.nearest(p, &mut stack);
+        let Some(&r) = seg.region_of.get(t as usize) else {
+            continue;
+        };
+        if r == u32::MAX {
+            continue;
+        }
+        let r = r as usize;
+        if within.is_some_and(|w| seg.regions[r].surface.distance(p) > w) {
+            continue;
+        }
+        out.pts[r].push(p);
+        out.nrm[r].push(normals[v]);
+    }
+    out
+}
+
+/// Area-weighted unit normal at each vertex (zero where none is defined).
+fn vertex_normals(mesh: &Mesh) -> Vec<V3> {
+    let mut acc = vec![[0.0; 3]; mesh.positions.len()];
+    for tri in &mesh.triangles {
+        let [a, b, c] = tri.map(|v| mesh.positions[v as usize]);
+        let n = crate::math::tri_cross(a, b, c);
+        for &v in tri {
+            acc[v as usize] = add(acc[v as usize], n);
+        }
+    }
+    acc.into_iter()
+        .map(|n| crate::math::normalize(n).unwrap_or([0.0; 3]))
+        .collect()
 }
 
 /// Sampled at centroids and edge midpoints, near where a triangle sits farthest

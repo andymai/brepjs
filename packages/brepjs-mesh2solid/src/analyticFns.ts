@@ -254,12 +254,16 @@ function gridSamples(face: Face): Vec3[] {
   return out;
 }
 
-function nearestSurface(surfaces: readonly AnalyticSurface[], pts: readonly Vec3[]): number {
+function nearestSurface(
+  surfaces: readonly AnalyticSurface[],
+  pts: readonly Vec3[],
+  skip: ReadonlySet<number>
+): number {
   let best = -1;
   let bestErr = Infinity;
   for (let i = 0; i < surfaces.length; i++) {
     const s = surfaces[i];
-    if (s === undefined) continue;
+    if (s === undefined || skip.has(i)) continue;
     let err = 0;
     for (const p of pts) err = Math.max(err, surfaceDistance(s, p));
     if (err < bestErr) {
@@ -399,6 +403,15 @@ export interface AnalyticOptions {
    * export, a little for a scan, whose decimated triangles bridge its creases.
    */
   readonly maxUnfitArea: number;
+  /**
+   * Surfaces left out of the arrangement because `finish` puts them back
+   * (blends a fillet recreates). Mesh points they own don't count for or
+   * against a piece.
+   */
+  readonly skip?: ReadonlySet<number> | undefined;
+  /** Applied to each rebuilt outer body before it is checked against the mesh. */
+  readonly finish?:
+    ((s: Solid) => { ok: true; value: Solid } | { ok: false; reason: string }) | undefined;
 }
 
 /**
@@ -429,11 +442,12 @@ export function buildAnalytic(seg: Segmentation, opts: AnalyticOptions): Analyti
     return x;
   };
   try {
+    const skip = opts.skip ?? new Set<number>();
     const patches: Face[] = [];
     for (let i = 0; i < seg.surfaces.length; i++) {
       const s = seg.surfaces[i];
       const b = seg.bounds[i];
-      if (s === undefined || b === undefined) continue;
+      if (s === undefined || b === undefined || skip.has(i)) continue;
       const f = patch(s, b, margin, owned);
       if (f === null)
         return { ok: false, reason: `could not build a patch for surface ${i} (${s.kind})` };
@@ -463,16 +477,19 @@ export function buildAnalytic(seg: Segmentation, opts: AnalyticOptions): Analyti
     let cursor = 0;
     for (let i = 0; i < pieces.length; i++) {
       const pts = samples[i] ?? [];
-      const own = nearestSurface(seg.surfaces, pts);
+      const own = nearestSurface(seg.surfaces, pts, skip);
       const start = cursor;
       let hits = 0;
+      let neutral = 0;
       for (let j = 0; j < pts.length; j++, cursor++) {
         const sid = near[2 * cursor] ?? -1;
         const d = near[2 * cursor + 1] ?? Infinity;
-        if (sid === own && d <= opts.coverage) hits++;
+        if (skip.has(sid)) neutral++;
+        else if (sid === own && d <= opts.coverage) hits++;
       }
       const piece = pieces[i];
-      if (piece === undefined || pts.length === 0 || hits / pts.length <= 0.5) continue;
+      const judged = pts.length - neutral;
+      if (piece === undefined || hits === 0 || hits / judged <= 0.5) continue;
       const body = majority(bodyOf, start, pts.length);
       const g = groups.get(body) ?? { faces: [], own: [] };
       g.faces.push(piece);
@@ -514,7 +531,12 @@ export function buildAnalytic(seg: Segmentation, opts: AnalyticOptions): Analyti
     const tops: Solid[] = [];
     for (const [body, s] of solids) {
       if (parentOf(body) >= 0) continue;
-      const u = unify(s, owned);
+      let u = unify(s, owned);
+      if (opts.finish !== undefined && isSolid(u)) {
+        const done = opts.finish(u);
+        if (!done.ok) return done;
+        if (done.value !== u) u = keep(done.value);
+      }
       if (!isSolid(u) || !isValid(u)) return { ok: false, reason: 'rebuilt solid is not valid' };
       tops.push(u);
     }

@@ -521,14 +521,23 @@ fn to_world(d: V3, within: f64) -> V3 {
 /// Parts are drawn on world axes; fitted directions come back a few
 /// nanoradians off, which is enough for the kernel to intersect two coaxial
 /// surfaces as a spline instead of a circle.
-fn world_aligned(s: Surface, within: f64) -> Surface {
+/// Turn a surface's direction onto a world axis about the point of it nearest
+/// `anchor` (its region's centroid), so the surface stays where the mesh is.
+/// Turning about the origin instead would move a face by the angle times its
+/// distance from the origin: a tenth of a millimetre for 0.7° at 10 mm.
+fn world_aligned(s: Surface, within: f64, anchor: V3) -> Surface {
+    let on_axis = |o: V3, a: V3| add(o, scale(a, dot(sub(anchor, o), a)));
     match s {
-        Surface::Plane { n, d } => Surface::Plane {
-            n: to_world(n, within),
-            d,
-        },
+        Surface::Plane { n, d } => {
+            let m = to_world(n, within);
+            let foot = sub(anchor, scale(n, dot(n, anchor) - d));
+            Surface::Plane {
+                n: m,
+                d: dot(m, foot),
+            }
+        }
         Surface::Cylinder { o, a, r } => Surface::Cylinder {
-            o,
+            o: on_axis(o, a),
             a: to_world(a, within),
             r,
         },
@@ -536,11 +545,15 @@ fn world_aligned(s: Surface, within: f64) -> Surface {
             apex,
             a,
             half_angle,
-        } => Surface::Cone {
-            apex,
-            a: to_world(a, within),
-            half_angle,
-        },
+        } => {
+            let pivot = on_axis(apex, a);
+            let b = to_world(a, within);
+            Surface::Cone {
+                apex: sub(pivot, scale(b, dot(sub(pivot, apex), a))),
+                a: b,
+                half_angle,
+            }
+        }
         Surface::Torus { c, a, major, minor } => Surface::Torus {
             c,
             a: to_world(a, within),
@@ -689,8 +702,10 @@ pub fn snap(
     let within = if robust { 1e-2 } else { 1e-6 };
     let coaxial_angle = if robust { 1e-2 } else { COAXIAL_ANGLE };
     coaxial(&mut s, &weights, tol, coaxial_angle);
-    for si in s.iter_mut() {
-        *si = world_aligned(*si, within);
+    for (si, pts) in s.iter_mut().zip(&verts) {
+        let k = pts.len().max(1) as f64;
+        let centroid = pts.iter().fold([0.0; 3], |c, &p| add(c, scale(p, 1.0 / k)));
+        *si = world_aligned(*si, within, centroid);
     }
     for i in 0..n {
         if let Surface::Cylinder { o, a, r } = s[i] {
@@ -726,7 +741,9 @@ pub fn snap(
         }
     }
 
-    // Keep a snap only where the region still lies on the surface.
+    // Keep a snap only where the region still lies on the surface. A scan's
+    // regions keep a few vertices of the chords across their seams, so there
+    // the bulk of the region decides.
     let limit = 4.0 * tol;
     let mut snapped = 0;
     for i in 0..n {
@@ -734,7 +751,9 @@ pub fn snap(
             continue;
         }
         let res = max_residual(&s[i], &verts[i]);
-        if res <= limit.max(seg.regions[i].max_residual) {
+        let on = res <= limit.max(seg.regions[i].max_residual)
+            || (robust && fits(&s[i], &verts[i], limit, true));
+        if on {
             seg.regions[i].surface = s[i];
             seg.regions[i].max_residual = res;
             snapped += 1;
@@ -858,6 +877,36 @@ mod tests {
         assert_eq!(to_world([1e-8, 0.0, 1.0], 1e-6), [0.0, 0.0, 1.0]);
         assert_eq!(to_world([0.0, -1.0, 2e-7], 1e-6), [0.0, -1.0, 0.0]);
         assert_eq!(to_world([0.6, 0.8, 0.0], 1e-6), [0.6, 0.8, 0.0]);
+    }
+
+    #[test]
+    fn a_face_turned_onto_an_axis_stays_where_its_region_is() {
+        // The +X face of a 30 mm part, fitted 0.4° off X; its region is
+        // centred 10 mm off the X axis.
+        let n = normalize([1.0, -0.007, 0.0]).unwrap();
+        let anchor = [30.0, 10.0, 7.5];
+        let fitted = Surface::Plane {
+            n,
+            d: dot(n, anchor),
+        };
+        let Surface::Plane { n: m, d } = world_aligned(fitted, 1e-2, anchor) else {
+            panic!("kind changed");
+        };
+        assert_eq!(m, [1.0, 0.0, 0.0]);
+        assert!((d - 30.0).abs() < 1e-12, "face moved to x = {d}");
+
+        let tilted = normalize([0.01, 0.0, 1.0]).unwrap();
+        let axis = Surface::Cylinder {
+            o: [0.0, 0.0, 0.0],
+            a: tilted,
+            r: 2.0,
+        };
+        let centre = add([0.0, 0.0, 0.0], scale(tilted, 40.0));
+        let Surface::Cylinder { o, a, .. } = world_aligned(axis, 1e-2, centre) else {
+            panic!("kind changed");
+        };
+        assert_eq!(a, [0.0, 0.0, 1.0]);
+        assert!(lineish(centre, o, a) < 1e-12, "axis left its region");
     }
 
     #[test]
