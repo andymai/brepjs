@@ -53,6 +53,8 @@ pub struct Tier0 {
     pub kind: MeshKind,
     pub tolerance: f64,
     pub quantization: f64,
+    /// 90th-percentile tessellation chord error (see `Estimate`).
+    pub chord_error: f64,
 }
 
 pub const MAX_DEVIATION_SAMPLES: usize = 200_000;
@@ -203,6 +205,7 @@ pub fn run_tier0(bytes: &[u8], opts: &Options) -> Result<Tier0, String> {
         kind: est.kind,
         tolerance,
         quantization: est.quantization,
+        chord_error: est.chord_error,
     })
 }
 

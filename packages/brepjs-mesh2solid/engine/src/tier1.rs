@@ -27,6 +27,14 @@ pub struct Tier1 {
 /// decided by point distances, so a chamfer under this angle still separates.
 const CREASE_DEG: f64 = 50.0;
 
+/// The coarsest chord a CAD tessellation of this mesh plausibly has. The chord
+/// estimate is a 90th percentile and undershoots the worst faces a few times;
+/// the floors keep fine meshes from rejecting their own surfaces.
+fn max_sag(t0: &Tier0, tol: f64) -> f64 {
+    let diag = t0.mesh.bbox().diag();
+    (8.0 * t0.chord_error).max(20.0 * tol).max(1e-3 * diag)
+}
+
 pub fn run_tier1(bytes: &[u8], opts: &Options) -> Result<Tier1, String> {
     let t0 = run_tier0(bytes, opts)?;
     let tol = match t0.kind {
@@ -34,21 +42,19 @@ pub fn run_tier1(bytes: &[u8], opts: &Options) -> Result<Tier1, String> {
         MeshKind::Scan => t0.tolerance,
     };
     let topo = Topology::build(&t0.mesh);
+    let params = Params {
+        tol,
+        max_sag: max_sag(&t0, tol),
+        crease_deg: CREASE_DEG,
+    };
     // Tier 1 fits CAD tessellations; scan noise needs Tier 3's segmentation.
     let mut seg = if matches!(t0.kind, MeshKind::Scan) {
         Segmentation::unfit(t0.mesh.triangles.len())
     } else {
-        segment(
-            &t0.mesh,
-            &topo,
-            &Params {
-                tol,
-                crease_deg: CREASE_DEG,
-            },
-        )
+        segment(&t0.mesh, &topo, &params)
     };
     dissolve_kinks(&t0.mesh, &topo, &mut seg, tol);
-    absorb(&t0.mesh, &topo, &mut seg, tol);
+    absorb(&t0.mesh, &topo, &mut seg, &params);
     let snapped = snap(&t0.mesh, &topo, &mut seg, tol);
     // Same mesh and adjacency as Tier 0's classify_components, so the same order.
     let mut tri_body = vec![u32::MAX; t0.mesh.triangles.len()];

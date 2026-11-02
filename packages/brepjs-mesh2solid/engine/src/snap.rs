@@ -8,7 +8,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::fit::{max_residual, solve, Surface};
-use crate::math::{add, cross, dot, normalize, scale, sub, V3};
+use crate::math::{add, cross, dot, norm, normalize, scale, sub, V3};
 use crate::mesh::{Mesh, Topology};
 use crate::segment::{unique_vertices, Segmentation, APEX_REACH};
 
@@ -256,6 +256,171 @@ fn kink_doom(ni: usize, nj: usize) -> (bool, bool) {
     (ni < 4 * nj, nj < 4 * ni)
 }
 
+/// A surface of revolution's axis: a point on it and its direction.
+fn axis_of(s: &Surface) -> Option<(V3, V3)> {
+    match *s {
+        Surface::Cylinder { o, a, .. } => Some((o, a)),
+        Surface::Cone { apex, a, .. } => Some((apex, a)),
+        Surface::Torus { c, a, .. } => Some((c, a)),
+        _ => None,
+    }
+}
+
+/// `p` moved onto the line through `foot` along `d`.
+fn onto(p: V3, foot: V3, d: V3) -> V3 {
+    add(foot, scale(d, dot(sub(p, foot), d)))
+}
+
+/// Surfaces of revolution whose axes nearly coincide share one exact axis (a
+/// countersink and its hole, a boss and its fillet), so their intersections
+/// are exact circles instead of near-circle splines. Sphere centers on that
+/// axis move onto it.
+fn coaxial(s: &mut [Surface], weights: &[f64], tol: f64) {
+    let n = s.len();
+    let near = 10.0 * tol;
+    let mut group: Vec<usize> = (0..n).collect();
+    fn find(g: &mut [usize], x: usize) -> usize {
+        let mut r = x;
+        while g[r] != r {
+            r = g[r];
+        }
+        g[x] = r;
+        r
+    }
+    let axes: Vec<Option<(V3, V3)>> = s.iter().map(axis_of).collect();
+    for (i, ax) in axes.iter().enumerate() {
+        let Some((pi, ai)) = *ax else {
+            continue;
+        };
+        for (j, other) in axes.iter().enumerate().skip(i + 1) {
+            let Some((pj, aj)) = *other else {
+                continue;
+            };
+            let v = sub(pj, pi);
+            let off = norm(sub(v, scale(ai, dot(v, ai))));
+            if dot(ai, aj).abs() >= COAXIAL_COS && off <= near {
+                let (a, b) = (find(&mut group, i), find(&mut group, j));
+                group[b] = a;
+            }
+        }
+    }
+    let mut members: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
+    for (i, ax) in axes.iter().enumerate() {
+        if ax.is_some() {
+            members.entry(find(&mut group, i)).or_default().push(i);
+        }
+    }
+    for list in members.values().filter(|l| l.len() > 1) {
+        let Some(&(_, a0)) = list.first().and_then(|&i| axis_of(&s[i])).as_ref() else {
+            continue;
+        };
+        let mut d = [0.0; 3];
+        for &i in list {
+            if let Some((_, a)) = axis_of(&s[i]) {
+                d = add(d, scale(with_sign(a, a0), weights[i]));
+            }
+        }
+        let Some(d) = normalize(d) else {
+            continue;
+        };
+        let (mut foot, mut w) = ([0.0; 3], 0.0);
+        for &i in list {
+            if let Some((p, _)) = axis_of(&s[i]) {
+                foot = add(foot, scale(sub(p, scale(d, dot(p, d))), weights[i]));
+                w += weights[i];
+            }
+        }
+        if w <= 0.0 {
+            continue;
+        }
+        let foot = scale(foot, 1.0 / w);
+        for &i in list {
+            s[i] = match s[i] {
+                Surface::Cylinder { o, a, r } => Surface::Cylinder {
+                    o: onto(o, foot, d),
+                    a: with_sign(d, a),
+                    r,
+                },
+                Surface::Cone {
+                    apex,
+                    a,
+                    half_angle,
+                } => Surface::Cone {
+                    apex: onto(apex, foot, d),
+                    a: with_sign(d, a),
+                    half_angle,
+                },
+                Surface::Torus { c, a, major, minor } => Surface::Torus {
+                    c: onto(c, foot, d),
+                    a: with_sign(d, a),
+                    major,
+                    minor,
+                },
+                other => other,
+            };
+        }
+        for sph in s.iter_mut() {
+            if let Surface::Sphere { c, r } = *sph {
+                let on = onto(c, foot, d);
+                if norm(sub(c, on)) <= near {
+                    *sph = Surface::Sphere { c: on, r };
+                }
+            }
+        }
+    }
+}
+
+/// A unit direction within a microradian of a world axis, as that axis.
+fn to_world(d: V3) -> V3 {
+    let i = (0..3)
+        .max_by(|&x, &y| d[x].abs().total_cmp(&d[y].abs()))
+        .unwrap_or(2);
+    let off: f64 = (0..3)
+        .filter(|&k| k != i)
+        .map(|k| d[k] * d[k])
+        .sum::<f64>()
+        .sqrt();
+    if off > 1e-6 {
+        return d;
+    }
+    let mut out = [0.0; 3];
+    out[i] = d[i].signum();
+    out
+}
+
+/// Parts are drawn on world axes; fitted directions come back a few
+/// nanoradians off, which is enough for the kernel to intersect two coaxial
+/// surfaces as a spline instead of a circle.
+fn world_aligned(s: Surface) -> Surface {
+    match s {
+        Surface::Plane { n, d } => Surface::Plane { n: to_world(n), d },
+        Surface::Cylinder { o, a, r } => Surface::Cylinder {
+            o,
+            a: to_world(a),
+            r,
+        },
+        Surface::Cone {
+            apex,
+            a,
+            half_angle,
+        } => Surface::Cone {
+            apex,
+            a: to_world(a),
+            half_angle,
+        },
+        Surface::Torus { c, a, major, minor } => Surface::Torus {
+            c,
+            a: to_world(a),
+            major,
+            minor,
+        },
+        s => s,
+    }
+}
+
+/// Axes within about a milliradian count as the same direction.
+const COAXIAL_COS: f64 = 0.9999995;
+
 /// Shallowest crease a CAD model plausibly has between two faces (20°).
 const KINK_COS: f64 = 0.9397;
 
@@ -345,6 +510,11 @@ pub fn snap(mesh: &Mesh, topo: &Topology, seg: &mut Segmentation, tol: f64) -> S
             .collect()
     };
 
+    let weights: Vec<f64> = seg.regions.iter().map(|r| r.tris.len() as f64).collect();
+    coaxial(&mut s, &weights, tol);
+    for si in s.iter_mut() {
+        *si = world_aligned(*si);
+    }
     for i in 0..n {
         if let Surface::Cylinder { o, a, r } = s[i] {
             if let Some(c) = snap_cylinder(o, a, r, &planes_of(i, &s)) {
@@ -457,6 +627,7 @@ mod tests {
             &topo,
             &Params {
                 tol,
+                max_sag: f64::INFINITY,
                 crease_deg: 50.0,
             },
         );
@@ -501,6 +672,55 @@ mod tests {
                 .count();
             assert_eq!(tangent, 2, "axis {o:?}");
         }
+    }
+
+    #[test]
+    fn near_axis_directions_snap_onto_world_axes() {
+        assert_eq!(to_world([1e-8, 0.0, 1.0]), [0.0, 0.0, 1.0]);
+        assert_eq!(to_world([0.0, -1.0, 2e-7]), [0.0, -1.0, 0.0]);
+        assert_eq!(to_world([0.6, 0.8, 0.0]), [0.6, 0.8, 0.0]);
+    }
+
+    #[test]
+    fn nearly_coaxial_surfaces_share_one_axis() {
+        let tilt = normalize([2e-8, -1e-8, 1.0]).unwrap();
+        let mut s = vec![
+            Surface::Cylinder {
+                o: [20.0, 15.0, 0.1],
+                a: tilt,
+                r: 3.0,
+            },
+            Surface::Cone {
+                apex: [20.0 + 3e-7, 15.0 - 2e-7, 2.0],
+                a: [0.0, 0.0, 1.0],
+                half_angle: 0.785,
+            },
+            Surface::Cylinder {
+                o: [0.0, 0.0, 0.0],
+                a: [0.0, 0.0, 1.0],
+                r: 1.0,
+            },
+        ];
+        coaxial(&mut s, &[10.0, 30.0, 10.0], 1e-4);
+        let (Surface::Cylinder { o, a, .. }, Surface::Cone { apex, a: b, .. }) = (s[0], s[1])
+        else {
+            panic!("kinds changed");
+        };
+        assert!(dot(a, b) > 1.0 - 1e-15);
+        assert!(lineish(apex, o, a) < 1e-12, "apex off the cylinder axis");
+        assert_eq!(
+            s[2],
+            Surface::Cylinder {
+                o: [0.0, 0.0, 0.0],
+                a: [0.0, 0.0, 1.0],
+                r: 1.0
+            }
+        );
+    }
+
+    fn lineish(p: V3, o: V3, a: V3) -> f64 {
+        let v = sub(p, o);
+        norm(sub(v, scale(a, dot(v, a))))
     }
 
     #[test]

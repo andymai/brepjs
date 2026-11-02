@@ -42,6 +42,9 @@ impl Segmentation {
 pub struct Params {
     /// Largest allowed vertex distance from a region's surface.
     pub tol: f64,
+    /// Largest allowed edge-midpoint distance from a curved surface: the
+    /// coarsest chord a tessellator would leave.
+    pub max_sag: f64,
     /// Edges sharper than this separate neighbourhoods.
     pub crease_deg: f64,
 }
@@ -111,21 +114,33 @@ fn accepts(
     mesh: &Mesh,
     s: &Surface,
     t: usize,
-    tol: f64,
+    params: &Params,
     facing: &[Option<V3>],
     reference: V3,
 ) -> bool {
+    let tol = params.tol;
     let tri = mesh.tri(t);
     if !tri.iter().all(|&p| s.distance(p) <= tol) {
         return false;
     }
     match (s, facing[t]) {
         (Surface::Plane { .. }, Some(n)) => dot(n, reference) > 0.0,
-        (_, Some(n)) => tri.iter().all(|&p| {
-            s.near_singular(p, APEX_REACH * tol)
-                || s.normal(p)
-                    .is_none_or(|sn| dot(sn, n).abs() >= MIN_FACET_COS)
-        }),
+        (_, Some(n)) => {
+            let [a, b, c] = tri;
+            // Three rings of vertices fit some torus; a tessellator would not
+            // leave that torus's chords this far from it.
+            let mids = [
+                scale(add(a, b), 0.5),
+                scale(add(b, c), 0.5),
+                scale(add(c, a), 0.5),
+            ];
+            mids.iter().all(|&m| s.distance(m) <= params.max_sag)
+                && tri.iter().all(|&p| {
+                    s.near_singular(p, APEX_REACH * tol)
+                        || s.normal(p)
+                            .is_none_or(|sn| dot(sn, n).abs() >= MIN_FACET_COS)
+                })
+        }
         _ => true,
     }
 }
@@ -141,7 +156,7 @@ pub const APEX_REACH: f64 = 10.0;
 /// Hand unfit triangles to a neighbouring region whose surface accepts them,
 /// until none moves: fragments a dissolve removed beside a well-supported
 /// surface usually belong to it. Returns how many were absorbed.
-pub fn absorb(mesh: &Mesh, topo: &Topology, seg: &mut Segmentation, tol: f64) -> usize {
+pub fn absorb(mesh: &Mesh, topo: &Topology, seg: &mut Segmentation, params: &Params) -> usize {
     let facing = normals(mesh);
     let mut total = 0;
     loop {
@@ -163,7 +178,7 @@ pub fn absorb(mesh: &Mesh, topo: &Topology, seg: &mut Segmentation, tol: f64) ->
                     Surface::Plane { n, .. } => n,
                     _ => [0.0, 0.0, 1.0],
                 };
-                if accepts(mesh, &s, t, tol, &facing, reference) {
+                if accepts(mesh, &s, t, params, &facing, reference) {
                     seg.region_of[t] = r;
                     seg.regions[r as usize].tris.push(t as u32);
                     moved += 1;
@@ -216,10 +231,11 @@ fn grow(
     region_of: &[u32],
     seed: usize,
     start: Surface,
-    tol: f64,
+    params: &Params,
     facing: &[Option<V3>],
     reference: V3,
 ) -> (Surface, Vec<u32>) {
+    let tol = params.tol;
     let mut surface = start;
     let mut inside = std::collections::HashSet::new();
     inside.insert(seed as u32);
@@ -235,7 +251,7 @@ fn grow(
                 if region_of[nb] != u32::MAX || inside.contains(&(nb as u32)) {
                     continue;
                 }
-                if !accepts(mesh, &surface, nb, tol, facing, reference) {
+                if !accepts(mesh, &surface, nb, params, facing, reference) {
                     continue;
                 }
                 inside.insert(nb as u32);
@@ -322,9 +338,7 @@ pub fn segment(mesh: &Mesh, topo: &Topology, params: &Params) -> Segmentation {
         // The candidate that grows the largest region wins; simpler kinds win ties.
         let mut best: Option<(Surface, Vec<u32>)> = None;
         for c in cands {
-            let (s, tris) = grow(
-                mesh, topo, &region_of, seed, c, params.tol, &facing, reference,
-            );
+            let (s, tris) = grow(mesh, topo, &region_of, seed, c, params, &facing, reference);
             let better = match &best {
                 None => true,
                 Some((bs, bt)) => {
@@ -578,6 +592,71 @@ mod tests {
         k
     }
 
+    /// A surface of revolution about Z through `rings` (radius, height), open at both ends.
+    fn revolved(rings: &[(f64, f64)], segments: usize) -> Mesh {
+        let mut positions = Vec::new();
+        for &(r, z) in rings {
+            for k in 0..segments {
+                let t = std::f64::consts::TAU * k as f64 / segments as f64;
+                positions.push([20.0 + r * t.cos(), 15.0 + r * t.sin(), z]);
+            }
+        }
+        let mut triangles = Vec::new();
+        let s = segments as u32;
+        for i in 0..rings.len() as u32 - 1 {
+            for k in 0..s {
+                let (a, b) = (i * s + k, i * s + (k + 1) % s);
+                let (c, d) = (a + s, b + s);
+                triangles.push([a, d, b]);
+                triangles.push([a, c, d]);
+            }
+        }
+        Mesh {
+            positions,
+            triangles,
+        }
+    }
+
+    #[test]
+    fn a_coarse_chord_rules_out_a_torus_through_three_rings() {
+        // A hole tessellated with only its end rings, under a countersink cone:
+        // a torus passes through the hole's two rings and the cone's first one.
+        let mut rings = vec![(3.0, 0.0), (3.0, 5.0)];
+        for i in 1..=5 {
+            let z = 5.0 + 0.6 * i as f64;
+            rings.push((3.0 + (z - 5.0), z));
+        }
+        let mesh = revolved(&rings, 48);
+        let topo = Topology::build(&mesh);
+        let params = Params {
+            tol: 1e-6,
+            max_sag: 0.05,
+            crease_deg: 50.0,
+        };
+        let seg = segment(&mesh, &topo, &params);
+        assert_eq!(seg.unfit_triangles, 0);
+        let mut kinds = kinds(&seg);
+        kinds.sort();
+        assert_eq!(kinds, vec![Kind::Cylinder, Kind::Cone]);
+    }
+
+    #[test]
+    fn an_eight_sided_tube_stays_eight_planes() {
+        // An eight-sided cylinder tessellation is the same mesh as an octagonal
+        // prism. Read as planes it still rebuilds exactly; reading 45° facets
+        // as curves would also turn a chamfered edge into a cylinder.
+        let mesh = revolved(&[(10.0, 0.0), (10.0, 10.0)], 8);
+        let topo = Topology::build(&mesh);
+        let params = Params {
+            tol: 1e-6,
+            max_sag: 0.03,
+            crease_deg: 50.0,
+        };
+        let seg = segment(&mesh, &topo, &params);
+        assert_eq!(seg.unfit_triangles, 0);
+        assert_eq!(kinds(&seg), vec![Kind::Plane; 8]);
+    }
+
     #[test]
     fn freeform_stops_seeding_early() {
         // A finely faceted ellipsoid: no primitive fits more than a few facets,
@@ -589,6 +668,7 @@ mod tests {
         let topo = Topology::build(&mesh);
         let params = Params {
             tol: 1e-9,
+            max_sag: f64::INFINITY,
             crease_deg: 50.0,
         };
         let seg = segment(&mesh, &topo, &params);
@@ -604,6 +684,7 @@ mod tests {
             &Topology::build(&m),
             &Params {
                 tol: 1e-6,
+                max_sag: f64::INFINITY,
                 crease_deg: 30.0,
             },
         );
@@ -619,6 +700,7 @@ mod tests {
             &Topology::build(&m),
             &Params {
                 tol: 1e-6,
+                max_sag: f64::INFINITY,
                 crease_deg: 30.0,
             },
         );
@@ -650,6 +732,7 @@ mod tests {
             &Topology::build(&m),
             &Params {
                 tol: 1e-6,
+                max_sag: f64::INFINITY,
                 crease_deg: 30.0,
             },
         );

@@ -31,6 +31,8 @@ describe('canonicalize', () => {
       ],
       fillets: [],
       cavities: [],
+      countersinks: [],
+      chamfers: [],
     };
     const [snapped, tilted] = canonicalize(model, 1e-5).base;
     expect(snapped).toEqual({
@@ -57,11 +59,15 @@ describe('canonicalize', () => {
         },
       ],
       fillets: [{ op: 'fillet', radius: 2.9999994, edges: [[15.0000002, 0, 9.9999998]] }],
+      countersinks: [],
+      chamfers: [{ op: 'chamfer', distance: 1.9999997, edges: [[0, 4.9999999, 0]] }],
       cavities: [
         {
           base: [{ op: 'sphere', center: [10.0000001, 10, 10], r: 1.9999999 }],
           fillets: [],
           cavities: [],
+          countersinks: [],
+          chamfers: [],
         },
       ],
     };
@@ -73,6 +79,7 @@ describe('canonicalize', () => {
       height: 6,
     });
     expect(c.fillets).toEqual([{ op: 'fillet', radius: 3, edges: [[15, 0, 10]] }]);
+    expect(c.chamfers).toEqual([{ op: 'chamfer', distance: 2, edges: [[0, 5, 0]] }]);
     expect(c.cavities[0]?.base).toEqual([{ op: 'sphere', center: [10, 10, 10], r: 2 }]);
   });
 });

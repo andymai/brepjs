@@ -9,7 +9,6 @@ import {
   curvePointAt,
   cut,
   extrude,
-  facesOfEdge,
   flipFaceOrientation,
   getBounds,
   getEdges,
@@ -28,6 +27,7 @@ import {
   solidFromShell,
 } from 'brepjs';
 import { type AnalyticSurface, surfaceDistance } from './analyticFns.js';
+import { type Removable, removableFaces } from './defeatureFns.js';
 
 export type Vec2 = readonly [number, number];
 
@@ -78,13 +78,40 @@ export interface FilletFeature {
   readonly edges: readonly Vec3[];
 }
 
+/** A symmetric chamfer on the edges through these points (one point per edge). */
+export interface ChamferFeature {
+  readonly op: 'chamfer';
+  readonly distance: number;
+  readonly edges: readonly Vec3[];
+}
+
+/** A conical countersink, cut as a cone from its narrow end on the axis. */
+export interface CountersinkFeature {
+  readonly op: 'countersink';
+  readonly at: Vec3;
+  readonly axis: Vec3;
+  readonly narrow: number;
+  readonly wide: number;
+  readonly depth: number;
+}
+
 export interface FeatureModel {
   /** Fused in order. */
   readonly base: readonly BaseFeature[];
-  readonly fillets: readonly FilletFeature[];
   /** Internal voids, each its own feature model, cut from the part. */
   readonly cavities: readonly FeatureModel[];
+  readonly countersinks: readonly CountersinkFeature[];
+  readonly chamfers: readonly ChamferFeature[];
+  readonly fillets: readonly FilletFeature[];
 }
+
+const only = (base: BaseFeature[]): FeatureModel => ({
+  base,
+  cavities: [],
+  countersinks: [],
+  chamfers: [],
+  fillets: [],
+});
 
 export type FeatureResult = { ok: true; value: FeatureModel } | { ok: false; reason: string };
 
@@ -100,37 +127,8 @@ const cross = (a: Vec3, b: Vec3): Vec3 => [
 const len = (a: Vec3): number => Math.hypot(a[0], a[1], a[2]);
 const unit = (a: Vec3): Vec3 => scale(a, 1 / (len(a) || 1));
 
-/** Same tangency test the engine's snap uses (about a degree). */
-const TANGENT_COS = 0.99985;
 /** Plane normals this close to a direction count as parallel or perpendicular to it. */
 const ALIGNED = 1e-9;
-
-/** A curved face tangent to every neighbour it shares an edge with: a fillet or corner blend. */
-function isBlend(solid: Solid, face: Face): boolean {
-  const k = getKernel();
-  const t = k.surfaceType(face.wrapped);
-  if (t !== 'cylinder' && t !== 'sphere' && t !== 'torus') return false;
-  let neighbours = 0;
-  for (const e of getEdges(face)) {
-    const others = facesOfEdge(solid, e).filter((f) => !k.isSame(f.wrapped, face.wrapped));
-    if (others.length === 0) continue;
-    neighbours++;
-    const p = curvePointAt(e, 0.5);
-    for (const o of others) {
-      if (Math.abs(dot(normalAt(face, p), normalAt(o, p))) < TANGENT_COS) return false;
-    }
-  }
-  return neighbours > 0;
-}
-
-/** The rolling-ball radius: the smaller principal radius (a torus fillet's minor radius). */
-function blendRadius(face: Face): number {
-  const k = getKernel();
-  const b = k.uvBounds(face.wrapped);
-  const c = k.surfaceCurvature(face.wrapped, (b.uMin + b.uMax) / 2, (b.vMin + b.vMax) / 2);
-  const kmax = Math.max(Math.abs(c.max), Math.abs(c.min));
-  return kmax > 0 ? 1 / kmax : Number.NaN;
-}
 
 function frameFor(z: Vec3, origin: Vec3): Frame {
   const helper: Vec3 = Math.abs(z[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
@@ -358,19 +356,20 @@ function uvOf(f: Face, p: Vec3): [number, number] {
 }
 
 /**
- * Edges of `sharp` that a fillet rounded away, grouped by radius. An edge the
- * fillet removed sits off the filleted solid, within a radius of a blend face;
- * an untouched edge lies on the solid.
+ * Edges of `sharp` that a removed fillet or chamfer took off, grouped by kind
+ * and size. Such an edge sits off the original solid, within the feature's
+ * size of the face that replaced it; an untouched edge lies on the solid.
  */
-function filletEdges(
+function edgeFeatures(
   sharp: Solid,
   solid: Solid,
-  blends: readonly { face: Face; r: number }[],
+  removed: readonly Removable[],
   tol: number
-): FilletFeature[] {
+): { fillets: FilletFeature[]; chamfers: ChamferFeature[] } {
   const k = getKernel();
   const faces = getFaces(solid);
-  const groups: { radius: number; edges: Vec3[] }[] = [];
+  const fillets: FilletFeature[] = [];
+  const chamfers: ChamferFeature[] = [];
   for (const e of getEdges(sharp)) {
     const m = curvePointAt(e, 0.5);
     const onSolid = faces.some(
@@ -379,18 +378,24 @@ function filletEdges(
         k.classifyPointOnFace(f.wrapped, ...uvOf(f, m)) !== 'out'
     );
     if (onSolid) continue;
-    let owner: { r: number; d: number } | null = null;
-    for (const b of blends) {
-      const d = len(sub(k.projectPointOnFace(b.face.wrapped, [m[0], m[1], m[2]]), m));
-      if (owner === null || d < owner.d) owner = { r: b.r, d };
+    let owner: { removal: Removable['removal']; d: number } | null = null;
+    for (const r of removed) {
+      const d = len(sub(k.projectPointOnFace(r.face.wrapped, [m[0], m[1], m[2]]), m));
+      if (owner === null || d < owner.d) owner = { removal: r.removal, d };
     }
-    if (owner === null || owner.d > owner.r) continue;
-    const r = owner.r;
-    const g = groups.find((x) => Math.abs(x.radius - r) <= tol);
-    if (g) g.edges.push(m);
-    else groups.push({ radius: r, edges: [m] });
+    if (owner === null) continue;
+    const rm = owner.removal;
+    if (rm.kind === 'fillet' && owner.d <= rm.radius) {
+      const g = fillets.find((x) => Math.abs(x.radius - rm.radius) <= tol);
+      if (g) (g.edges as Vec3[]).push(m);
+      else fillets.push({ op: 'fillet', radius: rm.radius, edges: [m] });
+    } else if (rm.kind === 'chamfer' && owner.d <= rm.distance) {
+      const g = chamfers.find((x) => Math.abs(x.distance - rm.distance) <= tol);
+      if (g) (g.edges as Vec3[]).push(m);
+      else chamfers.push({ op: 'chamfer', distance: rm.distance, edges: [m] });
+    }
   }
-  return groups.map((g) => ({ op: 'fillet', radius: g.radius, edges: g.edges }));
+  return { fillets, chamfers };
 }
 
 function primitive(s: AnalyticSurface | undefined): BaseFeature | null {
@@ -517,17 +522,42 @@ function shellSolid(shell: Shell): Solid | null {
   }
 }
 
+/** The fitted surfaces that carry one of `shape`'s faces. */
+export function surfacesOf(
+  shape: Solid,
+  surfaces: readonly AnalyticSurface[],
+  tol: number
+): AnalyticSurface[] {
+  const faces = getFaces(shape);
+  return surfaces.filter((s) => onFaces(faces, s, tol));
+}
+
+const PROBES: readonly (readonly [number, number])[] = [
+  [0.5, 0.5],
+  [0.25, 0.25],
+  [0.75, 0.75],
+];
+
 /**
- * Does `surface` carry one of `faces`? Probed at the middle of each
- * face's parameter range, a point on its own surface (a center of mass would
- * sit at a sphere's center).
+ * Does `surface` carry one of `faces`? A face must be the same kind of surface
+ * and lie on it at points across its parameter range: one crossing point (a
+ * far-off plane through a cone's cap center) is not enough. Points are on the
+ * face's own surface, not its center of mass, which sits at a sphere's center.
  */
 function onFaces(faces: readonly Face[], surface: AnalyticSurface, tol: number): boolean {
   const k = getKernel();
+  const near = Math.max(tol, 1e-6);
   return faces.some((f) => {
+    if (k.surfaceType(f.wrapped) !== surface.kind) return false;
     const b = k.uvBounds(f.wrapped);
-    const p = k.pointOnSurface(f.wrapped, (b.uMin + b.uMax) / 2, (b.vMin + b.vMax) / 2);
-    return surfaceDistance(surface, p) <= Math.max(tol, 1e-6);
+    return PROBES.every(([tu, tv]) => {
+      const p = k.pointOnSurface(
+        f.wrapped,
+        b.uMin + tu * (b.uMax - b.uMin),
+        b.vMin + tv * (b.vMax - b.vMin)
+      );
+      return surfaceDistance(surface, p) <= near;
+    });
   });
 }
 
@@ -539,8 +569,8 @@ function shellModel(
 ): FeatureResult {
   const faces = getFaces(shell);
   const own = surfaces.filter((x) => onFaces(faces, x, tol));
-  const only = faces.length === 1 ? primitive(own[0]) : null;
-  if (only !== null) return { ok: true, value: { base: [only], fillets: [], cavities: [] } };
+  const single = faces.length === 1 ? primitive(own[0]) : null;
+  if (single !== null) return { ok: true, value: only([single]) };
   const solid = shellSolid(shell);
   if (solid === null) return { ok: false, reason: 'a shell of the solid does not close' };
   try {
@@ -589,32 +619,53 @@ export function recognizeFeatures(
   const faces = getFaces(solid);
   if (faces.length === 1) {
     const p = primitive(surfaces[0]);
-    if (p !== null) return { ok: true, value: { base: [p], fillets: [], cavities: [] } };
+    if (p !== null) return { ok: true, value: only([p]) };
   }
-  const blends = faces
-    .filter((f) => isBlend(solid, f))
-    .map((face) => ({ face, r: blendRadius(face) }));
+  const removable = removableFaces(solid, tol);
   let sharp: Solid = solid;
   let owned: Solid | null = null;
+  let removed: readonly Removable[] = [];
   try {
-    if (blends.length > 0) {
-      const removed = removeFaces(
+    // Remove every feature face at once; if the kernel can't, fall back to fillets alone.
+    const fillets = removable.filter((r) => r.removal.kind === 'fillet');
+    for (const attempt of [removable, fillets]) {
+      if (attempt.length === 0) continue;
+      const out = removeFaces(
         solid as ValidSolid,
-        blends.map((b) => b.face)
+        attempt.map((r) => r.face)
       );
-      if (removed.ok && isSolid(removed.value)) {
-        owned = removed.value;
-        sharp = removed.value;
-      } else if (removed.ok) removed.value[Symbol.dispose]();
+      if (out.ok && isSolid(out.value)) {
+        owned = out.value;
+        sharp = out.value;
+        removed = attempt;
+        break;
+      }
+      if (out.ok) out.value[Symbol.dispose]();
     }
     const base = extrusions(sharp, tol);
     if (base !== null) {
-      const fillets = sharp === solid ? [] : filletEdges(sharp, solid, blends, tol);
-      return { ok: true, value: { base, fillets, cavities: [] } };
+      const edges =
+        sharp === solid ? { fillets: [], chamfers: [] } : edgeFeatures(sharp, solid, removed, tol);
+      const countersinks: CountersinkFeature[] = removed.flatMap((r) => {
+        const c = r.removal;
+        if (c.kind !== 'countersink') return [];
+        const { at, axis, narrow, wide, depth } = c;
+        return [{ op: 'countersink', at, axis, narrow, wide, depth }];
+      });
+      return {
+        ok: true,
+        value: {
+          base,
+          cavities: [],
+          countersinks,
+          chamfers: edges.chamfers,
+          fillets: edges.fillets,
+        },
+      };
     }
     // A turned part keeps its fillets in the profile.
     const turned = revolution(solid, surfaces, tol);
-    if (turned !== null) return { ok: true, value: { base: [turned], fillets: [], cavities: [] } };
+    if (turned !== null) return { ok: true, value: only([turned]) };
     return { ok: false, reason: 'no extrusion direction or revolution axis describes every face' };
   } finally {
     owned?.[Symbol.dispose]();
