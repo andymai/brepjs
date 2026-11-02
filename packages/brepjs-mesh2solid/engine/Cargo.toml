@@ -1,11 +1,11 @@
 [package]
-name = "brepjs-mesh2cad-wasm"
-version = "0.2.0"
+name = "mesh2solid-engine"
+version = "0.1.0"
 edition = "2021"
-description = "Mesh-to-solid preparation and analysis engine for brepjs (Rust → WASM)"
+description = "Mesh engine behind brepjs-mesh2solid (Rust → WASM)"
 license = "Apache-2.0"
 repository = "https://github.com/andymai/brepjs"
-# The npm package is published; the crate itself is not pushed to crates.io.
+# Ships inside the brepjs-mesh2solid npm package (../wasm); not on crates.io.
 publish = false
 
 [lib]

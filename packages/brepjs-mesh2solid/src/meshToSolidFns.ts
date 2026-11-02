@@ -105,11 +105,7 @@ export async function meshToSolid(
     engine = await loadMeshEngine();
   } catch (e) {
     return err(
-      moduleInitError(
-        'MESH_ENGINE_LOAD_FAILED',
-        `could not load brepjs-mesh2cad-wasm: ${message(e)}`,
-        e
-      )
+      moduleInitError('MESH_ENGINE_LOAD_FAILED', `could not load the mesh engine: ${message(e)}`, e)
     );
   }
   let bytes: Uint8Array;

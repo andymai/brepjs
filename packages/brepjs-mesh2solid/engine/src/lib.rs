@@ -1,4 +1,4 @@
-//! brepjs-mesh2cad-wasm: mesh ingest, repair, analysis and planar-region
+//! The engine behind brepjs-mesh2solid: mesh ingest, repair, analysis and planar-region
 //! extraction for brepjs's mesh-to-solid conversion. The wasm surface returns
 //! flat typed arrays plus a JSON report; all B-Rep construction happens in the
 //! TypeScript package that consumes it.

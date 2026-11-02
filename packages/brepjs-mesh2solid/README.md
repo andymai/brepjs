@@ -1,19 +1,19 @@
-# brepjs-mesh2cad
+# brepjs-mesh2solid
 
 > Experimental satellite package, published to npm. Early-stage: the API may change.
 
 ```bash
-npm install brepjs brepjs-mesh2cad
+npm install brepjs brepjs-mesh2solid
 ```
 
 Turn a triangle mesh into a [brepjs](https://github.com/andymai/brepjs) B-Rep shape you can measure,
 boolean, and export as STEP. Reads STL (binary and text), OBJ, PLY, and 3MF, from CAD exports or 3D
-scans. Everything runs locally: the mesh engine is Rust compiled to WebAssembly
-([brepjs-mesh2cad-wasm](../brepjs-mesh2cad-wasm)), and the B-Rep is built by brepjs's kernel.
+scans. Everything runs locally: the mesh engine is Rust compiled to WebAssembly and ships inside this
+package, and the B-Rep is built by brepjs's kernel.
 
 ```ts
 import { init, exportSTEP, unwrap } from 'brepjs';
-import { meshToSolid } from 'brepjs-mesh2cad';
+import { meshToSolid } from 'brepjs-mesh2solid';
 
 await init();
 const res = await meshToSolid(file); // File, Blob, ArrayBuffer, or Uint8Array
@@ -65,4 +65,16 @@ fallback that happened.
 
 `tests/eval.test.ts` round-trips known brepjs solids through their own tessellation (CAD) and through
 subdivided, noise-perturbed versions (scans), and gates validity, volume, deviation, and face count.
-Set `MESH2CAD_SCORECARD=<path>` when running it to write per-case metrics.
+Set `MESH2SOLID_SCORECARD=<path>` when running it to write per-case metrics.
+
+## Developing the engine
+
+The engine's Rust source is in `engine/`; its build output in `wasm/` is committed. After changing
+`engine/src`, rebuild and check it:
+
+```bash
+npm run build:engine --workspace=brepjs-mesh2solid   # cargo → wasm-bindgen → wasm-opt
+cd packages/brepjs-mesh2solid/engine && cargo test && cargo clippy --all-targets -- -D warnings
+```
+
+The `wasm-bindgen` CLI must match the version pinned in `engine/Cargo.toml`; the build script checks.

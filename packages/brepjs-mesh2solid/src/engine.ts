@@ -1,4 +1,4 @@
-import initWasm, * as wasm from 'brepjs-mesh2cad-wasm';
+import initWasm, * as wasm from '../wasm/index.js';
 
 export type MeshEngine = Pick<typeof wasm, 'convert_tier0' | 'version'>;
 
@@ -10,9 +10,10 @@ let engine: Promise<MeshEngine> | null = null;
 /**
  * Load the mesh engine once per process.
  *
- * Without `source`, browsers fetch the wasm next to the module and Node reads it
- * from the installed `brepjs-mesh2cad-wasm` package (wasm-bindgen's web target
- * can't fetch a `file://` URL). Pass `source` when a bundler relocates the asset.
+ * Without `source`, browsers fetch `wasm/index_bg.wasm` relative to the engine
+ * glue and Node reads that file from disk (wasm-bindgen's web target can't fetch
+ * a `file://` URL). Pass `source` when a bundler relocates the asset; the
+ * package exports it as `brepjs-mesh2solid/index_bg.wasm`.
  */
 export function loadMeshEngine(source?: MeshEngineSource): Promise<MeshEngine> {
   engine ??= instantiate(source).catch((e: unknown) => {
@@ -26,10 +27,12 @@ async function instantiate(source?: MeshEngineSource): Promise<MeshEngine> {
   if (source !== undefined) {
     await initWasm({ module_or_path: source });
   } else if (typeof process !== 'undefined' && process.versions?.node !== undefined) {
-    const { createRequire } = await import('node:module');
+    const { fileURLToPath } = await import('node:url');
     const { readFile } = await import('node:fs/promises');
-    const require = createRequire(import.meta.url);
-    const bytes = await readFile(require.resolve('brepjs-mesh2cad-wasm/index_bg.wasm'));
+    // Resolves from src/ (tests) and dist/ (published) alike: wasm/ is their
+    // sibling. Held in a variable so the bundler doesn't inline the wasm as base64.
+    const wasmFile = '../wasm/index_bg.wasm';
+    const bytes = await readFile(fileURLToPath(new URL(wasmFile, import.meta.url)));
     await initWasm({ module_or_path: bytes });
   } else {
     await initWasm();

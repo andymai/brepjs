@@ -11,8 +11,7 @@
         "packages/brepjs-cad",
         "packages/brepjs-families",
         "packages/brepjs-manifold",
-        "packages/brepjs-mesh2cad",
-        "packages/brepjs-mesh2cad-wasm",
+        "packages/brepjs-mesh2solid",
         "packages/brepjs-opencascade",
         "packages/brepjs-sheetmetal",
         "packages/brepjs-viewer",
@@ -42,24 +41,18 @@
         }
       ]
     },
-    "packages/brepjs-mesh2cad-wasm": {
+    "packages/brepjs-mesh2solid": {
       "release-type": "node",
       "changelog-path": "CHANGELOG.md",
-      "component": "brepjs-mesh2cad-wasm",
+      "component": "brepjs-mesh2solid",
       "bump-minor-pre-major": true,
       "extra-files": [
         {
           "type": "toml",
-          "path": "Cargo.toml",
+          "path": "engine/Cargo.toml",
           "jsonpath": "$.package.version"
         }
       ]
-    },
-    "packages/brepjs-mesh2cad": {
-      "release-type": "node",
-      "changelog-path": "CHANGELOG.md",
-      "component": "brepjs-mesh2cad",
-      "bump-minor-pre-major": true
     },
     "packages/brepjs-cad": {
       "release-type": "node",

@@ -1,4 +1,4 @@
-name: Publish brepjs-mesh2cad
+name: Publish brepjs-mesh2solid
 
 on:
   workflow_dispatch:
@@ -30,16 +30,20 @@ jobs:
 
       - run: npm ci
 
-      # Build the root brepjs first: brepjs-mesh2cad externalizes `brepjs` at
+      # Build the root brepjs first: brepjs-mesh2solid externalizes `brepjs` at
       # runtime, but vite-plugin-dts needs brepjs's emitted types to resolve
-      # `import type`s when generating brepjs-mesh2cad's declarations.
-      - name: Build brepjs-mesh2cad (root brepjs prerequisite)
+      # `import type`s when generating brepjs-mesh2solid's declarations. The
+      # engine in wasm/ is committed, so it needs no build here.
+      - name: Build brepjs-mesh2solid (root brepjs prerequisite)
         run: |
           npm run build
-          npm run build --workspace=brepjs-mesh2cad
+          npm run build --workspace=brepjs-mesh2solid
 
       # Authenticates via OIDC trusted publisher (configured for this exact
-      # workflow filename on npmjs.com -> brepjs-mesh2cad -> Trusted Publisher Mgmt).
-      - name: Publish brepjs-mesh2cad
+      # workflow filename on npmjs.com -> brepjs-mesh2solid -> Trusted Publisher Mgmt).
+      - name: Show what would ship
+        run: npm pack --dry-run -w brepjs-mesh2solid
+
+      - name: Publish brepjs-mesh2solid
         if: ${{ inputs.dry_run != true }}
-        run: npm publish -w brepjs-mesh2cad --provenance
+        run: npm publish -w brepjs-mesh2solid --provenance
