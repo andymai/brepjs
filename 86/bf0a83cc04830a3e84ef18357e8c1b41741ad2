@@ -1,0 +1,24 @@
+packages/brepjs-mesh2solid/engine/src/segment.rs
+  s_4164cd16e48c0e::t_f60da2bbb1aca7 48
+  s_4164cd16e48c0e::t_9903381b5555b0 512,514
+  s_4164cd16e48c0e::t_0a057b2b2f3bc7 513,515-518,520-524
+  s_4164cd16e48c0e::t_be5b1eb59793e5 40-44,50-53,213-214,420-421,511,519
+  s_4164cd16e48c0e::t_101cd942d382d8 45-47,49,207-208,210-212,281,525-526
+  s_4164cd16e48c0e::t_15fbab66245e8c 527-528
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "86bf0a83cc04830a3e84ef18357e8c1b41741ad2",
+  "prompts": {},
+  "sessions": {
+    "s_4164cd16e48c0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39b56ca7-b90d-49fe-ad28-4c54a3c049c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
