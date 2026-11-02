@@ -29,6 +29,8 @@ import { vecNormalize, vecScale } from '@/core/vecOps.js';
 import {
   makeNSidedFace as _makeNSidedFace,
   makeEdgeOnFace as _makeEdgeOnFace,
+  makeNurbsSurface as _makeNurbsSurface,
+  type NurbsSurfaceInput,
   type NSidedBoundaryEdge,
   type NSidedFaceOptions,
   type EdgeOnFaceOptions,
@@ -432,6 +434,15 @@ export function nSidedFace(
   options?: NSidedFaceOptions
 ): Result<Face> {
   return _makeNSidedFace(boundary, options);
+}
+
+/**
+ * A face over a whole B-spline surface given exactly by its poles and knots,
+ * rational when `weights` is given: what `getNurbsSurfaceData` reads back.
+ * Needs the occt-wasm kernel.
+ */
+export function nurbsSurface(data: NurbsSurfaceInput): Result<Face> {
+  return _makeNurbsSurface(data);
 }
 
 /**

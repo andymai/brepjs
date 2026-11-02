@@ -4,7 +4,11 @@
  * @module
  */
 
-import type { FillBoundaryEdge, FillSurfaceOptions } from '@/kernel/interfaces/builderOps.js';
+import type {
+  FillBoundaryEdge,
+  FillSurfaceOptions,
+  NurbsSurfaceInput,
+} from '@/kernel/interfaces/builderOps.js';
 import type { KernelShape, KernelType } from '@/kernel/types.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
 import {
@@ -427,6 +431,47 @@ export function fillNSided(
     return handle(
       'face',
       k.fillSurface(freeVec, edgeVec, faceVec, orderVec, guideVec, pointVec, init, paramVec)
+    );
+  } finally {
+    for (const v of vecs) v.delete();
+  }
+}
+
+export function nurbsSurface(
+  k: OcctKernelWasm,
+  Module: OcctWasmModule,
+  data: NurbsSurfaceInput
+): KernelShape {
+  if (typeof k.nurbsSurface !== 'function') {
+    throw new Error('occt-wasm: nurbsSurface needs occt-wasm 5.15.0 or later');
+  }
+  const nbU = data.poles.length;
+  const nbV = data.poles[0]?.length ?? 0;
+  const layout = [
+    data.degreeU,
+    data.degreeV,
+    nbU,
+    nbV,
+    data.isPeriodicU === true ? 1 : 0,
+    data.isPeriodicV === true ? 1 : 0,
+  ];
+  const vecs = [
+    makeVecDouble(
+      Module,
+      data.poles.flatMap((row) => row.flatMap((p) => [p[0], p[1], p[2]]))
+    ),
+    makeVecDouble(Module, data.weights?.flat() ?? []),
+    makeVecDouble(Module, [...data.knotsU]),
+    makeVecDouble(Module, [...data.knotsV]),
+    makeVecInt(Module, [...data.multiplicitiesU]),
+    makeVecInt(Module, [...data.multiplicitiesV]),
+    makeVecInt(Module, layout),
+  ] as const;
+  try {
+    const [poles, weights, knotsU, knotsV, multsU, multsV, layoutVec] = vecs;
+    return handle(
+      'face',
+      k.nurbsSurface(poles, weights, knotsU, knotsV, multsU, multsV, layoutVec)
     );
   } finally {
     for (const v of vecs) v.delete();

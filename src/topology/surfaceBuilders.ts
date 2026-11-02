@@ -3,6 +3,7 @@
  */
 
 import { getKernel } from '@/kernel/index.js';
+import type { NurbsSurfaceInput } from '@/kernel/interfaces/builderOps.js';
 
 import type { Vec3 } from '@/core/types.js';
 import { type Result, ok, err, andThen } from '@/core/result.js';
@@ -184,6 +185,113 @@ export function makeNSidedFace(
     return ok(createFace(shape));
   } catch (e) {
     return err(kernelError('FACE_BUILD_FAILED', 'Failed to fill the boundary with a face', e));
+  }
+}
+
+export type { NurbsSurfaceInput };
+
+/** Highest B-spline degree OCCT accepts. */
+const MAX_NURBS_DEGREE = 25;
+
+/** Poles a knot vector implies (OCCT's `BSplCLib::NbPoles`), or -1 when its multiplicities are out of range. */
+function polesForKnots(mults: readonly number[], degree: number, periodic: boolean): number {
+  const first = mults[0] ?? 0;
+  const last = mults[mults.length - 1] ?? 0;
+  if (periodic) {
+    if (first < 1 || first > degree || first !== last) return -1;
+  } else if (first < 1 || last < 1 || first > degree + 1 || last > degree + 1) {
+    return -1;
+  }
+  let sigma = periodic ? first : first + last - degree - 1;
+  for (let i = 1; i + 1 < mults.length; i++) {
+    const m = mults[i] ?? 0;
+    if (!Number.isInteger(m) || m < 1 || m > degree) return -1;
+    sigma += m;
+  }
+  return sigma;
+}
+
+function nurbsInvalid(
+  code: 'NURBS_BAD_DEGREE' | 'NURBS_BAD_POLES' | 'NURBS_BAD_WEIGHTS' | 'NURBS_BAD_KNOTS',
+  message: string,
+  suggestion: string
+): Result<never> {
+  return err(validationError(code, message, undefined, undefined, suggestion));
+}
+
+/** The first thing wrong with `data` as a B-spline surface, or null. */
+function checkNurbs(data: NurbsSurfaceInput): Result<never> | null {
+  for (const [dir, degree] of [
+    ['u', data.degreeU],
+    ['v', data.degreeV],
+  ] as const) {
+    if (!Number.isInteger(degree) || degree < 1 || degree > MAX_NURBS_DEGREE) {
+      return nurbsInvalid(
+        'NURBS_BAD_DEGREE',
+        `The ${dir} degree must be an integer from 1 to ${MAX_NURBS_DEGREE}, got ${degree}`,
+        'Use 3 for a cubic surface'
+      );
+    }
+  }
+  const nbU = data.poles.length;
+  const nbV = data.poles[0]?.length ?? 0;
+  if (nbU < 2 || nbV < 2 || data.poles.some((row) => row.length !== nbV)) {
+    return nurbsInvalid(
+      'NURBS_BAD_POLES',
+      'Poles must form a grid of at least 2 x 2 with every row the same length',
+      'Pass poles[i][j] for the i-th pole along u and the j-th along v'
+    );
+  }
+  const { weights } = data;
+  if (
+    weights !== undefined &&
+    (weights.length !== nbU ||
+      weights.some((row) => row.length !== nbV || row.some((w) => !(w > 0))))
+  ) {
+    return nurbsInvalid(
+      'NURBS_BAD_WEIGHTS',
+      'Weights must be positive, one per pole in the same grid',
+      'Omit weights for a non-rational surface'
+    );
+  }
+  for (const [dir, knots, mults, degree, periodic, poles] of [
+    ['u', data.knotsU, data.multiplicitiesU, data.degreeU, data.isPeriodicU === true, nbU],
+    ['v', data.knotsV, data.multiplicitiesV, data.degreeV, data.isPeriodicV === true, nbV],
+  ] as const) {
+    const increasing = knots.every((k, i) => i === 0 || k > (knots[i - 1] ?? k));
+    if (knots.length < 2 || knots.length !== mults.length || !increasing) {
+      return nurbsInvalid(
+        'NURBS_BAD_KNOTS',
+        `The ${dir} knots must be two or more increasing values, each with a multiplicity`,
+        'List each distinct knot once and its repeat count in the multiplicities'
+      );
+    }
+    if (polesForKnots(mults, degree, periodic) !== poles) {
+      return nurbsInvalid(
+        'NURBS_BAD_KNOTS',
+        `The ${dir} knots and multiplicities do not fit ${poles} poles of degree ${degree}`,
+        periodic
+          ? 'On a periodic direction the multiplicities, less the last, sum to the pole count'
+          : 'The multiplicities must sum to the pole count plus the degree plus 1'
+      );
+    }
+  }
+  return null;
+}
+
+/**
+ * A face over a whole B-spline surface given exactly by its poles, knots and
+ * multiplicities (rational when `weights` is given): the counterpart of
+ * reading a surface back with `getNurbsSurfaceData`. Needs the occt-wasm
+ * kernel (5.15.0 or later).
+ */
+export function makeNurbsSurface(data: NurbsSurfaceInput): Result<Face> {
+  const invalid = checkNurbs(data);
+  if (invalid !== null) return invalid;
+  try {
+    return ok(createFace(getKernel().nurbsSurface(data)));
+  } catch (e) {
+    return err(kernelError('FACE_BUILD_FAILED', 'Failed to build the B-spline surface', e));
   }
 }
 

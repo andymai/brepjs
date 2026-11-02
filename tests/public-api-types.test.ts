@@ -541,6 +541,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'multiSectionSweep',
   'nSidedFace',
   'normalAt',
+  'nurbsSurface',
   'offset',
   'offsetFace',
   'offsetMesh',

@@ -23,6 +23,7 @@ export {
   filledFace,
   nSidedFace,
   edgeOnFace,
+  nurbsSurface,
   subFace,
   polygon,
   vertex,
