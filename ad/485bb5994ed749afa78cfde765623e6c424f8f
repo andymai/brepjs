@@ -1,0 +1,20 @@
+packages/brepjs-mesh2cad-wasm/src/ingest/threemf.rs
+  s_4164cd16e48c0e::t_1d195fbdda7921 272,275,277,304,306-315,317-342,347-348,352-353,362-366,368-371,380,383,385-386,414-416,524-547
+  s_4164cd16e48c0e::t_5ef2e13bf850bb 548
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ad485bb5994ed749afa78cfde765623e6c424f8f",
+  "prompts": {},
+  "sessions": {
+    "s_4164cd16e48c0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39b56ca7-b90d-49fe-ad28-4c54a3c049c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
