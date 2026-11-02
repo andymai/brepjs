@@ -9,15 +9,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
-name = "brepjs-mesh2cad-wasm"
-version = "0.1.0"
-dependencies = [
- "miniz_oxide",
- "quick-xml",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "bumpalo"
 version = "3.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -34,6 +25,15 @@ name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
+
+[[package]]
+name = "mesh2solid-engine"
+version = "0.1.0"
+dependencies = [
+ "miniz_oxide",
+ "quick-xml",
+ "wasm-bindgen",
+]
 
 [[package]]
 name = "miniz_oxide"

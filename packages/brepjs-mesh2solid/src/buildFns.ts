@@ -57,7 +57,7 @@ function coherentOrder(triangles: Uint32Array): Uint32Array {
  * snapped coplanar vertices stay exactly coplanar (float32 would break that).
  */
 function decimalSTL(positions: Float64Array, triangles: Uint32Array): string {
-  const out: string[] = ['solid mesh2cad'];
+  const out: string[] = ['solid mesh2solid'];
   for (const t of coherentOrder(triangles)) {
     out.push('facet normal 0 0 0', 'outer loop');
     for (let k = 0; k < 3; k++) {
@@ -66,7 +66,7 @@ function decimalSTL(positions: Float64Array, triangles: Uint32Array): string {
     }
     out.push('endloop', 'endfacet');
   }
-  out.push('endsolid mesh2cad', '');
+  out.push('endsolid mesh2solid', '');
   return out.join('\n');
 }
 

@@ -1,9 +1,9 @@
-brepjs-mesh2cad-wasm
+brepjs-mesh2solid
 Copyright 2026 Andy Aragon
 
 This package contains a WebAssembly mesh-processing engine compiled from
-original Rust source in this directory, distributed under the Apache License
-2.0 (see LICENSE).
+original Rust source in engine/, distributed under the Apache License 2.0
+(see LICENSE).
 
 Algorithms are clean-room implementations of published methods:
 

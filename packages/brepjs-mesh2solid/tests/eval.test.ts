@@ -15,9 +15,9 @@ function vol(shape: AnyShape<Dimension>): number {
 
 const scorecard: Record<string, unknown>[] = [];
 
-// Set MESH2CAD_SCORECARD=<path> to write per-case metrics for tracking over time.
+// Set MESH2SOLID_SCORECARD=<path> to write per-case metrics for tracking over time.
 afterAll(() => {
-  const path = process.env['MESH2CAD_SCORECARD'];
+  const path = process.env['MESH2SOLID_SCORECARD'];
   if (path) writeFileSync(path, JSON.stringify(scorecard, null, 2));
 });
 

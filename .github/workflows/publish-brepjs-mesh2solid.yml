@@ -1,0 +1,54 @@
+name: Publish brepjs-mesh2solid
+
+# The package is `private` until every tier of the mesh-to-solid plan is done,
+# so `npm publish` refuses. TODO: remove `private` and register the package with
+# release-please when the final tier ships, then publish once by hand before
+# setting up the trusted publisher for this file.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (build only, skip publish)'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+
+      - run: npm ci
+
+      # Build the root brepjs first: brepjs-mesh2solid externalizes `brepjs` at
+      # runtime, but vite-plugin-dts needs brepjs's emitted types to resolve
+      # `import type`s when generating brepjs-mesh2solid's declarations. The
+      # engine in wasm/ is committed, so it needs no build here.
+      - name: Build brepjs-mesh2solid (root brepjs prerequisite)
+        run: |
+          npm run build
+          npm run build --workspace=brepjs-mesh2solid
+
+      # Authenticates via OIDC trusted publisher (configured for this exact
+      # workflow filename on npmjs.com -> brepjs-mesh2solid -> Trusted Publisher Mgmt).
+      - name: Show what would ship
+        run: npm pack --dry-run -w brepjs-mesh2solid
+
+      - name: Publish brepjs-mesh2solid
+        if: ${{ inputs.dry_run != true }}
+        run: npm publish -w brepjs-mesh2solid --provenance

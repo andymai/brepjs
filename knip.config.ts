@@ -50,10 +50,7 @@ const config: KnipConfig = {
     'packages/brepjs-voxel-wasm': {
       ignore: ['**'],
     },
-    'packages/brepjs-mesh2cad-wasm': {
-      ignore: ['**'],
-    },
-    'packages/brepjs-mesh2cad': {
+    'packages/brepjs-mesh2solid': {
       entry: ['tests/**/*.test.ts'],
       project: ['src/**/*.ts', 'tests/**/*.ts'],
     },

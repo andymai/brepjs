@@ -5,8 +5,8 @@
 
 use std::collections::HashMap;
 
-use brepjs_mesh2cad_wasm::earcut;
-use brepjs_mesh2cad_wasm::pipeline::{run_tier0, Options, Tier0};
+use mesh2solid_engine::earcut;
+use mesh2solid_engine::pipeline::{run_tier0, Options, Tier0};
 
 fn unmatched_edges(out: &Tier0) -> usize {
     let triangles: usize = out.regions.regions.iter().map(|r| r.triangles.len()).sum();

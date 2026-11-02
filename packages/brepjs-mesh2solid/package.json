@@ -1,7 +1,8 @@
 {
-  "name": "brepjs-mesh2cad",
+  "name": "brepjs-mesh2solid",
   "version": "0.1.0",
-  "description": "Mesh-to-solid conversion for brepjs: turn STL, OBJ, PLY and 3MF meshes (CAD exports or 3D scans) into B-Rep solids",
+  "private": true,
+  "description": "Mesh-to-solid conversion for brepjs: turn STL, OBJ, PLY and 3MF meshes (CAD exports or 3D scans) into B-Rep solids. Includes a Rust → WebAssembly mesh engine.",
   "keywords": [
     "mesh",
     "stl",
@@ -17,33 +18,37 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/andymai/brepjs",
-    "directory": "packages/brepjs-mesh2cad"
+    "directory": "packages/brepjs-mesh2solid"
   },
   "type": "module",
   "sideEffects": false,
   "engines": {
     "node": ">=24"
   },
-  "main": "./dist/brepjs-mesh2cad.js",
+  "main": "./dist/brepjs-mesh2solid.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "default": "./dist/brepjs-mesh2cad.js"
-    }
+      "default": "./dist/brepjs-mesh2solid.js"
+    },
+    "./index_bg.wasm": "./wasm/index_bg.wasm"
   },
   "files": [
     "dist",
-    "LICENSE"
+    "wasm/index.js",
+    "wasm/index.d.ts",
+    "wasm/index_bg.wasm",
+    "wasm/index_bg.wasm.d.ts",
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "build": "vite build",
+    "build:engine": "bash engine/scripts/build.sh",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run",
     "lint": "eslint src tests"
-  },
-  "dependencies": {
-    "brepjs-mesh2cad-wasm": ">=0.1.0"
   },
   "peerDependencies": {
     "brepjs": ">=20.0.0"

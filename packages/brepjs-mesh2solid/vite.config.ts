@@ -8,12 +8,14 @@ export default defineConfig({
     target: 'es2022',
     minify: false,
     lib: {
-      entry: { 'brepjs-mesh2cad': resolve(import.meta.dirname, 'src/index.ts') },
+      entry: { 'brepjs-mesh2solid': resolve(import.meta.dirname, 'src/index.ts') },
       // ESM only: the loader needs import.meta.url, and the wasm engine is ESM.
       formats: ['es'],
     },
     rollupOptions: {
-      external: ['brepjs', 'brepjs-mesh2cad-wasm', /^node:/],
+      // The wasm-bindgen glue stays a separate file so its `new URL('index_bg.wasm',
+      // import.meta.url)` keeps pointing at the wasm shipped beside it in wasm/.
+      external: ['brepjs', /\/wasm\/index\.js$/, /^node:/],
     },
   },
 });
