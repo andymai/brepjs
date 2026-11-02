@@ -75,13 +75,10 @@ pub fn inspect(bytes: &[u8], format_hint: &str) -> Result<String, String> {
     }
     // Only vertices a triangle uses: an OBJ or PLY can keep stray ones, which
     // conversion drops.
-    let used: Vec<V3> = mesh
-        .triangles
-        .iter()
-        .flatten()
-        .map(|&v| mesh.positions[v as usize])
-        .collect();
-    let bb = crate::math::Bbox::of(&used);
+    let mut bb = crate::math::Bbox::empty();
+    for &v in mesh.triangles.iter().flatten() {
+        bb.expand(mesh.positions[v as usize]);
+    }
     let obj = Obj::new().str("format", format.name());
     let obj = match ingested.unit {
         Some(u) => obj.str("unit", u.name()),
