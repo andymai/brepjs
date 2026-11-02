@@ -1,4 +1,5 @@
 import {
+  type Compound,
   type Edge,
   type EdgeFinderFn,
   type Face,
@@ -7,8 +8,11 @@ import {
   type ValidSolid,
   type Vec3,
   box,
+  chamfer,
   circle,
   clone,
+  compound,
+  cone,
   cut,
   cylinder,
   edgeFinder,
@@ -43,7 +47,8 @@ import type {
 /** A feature model as `.brep.ts` source and as the solid that source builds. */
 export interface Program {
   readonly code: string;
-  readonly shape: Solid;
+  /** A solid, or a compound of one solid per body. */
+  readonly shape: Solid | Compound;
 }
 
 export type ProgramResult = { ok: true; value: Program } | { ok: false; reason: string };
@@ -108,12 +113,25 @@ export function canonicalize(model: FeatureModel, tol: number): FeatureModel {
   };
   return {
     base: model.base.map(base),
+    cavities: model.cavities.map((c) => canonicalize(c, tol)),
+    countersinks: model.countersinks.map((c) => ({
+      op: 'countersink',
+      at: p3(c.at),
+      axis: dir(c.axis),
+      narrow: n(c.narrow),
+      wide: n(c.wide),
+      depth: n(c.depth),
+    })),
+    chamfers: model.chamfers.map((c) => ({
+      op: 'chamfer',
+      distance: n(c.distance),
+      edges: c.edges.map(p3),
+    })),
     fillets: model.fillets.map((f) => ({
       op: 'fillet',
       radius: n(f.radius),
       edges: f.edges.map(p3),
     })),
-    cavities: model.cavities.map((c) => canonicalize(c, tol)),
   };
 }
 
@@ -390,6 +408,44 @@ function emitModel(model: FeatureModel, prefix: string, w: Writer): Built | { re
     const code: string = `unwrap(cut(${part.code}, ${inner.code}))`;
     part = { code: w.bind(w.name(prefix), code), shape: w.keep(hollowed.value) };
   }
+  for (const c of model.countersinks) {
+    w.imports.add('cone');
+    w.imports.add('cut');
+    const tool = w.bind(
+      w.name('sink'),
+      `cone(${fmt(c.narrow)}, ${fmt(c.wide)}, ${fmt(c.depth)}${placement(c.at, c.axis)})`
+    );
+    const sunk: Result<Solid> = cut(
+      part.shape,
+      w.keep(cone(c.narrow, c.wide, c.depth, { at: c.at, axis: c.axis }))
+    );
+    if (!sunk.ok) return { reason: `countersink could not be cut: ${sunk.error.message}` };
+    const code: string = `unwrap(cut(${part.code}, ${tool}))`;
+    part = { code: w.bind(w.name(prefix), code), shape: w.keep(sunk.value) };
+  }
+  for (const c of model.chamfers) {
+    const sharp: Solid = part.shape;
+    const all: boolean = getEdges(sharp).length === c.edges.length;
+    const beveled: Result<ValidSolid> = all
+      ? chamfer(sharp as ValidSolid, c.distance)
+      : chamfer(
+          sharp as ValidSolid,
+          edgeFinder().either(c.edges.map((p) => (e: EdgeFinderFn) => e.atDistance(0, p))),
+          c.distance
+        );
+    if (!beveled.ok) {
+      return { reason: `chamfer ${fmt(c.distance)} failed: ${beveled.error.message}` };
+    }
+    w.imports.add('chamfer');
+    let code: string;
+    if (all) code = `unwrap(chamfer(${part.code}, ${fmt(c.distance)}))`;
+    else {
+      w.imports.add('edgeFinder');
+      const picks = c.edges.map((p) => `        (e) => e.atDistance(0, ${fv(p)}),`).join('\n');
+      code = `unwrap(\n    chamfer(\n      ${part.code},\n      edgeFinder().either([\n${picks}\n      ]),\n      ${fmt(c.distance)}\n    )\n  )`;
+    }
+    part = { code: w.bind(w.name('beveled'), code), shape: w.keep(beveled.value) };
+  }
   for (const f of model.fillets) {
     const sharp: Solid = part.shape;
     const all: boolean = getEdges(sharp).length === f.edges.length;
@@ -420,22 +476,36 @@ function emitModel(model: FeatureModel, prefix: string, w: Writer): Built | { re
  * Build the model and write it as a `.brep.ts` module whose default export
  * rebuilds the same solid. Values are emitted as given; canonicalize first.
  */
-export function writeProgram(model: FeatureModel): ProgramResult {
+export function writeProgram(models: readonly FeatureModel[]): ProgramResult {
   const w = new Writer();
   try {
-    const part = emitModel(model, 'part', w);
-    if ('reason' in part) return { ok: false, reason: part.reason };
-    // Booleans can wrap their one solid in a compound; return the solid itself.
-    const shape = soleSolid(part.shape);
-    if (shape === null) return { ok: false, reason: 'the program does not build one solid' };
-    const i = w.owned.indexOf(shape);
+    const bodies: { code: string; shape: Solid }[] = [];
+    for (const m of models) {
+      const part = emitModel(m, 'part', w);
+      if ('reason' in part) return { ok: false, reason: part.reason };
+      // Booleans can wrap their one solid in a compound; keep the solid itself.
+      const solid = soleSolid(part.shape);
+      if (solid === null) return { ok: false, reason: 'a body does not build one solid' };
+      if (solid !== part.shape) w.keep(solid);
+      bodies.push({ code: part.code, shape: solid });
+    }
+    const [first] = bodies;
+    if (first === undefined) return { ok: false, reason: 'the model has no bodies' };
+    let result: { code: string; shape: Solid | Compound } = first;
+    if (bodies.length > 1) {
+      w.imports.add('compound');
+      const shape = w.keep(compound(bodies.map((b) => b.shape)));
+      const code = `compound([${bodies.map((b) => b.code).join(', ')}])`;
+      result = { code: w.bind(w.name('bodies'), code), shape };
+    }
+    const i = w.owned.indexOf(result.shape);
     if (i >= 0) w.owned.splice(i, 1);
-    const code = render(w, part.code, shape);
+    const code = render(w, result.code, result.shape);
     if (code === null) {
-      shape[Symbol.dispose]();
+      result.shape[Symbol.dispose]();
       return { ok: false, reason: 'the program does not end in its result' };
     }
-    return { ok: true, value: { code, shape } };
+    return { ok: true, value: { code, shape: result.shape } };
   } finally {
     for (const o of w.owned) o[Symbol.dispose]();
   }
@@ -453,7 +523,7 @@ function soleSolid(shape: Solid): Solid | null {
 
 const r3 = (v: number) => fmt(Math.round(v * 1000) / 1000);
 
-function render(w: Writer, result: string, shape: Solid): string | null {
+function render(w: Writer, result: string, shape: Solid | Compound): string | null {
   const volume = measureVolume(shape);
   const area = measureArea(shape);
   const b = getBounds(shape);

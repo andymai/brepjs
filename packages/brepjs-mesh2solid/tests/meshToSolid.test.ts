@@ -374,6 +374,22 @@ describe('meshToSolid tier 2', () => {
     expect(isValid(shape)).toBe(true);
   });
 
+  it('writes one program for several bodies', async () => {
+    using a = box(10, 10, 10);
+    using b0 = box(10, 10, 10);
+    using b = translate(b0, [30, 0, 0]);
+    using both = unwrap(fuse(a, b));
+    const res = unwrap(await meshToSolid(await stlOf(both)));
+    using shape = res.shape;
+    expect(res.report.tierReached).toBe(2);
+    expect(isCompound(shape)).toBe(true);
+    expect(res.code).toContain('box(10, 10, 10)');
+    expect(res.code).toContain('box(10, 10, 10, { at: [35, 5, 5] })');
+    expect(res.code).toContain('return compound([');
+    expect(res.report.tier2?.features).toEqual(['body 1: extrude 10 mm', 'body 2: extrude 10 mm']);
+    expect(vol(shape)).toBeCloseTo(2000, 6);
+  });
+
   it('writes no program when asked for tier 1', async () => {
     using b = box(10, 10, 10);
     const res = unwrap(await meshToSolid(await stlOf(b), { tier: 1 }));

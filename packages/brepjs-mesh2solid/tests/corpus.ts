@@ -2,6 +2,7 @@ import {
   type AnyShape,
   type ValidSolid,
   box,
+  chamfer,
   cone,
   cut,
   cylinder,
@@ -115,6 +116,28 @@ export const CAD_CORPUS: readonly CorpusCase[] = [
       ),
     surfaces: { plane: 12 },
     code: ['box(20, 20, 20)', 'box(6, 6, 6, { at: [10, 10, 10] })', 'cut('],
+  },
+  {
+    name: 'chamfered box',
+    build: () => owned((keep) => unwrap(chamfer(keep(box(30, 20, 10)), 2))),
+    surfaces: { plane: 26 },
+    code: ['box(30, 20, 10)', 'chamfer(slab1, 2)'],
+  },
+  {
+    name: 'countersunk plate',
+    build: () =>
+      owned((keep) => {
+        const drilled = keep(
+          unwrap(cut(keep(box(40, 30, 8)), keep(cylinder(3, 20, { at: [20, 15, -5] }))))
+        );
+        return unwrap(cut(drilled, keep(cone(3, 6, 3, { at: [20, 15, 5] }))));
+      }),
+    surfaces: { plane: 6, cylinder: 1, cone: 1 },
+    code: [
+      'box(40, 30, 8)',
+      'cylinder(3, 8, { at: [20, 15, 0] })',
+      'cone(3, 6, 3, { at: [20, 15, 5] })',
+    ],
   },
   {
     name: 'hollow sphere',

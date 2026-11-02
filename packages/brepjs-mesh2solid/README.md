@@ -50,9 +50,12 @@ cylinder rather than dozens of strips.
 
 1. **Segments** the repaired mesh into regions that each lie on one plane, cylinder, cone, sphere, or
    torus, within a tolerance derived from the file's coordinate precision. Regions grow from the
-   largest triangles; a facet that turns more than 45° from a candidate surface can't join it.
-2. **Snaps** surfaces that meet tangentially (fillets) so they touch exactly: fillet axes sit one
-   radius from their planes, corner spheres share the fillet radius and sit on the fillet axes.
+   largest triangles; a facet that turns more than 45° from a candidate surface, or whose edges would
+   sit farther from it than a tessellator leaves them, can't join it.
+2. **Snaps** surfaces into the relations a designer drew. Surfaces that meet tangentially (fillets)
+   touch exactly: fillet axes sit one radius from their planes, corner spheres share the fillet
+   radius and sit on the fillet axes. Surfaces of revolution that share an axis (a countersink and
+   its hole) get one exact axis, and directions within a microradian of a world axis snap onto it.
 3. **Arranges** the surfaces: one oversized patch per surface, split along every exact intersection by
    the kernel, then keeps the pieces that lie on the mesh.
 4. **Sews** each body's pieces into a solid, subtracts cavities, unifies faces, and checks the result
@@ -75,12 +78,16 @@ export default () => {
 };
 ```
 
-1. **Strips fillets**: curved faces tangent to all their neighbours are removed by defeaturing,
-   which restores the sharp edges they rounded; each becomes a fillet on those edges.
-2. **Splits off cavities**: each internal void is recognized on its own and cut from the part.
+1. **Strips finishing features** by defeaturing, which restores what they replaced: curved faces
+   tangent to all their neighbours become fillets, planar strips that cut off an edge at an equal
+   setback (and the corners where they meet) become chamfers, and a concave cone opening a hole onto
+   a face becomes a countersink.
+2. **Splits off cavities**: each internal void is recognized on its own and cut from the part. A
+   mesh with several bodies becomes one program that returns them as a compound.
 3. **Describes the rest** as slabs extruded along one direction (every face a cap square to it or a
    wall along it; circular holes become cylinder cuts), or, for a turned part, as a half-section
-   revolved about its axis. Spheres and tori stay primitives.
+   revolved about its axis. Spheres and tori stay primitives. Countersinks, chamfers, then fillets
+   are put back on top.
 4. **Snaps** every dimension to the roundest value within the fit tolerance (40, not 39.9999997) and
    every direction within a microradian of an axis onto it.
 5. **Checks** the solid the program builds against the mesh, with the same gate tier 1 uses, and
