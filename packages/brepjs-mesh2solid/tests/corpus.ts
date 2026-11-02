@@ -203,62 +203,81 @@ export function scanLike(
     remap.push(id);
   }
   const srcTris = Array.from(m.triangles, (v) => remap[v] ?? 0);
-  const triCount = srcTris.length / 3;
-  const n = Math.max(1, Math.floor(Math.sqrt(opts.targetTriangles / triCount)));
-
+  // Split every edge longer than `h` at its midpoint (one midpoint per edge,
+  // shared by both its triangles) until none is, so sampling follows area as a
+  // scanner's does rather than the CAD tessellation: a filleted part's flat
+  // faces are two triangles each, its fillets hundreds.
   const pos: number[] = [...base];
-  const edgePoints = new Map<string, number[]>();
-  const edgeRow = (a: number, b: number): number[] => {
-    const k = a < b ? `${a}_${b}` : `${b}_${a}`;
-    let row = edgePoints.get(k);
-    if (row === undefined) {
-      const [lo, hi] = a < b ? [a, b] : [b, a];
-      row = [lo];
-      for (let s = 1; s < n; s++) {
-        const t = s / n;
-        row.push(pos.length / 3);
-        for (let c = 0; c < 3; c++)
-          pos.push((pos[3 * lo + c] ?? 0) * (1 - t) + (pos[3 * hi + c] ?? 0) * t);
-      }
-      row.push(hi);
-      edgePoints.set(k, row);
-    }
-    return a < b ? row : [...row].reverse();
+  const at = (v: number): [number, number, number] => [
+    pos[3 * v] ?? 0,
+    pos[3 * v + 1] ?? 0,
+    pos[3 * v + 2] ?? 0,
+  ];
+  const edgeLength = (a: number, b: number): number => {
+    const [x, y, z] = at(a);
+    const [u, v, w] = at(b);
+    return Math.hypot(x - u, y - v, z - w);
   };
-  const tris: number[] = [];
-  for (let t = 0; t < triCount; t++) {
+  let area = 0;
+  for (let t = 0; t < srcTris.length / 3; t++) {
     const [a, b, c] = [srcTris[3 * t] ?? 0, srcTris[3 * t + 1] ?? 0, srcTris[3 * t + 2] ?? 0];
-    const ab = edgeRow(a, b);
-    const ac = edgeRow(a, c);
-    const bc = edgeRow(b, c);
-    const grid: number[][] = [];
-    for (let i = 0; i <= n; i++) {
-      const row: number[] = [];
-      for (let j = 0; j <= n - i; j++) {
-        if (i === 0) row.push(ab[j] ?? 0);
-        else if (j === 0) row.push(ac[i] ?? 0);
-        else if (i + j === n) row.push(bc[n - j] ?? 0);
-        else {
-          row.push(pos.length / 3);
-          for (let k = 0; k < 3; k++) {
-            const pa = pos[3 * a + k] ?? 0;
-            const pb = pos[3 * b + k] ?? 0;
-            const pc = pos[3 * c + k] ?? 0;
-            pos.push(pa + ((pb - pa) * j) / n + ((pc - pa) * i) / n);
-          }
-        }
-      }
-      grid.push(row);
+    const [pa, pb, pc] = [at(a), at(b), at(c)];
+    const u = [pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]];
+    const w = [pc[0] - pa[0], pc[1] - pa[1], pc[2] - pa[2]];
+    area +=
+      Math.hypot(
+        (u[1] ?? 0) * (w[2] ?? 0) - (u[2] ?? 0) * (w[1] ?? 0),
+        (u[2] ?? 0) * (w[0] ?? 0) - (u[0] ?? 0) * (w[2] ?? 0),
+        (u[0] ?? 0) * (w[1] ?? 0) - (u[1] ?? 0) * (w[0] ?? 0)
+      ) / 2;
+  }
+  const h = 2 * Math.sqrt(area / opts.targetTriangles);
+  const mids = new Map<string, number>();
+  const mid = (a: number, b: number): number => {
+    const k = a < b ? `${a}_${b}` : `${b}_${a}`;
+    let m = mids.get(k);
+    if (m === undefined) {
+      m = pos.length / 3;
+      const [x, y, z] = at(a);
+      const [u, v, w] = at(b);
+      pos.push((x + u) / 2, (y + v) / 2, (z + w) / 2);
+      mids.set(k, m);
     }
-    for (let i = 0; i < n; i++) {
-      for (let j = 0; j < n - i; j++) {
-        const p = grid[i]?.[j] ?? 0;
-        const q = grid[i]?.[j + 1] ?? 0;
-        const r = grid[i + 1]?.[j] ?? 0;
-        tris.push(p, q, r);
-        if (j < n - i - 1) tris.push(q, grid[i + 1]?.[j + 1] ?? 0, r);
+    return m;
+  };
+  let tris: number[] = srcTris;
+  for (let pass = 0; pass < 40; pass++) {
+    const next: number[] = [];
+    let split = false;
+    for (let t = 0; t < tris.length / 3; t++) {
+      const v = [tris[3 * t] ?? 0, tris[3 * t + 1] ?? 0, tris[3 * t + 2] ?? 0];
+      const long = [0, 1, 2].map((i) => edgeLength(v[i] ?? 0, v[(i + 1) % 3] ?? 0) > h);
+      const count = long.filter(Boolean).length;
+      const [a0, b0, c0] = v as [number, number, number];
+      if (count === 0) {
+        next.push(a0, b0, c0);
+        continue;
+      }
+      split = true;
+      if (count === 3) {
+        const [x, y, z] = [mid(a0, b0), mid(b0, c0), mid(c0, a0)];
+        next.push(a0, x, z, x, b0, y, z, y, c0, x, y, z);
+        continue;
+      }
+      // Rotate so edge (a, b) is the split one (one long edge) or (c, a) the
+      // kept one (two long edges); the winding stays the same.
+      const pick = count === 1 ? long.indexOf(true) : (long.indexOf(false) + 1) % 3;
+      const [a, b, c] = [v[pick] ?? 0, v[(pick + 1) % 3] ?? 0, v[(pick + 2) % 3] ?? 0];
+      if (count === 1) {
+        const m = mid(a, b);
+        next.push(a, m, c, m, b, c);
+      } else {
+        const [x, y] = [mid(a, b), mid(b, c)];
+        next.push(x, b, y, a, x, y, a, y, c);
       }
     }
+    tris = next;
+    if (!split) break;
   }
 
   const normals = new Float64Array(pos.length);

@@ -630,11 +630,26 @@ fn refine_for(s: Surface, pts: &[V3], max_iters: usize) -> Surface {
 /// Candidate fits for the samples, refined, best (simplest within `tol`, else
 /// lowest residual) first. `normals` are per-sample unit normals.
 pub fn fit_candidates(pts: &[V3], normals: &[V3]) -> Vec<(Surface, f64)> {
+    fit_candidates_where(pts, normals, |_| true)
+}
+
+/// `fit_candidates` restricted to the kinds `keep` accepts, skipping the
+/// refinement of the rest.
+pub fn fit_candidates_where(
+    pts: &[V3],
+    normals: &[V3],
+    keep: impl Fn(Kind) -> bool,
+) -> Vec<(Surface, f64)> {
     let mut out: Vec<(Surface, f64)> = Vec::new();
-    if let Some(p) = plane(pts) {
-        out.push((p, max_residual(&p, pts)));
+    if keep(Kind::Plane) {
+        if let Some(p) = plane(pts) {
+            out.push((p, max_residual(&p, pts)));
+        }
     }
     for c in revolution_candidates(pts, normals) {
+        if !keep(c.kind()) {
+            continue;
+        }
         let r = refine_for(c, pts, 20);
         if params_finite(&r) {
             out.push((r, max_residual(&r, pts)));

@@ -9,7 +9,7 @@
 //! candidate triangle stays within tolerance, refitting as it doubles. Planes
 //! claim their large triangles before thin fillet strips get a turn.
 
-use crate::fit::{fit_candidates, max_residual, refine, Kind, Surface};
+use crate::fit::{fit_candidates, fit_candidates_where, max_residual, refine, Kind, Surface};
 use crate::math::{add, dist, dot, normalize, scale, tri_cross, V3};
 use crate::mesh::{Mesh, Topology};
 
@@ -328,6 +328,437 @@ pub fn consolidate(
     seg.regions = regions;
     seg.unfit_triangles = seg.region_of.iter().filter(|&&r| r == u32::MAX).count();
     folded
+}
+
+/// On a scan a face's region grows past a tangent seam into the start of the
+/// fillet, where the blend is still within noise of the face. Those triangles
+/// all lie to one side, so they pull the face's fit inward (and the face's
+/// own triangles push the fillet's out). Once every surface is known, hand
+/// each triangle to the accepting surface in its body nearest its centroid,
+/// then refit. Returns how many triangles moved.
+pub fn reassign(mesh: &Mesh, seg: &mut Segmentation, params: &Params, tri_body: &[u32]) -> usize {
+    let homes = region_bodies(&seg.regions, tri_body);
+    let facing = normals(mesh);
+    let reach = 2.0 * params.tol;
+    let boxes: Vec<crate::math::Bbox> = seg
+        .regions
+        .iter()
+        .map(|r| crate::math::Bbox::of(&samples(mesh, &r.tris).0))
+        .collect();
+    let inside = |b: &crate::math::Bbox, p: V3| {
+        (0..3).all(|k| b.min[k] - reach <= p[k] && p[k] <= b.max[k] + reach)
+    };
+    let mut moved = 0;
+    for (t, body) in tri_body.iter().enumerate() {
+        let cur = seg.region_of[t];
+        if cur == u32::MAX {
+            continue;
+        }
+        let [a, b, c] = mesh.tri(t);
+        let centroid = scale(add(add(a, b), c), 1.0 / 3.0);
+        let mut best = (
+            cur as usize,
+            seg.regions[cur as usize].surface.distance(centroid),
+        );
+        for (i, reg) in seg.regions.iter().enumerate() {
+            if i == cur as usize
+                || homes[i].binary_search(body).is_err()
+                || !inside(&boxes[i], centroid)
+            {
+                continue;
+            }
+            let d = reg.surface.distance(centroid);
+            if d >= best.1 {
+                continue;
+            }
+            let reference = match reg.surface {
+                Surface::Plane { n, .. } => n,
+                _ => [0.0, 0.0, 1.0],
+            };
+            if accepts(mesh, &reg.surface, t, params, &facing, reference) {
+                best = (i, d);
+            }
+        }
+        if best.0 != cur as usize {
+            seg.region_of[t] = best.0 as u32;
+            moved += 1;
+        }
+    }
+    if moved == 0 {
+        return 0;
+    }
+    rebuild_members(seg);
+    for r in &mut seg.regions {
+        let (pts, _) = samples(mesh, &r.tris);
+        r.surface = refit(r.surface, &pts, params);
+        r.max_residual = max_residual(&r.surface, &pts);
+    }
+    moved
+}
+
+/// Rebuild each region's triangle list from `region_of`, dropping regions
+/// left with none (an empty region has no extent to build a patch over).
+fn rebuild_members(seg: &mut Segmentation) {
+    for r in &mut seg.regions {
+        r.tris.clear();
+    }
+    for (t, &r) in seg.region_of.iter().enumerate() {
+        if r != u32::MAX {
+            seg.regions[r as usize].tris.push(t as u32);
+        }
+    }
+    seg.regions.retain(|r| !r.tris.is_empty());
+    for (k, r) in seg.regions.iter().enumerate() {
+        for &t in &r.tris {
+            seg.region_of[t as usize] = k as u32;
+        }
+    }
+}
+
+/// Kinds that can stand for their neighbours' points: noise rarely fakes one,
+/// unlike a cone or torus, which bend to fit a strip of almost anything curved.
+fn trusted(k: Kind) -> bool {
+    matches!(k, Kind::Plane | Kind::Cylinder | Kind::Sphere)
+}
+
+/// Regions sharing an edge with each region.
+fn adjacency(mesh: &Mesh, topo: &Topology, seg: &Segmentation) -> Vec<Vec<usize>> {
+    let mut adj = vec![Vec::new(); seg.regions.len()];
+    for t in 0..mesh.triangles.len() {
+        let a = seg.region_of[t];
+        if a == u32::MAX {
+            continue;
+        }
+        for i in 0..3 {
+            if let Some(nb) = topo.neighbor(t, i) {
+                let b = seg.region_of[nb];
+                if b != u32::MAX && b != a {
+                    adj[a as usize].push(b as usize);
+                }
+            }
+        }
+    }
+    for a in &mut adj {
+        a.sort_unstable();
+        a.dedup();
+    }
+    adj
+}
+
+/// Share of a fragment's measured points other surfaces must explain for it to be dropped.
+const REDUNDANT_SHARE: f64 = 0.9;
+
+/// On a scan, noise leaves fragments that only restate their neighbours: a
+/// wide cone through the nearly flat ring where a face's fillets begin, a
+/// chord plane along a fillet. Drop each small region whose measured points
+/// the other surfaces in its body almost all explain, handing each triangle to
+/// the surface nearest its centroid. Measured points, not triangles: the
+/// decimated triangles across a tangent seam are chords lying on neither
+/// surface within tolerance, while the points under them lie on one or the
+/// other. The flexible kinds go first
+/// (most often the noise), then planes, then cylinders and spheres, smallest
+/// first within a kind, so a stray cone is gone before it can claim a fillet.
+/// Returns how many regions were dropped.
+pub fn dissolve_redundant(
+    mesh: &Mesh,
+    topo: &Topology,
+    seg: &mut Segmentation,
+    params: &Params,
+    tri_body: &[u32],
+    measured: &RegionPoints,
+) -> usize {
+    let areas: Vec<f64> = (0..mesh.triangles.len()).map(|t| mesh.area(t)).collect();
+    let bodies = tri_body.iter().map(|&b| b as usize + 1).max().unwrap_or(0);
+    let mut body_area = vec![0.0; bodies];
+    for (t, &b) in tri_body.iter().enumerate() {
+        body_area[b as usize] += areas[t];
+    }
+    let mut adj = adjacency(mesh, topo, seg);
+    let rank = |k: Kind| match k {
+        Kind::Cone | Kind::Torus => 0,
+        Kind::Plane => 1,
+        Kind::Cylinder | Kind::Sphere => 2,
+    };
+    let area_of = |r: &Region| r.tris.iter().map(|&t| areas[t as usize]).sum::<f64>();
+    let mut order: Vec<usize> = (0..seg.regions.len())
+        .filter(|&i| {
+            let r = &seg.regions[i];
+            let body = tri_body[r.tris[0] as usize] as usize;
+            area_of(r) < MERGE_AREA * body_area[body]
+        })
+        .collect();
+    order.sort_by(|&a, &b| {
+        let (ra, rb) = (&seg.regions[a], &seg.regions[b]);
+        rank(ra.surface.kind())
+            .cmp(&rank(rb.surface.kind()))
+            .then(area_of(ra).total_cmp(&area_of(rb)))
+    });
+    let mut dead = vec![false; seg.regions.len()];
+    // A fragment's neighbours explain it: their surfaces run on past their
+    // current regions, often across exactly the strip the fragment holds.
+    // Only the rigid kinds do; a cone or torus that fits a strip of a fillet
+    // would otherwise explain away the fillet's own cylinder.
+    for r in order {
+        let around: Vec<usize> = adj[r]
+            .iter()
+            .copied()
+            .filter(|&i| !dead[i] && trusted(seg.regions[i].surface.kind()))
+            .collect();
+        let pts = &measured.pts[r];
+        let explained = pts
+            .iter()
+            .filter(|&&p| {
+                around
+                    .iter()
+                    .any(|&i| seg.regions[i].surface.distance(p) <= params.tol)
+            })
+            .count();
+        if pts.is_empty() || (explained as f64) < REDUNDANT_SHARE * pts.len() as f64 {
+            continue;
+        }
+        dead[r] = true;
+        // Current members: earlier drops may have handed this region triangles.
+        for t in 0..seg.region_of.len() {
+            if seg.region_of[t] != r as u32 {
+                continue;
+            }
+            let [a, b, c] = mesh.tri(t);
+            let centroid = scale(add(add(a, b), c), 1.0 / 3.0);
+            let best = around
+                .iter()
+                .map(|&i| (i, seg.regions[i].surface.distance(centroid)))
+                .filter(|&(_, d)| d <= 3.0 * params.tol)
+                .min_by(|x, y| x.1.total_cmp(&y.1));
+            seg.region_of[t] = best.map_or(u32::MAX, |(i, _)| i as u32);
+        }
+        // Its neighbours now meet across the triangles it handed them.
+        for &n in &around {
+            let mut joined: Vec<usize> = adj[n]
+                .iter()
+                .chain(&around)
+                .copied()
+                .filter(|&k| k != n && k != r)
+                .collect();
+            joined.sort_unstable();
+            joined.dedup();
+            adj[n] = joined;
+        }
+    }
+    let dropped = dead.iter().filter(|&&d| d).count();
+    if dropped == 0 {
+        return 0;
+    }
+    let mut remap = vec![u32::MAX; seg.regions.len()];
+    let old = std::mem::take(&mut seg.regions);
+    for (k, r) in old.into_iter().enumerate() {
+        if !dead[k] {
+            remap[k] = seg.regions.len() as u32;
+            seg.regions.push(r);
+        }
+    }
+    for r in seg.region_of.iter_mut() {
+        if *r != u32::MAX {
+            *r = remap[*r as usize];
+        }
+    }
+    rebuild_members(seg);
+    for r in &mut seg.regions {
+        let (pts, _) = samples(mesh, &r.tris);
+        r.max_residual = max_residual(&r.surface, &pts);
+    }
+    seg.unfit_triangles = seg.region_of.iter().filter(|&&r| r == u32::MAX).count();
+    dropped
+}
+
+/// Regions smaller than this share of their body's area are tried for merging.
+const MERGE_AREA: f64 = 0.05;
+
+/// The simplest plane, cylinder or sphere fitting all of `pts` (with their
+/// normals) on a scan, if any does. Merges rebuild split fillets and corner
+/// balls; a merge into a cone or torus is the noise this undoes.
+fn fit_union(pts: &[V3], nrm: &[V3], params: &Params) -> Option<Surface> {
+    let stride = pts.len().div_ceil(MAX_REFIT_SAMPLES).max(1);
+    let sub_p: Vec<V3> = pts.iter().step_by(stride).copied().collect();
+    let sub_n: Vec<V3> = nrm.iter().step_by(stride).copied().collect();
+    let extent = crate::math::Bbox::of(pts).diag();
+    let mut cands: Vec<Surface> = fit_candidates_where(&sub_p, &sub_n, trusted)
+        .into_iter()
+        .map(|(c, _)| c)
+        .collect();
+    cands.sort_by_key(|c| c.kind());
+    cands.into_iter().find_map(|c| {
+        let c = if c.kind() == Kind::Plane {
+            c
+        } else {
+            refine(c, &sub_p)
+        };
+        (fits(&c, pts, params.tol, true) && !nearly_flat(&c, pts, extent)).then_some(c)
+    })
+}
+
+/// Measured points per region, with their normals: on a scan, the input's own
+/// vertices rather than the decimated mesh's (see `merge_adjacent`).
+pub struct RegionPoints {
+    pub pts: Vec<Vec<V3>>,
+    pub nrm: Vec<Vec<V3>>,
+}
+
+/// On a scan a fillet's arc can come back as a few strips (chord planes near
+/// its tangent seams, a cone between them), each fitting within noise, where
+/// one cylinder fits them all. Merge neighbouring regions, smallest first,
+/// while one surface fits their union; faces meeting at a real crease never
+/// share one. Unions are judged on `measured` points: decimating within the
+/// tolerance flattens the start of each fillet, so the decimated vertices fit
+/// no single surface there. Returns how many merges were made.
+pub fn merge_adjacent(
+    mesh: &Mesh,
+    topo: &Topology,
+    seg: &mut Segmentation,
+    params: &Params,
+    tri_body: &[u32],
+    measured: &mut RegionPoints,
+) -> usize {
+    let areas: Vec<f64> = (0..mesh.triangles.len()).map(|t| mesh.area(t)).collect();
+    let bodies = tri_body.iter().map(|&b| b as usize + 1).max().unwrap_or(0);
+    let mut body_area = vec![0.0; bodies];
+    for (t, &b) in tri_body.iter().enumerate() {
+        body_area[b as usize] += areas[t];
+    }
+    // Stable ids survive the index shifts of merging, so a pair once found not
+    // to share a surface is not tried again until one side changes.
+    let mut ids: Vec<usize> = (0..seg.regions.len()).collect();
+    let mut next_id = ids.len();
+    let mut rejected: std::collections::BTreeSet<(usize, usize)> =
+        std::collections::BTreeSet::new();
+    let mut merges = 0;
+    loop {
+        let region_area: Vec<f64> = seg
+            .regions
+            .iter()
+            .map(|r| r.tris.iter().map(|&t| areas[t as usize]).sum())
+            .collect();
+        let mut pairs: std::collections::BTreeSet<(usize, usize)> = Default::default();
+        for t in 0..mesh.triangles.len() {
+            let a = seg.region_of[t];
+            if a == u32::MAX {
+                continue;
+            }
+            for i in 0..3 {
+                if let Some(nb) = topo.neighbor(t, i) {
+                    let b = seg.region_of[nb];
+                    if b != u32::MAX && b != a {
+                        pairs.insert((a.min(b) as usize, a.max(b) as usize));
+                    }
+                }
+            }
+        }
+        let mut order: Vec<(f64, usize, usize)> = pairs
+            .into_iter()
+            .filter_map(|(i, j)| {
+                let small = region_area[i].min(region_area[j]);
+                let body = tri_body[seg.regions[i].tris[0] as usize] as usize;
+                (small < MERGE_AREA * body_area[body]).then_some((small, i, j))
+            })
+            .collect();
+        order.sort_by(|x, y| x.0.total_cmp(&y.0));
+        let adj = adjacency(mesh, topo, seg);
+        let mut done = None;
+        for (_, i, j) in order {
+            let key = (ids[i], ids[j]);
+            if rejected.contains(&key) {
+                continue;
+            }
+            // Only the points no other surface already explains: the measured
+            // points under a seam's chords lie partly on the face beside it.
+            let around: Vec<usize> = adj[i]
+                .iter()
+                .chain(&adj[j])
+                .copied()
+                .filter(|&k| k != i && k != j && trusted(seg.regions[k].surface.kind()))
+                .collect();
+            let explained = |p: V3| {
+                around
+                    .iter()
+                    .any(|&k| seg.regions[k].surface.distance(p) <= params.tol)
+            };
+            let all = measured.pts[i].len() + measured.pts[j].len();
+            let stride = all.div_ceil(4 * MAX_REFIT_SAMPLES).max(1);
+            let (pts, nrm): (Vec<V3>, Vec<V3>) = measured.pts[i]
+                .iter()
+                .zip(&measured.nrm[i])
+                .chain(measured.pts[j].iter().zip(&measured.nrm[j]))
+                .step_by(stride)
+                .filter(|(p, _)| !explained(**p))
+                .map(|(p, n)| (*p, *n))
+                .unzip();
+            if pts.len() < 20 {
+                rejected.insert(key);
+                continue;
+            }
+            match fit_union(&pts, &nrm, params) {
+                Some(s) => {
+                    let mut union = seg.regions[i].tris.clone();
+                    union.extend_from_slice(&seg.regions[j].tris);
+                    done = Some((i, j, s, union));
+                    break;
+                }
+                None => {
+                    rejected.insert(key);
+                }
+            }
+        }
+        let Some((i, j, s, union)) = done else {
+            break;
+        };
+        let (pts, _) = samples(mesh, &union);
+        seg.regions[i] = Region {
+            surface: s,
+            max_residual: max_residual(&s, &pts),
+            tris: union,
+        };
+        seg.regions.remove(j);
+        let (pj, nj) = (measured.pts.remove(j), measured.nrm.remove(j));
+        measured.pts[i].extend(pj);
+        measured.nrm[i].extend(nj);
+        for r in seg.region_of.iter_mut() {
+            if *r == j as u32 {
+                *r = i as u32;
+            } else if *r != u32::MAX && *r > j as u32 {
+                *r -= 1;
+            }
+        }
+        // What the merged surface explains changed for the regions beside it.
+        let touched: Vec<usize> = adj[i].iter().chain(&adj[j]).map(|&k| ids[k]).collect();
+        rejected.retain(|&(a, b)| !touched.contains(&a) && !touched.contains(&b));
+        ids.remove(j);
+        ids[i] = next_id;
+        next_id += 1;
+        merges += 1;
+    }
+    merges
+}
+
+/// Refit each region's surface to `points[region]` (when it has enough of
+/// them), keeping a refit only where it still fits. Returns how many moved.
+pub fn refit_from(
+    mesh: &Mesh,
+    seg: &mut Segmentation,
+    points: &[Vec<V3>],
+    params: &Params,
+) -> usize {
+    let mut changed = 0;
+    for (r, pts) in seg.regions.iter_mut().zip(points) {
+        if pts.len() < 20 {
+            continue;
+        }
+        let s = refit(r.surface, pts, params);
+        if s != r.surface {
+            r.surface = s;
+            r.max_residual = max_residual(&s, &samples(mesh, &r.tris).0);
+            changed += 1;
+        }
+    }
+    changed
 }
 
 /// Share of the mesh area no region covers.
@@ -1151,5 +1582,219 @@ mod tests {
         assert_eq!(consolidate(&mesh, &mut seg, &params, &tri_body), 0);
         assert_eq!(seg.regions.len(), 2);
         assert_eq!(seg.regions[1].tris, (big..total).collect::<Vec<_>>());
+    }
+
+    /// A 100 mm floor at z = -50 (triangles `0..floor`) and, in the same body,
+    /// a quarter-round fillet strip of radius 3 along Z (`floor..`): the floor
+    /// keeps the strip small next to its body, as a fillet is next to a part.
+    fn floor_and_fillet() -> (Mesh, u32) {
+        let mut mesh = grid(10);
+        for p in &mut mesh.positions {
+            *p = [10.0 * p[0], 10.0 * p[1], -50.0];
+        }
+        let floor = mesh.triangles.len() as u32;
+        let base = mesh.positions.len() as u32;
+        let (arcs, rows) = (12u32, 20u32);
+        for j in 0..=rows {
+            for i in 0..=arcs {
+                let t = std::f64::consts::FRAC_PI_2 * f64::from(i) / f64::from(arcs);
+                mesh.positions
+                    .push([3.0 * t.cos(), 3.0 * t.sin(), f64::from(j)]);
+            }
+        }
+        let at = |i: u32, j: u32| base + j * (arcs + 1) + i;
+        for j in 0..rows {
+            for i in 0..arcs {
+                mesh.triangles
+                    .push([at(i, j), at(i + 1, j), at(i + 1, j + 1)]);
+                mesh.triangles
+                    .push([at(i, j), at(i + 1, j + 1), at(i, j + 1)]);
+            }
+        }
+        (mesh, floor)
+    }
+
+    /// Each region's vertices with their exact normals (radial on the strip).
+    fn measured_of(mesh: &Mesh, seg: &Segmentation) -> RegionPoints {
+        let mut out = RegionPoints {
+            pts: Vec::new(),
+            nrm: Vec::new(),
+        };
+        for r in &seg.regions {
+            let pts: Vec<V3> = unique_vertices(mesh, &r.tris)
+                .into_iter()
+                .map(|v| mesh.positions[v as usize])
+                .collect();
+            let nrm = pts
+                .iter()
+                .map(|p| {
+                    if p[2] < -49.0 {
+                        [0.0, 0.0, 1.0]
+                    } else {
+                        normalize([p[0], p[1], 0.0]).unwrap()
+                    }
+                })
+                .collect();
+            out.pts.push(pts);
+            out.nrm.push(nrm);
+        }
+        out
+    }
+
+    fn scan_params() -> Params {
+        Params {
+            tol: 0.05,
+            max_sag: f64::INFINITY,
+            crease_deg: 50.0,
+            robust: true,
+        }
+    }
+
+    fn regions_from(mesh: &Mesh, parts: Vec<(Surface, Vec<u32>)>) -> Segmentation {
+        let mut region_of = vec![u32::MAX; mesh.triangles.len()];
+        let regions = parts
+            .into_iter()
+            .enumerate()
+            .map(|(k, (surface, tris))| {
+                for &t in &tris {
+                    region_of[t as usize] = k as u32;
+                }
+                Region {
+                    surface,
+                    tris,
+                    max_residual: 0.0,
+                }
+            })
+            .collect();
+        Segmentation {
+            regions,
+            region_of,
+            unfit_triangles: 0,
+        }
+    }
+
+    const FLOOR: Surface = Surface::Plane {
+        n: [0.0, 0.0, 1.0],
+        d: -50.0,
+    };
+
+    #[test]
+    fn reassigning_every_triangle_away_drops_the_region() {
+        // A fragment fitted 0.03 mm above a face it lies on: each of its
+        // triangles is nearer the face, so it is left with none.
+        let mesh = grid(10);
+        let tris = mesh.triangles.len() as u32;
+        let mut seg = regions_from(
+            &mesh,
+            vec![
+                (FLAT, (4..tris).collect()),
+                (
+                    Surface::Plane {
+                        n: [0.0, 0.0, 1.0],
+                        d: 0.03,
+                    },
+                    (0..4).collect(),
+                ),
+            ],
+        );
+        let params = Params {
+            tol: 0.06,
+            ..scan_params()
+        };
+        assert_eq!(
+            reassign(&mesh, &mut seg, &params, &vec![0; tris as usize]),
+            4
+        );
+        assert_eq!(seg.regions.len(), 1);
+        assert!(seg.region_of.iter().all(|&r| r == 0));
+        assert_eq!(seg.regions[0].tris.len(), tris as usize);
+    }
+
+    #[test]
+    fn strips_of_one_fillet_merge_into_its_cylinder() {
+        let (mesh, floor) = floor_and_fillet();
+        let total = mesh.triangles.len() as u32;
+        // Split across the arc: each half fitted on its own as a chord plane.
+        let half = |lo: bool| -> Vec<u32> {
+            (floor..total)
+                .filter(|&t| ((t - floor) % 24 < 12) == lo)
+                .collect()
+        };
+        let chord = |tris: &[u32]| crate::fit::plane(&samples(&mesh, tris).0).unwrap();
+        let (a, b) = (half(true), half(false));
+        let mut seg = regions_from(
+            &mesh,
+            vec![
+                (FLOOR, (0..floor).collect()),
+                (chord(&a), a),
+                (chord(&b), b),
+            ],
+        );
+        let mut measured = measured_of(&mesh, &seg);
+        let topo = Topology::build(&mesh);
+        let tri_body = vec![0; mesh.triangles.len()];
+        let merges = merge_adjacent(
+            &mesh,
+            &topo,
+            &mut seg,
+            &scan_params(),
+            &tri_body,
+            &mut measured,
+        );
+        assert_eq!(merges, 1);
+        assert_eq!(seg.regions.len(), 2);
+        let Surface::Cylinder { r, a, .. } = seg.regions[1].surface else {
+            panic!("strips became {:?}", seg.regions[1].surface);
+        };
+        assert!((r - 3.0).abs() < 1e-6, "radius {r}");
+        assert!(a[2].abs() > 1.0 - 1e-9);
+    }
+
+    #[test]
+    fn a_cone_inside_a_fillet_dissolves_into_its_cylinder() {
+        let (mesh, floor) = floor_and_fillet();
+        let total = mesh.triangles.len() as u32;
+        let cylinder = Surface::Cylinder {
+            o: [0.0, 0.0, 0.0],
+            a: [0.0, 0.0, 1.0],
+            r: 3.0,
+        };
+        // A few rows in the middle of the strip, fitted as a wide cone.
+        let middle: Vec<u32> = (floor + 8 * 24..floor + 12 * 24).collect();
+        let rest: Vec<u32> = (floor..total).filter(|t| !middle.contains(t)).collect();
+        let cone = Surface::Cone {
+            apex: [0.0, 0.0, -40.0],
+            a: [0.0, 0.0, 1.0],
+            half_angle: 0.06,
+        };
+        let parts = |fragment: Surface, host: Surface| {
+            vec![
+                (FLOOR, (0..floor).collect()),
+                (host, rest.clone()),
+                (fragment, middle.clone()),
+            ]
+        };
+        let topo = Topology::build(&mesh);
+        let tri_body = vec![0; mesh.triangles.len()];
+
+        let mut seg = regions_from(&mesh, parts(cone, cylinder));
+        let measured = measured_of(&mesh, &seg);
+        let dropped =
+            dissolve_redundant(&mesh, &topo, &mut seg, &scan_params(), &tri_body, &measured);
+        assert_eq!(dropped, 1);
+        assert_eq!(seg.regions.len(), 2);
+        assert_eq!(seg.regions[1].surface, cylinder);
+        assert_eq!(seg.regions[1].tris.len(), (total - floor) as usize);
+
+        // The other way round, the cone goes and the cylinder takes the strip:
+        // a cone never explains a neighbour, so it can't swallow the fillet.
+        let mut seg = regions_from(&mesh, parts(cylinder, cone));
+        let measured = measured_of(&mesh, &seg);
+        let dropped =
+            dissolve_redundant(&mesh, &topo, &mut seg, &scan_params(), &tri_body, &measured);
+        assert_eq!(dropped, 1);
+        assert_eq!(seg.regions.len(), 2);
+        assert_eq!(seg.regions[1].surface, cylinder);
+        assert_eq!(seg.regions[1].tris.len(), (total - floor) as usize);
     }
 }

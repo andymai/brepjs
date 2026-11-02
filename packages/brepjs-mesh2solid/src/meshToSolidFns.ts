@@ -12,7 +12,14 @@ import {
   ok,
   validationError,
 } from 'brepjs';
-import { type AnalyticResult, buildAnalytic, decodeSurfaces, deviationOf } from './analyticFns.js';
+import {
+  type AnalyticResult,
+  type Segmentation,
+  buildAnalytic,
+  decodeSurfaces,
+  deviationOf,
+} from './analyticFns.js';
+import { filletBlends, findBlends } from './blendFns.js';
 import { type Tier2Result, buildTier2 } from './tier2Fns.js';
 import { buildShape } from './buildFns.js';
 import { loadMeshEngine } from './engine.js';
@@ -297,25 +304,43 @@ function gatesFor(session: Tier1Session, engineReport: EngineReport): Gates {
 }
 
 function runTier1(session: Tier1Session, engineReport: EngineReport, gates: Gates): AnalyticResult {
-  return buildAnalytic(
-    {
-      surfaces: decodeSurfaces(session.surface_kinds, session.surface_params),
-      bounds: boundsOf(session.surface_bounds),
-      tolerance: gates.tolerance,
-      unfitTriangles: session.unfit_triangles,
-      unfitArea: session.unfit_area,
-      // On a scan, label by the nearest surface rather than the fuzzy region.
-      nearest: (pts) =>
-        engineReport.estimate.kind === 'scan'
-          ? session.nearest_by_surface(pts)
-          : session.nearest(pts),
-      bodiesOf: (pts) => session.bodies_of(pts),
-      bodyParent: session.body_parent,
-      bodyClosed: session.body_closed,
-      deviation: (p, i) => session.deviation(p, i),
-    },
-    gates
-  );
+  const scan = engineReport.estimate.kind === 'scan';
+  const seg: Segmentation = {
+    surfaces: decodeSurfaces(session.surface_kinds, session.surface_params),
+    bounds: boundsOf(session.surface_bounds),
+    tolerance: gates.tolerance,
+    unfitTriangles: session.unfit_triangles,
+    unfitArea: session.unfit_area,
+    // On a scan, label by the nearest surface rather than the fuzzy region.
+    nearest: (pts) => (scan ? session.nearest_by_surface(pts) : session.nearest(pts)),
+    bodiesOf: (pts) => session.bodies_of(pts),
+    bodyParent: session.body_parent,
+    bodyClosed: session.body_closed,
+    deviation: (p, i) => session.deviation(p, i),
+  };
+  if (!scan) return buildAnalytic(seg, gates);
+  // Along a scanned fillet the plane and the blend are both within noise of
+  // the mesh, so which arrangement pieces it covers is ambiguous. Building the
+  // sharp part and filleting it with the fitted radii sidesteps the seams.
+  const blends = findBlends(seg.surfaces, seg.bounds, gates.tolerance);
+  if (blends.edges.length === 0) return buildAnalytic(seg, gates);
+  const attempt = (opts: Parameters<typeof buildAnalytic>[1]): AnalyticResult => {
+    try {
+      return buildAnalytic(seg, opts);
+    } catch (e) {
+      return { ok: false, reason: `the rebuild failed: ${message(e)}` };
+    }
+  };
+  const last = attempt({
+    ...gates,
+    skip: blends.surfaces,
+    finish: (s) => filletBlends(s, blends.edges, gates.tolerance),
+  });
+  if (last.ok) return last;
+  const plain = attempt(gates);
+  return plain.ok
+    ? plain
+    : { ok: false, reason: `${plain.reason} (filleting the blends last: ${last.reason})` };
 }
 
 function runTier2(shape: Shape, session: Tier1Session, gates: Gates): Tier2Result {

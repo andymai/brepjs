@@ -141,13 +141,12 @@ describe('tier 2 eval: feature programs', () => {
 
 describe('scan eval: noisy, decimated meshes', () => {
   const sigma = 0.02;
-  // The calls each scan's feature program should contain; null where a scan
-  // still falls back (fillets on a scan don't rebuild yet).
-  const cases: { name: string; code: string[] | null }[] = [
+  // The calls each scan's feature program should contain.
+  const cases: { name: string; code: string[] }[] = [
     { name: 'box', code: ['box(40, 30, 10)'] },
     { name: 'plate with hole', code: ['box(40, 30, 6)', 'cylinder(5, 6, { at: [20, 15, 0] })'] },
     { name: 'sphere', code: ['sphere(15)'] },
-    { name: 'filleted box', code: null },
+    { name: 'filleted box', code: ['box(30, 20, 15)', 'fillet(slab1, 3)'] },
   ];
   for (const { name, code } of cases) {
     it(`${name} (σ=${sigma} mm)`, async () => {
@@ -181,10 +180,6 @@ describe('scan eval: noisy, decimated meshes', () => {
       expect(r.decimation.applied, summary).toBe(true);
       if (r.decimation.applied) expect(r.decimation.after, summary).toBeLessThanOrEqual(20_000);
       expect(r.deviation.p95, summary).toBeLessThan(4 * sigma);
-      if (code === null) {
-        expect(volumeError, summary).toBeLessThan(0.01);
-        return;
-      }
       // Snapping recovers the drawn dimensions through the noise.
       expect(r.tierReached, summary).toBe(2);
       for (const call of code) expect(res.code ?? '', summary).toContain(call);
