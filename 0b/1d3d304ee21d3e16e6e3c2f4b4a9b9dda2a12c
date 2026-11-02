@@ -1,0 +1,62 @@
+apps/mesh2solid/src/env.d.ts
+  s_4164cd16e48c0e::t_0638240921e535 1-6
+apps/mesh2solid/src/format.ts
+  s_4164cd16e48c0e::t_178b6755b5b466 1-19,23-39
+  s_4164cd16e48c0e::t_855a0bcc87c993 20-22
+apps/mesh2solid/src/main.tsx
+  s_4164cd16e48c0e::t_96f8be792660a2 1-13
+apps/mesh2solid/vite.config.ts
+  s_4164cd16e48c0e::t_528aa45d002580 1-2,6-7,14-22
+  s_4164cd16e48c0e::t_0638240921e535 3-5,8-13,23-33
+apps/mesh2solid/src/App.tsx
+  s_4164cd16e48c0e::t_b6532c9ec06b6a 122-130,205-209,266-267,289-293
+  s_4164cd16e48c0e::t_855a0bcc87c993 136-137,147
+  s_4164cd16e48c0e::t_684bf81e996d18 1-121,131-135,138-146,148-204,210-265,268-288,294-297
+apps/mesh2solid/src/ReportPanel.tsx
+  s_4164cd16e48c0e::t_f68fc8befd57e7 1-52,56-82
+  s_4164cd16e48c0e::t_b6532c9ec06b6a 53-55
+apps/mesh2solid/src/worker.ts
+  s_4164cd16e48c0e::t_b6532c9ec06b6a 34-38
+  s_4164cd16e48c0e::t_c4888fa537ab0a 1-19,29-33,39-71,73-78,80-95
+  s_4164cd16e48c0e::t_921fd2ca71fdb2 20-28,72,79
+.github/workflows/ci.yml
+  s_4164cd16e48c0e::t_b6532c9ec06b6a 283-286
+apps/mesh2solid/index.html
+  s_4164cd16e48c0e::t_0638240921e535 1-5,8-18
+  s_4164cd16e48c0e::t_855a0bcc87c993 6-7
+apps/mesh2solid/package.json
+  s_4164cd16e48c0e::t_0638240921e535 1-32
+apps/mesh2solid/src/client.ts
+  s_4164cd16e48c0e::t_921fd2ca71fdb2 1-47
+apps/mesh2solid/src/Heatmap.tsx
+  s_4164cd16e48c0e::t_fbd7a6470a8327 1-92
+apps/mesh2solid/public/favicon.svg
+  s_4164cd16e48c0e::t_855a0bcc87c993 1
+apps/mesh2solid/tsconfig.json
+  s_4164cd16e48c0e::t_0638240921e535 1-17
+apps/mesh2solid/src/protocol.ts
+  s_4164cd16e48c0e::t_b6532c9ec06b6a 4-9
+  s_4164cd16e48c0e::t_0638240921e535 1-3,10-45
+apps/mesh2solid/src/styles.css
+  s_4164cd16e48c0e::t_96f8be792660a2 1-274
+package.json
+  s_4164cd16e48c0e::t_d1c27f5db179f9 40
+package-lock.json
+  s_4164cd16e48c0e::t_93e4e59adefeaa 25,204-343,7587-7590,13777
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0b1d3d304ee21d3e16e6e3c2f4b4a9b9dda2a12c",
+  "prompts": {},
+  "sessions": {
+    "s_4164cd16e48c0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39b56ca7-b90d-49fe-ad28-4c54a3c049c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
