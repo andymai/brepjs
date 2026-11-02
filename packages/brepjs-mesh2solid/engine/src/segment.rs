@@ -641,6 +641,23 @@ mod tests {
     }
 
     #[test]
+    fn an_eight_sided_tube_stays_eight_planes() {
+        // An eight-sided cylinder tessellation is the same mesh as an octagonal
+        // prism. Read as planes it still rebuilds exactly; reading 45° facets
+        // as curves would also turn a chamfered edge into a cylinder.
+        let mesh = revolved(&[(10.0, 0.0), (10.0, 10.0)], 8);
+        let topo = Topology::build(&mesh);
+        let params = Params {
+            tol: 1e-6,
+            max_sag: 0.03,
+            crease_deg: 50.0,
+        };
+        let seg = segment(&mesh, &topo, &params);
+        assert_eq!(seg.unfit_triangles, 0);
+        assert_eq!(kinds(&seg), vec![Kind::Plane; 8]);
+    }
+
+    #[test]
     fn freeform_stops_seeding_early() {
         // A finely faceted ellipsoid: no primitive fits more than a few facets,
         // so seeding would otherwise go on once per facet.

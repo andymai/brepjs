@@ -2,6 +2,7 @@ import {
   type AnyShape,
   type Dimension,
   box,
+  cone,
   cylinder,
   exportOBJ,
   exportSTEP,
@@ -388,6 +389,19 @@ describe('meshToSolid tier 2', () => {
     expect(res.code).toContain('return compound([');
     expect(res.report.tier2?.features).toEqual(['body 1: extrude 10 mm', 'body 2: extrude 10 mm']);
     expect(vol(shape)).toBeCloseTo(2000, 6);
+  });
+
+  it('keeps one body from claiming a plane that only crosses another body', async () => {
+    // The box's x = 10 face, extended, runs through the cone's cap center.
+    using a = box(10, 10, 10);
+    using c = cone(5, 0, 10, { at: [10, 40, 0] });
+    using both = unwrap(fuse(a, c));
+    const res = unwrap(await meshToSolid(await stlOf(both)));
+    using shape = res.shape;
+    expect(isCompound(shape)).toBe(true);
+    expect(res.report.tier2?.fallbackReason).toBeUndefined();
+    expect(res.report.tierReached).toBe(2);
+    expect(res.report.tier2?.features).toEqual(['body 1: extrude 10 mm', 'body 2: revolve']);
   });
 
   it('writes no program when asked for tier 1', async () => {

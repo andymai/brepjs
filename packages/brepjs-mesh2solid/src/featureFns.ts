@@ -522,11 +522,6 @@ function shellSolid(shell: Shell): Solid | null {
   }
 }
 
-/**
- * Does `surface` carry one of `faces`? Probed at the middle of each
- * face's parameter range, a point on its own surface (a center of mass would
- * sit at a sphere's center).
- */
 /** The fitted surfaces that carry one of `shape`'s faces. */
 export function surfacesOf(
   shape: Solid,
@@ -537,12 +532,32 @@ export function surfacesOf(
   return surfaces.filter((s) => onFaces(faces, s, tol));
 }
 
+const PROBES: readonly (readonly [number, number])[] = [
+  [0.5, 0.5],
+  [0.25, 0.25],
+  [0.75, 0.75],
+];
+
+/**
+ * Does `surface` carry one of `faces`? A face must be the same kind of surface
+ * and lie on it at points across its parameter range: one crossing point (a
+ * far-off plane through a cone's cap center) is not enough. Points are on the
+ * face's own surface, not its center of mass, which sits at a sphere's center.
+ */
 function onFaces(faces: readonly Face[], surface: AnalyticSurface, tol: number): boolean {
   const k = getKernel();
+  const near = Math.max(tol, 1e-6);
   return faces.some((f) => {
+    if (k.surfaceType(f.wrapped) !== surface.kind) return false;
     const b = k.uvBounds(f.wrapped);
-    const p = k.pointOnSurface(f.wrapped, (b.uMin + b.uMax) / 2, (b.vMin + b.vMax) / 2);
-    return surfaceDistance(surface, p) <= Math.max(tol, 1e-6);
+    return PROBES.every(([tu, tv]) => {
+      const p = k.pointOnSurface(
+        f.wrapped,
+        b.uMin + tu * (b.uMax - b.uMin),
+        b.vMin + tv * (b.vMax - b.vMin)
+      );
+      return surfaceDistance(surface, p) <= near;
+    });
   });
 }
 
