@@ -7,6 +7,7 @@ import {
   exportSTEP,
   exportSTL,
   exportThreeMF,
+  fillet,
   getFaces,
   importSTEP,
   isCompound,
@@ -54,7 +55,7 @@ describe('meshToSolid tier 0', () => {
     using cm = translate(c, [20, 15, -5]);
     using part = unwrap(cut(b, cm));
     const stl = await stlOf(part);
-    const res = unwrap(await meshToSolid(stl));
+    const res = unwrap(await meshToSolid(stl, { tier: 0 }));
     using shape = res.shape;
     expect(res.solid).toBe(true);
     expect(isValid(shape)).toBe(true);
@@ -69,10 +70,12 @@ describe('meshToSolid tier 0', () => {
 
   it('converts a curved CAD mesh (sphere) into a valid faceted solid', async () => {
     using s = sphere(10);
-    const res = unwrap(await meshToSolid(await stlOf(s)));
+    const res = unwrap(await meshToSolid(await stlOf(s), { tier: 0 }));
     using shape = res.shape;
     expect(res.solid).toBe(true);
     expect(isValid(shape)).toBe(true);
+    expect(res.report.tierReached).toBe(0);
+    expect(res.report.tier1).toBeUndefined();
     const exact = (4 / 3) * Math.PI * 1000;
     expect(Math.abs(vol(shape) - exact) / exact).toBeLessThan(0.05);
   });
@@ -249,6 +252,134 @@ describe('meshToSolid tier 0', () => {
     expect(hugeFill.ok).toBe(false);
   });
 });
+
+describe('meshToSolid tier 1', () => {
+  it('rebuilds a through hole as one exact cylinder', async () => {
+    using b = box(40, 30, 10);
+    using c = cylinder(6, 20);
+    using cm = translate(c, [20, 15, -5]);
+    using part = unwrap(cut(b, cm));
+    const res = unwrap(await meshToSolid(await stlOf(part)));
+    using shape = res.shape;
+    expect(res.report.tierReached).toBe(1);
+    expect(res.solid).toBe(true);
+    expect(isValid(shape)).toBe(true);
+    expect(getFaces(shape)).toHaveLength(7);
+    expect(res.report.tier1?.surfaces.map((s) => s.kind).sort()).toEqual([
+      'cylinder',
+      ...Array<string>(6).fill('plane'),
+    ]);
+    const exact = 40 * 30 * 10 - Math.PI * 36 * 10;
+    // Binary STL stores float32 vertices; that rounding is the only error left.
+    expect(Math.abs(vol(shape) - exact) / exact).toBeLessThan(1e-6);
+  });
+
+  it('turns a sphere mesh back into one spherical face', async () => {
+    using s = sphere(10);
+    const res = unwrap(await meshToSolid(await stlOf(s)));
+    using shape = res.shape;
+    expect(res.report.tierReached).toBe(1);
+    expect(getFaces(shape)).toHaveLength(1);
+    const exact = (4 / 3) * Math.PI * 1000;
+    expect(Math.abs(vol(shape) - exact) / exact).toBeLessThan(1e-6);
+  });
+
+  it('snaps fillets exactly tangent so they sew', async () => {
+    using b = box(30, 20, 15);
+    using f = unwrap(fillet(b, 3));
+    const res = unwrap(await meshToSolid(await stlOf(f)));
+    using shape = res.shape;
+    expect(res.report.tierReached).toBe(1);
+    expect(res.report.tier1?.tangentPairs).toBeGreaterThanOrEqual(48);
+    expect(getFaces(shape)).toHaveLength(26);
+    expect(Math.abs(vol(shape) - vol(f)) / vol(f)).toBeLessThan(1e-6);
+  });
+
+  it('keeps separate bodies and cavities', async () => {
+    using a = box(5, 5, 5);
+    using b0 = box(5, 5, 5);
+    using b = translate(b0, [20, 0, 0]);
+    using both = unwrap(fuse(a, b));
+    const two = unwrap(await meshToSolid(await stlOf(both)));
+    using twoShape = two.shape;
+    expect(two.report.tierReached).toBe(1);
+    expect(isCompound(twoShape)).toBe(true);
+    expect(two.solid).toBe(false);
+    expect(vol(twoShape)).toBeCloseTo(250, 6);
+
+    using outer = box(20, 20, 20);
+    using inner0 = box(4, 4, 4);
+    using inner = translate(inner0, [8, 8, 8]);
+    using hollow = unwrap(cut(outer, inner));
+    const res = unwrap(await meshToSolid(await stlOf(hollow)));
+    using shape = res.shape;
+    expect(res.report.tierReached).toBe(1);
+    expect(res.solid).toBe(true);
+    expect(getFaces(shape)).toHaveLength(12);
+    expect(vol(shape)).toBeCloseTo(8000 - 64, 6);
+  });
+
+  it('keeps an open body open instead of closing it with the exact surface', async () => {
+    using s = sphere(10);
+    const full = await stlOf(s);
+    // Binary STL: 80-byte header, triangle count, 50 bytes per triangle. Drop the last one.
+    const view = new DataView(full.buffer, full.byteOffset, full.byteLength);
+    const count = view.getUint32(80, true);
+    const open = full.slice(0, 84 + 50 * (count - 1));
+    new DataView(open.buffer).setUint32(80, count - 1, true);
+    const res = unwrap(await meshToSolid(open, { fillHoles: false }));
+    using shape = res.shape;
+    expect(res.report.tierReached).toBe(0);
+    expect(res.report.tier1?.fallbackReason).toBe('body 0 is open');
+    expect(isShell(shape)).toBe(true);
+  });
+
+  it('falls back to tier 0 with a reason when a surface is freeform', async () => {
+    const res = unwrap(await meshToSolid(saddleBlockStl(16)));
+    using shape = res.shape;
+    expect(res.solid).toBe(true);
+    expect(isValid(shape)).toBe(true);
+    expect(res.report.tierReached).toBe(0);
+    expect(res.report.tier1?.unfitTriangles).toBeGreaterThan(0);
+    expect(res.report.tier1?.fallbackReason).toMatch(/fit no analytic surface/);
+    expect(res.report.warnings.some((w) => w.startsWith('tier 1 fell back to tier 0'))).toBe(true);
+  });
+});
+
+/** A block whose top is the saddle z = 5 + (x² − y²) / 40: no plane, cylinder, cone, sphere or torus. */
+function saddleBlockStl(n: number): Uint8Array {
+  const top = (x: number, y: number): number => 5 + (x * x - y * y) / 40;
+  const at = (i: number): number => -10 + (20 * i) / n;
+  const facets: number[][][] = [];
+  const quad = (a: number[], b: number[], c: number[], d: number[]): void => {
+    facets.push([a, b, c], [a, c, d]);
+  };
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      const [x0, x1, y0, y1] = [at(i), at(i + 1), at(j), at(j + 1)];
+      quad(
+        [x0, y0, top(x0, y0)],
+        [x1, y0, top(x1, y0)],
+        [x1, y1, top(x1, y1)],
+        [x0, y1, top(x0, y1)]
+      );
+      quad([x0, y0, 0], [x0, y1, 0], [x1, y1, 0], [x1, y0, 0]);
+    }
+    const [a0, a1] = [at(i), at(i + 1)];
+    quad([a0, -10, 0], [a1, -10, 0], [a1, -10, top(a1, -10)], [a0, -10, top(a0, -10)]);
+    quad([a1, 10, 0], [a0, 10, 0], [a0, 10, top(a0, 10)], [a1, 10, top(a1, 10)]);
+    quad([-10, a1, 0], [-10, a0, 0], [-10, a0, top(-10, a0)], [-10, a1, top(-10, a1)]);
+    quad([10, a0, 0], [10, a1, 0], [10, a1, top(10, a1)], [10, a0, top(10, a0)]);
+  }
+  const lines = ['solid saddle'];
+  for (const f of facets) {
+    lines.push(' facet normal 0 0 0', '  outer loop');
+    for (const v of f) lines.push(`   vertex ${v.join(' ')}`);
+    lines.push('  endloop', ' endfacet');
+  }
+  lines.push('endsolid saddle');
+  return new TextEncoder().encode(lines.join('\n'));
+}
 
 describe('unitSuggestions', () => {
   it('suggests meters for a sub-millimeter part and inches for a tiny one', () => {

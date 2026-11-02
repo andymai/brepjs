@@ -20,6 +20,10 @@ export interface CorpusCase {
   readonly build: () => ValidSolid;
   /** Exact face count when every face of the source is planar. */
   readonly planarFaces?: number;
+  /** Surfaces Tier 1 should fit, by kind. */
+  readonly surfaces: Readonly<
+    Partial<Record<'plane' | 'cylinder' | 'sphere' | 'cone' | 'torus', number>>
+  >;
 }
 
 type Owned = { [Symbol.dispose](): void };
@@ -37,7 +41,7 @@ function owned(fn: (keep: <S extends Owned>(s: S) => S) => ValidSolid): ValidSol
 }
 
 export const CAD_CORPUS: readonly CorpusCase[] = [
-  { name: 'box', build: () => box(40, 30, 10), planarFaces: 6 },
+  { name: 'box', build: () => box(40, 30, 10), planarFaces: 6, surfaces: { plane: 6 } },
   {
     name: 'stepped block',
     build: () =>
@@ -45,6 +49,7 @@ export const CAD_CORPUS: readonly CorpusCase[] = [
         unwrap(fuse(keep(box(40, 20, 10)), keep(translate(keep(box(20, 20, 10)), [0, 0, 10]))))
       ),
     planarFaces: 8,
+    surfaces: { plane: 8 },
   },
   {
     name: 'plate with hole',
@@ -52,6 +57,7 @@ export const CAD_CORPUS: readonly CorpusCase[] = [
       owned((keep) =>
         unwrap(cut(keep(box(40, 30, 6)), keep(translate(keep(cylinder(5, 20)), [20, 15, -5]))))
       ),
+    surfaces: { plane: 6, cylinder: 1 },
   },
   {
     name: 'L-bracket with two holes',
@@ -62,18 +68,25 @@ export const CAD_CORPUS: readonly CorpusCase[] = [
         const h2 = keep(translate(keep(cylinder(3, 20)), [20, 15, -5]));
         return unwrap(cut(keep(unwrap(cut(base, h1))), h2));
       }),
+    surfaces: { plane: 8, cylinder: 2 },
   },
-  { name: 'filleted box', build: () => owned((keep) => unwrap(fillet(keep(box(30, 20, 15)), 3))) },
-  { name: 'cylinder', build: () => cylinder(10, 25) },
-  { name: 'cone frustum', build: () => cone(12, 6, 20) },
-  { name: 'sphere', build: () => sphere(15) },
-  { name: 'torus', build: () => torus(20, 5) },
+  {
+    name: 'filleted box',
+    build: () => owned((keep) => unwrap(fillet(keep(box(30, 20, 15)), 3))),
+    surfaces: { plane: 6, cylinder: 12, sphere: 8 },
+  },
+  { name: 'cylinder', build: () => cylinder(10, 25), surfaces: { plane: 2, cylinder: 1 } },
+  { name: 'cone frustum', build: () => cone(12, 6, 20), surfaces: { plane: 2, cone: 1 } },
+  { name: 'pointed cone', build: () => cone(10, 0, 20), surfaces: { plane: 1, cone: 1 } },
+  { name: 'sphere', build: () => sphere(15), surfaces: { sphere: 1 } },
+  { name: 'torus', build: () => torus(20, 5), surfaces: { torus: 1 } },
   {
     name: 'hollow cube',
     build: () =>
       owned((keep) =>
         unwrap(cut(keep(box(20, 20, 20)), keep(translate(keep(box(6, 6, 6)), [7, 7, 7]))))
       ),
+    surfaces: { plane: 12 },
   },
 ];
 

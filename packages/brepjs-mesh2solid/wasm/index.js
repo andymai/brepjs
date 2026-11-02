@@ -133,6 +133,187 @@ export class Tier0Result {
 if (Symbol.dispose) Tier0Result.prototype[Symbol.dispose] = Tier0Result.prototype.free;
 
 /**
+ * Tier 1 session: the Tier 0 result plus the analytic segmentation, kept in
+ * wasm memory so B-Rep assembly can ask which surface a sample point lies on.
+ * Call `free()` when done.
+ */
+export class Tier1Session {
+    static __wrap(ptr) {
+        const obj = Object.create(Tier1Session.prototype);
+        obj.__wbg_ptr = ptr;
+        Tier1SessionFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        Tier1SessionFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_tier1session_free(ptr, 0);
+    }
+    /**
+     * Body index (as in the Tier 0 result's bodies) nearest each flat xyz point, or -1.
+     * @param {Float64Array} points
+     * @returns {Float64Array}
+     */
+    bodies_of(points) {
+        const ptr0 = passArrayF64ToWasm0(points, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.tier1session_bodies_of(this.__wbg_ptr, ptr0, len0);
+        var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v2;
+    }
+    /**
+     * 1 per closed body, 0 per open one, as in the Tier 0 result.
+     * @returns {Uint8Array}
+     */
+    get body_closed() {
+        const ret = wasm.tier1session_body_closed(this.__wbg_ptr);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * Cavity parent per body (-1 for a top-level body), as in the Tier 0 result.
+     * @returns {Int32Array}
+     */
+    get body_parent() {
+        const ret = wasm.tier1session_body_parent(this.__wbg_ptr);
+        var v1 = getArrayI32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Deviation JSON between the input mesh and a candidate triangulation.
+     * @param {Float64Array} positions
+     * @param {Uint32Array} indices
+     * @returns {string}
+     */
+    deviation(positions, indices) {
+        let deferred3_0;
+        let deferred3_1;
+        try {
+            const ptr0 = passArrayF64ToWasm0(positions, wasm.__wbindgen_malloc);
+            const len0 = WASM_VECTOR_LEN;
+            const ptr1 = passArray32ToWasm0(indices, wasm.__wbindgen_malloc);
+            const len1 = WASM_VECTOR_LEN;
+            const ret = wasm.tier1session_deviation(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+            deferred3_0 = ret[0];
+            deferred3_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+        }
+    }
+    /**
+     * Per input vertex distance to the last triangulation passed to `deviation`
+     * (empty unless the session was created with a heatmap).
+     * @returns {Float32Array}
+     */
+    get measured_deviation() {
+        const ret = wasm.tier1session_measured_deviation(this.__wbg_ptr);
+        var v1 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * For flat xyz `points`: (surface id or -1, distance to the mesh) per point.
+     * @param {Float64Array} points
+     * @returns {Float64Array}
+     */
+    nearest(points) {
+        const ptr0 = passArrayF64ToWasm0(points, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.tier1session_nearest(this.__wbg_ptr, ptr0, len0);
+        var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v2;
+    }
+    /**
+     * Largest gap between a fitted mesh triangle and its exact surface.
+     * @returns {number}
+     */
+    get sag() {
+        const ret = wasm.tier1session_sag(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Bounding box (min xyz, max xyz) of each surface's mesh region.
+     * @returns {Float64Array}
+     */
+    get surface_bounds() {
+        const ret = wasm.tier1session_surface_bounds(this.__wbg_ptr);
+        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v1;
+    }
+    /**
+     * Kind per surface: 0 plane, 1 cylinder, 2 sphere, 3 cone, 4 torus.
+     * @returns {Uint8Array}
+     */
+    get surface_kinds() {
+        const ret = wasm.tier1session_surface_kinds(this.__wbg_ptr);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * Eight parameter slots per surface. Plane: normal, offset. Cylinder: axis
+     * point, axis, radius. Sphere: center, radius. Cone: apex, axis (into the
+     * opening), half-angle. Torus: center, axis, major, minor.
+     * @returns {Float64Array}
+     */
+    get surface_params() {
+        const ret = wasm.tier1session_surface_params(this.__wbg_ptr);
+        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v1;
+    }
+    /**
+     * The whole-mesh Tier 0 result, the fallback when Tier 1 can't rebuild.
+     * @returns {Tier0Result}
+     */
+    tier0() {
+        const ret = wasm.tier1session_tier0(this.__wbg_ptr);
+        return Tier0Result.__wrap(ret);
+    }
+    /**
+     * @returns {string}
+     */
+    get tier1_report() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.tier1session_tier1_report(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * @returns {number}
+     */
+    get tolerance() {
+        const ret = wasm.tier1session_tolerance(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    get unfit_triangles() {
+        const ret = wasm.tier1session_unfit_triangles(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+}
+if (Symbol.dispose) Tier1Session.prototype[Symbol.dispose] = Tier1Session.prototype.free;
+
+/**
  * Run the Tier 0 pipeline on raw file bytes.
  *
  * `unit`: "auto" or one of um/mm/cm/m/in/ft. `tolerance`: millimeters, or
@@ -160,6 +341,31 @@ export function convert_tier0(bytes, format_hint, unit, tolerance, max_triangles
         throw takeFromExternrefTable0(ret[1]);
     }
     return Tier0Result.__wrap(ret[0]);
+}
+
+/**
+ * Run Tier 0 and the Tier 1 segmentation. Arguments as for `convert_tier0`.
+ * @param {Uint8Array} bytes
+ * @param {string} format_hint
+ * @param {string} unit
+ * @param {number} tolerance
+ * @param {number} max_triangles
+ * @param {number} fill_holes
+ * @param {boolean} heatmap
+ * @returns {Tier1Session}
+ */
+export function convert_tier1(bytes, format_hint, unit, tolerance, max_triangles, fill_holes, heatmap) {
+    const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(format_hint, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passStringToWasm0(unit, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.convert_tier1(ptr0, len0, ptr1, len1, ptr2, len2, tolerance, max_triangles, fill_holes, heatmap);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return Tier1Session.__wrap(ret[0]);
 }
 
 /**
@@ -206,6 +412,9 @@ function __wbg_get_imports() {
 const Tier0ResultFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_tier0result_free(ptr, 1));
+const Tier1SessionFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_tier1session_free(ptr, 1));
 
 function getArrayF32FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
@@ -276,9 +485,23 @@ function getUint8ArrayMemory0() {
     return cachedUint8ArrayMemory0;
 }
 
+function passArray32ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 4, 4) >>> 0;
+    getUint32ArrayMemory0().set(arg, ptr / 4);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
+}
+
 function passArray8ToWasm0(arg, malloc) {
     const ptr = malloc(arg.length * 1, 1) >>> 0;
     getUint8ArrayMemory0().set(arg, ptr / 1);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
+}
+
+function passArrayF64ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 8, 8) >>> 0;
+    getFloat64ArrayMemory0().set(arg, ptr / 8);
     WASM_VECTOR_LEN = arg.length;
     return ptr;
 }

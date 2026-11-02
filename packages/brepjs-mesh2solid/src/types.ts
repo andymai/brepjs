@@ -5,8 +5,12 @@ export type MeshFormat = 'stl' | 'obj' | 'ply' | '3mf';
 export type MeshInput = Blob | ArrayBuffer | ArrayBufferView;
 
 export interface MeshToSolidOptions {
-  /** Highest tier to attempt. Tier 0 builds a faceted solid with coplanar faces merged. */
-  readonly tier?: 0 | undefined;
+  /**
+   * Highest tier to attempt (default 1). Tier 0 builds a faceted solid with coplanar faces merged;
+   * tier 1 rebuilds the part from fitted planes, cylinders, cones, spheres and tori, falling back to
+   * tier 0 when it can't.
+   */
+  readonly tier?: 0 | 1 | undefined;
   /** File name or extension, used when the content alone doesn't identify the format. */
   readonly fileName?: string | undefined;
   /** Source units. `'auto'` (default) reads 3MF units and assumes millimeters otherwise. */
@@ -42,7 +46,32 @@ export interface BodyReport {
 
 export interface ConversionReport {
   readonly engineVersion: string;
-  readonly tierReached: 0;
+  readonly tierReached: 0 | 1;
+  /** Present when tier 1 was attempted. */
+  readonly tier1?:
+    | {
+        readonly fitTolerance: number;
+        readonly unfitTriangles: number;
+        /** Neighbouring surfaces found to meet tangentially (fillets), and how many were snapped exact. */
+        readonly tangentPairs: number;
+        readonly snappedSurfaces: number;
+        readonly surfaces: readonly {
+          readonly kind: string;
+          readonly triangles: number;
+          readonly maxResidual: number;
+        }[];
+        readonly arrangement?:
+          | {
+              readonly patches: number;
+              readonly pieces: number;
+              readonly kept: number;
+              readonly faces: number;
+            }
+          | undefined;
+        /** Why the result fell back to tier 0. */
+        readonly fallbackReason?: string | undefined;
+      }
+    | undefined;
   readonly format: MeshFormat;
   readonly units: {
     readonly unit: MeshUnit;
