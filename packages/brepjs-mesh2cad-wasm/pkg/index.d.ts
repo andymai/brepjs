@@ -4,8 +4,9 @@
 /**
  * Tier 0 conversion output. Region `r` owns loops in `loops` (encoded as
  * `[loopCount, len0, ...ids0, len1, ...ids1, ...]` per region, in order) and
- * triangles `triangle_offsets[r]..triangle_offsets[r + 1]` of `triangles`.
- * Indices refer to `positions` (flat xyz, millimeters).
+ * triangles `triangle_offsets[r]..triangle_offsets[r + 1]`, counted in
+ * triangles: its vertex indices are `triangles[3 * triangle_offsets[r]..3 *
+ * triangle_offsets[r + 1]]`. Indices refer to `positions` (flat xyz, mm).
  */
 export class Tier0Result {
     private constructor();

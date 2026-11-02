@@ -29,7 +29,10 @@ export interface UnitSuggestion {
 }
 
 export interface BodyReport {
+  /** No open boundary edge. */
   readonly closed: boolean;
+  /** Every edge joins exactly two triangles. */
+  readonly manifold: boolean;
   /** Mesh volume in mm³ after repair (0 for open bodies). */
   readonly volume: number;
   /** Index of the body this one is a cavity of, or -1. */
@@ -88,6 +91,8 @@ export interface ConversionReport {
         readonly after: number;
         readonly maxError: number;
         readonly overBudgetCollapses: number;
+        /** False when collapses that would break the surface were all that was left before reaching `maxTriangles`. */
+        readonly budgetReached: boolean;
       };
   readonly regions: {
     readonly count: number;
@@ -108,6 +113,7 @@ export interface ConversionReport {
     readonly rms: number;
     readonly p95: number;
     readonly withinTolerance: number;
+    /** Largest distance from the result back to the input, sampled at each output triangle's corners and centroid. */
     readonly reverseMax: number;
     readonly samples: number;
   };
@@ -116,7 +122,10 @@ export interface ConversionReport {
     readonly triangles: number;
     /** Faces in the result after coplanar triangles were unified. */
     readonly faces: number;
-    /** False when unifying coplanar faces failed validation and the triangulated shape was kept. */
+    /**
+     * True when the kernel's coplanar-face unification ran and its result passed validation (on a
+     * mesh with no coplanar neighbors it merges nothing). False means the triangulated shape was kept.
+     */
     readonly unified: boolean;
   };
   readonly timings: {

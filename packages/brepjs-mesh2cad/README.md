@@ -12,14 +12,14 @@ scans. Everything runs locally: the mesh engine is Rust compiled to WebAssembly
 ([brepjs-mesh2cad-wasm](../brepjs-mesh2cad-wasm)), and the B-Rep is built by brepjs's kernel.
 
 ```ts
-import { init, exportSTEP } from 'brepjs';
+import { init, exportSTEP, unwrap } from 'brepjs';
 import { meshToSolid } from 'brepjs-mesh2cad';
 
 await init();
 const res = await meshToSolid(file); // File, Blob, ArrayBuffer, or Uint8Array
 if (res.ok && res.value.solid) {
   // res.value.report: units, repairs, tolerance, deviation, warnings
-  const step = exportSTEP(res.value.shape);
+  const step = unwrap(exportSTEP(res.value.shape)); // Blob
 }
 ```
 
@@ -35,8 +35,9 @@ if (res.ok && res.value.solid) {
    tolerance.
 5. **Merges coplanar triangles** into planar regions, snaps shared vertices onto the planes so each
    region is planar to machine precision, and drops vertices that only interrupt a straight edge.
-6. **Builds** shells and solids in the kernel, unifies each planar region into one face, and subtracts
-   cavities.
+6. **Builds** shells and solids in the kernel, subtracts cavities, and asks the kernel to unify each
+   planar region into one face. If the unified shape fails validation, the triangulated one is kept
+   and `report.warnings` says so.
 7. **Reports** the distance between the input and the result in both directions.
 
 A closed body becomes a `Solid`, an open one a `Shell`, and several bodies a `Compound`.
@@ -56,7 +57,7 @@ A closed body becomes a `Solid`, an open one a `Shell`, and several bodies a `Co
 
 `report.estimate.kind` says whether the mesh looked like a CAD export or a scan, and
 `report.tolerance` which tolerance was used. `report.deviation` gives the max, RMS, and 95th
-percentile distance from the input to the result (`reverseMax` is the other direction).
+percentile distance from the input to the result (`reverseMax` is the other direction, sampled at each output triangle's corners and centroid).
 `report.faces` counts triangles in and faces out, and `report.warnings` lists every repair and
 fallback that happened.
 

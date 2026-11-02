@@ -89,7 +89,7 @@ describe('tier 0 eval: scan-like meshes', () => {
       expect(isValid(shape), summary).toBe(true);
       expect(r.estimate.kind, summary).toBe('scan');
       expect(r.decimation.applied, summary).toBe(true);
-      expect(r.regions.outputTriangles, summary).toBeLessThanOrEqual(20_500);
+      if (r.decimation.applied) expect(r.decimation.after, summary).toBeLessThanOrEqual(20_000);
       expect(r.deviation.p95, summary).toBeLessThan(4 * sigma);
       const err = Math.abs(vol(shape) - vol(src)) / vol(src);
       expect(err, summary).toBeLessThan(0.01);

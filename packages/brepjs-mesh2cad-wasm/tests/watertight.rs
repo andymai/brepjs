@@ -9,6 +9,11 @@ use brepjs_mesh2cad_wasm::earcut;
 use brepjs_mesh2cad_wasm::pipeline::{run_tier0, Options, Tier0};
 
 fn unmatched_edges(out: &Tier0) -> usize {
+    let triangles: usize = out.regions.regions.iter().map(|r| r.triangles.len()).sum();
+    assert!(
+        triangles >= 4,
+        "conversion produced only {triangles} triangles"
+    );
     let mut edges: HashMap<(u32, u32), i32> = HashMap::new();
     for r in &out.regions.regions {
         for t in &r.triangles {

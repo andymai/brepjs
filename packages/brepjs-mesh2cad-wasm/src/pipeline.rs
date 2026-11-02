@@ -51,6 +51,9 @@ pub struct Tier0 {
 }
 
 const MAX_DEVIATION_SAMPLES: usize = 200_000;
+/// A billion kilometers. Anything larger is a corrupt or misread file, and
+/// squaring such coordinates would overflow.
+const MAX_COORDINATE_MM: f64 = 1e15;
 
 pub fn run_tier0(bytes: &[u8], opts: &Options) -> Result<Tier0, String> {
     let format = ingest::detect(bytes, &opts.format_hint)
@@ -72,9 +75,19 @@ pub fn run_tier0(bytes: &[u8], opts: &Options) -> Result<Tier0, String> {
         .fold(0.0f64, |a, &b| a.max(b.abs()));
     let quantization = ingested.storage.resolution(max_abs) * unit.to_mm();
     mesh.scale(unit.to_mm());
+    if mesh
+        .positions
+        .iter()
+        .flat_map(|p| p.iter())
+        .any(|c| !c.is_finite() || c.abs() > MAX_COORDINATE_MM)
+    {
+        return Err(format!(
+            "mesh coordinates exceed {MAX_COORDINATE_MM:e} mm after unit conversion"
+        ));
+    }
 
     let diag = mesh.bbox().diag();
-    if diag.is_nan() || diag <= 0.0 {
+    if !diag.is_finite() || diag <= 0.0 {
         return Err("mesh has zero extent".into());
     }
     let mut merged = weld(&mut mesh, 0.0);
@@ -97,6 +110,12 @@ pub fn run_tier0(bytes: &[u8], opts: &Options) -> Result<Tier0, String> {
             warnings.push(format!(
                 "decimated past the tolerance to fit {} triangles (largest error {:.4} mm)",
                 opts.max_triangles, r.max_error
+            ));
+        }
+        if !r.budget_reached {
+            warnings.push(format!(
+                "decimation stopped at {} triangles, above the {} budget, to keep the surface valid",
+                r.triangles_after, opts.max_triangles
             ));
         }
         Some(r)
@@ -274,6 +293,7 @@ fn report_json(p: &ReportParts) -> String {
             .int("after", d.triangles_after)
             .num("maxError", d.max_error)
             .int("overBudgetCollapses", d.over_budget_collapses)
+            .boolean("budgetReached", d.budget_reached)
             .finish(),
         None => Obj::new().boolean("applied", false).finish(),
     };
@@ -307,6 +327,7 @@ fn report_json(p: &ReportParts) -> String {
         .map(|(i, c)| {
             Obj::new()
                 .boolean("closed", c.closed)
+                .boolean("manifold", c.manifold)
                 .num("volume", c.volume)
                 .num("parent", c.parent.map(|x| x as f64).unwrap_or(-1.0))
                 .int(
@@ -395,6 +416,24 @@ mod tests {
         assert!(tris <= 5_100, "tris {tris}");
         assert_eq!(out.input_deviation.len(), out.input.positions.len());
         assert!(out.bodies[0].closed);
+    }
+
+    #[test]
+    fn overflowing_unit_conversion_is_rejected() {
+        let mut m = cube(1e300);
+        m.positions[1][0] = 1e300;
+        let bytes = crate::ingest::obj_bytes(&m);
+        let err = run_tier0(
+            &bytes,
+            &Options {
+                format_hint: "big.obj".into(),
+                unit: Some(Unit::Foot),
+                ..Options::default()
+            },
+        )
+        .err()
+        .unwrap();
+        assert!(err.contains("exceed"), "{err}");
     }
 
     #[test]

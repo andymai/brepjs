@@ -243,6 +243,10 @@ describe('meshToSolid tier 0', () => {
     expect(badUnit.ok).toBe(false);
     const badTol = await meshToSolid(new Uint8Array(0), { tolerance: -1 });
     expect(badTol.ok).toBe(false);
+    const hugeBudget = await meshToSolid(new Uint8Array(0), { maxTriangles: 2 ** 32 });
+    expect(hugeBudget.ok).toBe(false);
+    const hugeFill = await meshToSolid(new Uint8Array(0), { fillHoles: 2 ** 31 });
+    expect(hugeFill.ok).toBe(false);
   });
 });
 

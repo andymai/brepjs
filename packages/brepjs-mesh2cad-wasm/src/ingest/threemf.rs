@@ -23,8 +23,8 @@ impl Affine {
     fn parse(s: &str) -> Option<Affine> {
         let v: Vec<f64> = s
             .split_ascii_whitespace()
-            .filter_map(|x| x.parse().ok())
-            .collect();
+            .map(|x| x.parse::<f64>().ok().filter(|f| f.is_finite()))
+            .collect::<Option<Vec<f64>>>()?;
         if v.len() != 12 {
             return None;
         }
@@ -75,6 +75,8 @@ struct Object {
 struct Model {
     decimals: Vec<String>,
     unit: Option<Unit>,
+    /// The `unit` attribute as written, when it didn't parse.
+    unknown_unit: Option<String>,
     objects: HashMap<u32, Object>,
     build: Vec<Component>,
 }
@@ -107,7 +109,12 @@ fn parse_model(xml: &[u8]) -> Result<Model, String> {
                 let empty = matches!(ev, Event::Empty(_));
                 match e.local_name().as_ref() {
                     b"model" => {
-                        model.unit = attr(e, b"unit").and_then(|u| Unit::parse(&u));
+                        if let Some(raw) = attr(e, b"unit") {
+                            model.unit = Unit::parse(&raw);
+                            if model.unit.is_none() {
+                                model.unknown_unit = Some(raw);
+                            }
+                        }
                     }
                     b"object" => {
                         let id = num(e, b"id").ok_or("3MF object without id")? as u32;
@@ -275,10 +282,32 @@ pub fn parse(bytes: &[u8]) -> Result<Ingested, String> {
         total = total.add(expanded_cost(&mut pkg, &path, *id, 0, &mut memo)?);
     }
     total.check()?;
-    let mut skipped_kinds = 0usize;
+    let mut stats = EmitStats::default();
     for (path, id, xf) in items {
         let path = path.unwrap_or_else(|| root.clone());
-        emit(&mut pkg, &path, id, xf, 0, &mut mesh, &mut skipped_kinds)?;
+        emit(&mut pkg, &path, id, xf, 0, &mut mesh, &mut stats)?;
+    }
+    let skipped_kinds = stats.skipped_kinds;
+    if stats.bad_refs > 0 {
+        warnings.push(format!(
+            "skipped {} 3MF triangles with out-of-range vertex references",
+            stats.bad_refs
+        ));
+    }
+    if let Some(raw) = &pkg.models[&root].unknown_unit {
+        warnings.push(format!(
+            "3MF unit {raw:?} is not a 3MF unit; assuming millimeters"
+        ));
+    }
+    let root_unit = unit.unwrap_or(Unit::Millimeter);
+    if pkg
+        .models
+        .values()
+        .any(|m| m.unit.is_some_and(|u| u != root_unit))
+    {
+        return Err(
+            "3MF parts declare different units; mixed-unit packages are not supported".into(),
+        );
     }
     if skipped_kinds > 0 {
         warnings.push(format!(
@@ -386,6 +415,12 @@ fn expanded_cost(
     Ok(cost)
 }
 
+#[derive(Default)]
+struct EmitStats {
+    skipped_kinds: usize,
+    bad_refs: usize,
+}
+
 fn emit(
     pkg: &mut Package,
     path: &str,
@@ -393,7 +428,7 @@ fn emit(
     xf: Affine,
     depth: usize,
     mesh: &mut Mesh,
-    skipped_kinds: &mut usize,
+    stats: &mut EmitStats,
 ) -> Result<(), String> {
     if depth > 32 {
         return Err("3MF component nesting is too deep (cycle?)".into());
@@ -428,6 +463,11 @@ fn emit(
                     .filter(|t| t.iter().all(|&v| v < n))
                     .map(|t| [t[0] + base, t[1] + base, t[2] + base]),
             );
+            stats.bad_refs += obj
+                .triangles
+                .iter()
+                .filter(|t| t.iter().any(|&v| v >= n))
+                .count();
         }
         let comps: Vec<(Option<String>, u32, Affine)> = obj
             .components
@@ -437,20 +477,12 @@ fn emit(
         (kind_ok, comps)
     };
     if !kind_ok {
-        *skipped_kinds += 1;
+        stats.skipped_kinds += 1;
         return Ok(());
     }
     for (cpath, cid, cxf) in comps {
         let child_path = cpath.unwrap_or_else(|| path.to_string());
-        emit(
-            pkg,
-            &child_path,
-            cid,
-            cxf.then(&xf),
-            depth + 1,
-            mesh,
-            skipped_kinds,
-        )?;
+        emit(pkg, &child_path, cid, cxf.then(&xf), depth + 1, mesh, stats)?;
     }
     Ok(())
 }
@@ -544,6 +576,27 @@ mod tests {
         ]);
         let err = parse(&pkg).unwrap_err();
         assert!(err.contains("over the limits"), "{err}");
+    }
+
+    #[test]
+    fn malformed_transform_is_rejected() {
+        assert!(Affine::parse("1 0 0 0 1 0 0 0 1 0 0 x").is_none());
+        assert!(Affine::parse("1 0 0 0 1 0 0 0 1 0 0 0 9 9").is_none());
+    }
+
+    #[test]
+    fn mixed_units_across_parts_are_rejected() {
+        let part = format!(
+            r#"<model unit="inch" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"><resources>{}</resources><build/></model>"#,
+            tetra_object(7)
+        );
+        let root = r#"<model unit="millimeter" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06"><resources><object id="2" type="model"><components><component p:path="/3D/Objects/o.model" objectid="7"/></components></object></resources><build><item objectid="2"/></build></model>"#;
+        let pkg = zip::write_stored(&[
+            ("_rels/.rels", RELS),
+            ("3D/3dmodel.model", root.as_bytes()),
+            ("3D/Objects/o.model", part.as_bytes()),
+        ]);
+        assert!(parse(&pkg).unwrap_err().contains("different units"));
     }
 
     #[test]

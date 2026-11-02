@@ -13,8 +13,16 @@ pub fn looks_binary(bytes: &[u8]) -> bool {
     if expected == bytes.len() {
         return n > 0 || !bytes.starts_with(b"solid");
     }
-    // Some exporters append padding after the last facet.
-    !bytes.starts_with(b"solid") && expected < bytes.len() && n > 0
+    // Some exporters append padding after the last facet. A header that starts
+    // with "solid" is only binary if the text keywords are absent.
+    if expected >= bytes.len() || n == 0 {
+        return false;
+    }
+    if bytes.starts_with(b"solid") {
+        let head = &bytes[..bytes.len().min(1024)];
+        return !head.windows(5).any(|w| w == b"facet");
+    }
+    true
 }
 
 pub fn parse(bytes: &[u8]) -> Result<Ingested, String> {
@@ -94,6 +102,9 @@ fn parse_ascii(bytes: &[u8]) -> Result<Ingested, String> {
             "skipped {skipped} STL facets with fewer than 3 vertices"
         ));
     }
+    if !corner.is_empty() {
+        warnings.push("the STL text ends inside an unfinished facet, which was dropped".into());
+    }
     Ok(Ingested {
         mesh,
         unit: None,
@@ -147,6 +158,23 @@ mod tests {
         let got = parse(src.as_bytes()).unwrap();
         assert_eq!(got.mesh.triangles.len(), 1);
         assert_eq!(got.mesh.positions[1], [1.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn padded_binary_with_solid_header() {
+        let mut bytes = write_binary(&cube(1.0));
+        bytes[..5].copy_from_slice(b"solid");
+        bytes.extend_from_slice(&[0u8; 7]);
+        assert!(looks_binary(&bytes));
+        assert_eq!(parse(&bytes).unwrap().mesh.triangles.len(), 12);
+    }
+
+    #[test]
+    fn unfinished_ascii_facet_warns() {
+        let src = "solid t\nfacet normal 0 0 1\nouter loop\nvertex 0 0 0\nvertex 1 0 0\nvertex 0 1 0\nendloop\nendfacet\nfacet normal 0 0 1\nouter loop\nvertex 0 0 0\n";
+        let got = parse(src.as_bytes()).unwrap();
+        assert_eq!(got.mesh.triangles.len(), 1);
+        assert!(got.warnings.iter().any(|w| w.contains("unfinished facet")));
     }
 
     #[test]

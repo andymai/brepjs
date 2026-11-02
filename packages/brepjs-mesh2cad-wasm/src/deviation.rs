@@ -195,7 +195,8 @@ pub struct DeviationStats {
     pub p95: f64,
     /// Share of sampled input points within `tolerance` of the output.
     pub within_tolerance: f64,
-    /// Largest distance from the output back to the input.
+    /// Largest distance from the output back to the input over the sampled
+    /// points (each sampled output triangle's corners and centroid).
     pub reverse_max: f64,
     pub samples: usize,
 }

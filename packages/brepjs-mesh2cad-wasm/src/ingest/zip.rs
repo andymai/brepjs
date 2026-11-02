@@ -124,7 +124,11 @@ pub fn read(b: &[u8], entry: &Entry) -> Result<Vec<u8>, String> {
         .get(start..start.saturating_add(entry.compressed))
         .ok_or_else(|| format!("truncated ZIP entry {}", entry.name))?;
     match entry.method {
-        0 => Ok(data.to_vec()),
+        0 if entry.compressed == entry.uncompressed => Ok(data.to_vec()),
+        0 => Err(format!(
+            "stored ZIP entry {} has inconsistent sizes",
+            entry.name
+        )),
         8 => miniz_oxide::inflate::decompress_to_vec_with_limit(data, entry.uncompressed.max(1))
             .map_err(|e| format!("cannot inflate {}: {e:?}", entry.name)),
         m => Err(format!(

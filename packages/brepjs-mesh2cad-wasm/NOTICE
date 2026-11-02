@@ -14,5 +14,34 @@ Algorithms are clean-room implementations of published methods:
 - Closest point on triangle: Ericson, "Real-Time Collision Detection", 2005,
   section 5.1.5.
 
-Bundled Rust dependencies (MIT OR Apache-2.0): wasm-bindgen, miniz_oxide,
-quick-xml.
+The WebAssembly binary also contains these Rust crates, each used under the
+license named (for dual- or multi-licensed crates, the option elected here):
+
+- wasm-bindgen, wasm-bindgen-shared, cfg-if, once_cell (MIT OR Apache-2.0):
+  Apache-2.0
+- miniz_oxide (MIT OR Zlib OR Apache-2.0): Apache-2.0
+- adler2 (0BSD OR MIT OR Apache-2.0): Apache-2.0
+- memchr (Unlicense OR MIT): Unlicense
+- quick-xml (MIT), with its notice:
+
+  The MIT License (MIT)
+
+  Copyright (c) 2016 Johann Tuffe
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.

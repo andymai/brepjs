@@ -131,8 +131,10 @@ pub fn estimate(mesh: &Mesh, topo: &Topology, quantization: f64) -> Estimate {
     };
     let chord_error = percentile(&mut chords, 0.9);
     let median_edge = percentile(&mut edges, 0.5);
-    let (noise_sigma, plane_residual) = local_residuals(mesh);
-    let smooth = noise_sigma <= (FLAT_FACTOR * q).max(0.25 * plane_residual);
+    let (noise, plane_residual) = local_residuals(mesh);
+    // No usable quadric fit is no evidence of smoothness.
+    let smooth = noise.is_some_and(|n| n <= (FLAT_FACTOR * q).max(0.25 * plane_residual));
+    let noise_sigma = noise.unwrap_or(plane_residual);
     let kind = if flat_fraction >= CAD_FLAT_FRACTION || smooth {
         MeshKind::Cad
     } else {
@@ -185,8 +187,9 @@ fn solve6(mut m: [[f64; 6]; 6], mut r: [f64; 6]) -> Option<[f64; 6]> {
     Some(x)
 }
 
-/// (median quadric-fit noise over 2-rings, median plane-fit residual over 1-rings).
-fn local_residuals(mesh: &Mesh) -> (f64, f64) {
+/// (median quadric-fit noise over 2-rings when any fit succeeded, median
+/// plane-fit residual over 1-rings).
+fn local_residuals(mesh: &Mesh) -> (Option<f64>, f64) {
     let nv = mesh.positions.len();
     let mut ring: Vec<Vec<u32>> = vec![Vec::new(); nv];
     for t in &mesh.triangles {
@@ -273,7 +276,8 @@ fn local_residuals(mesh: &Mesh) -> (f64, f64) {
             .sum();
         quadric.push((ss / (local.len() - 6) as f64).sqrt());
     }
-    (percentile(&mut quadric, 0.5), percentile(&mut planar, 0.5))
+    let noise = (!quadric.is_empty()).then(|| percentile(&mut quadric, 0.5));
+    (noise, percentile(&mut planar, 0.5))
 }
 
 #[cfg(test)]

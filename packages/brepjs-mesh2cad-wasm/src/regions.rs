@@ -398,6 +398,9 @@ fn unpinch_once(mesh: &Mesh, topo: &Topology, view: &SnapView, positions: &mut [
     pinches
 }
 
+/// Regions whose loops total more vertices than this keep their own triangles.
+const MAX_EARCUT_REGION: usize = 8192;
+
 /// Each failed triangulation restores that region's vertices and retriangulates
 /// every region; past this many rounds all polygons fall back to triangles.
 const MAX_TRIANGULATION_ROUNDS: usize = 16;
@@ -690,16 +693,6 @@ pub fn build(
         fold_suspects.sort_unstable();
         fold_suspects.dedup();
     }
-    let mut snapped = 0;
-    let mut max_snap: f64 = 0.0;
-    for (p, q) in positions.iter().zip(mesh.positions.iter()) {
-        let moved = dist(*p, *q);
-        if moved > 0.0 {
-            snapped += 1;
-            max_snap = max_snap.max(moved);
-        }
-    }
-
     // A merged region is a polygon only where snapping put its vertices on its
     // plane to machine precision. Triangles touching an off-plane vertex leave
     // as singles; the rest splits into connected pieces, and pieces that still
@@ -862,6 +855,16 @@ pub fn build(
         }
     }
 
+    let mut snapped = 0;
+    let mut max_snap: f64 = 0.0;
+    for (p, q) in positions.iter().zip(mesh.positions.iter()) {
+        let moved = dist(*p, *q);
+        if moved > 0.0 {
+            snapped += 1;
+            max_snap = max_snap.max(moved);
+        }
+    }
+
     for v in vregions.iter_mut() {
         v.clear();
     }
@@ -1007,7 +1010,10 @@ pub fn build(
                 .iter()
                 .map(|lp: &Vec<u32>| lp.iter().map(|&v| positions[v as usize]).collect())
                 .collect();
-            let ok_loops = filtered.iter().all(|l| l.len() >= 3);
+            let vertex_count: usize = filtered.iter().map(|l| l.len()).sum();
+            // Ear clipping is quadratic: very long outlines keep their own triangles.
+            let ok_loops =
+                filtered.iter().all(|l| l.len() >= 3) && vertex_count <= MAX_EARCUT_REGION;
             let tri = if ok_loops {
                 earcut::triangulate_3d(&pts, normal)
             } else {
@@ -1016,7 +1022,6 @@ pub fn build(
             let expected: f64 = pts.iter().map(|p| loop_area(p, normal)).sum();
             // n vertices and h holes triangulate into exactly n + 2h - 2 triangles;
             // fewer means a loop vertex fell out (a T-junction against the neighbor).
-            let vertex_count: usize = filtered.iter().map(|l| l.len()).sum();
             let expected_count = vertex_count + 2 * (filtered.len() - 1) - 2;
             let tris = tri.filter(|ts| {
                 if ts.len() != expected_count {

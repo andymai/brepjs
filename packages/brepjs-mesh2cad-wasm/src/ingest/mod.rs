@@ -161,7 +161,9 @@ fn token_resolution(tok: &str) -> Option<f64> {
     if significant < 4 {
         return None;
     }
-    Some(10f64.powi(exp - frac.len() as i32))
+    let place = exp.checked_sub(i32::try_from(frac.len()).ok()?)?;
+    let r = 10f64.powi(place);
+    (r.is_finite() && r > 0.0).then_some(r)
 }
 
 #[derive(Debug, Default)]
@@ -196,7 +198,7 @@ pub fn detect(bytes: &[u8], hint: &str) -> Option<Format> {
     }
     if trimmed.lines().any(|l| {
         let l = l.trim_start();
-        l.starts_with("v ") || l.starts_with("f ") || l.starts_with('#')
+        l.starts_with('#') || matches!(l.split_ascii_whitespace().next(), Some("v" | "f"))
     }) {
         return Some(Format::Obj);
     }
@@ -227,6 +229,9 @@ pub fn parse(bytes: &[u8], format: Format) -> Result<Ingested, String> {
     Ok(out)
 }
 
+/// Ear clipping is quadratic in the face size; larger faces are fanned.
+const MAX_EARCUT_FACE: usize = 1024;
+
 /// Triangulate a polygon face given as vertex indices. Ear clipping in the
 /// face's own plane keeps concave faces inside their outline; a fan is the
 /// fallback when the face's vertices aren't read yet or it isn't simple.
@@ -236,7 +241,7 @@ pub(crate) fn push_polygon(mesh: &mut Mesh, face: &[u32]) {
         return;
     }
     let n = mesh.positions.len();
-    if face.len() > 3 && face.iter().all(|&v| (v as usize) < n) {
+    if face.len() > 3 && face.len() <= MAX_EARCUT_FACE && face.iter().all(|&v| (v as usize) < n) {
         let pts: Vec<crate::math::V3> = face.iter().map(|&v| mesh.positions[v as usize]).collect();
         if let Some(normal) = crate::math::normalize(crate::math::newell_normal(&pts)) {
             if let Some(tris) = crate::earcut::triangulate_3d(&[pts], normal) {
@@ -259,6 +264,18 @@ pub(crate) fn stl_bytes(mesh: &Mesh) -> Vec<u8> {
 }
 
 #[cfg(test)]
+pub(crate) fn obj_bytes(mesh: &Mesh) -> Vec<u8> {
+    let mut s = String::new();
+    for p in &mesh.positions {
+        s += &format!("v {:e} {:e} {:e}\n", p[0], p[1], p[2]);
+    }
+    for t in &mesh.triangles {
+        s += &format!("f {} {} {}\n", t[0] + 1, t[1] + 1, t[2] + 1);
+    }
+    s.into_bytes()
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -271,6 +288,7 @@ mod tests {
             Some(Format::Stl)
         );
         assert_eq!(detect(b"# comment\nv 0 0 0\n", ""), Some(Format::Obj));
+        assert_eq!(detect(b"v\t0\t0\t0\nf\t1 1 1\n", ""), Some(Format::Obj));
         assert_eq!(detect(b"garbage", "part.OBJ"), Some(Format::Obj));
         assert_eq!(detect(b"garbage", ""), None);
     }
@@ -280,6 +298,8 @@ mod tests {
         assert_eq!(token_resolution("12.3456"), Some(1e-4));
         assert!((token_resolution("-1.234560e+01").unwrap() - 1e-5).abs() < 1e-18);
         assert_eq!(token_resolution("10"), None);
+        assert_eq!(token_resolution("1.2345e2147483647"), None);
+        assert_eq!(token_resolution("1.2345e-2147483647"), None);
         assert_eq!(token_resolution("0.001"), None);
         assert!((token_resolution("0.0012345").unwrap() - 1e-7).abs() < 1e-20);
         let mut t = DecimalTracker::default();

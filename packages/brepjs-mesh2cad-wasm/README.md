@@ -9,7 +9,7 @@ It returns flat typed arrays and a JSON report; it never builds B-Rep. Use it th
 
 ```bash
 npm run build --workspace=brepjs-mesh2cad-wasm   # cargo → wasm-bindgen → wasm-opt
-cargo test && cargo clippy --all-targets -- -D warnings
+cd packages/brepjs-mesh2cad-wasm && cargo test && cargo clippy --all-targets -- -D warnings
 ```
 
 The `wasm-bindgen` CLI must match the version pinned in `Cargo.toml`; the build script checks.

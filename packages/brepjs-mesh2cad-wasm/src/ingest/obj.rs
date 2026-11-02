@@ -9,7 +9,7 @@ pub fn parse(bytes: &[u8]) -> Result<Ingested, String> {
     let mut face: Vec<u32> = Vec::new();
     let mut decimals = super::DecimalTracker::default();
     for (lineno, line) in text.lines().enumerate() {
-        let line = line.trim();
+        let line = line.split('#').next().unwrap_or("").trim();
         let mut it = line.split_ascii_whitespace();
         match it.next() {
             Some("v") => {
@@ -92,6 +92,14 @@ mod tests {
             let [a, b, c] = m.tri(t);
             assert!(crate::math::tri_cross(a, b, c)[2] > 0.0, "winding flipped");
         }
+    }
+
+    #[test]
+    fn trailing_comments_keep_the_face() {
+        let src = "v 0 0 0 # origin\nv 1 0 0\nv 0 1 0\nf 1 2 3 # the only face\n";
+        let got = parse(src.as_bytes()).unwrap();
+        assert_eq!(got.mesh.triangles, vec![[0, 1, 2]]);
+        assert!(got.warnings.is_empty());
     }
 
     #[test]

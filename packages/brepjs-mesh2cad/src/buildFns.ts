@@ -124,17 +124,20 @@ export async function buildShape(
   let shape: Solid | Shell | Compound = raw;
   let unified = false;
   const merged = simplify(raw);
-  if (merged.ok && merged.value !== raw && allPartsValid(merged.value)) {
-    const next = asResult(merged.value);
+  // A kernel can return the same underlying shape in a new wrapper; disposing
+  // `raw` would then free the result too.
+  const fresh = merged.ok && merged.value.wrapped !== raw.wrapped;
+  if (merged.ok && allPartsValid(merged.value)) {
+    const next = fresh ? asResult(merged.value) : raw;
     if (next !== null) {
-      raw[Symbol.dispose]();
+      if (fresh) raw[Symbol.dispose]();
       shape = next;
       unified = true;
     } else {
       merged.value[Symbol.dispose]();
     }
   } else {
-    if (merged.ok && merged.value !== raw) merged.value[Symbol.dispose]();
+    if (fresh && merged.ok) merged.value[Symbol.dispose]();
     warnings.push(
       'coplanar triangles could not be unified into planar faces; the result stays triangulated'
     );

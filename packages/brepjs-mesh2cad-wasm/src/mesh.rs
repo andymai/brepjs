@@ -42,10 +42,16 @@ impl Mesh {
     }
 
     /// Signed volume by the divergence theorem; positive when a closed mesh faces outward.
+    /// Measured about the first vertex rather than the origin, so a small body
+    /// far from the origin doesn't lose its sign to cancellation.
     pub fn signed_volume_of(&self, tris: &[u32]) -> f64 {
+        let Some(&first) = tris.first() else {
+            return 0.0;
+        };
+        let o = self.tri(first as usize)[0];
         let mut v = 0.0;
         for &t in tris {
-            let [a, b, c] = self.tri(t as usize);
+            let [a, b, c] = self.tri(t as usize).map(|p| sub(p, o));
             v += crate::math::dot(a, crate::math::cross(b, c));
         }
         v / 6.0
@@ -175,7 +181,7 @@ pub fn weld(mesh: &mut Mesh, eps: f64) -> usize {
     let before = mesh.positions.len();
     let mut remap = vec![0u32; before];
     let mut kept: Vec<V3> = Vec::with_capacity(before);
-    if eps <= 0.0 {
+    if eps <= 0.0 || !eps.is_finite() {
         let mut seen: HashMap<[u64; 3], u32> = HashMap::with_capacity(before);
         for (i, p) in mesh.positions.iter().enumerate() {
             let key = [canon(p[0]), canon(p[1]), canon(p[2])];
@@ -369,6 +375,18 @@ mod tests {
         assert!((m.signed_volume_of(&all) - 8.0).abs() < 1e-12);
         let topo = Topology::build(&m);
         assert_eq!(topo.components().len(), 1);
+    }
+
+    #[test]
+    fn volume_sign_survives_large_offsets() {
+        let mut m = cube(1e-3);
+        for p in m.positions.iter_mut() {
+            p[0] += 1e6;
+            p[1] -= 3e5;
+        }
+        let all: Vec<u32> = (0..m.triangles.len() as u32).collect();
+        let v = m.signed_volume_of(&all);
+        assert!((v - 1e-9).abs() < 1e-11, "volume {v}");
     }
 
     #[test]

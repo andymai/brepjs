@@ -26,6 +26,7 @@ export function unitSuggestions(
     consider('m', 'under 2 mm as millimeters; scanners and some exporters write meters');
     consider('in', 'under 2 mm as millimeters; could be inches');
     consider('cm', 'under 2 mm as millimeters; could be centimeters');
+    consider('ft', 'under 2 mm as millimeters; could be feet');
   } else if (largestMm <= 12) {
     consider('in', 'small enough that the file may be in inches');
   } else if (largestMm > 3000) {

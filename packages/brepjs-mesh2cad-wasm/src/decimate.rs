@@ -114,6 +114,9 @@ pub struct DecimateReport {
     /// sqrt of the largest accepted collapse cost (RMS distance to merged planes).
     pub max_error: f64,
     pub over_budget_collapses: usize,
+    /// False when topology guards blocked every remaining collapse before the
+    /// mesh got down to the triangle budget.
+    pub budget_reached: bool,
 }
 
 const BOUNDARY_WEIGHT: f64 = 1000.0;
@@ -411,6 +414,7 @@ pub fn decimate(mesh: &mut Mesh, target_triangles: usize, max_error: f64) -> Dec
     });
     mesh.compact();
     report.triangles_after = mesh.triangles.len();
+    report.budget_reached = report.triangles_after <= target_triangles;
     report
 }
 

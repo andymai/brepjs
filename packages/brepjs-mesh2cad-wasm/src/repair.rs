@@ -28,7 +28,10 @@ pub struct RepairReport {
 #[derive(Debug, Clone)]
 pub struct Component {
     pub triangles: Vec<u32>,
+    /// No open boundary edge.
     pub closed: bool,
+    /// Every edge joins exactly two triangles.
+    pub manifold: bool,
     pub volume: f64,
     /// For an internal cavity, the component whose interior it bounds.
     pub parent: Option<usize>,
@@ -57,7 +60,8 @@ pub fn repair(mesh: &mut Mesh, fill: HoleFill) -> (RepairReport, Vec<Component>)
         report.holes_remaining = remaining;
     } else {
         let topo = Topology::build(mesh);
-        report.holes_remaining = boundary_loops(mesh, &topo).0.len();
+        let (loops, broken) = boundary_loops(mesh, &topo);
+        report.holes_remaining = loops.len() + broken;
     }
 
     mesh.compact();
@@ -96,12 +100,28 @@ fn remove_duplicates(mesh: &mut Mesh) -> usize {
             };
             t[(m + 1) % 3] < t[(m + 2) % 3]
         };
-        let first = parity(mesh.triangles[idxs[0]]);
-        let mixed = idxs.iter().any(|&i| parity(mesh.triangles[i]) != first);
-        let start = if mixed { 0 } else { 1 };
-        for &i in &idxs[start..] {
-            drop[i] = true;
-            removed += 1;
+        // Opposite copies cancel in pairs (a zero-thickness wall, or two bodies
+        // touching face to face); one copy of any surplus orientation stays.
+        let forward: Vec<usize> = idxs
+            .iter()
+            .copied()
+            .filter(|&i| parity(mesh.triangles[i]))
+            .collect();
+        let backward: Vec<usize> = idxs
+            .iter()
+            .copied()
+            .filter(|&i| !parity(mesh.triangles[i]))
+            .collect();
+        let keep = match forward.len().cmp(&backward.len()) {
+            std::cmp::Ordering::Greater => forward.first().copied(),
+            std::cmp::Ordering::Less => backward.first().copied(),
+            std::cmp::Ordering::Equal => None,
+        };
+        for &i in idxs {
+            if Some(i) != keep {
+                drop[i] = true;
+                removed += 1;
+            }
         }
     }
     let mut i = 0;
@@ -203,6 +223,9 @@ fn boundary_loops(mesh: &Mesh, topo: &Topology) -> (Vec<Vec<u32>>, usize) {
     (loops, broken)
 }
 
+/// Ear clipping is quadratic in the loop length; longer holes get a centroid fan.
+const MAX_EARCUT_HOLE: usize = 4096;
+
 fn fill_holes(mesh: &mut Mesh, topo: &Topology, fill: HoleFill) -> (usize, usize, usize) {
     let (loops, broken) = boundary_loops(mesh, topo);
     let mut filled = 0;
@@ -222,7 +245,9 @@ fn fill_holes(mesh: &mut Mesh, topo: &Topology, fill: HoleFill) -> (usize, usize
             added += 1;
             continue;
         }
-        let tris = normalize(crate::math::newell_normal(&pts))
+        let tris = (lp.len() <= MAX_EARCUT_HOLE)
+            .then(|| normalize(crate::math::newell_normal(&pts)))
+            .flatten()
             .and_then(|n| earcut::triangulate_3d(std::slice::from_ref(&pts), n));
         match tris {
             Some(ts) if ts.len() == lp.len() - 2 => {
@@ -379,8 +404,14 @@ pub fn classify_components(mesh: &mut Mesh, topo: &Topology) -> Vec<Component> {
             let closed = tris
                 .iter()
                 .all(|&t| topo.neighbors[t as usize].iter().all(|&n| n != NO_NEIGHBOR));
+            let manifold = tris.iter().all(|&t| {
+                topo.neighbors[t as usize]
+                    .iter()
+                    .all(|&n| n != NO_NEIGHBOR && n != crate::mesh::NON_MANIFOLD)
+            });
             Component {
                 triangles: tris,
+                manifold,
                 closed,
                 volume: 0.0,
                 parent: None,
@@ -512,6 +543,23 @@ mod tests {
         assert_eq!(r.holes_filled, 0);
         assert_eq!(r.holes_remaining, 1);
         assert!(!comps[0].closed);
+    }
+
+    #[test]
+    fn opposite_duplicates_cancel_in_pairs() {
+        let mut m = cube(1.0);
+        let mut back = m.triangles[3];
+        back.swap(1, 2);
+        let fwd = m.triangles[3];
+        m.triangles.push(fwd);
+        m.triangles.push(back);
+        let (r, comps) = repair(&mut m, HoleFill::None);
+        assert_eq!(r.duplicates_removed, 2);
+        assert!(comps[0].closed);
+        assert!(
+            (m.signed_volume_of(&(0..m.triangles.len() as u32).collect::<Vec<_>>()) - 1.0).abs()
+                < 1e-12
+        );
     }
 
     #[test]

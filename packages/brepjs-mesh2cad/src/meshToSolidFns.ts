@@ -6,6 +6,9 @@ import type { MeshInput, MeshToSolidOptions, MeshToSolidResult } from './types.j
 
 const UNITS = new Set(['auto', 'um', 'mm', 'cm', 'm', 'in', 'ft']);
 const DEFAULT_MAX_TRIANGLES = 200_000;
+// The engine takes these as u32 and i32; larger numbers would wrap at the boundary.
+const MAX_U32 = 0xffff_ffff;
+const MAX_I32 = 0x7fff_ffff;
 
 interface EngineArgs {
   readonly unit: string;
@@ -29,17 +32,20 @@ function engineArgs(o: MeshToSolidOptions): Result<EngineArgs> {
     );
   }
   const maxTriangles = o.maxTriangles ?? DEFAULT_MAX_TRIANGLES;
-  if (!(Number.isInteger(maxTriangles) && maxTriangles >= 4)) {
+  if (!(Number.isInteger(maxTriangles) && maxTriangles >= 4 && maxTriangles <= MAX_U32)) {
     return err(
-      validationError('MESH_BAD_BUDGET', `maxTriangles must be an integer ≥ 4, got ${maxTriangles}`)
+      validationError(
+        'MESH_BAD_BUDGET',
+        `maxTriangles must be an integer from 4 to ${MAX_U32}, got ${maxTriangles}`
+      )
     );
   }
   const fill = o.fillHoles ?? true;
-  if (typeof fill === 'number' && !(Number.isInteger(fill) && fill >= 3)) {
+  if (typeof fill === 'number' && !(Number.isInteger(fill) && fill >= 3 && fill <= MAX_I32)) {
     return err(
       validationError(
         'MESH_BAD_FILL',
-        `fillHoles must be a boolean or an edge count ≥ 3, got ${fill}`
+        `fillHoles must be a boolean or an edge count from 3 to ${MAX_I32}, got ${fill}`
       )
     );
   }
