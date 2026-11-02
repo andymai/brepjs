@@ -1,6 +1,6 @@
 //! Make fitted surfaces meet the way the part's faces do. Fitting leaves a
-//! fillet a few micrometres off tangent to its planes, which the exact
-//! arrangement turns into two crossings or a gap. Tangency is read from the
+//! fillet slightly off tangent to its planes (nanometres on a float32 CAD
+//! export), which the exact arrangement turns into two crossings or a gap. Tangency is read from the
 //! mesh (neighbouring regions whose surface normals agree along their shared
 //! boundary) and then enforced exactly: radii shared, axes and centers placed
 //! by offset planes.
