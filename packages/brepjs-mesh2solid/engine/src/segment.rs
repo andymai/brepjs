@@ -1114,7 +1114,7 @@ fn orient_like(s: Surface, like: Surface) -> Surface {
 /// patch, or the arrangement would get nearly coincident slivers).
 fn merge_equivalent(
     mesh: &Mesh,
-    _topo: &Topology,
+    topo: &Topology,
     regions: &mut Vec<Region>,
     region_of: &mut [u32],
     params: &Params,
@@ -1135,6 +1135,18 @@ fn merge_equivalent(
         r
     }
     let verts: Vec<Vec<V3>> = regions.iter().map(|r| samples(mesh, &r.tris).0).collect();
+    let mut adjacent: std::collections::BTreeSet<(usize, usize)> = Default::default();
+    for t in 0..mesh.triangles.len() {
+        let a = region_of[t];
+        for k in 0..3 {
+            if let Some(nb) = topo.neighbor(t, k) {
+                let b = region_of[nb];
+                if a != u32::MAX && b != u32::MAX && a != b {
+                    adjacent.insert((a.min(b) as usize, a.max(b) as usize));
+                }
+            }
+        }
+    }
     // On a scan a small fragment's own fit is tilted by noise, so the larger
     // region's surface carrying it is enough. Such a fragment only attaches to
     // one region and never links two: a rim sliver lies on both a face and the
@@ -1154,7 +1166,27 @@ fn merge_equivalent(
             }
             let fits_ij = fits(&regions[i].surface, &verts[j], tol, robust);
             let fits_ji = fits(&regions[j].surface, &verts[i], tol, robust);
-            if fits_ij && fits_ji {
+            // A sliver that growth split off a fillet along its tangent seam has a
+            // poorly conditioned fit of its own, and can hold a vertex of the
+            // corner blend beside it: refit the union from the larger region and
+            // allow that vertex twice the tolerance.
+            let one_surface = || {
+                regions[i].surface.kind() != Kind::Plane && adjacent.contains(&(i, j)) && {
+                    let base = if verts[i].len() >= verts[j].len() {
+                        i
+                    } else {
+                        j
+                    };
+                    let union = [verts[i].as_slice(), &verts[j]].concat();
+                    fits(
+                        &refine(regions[base].surface, &union),
+                        &union,
+                        2.0 * tol,
+                        robust,
+                    )
+                }
+            };
+            if (fits_ij && fits_ji) || one_surface() {
                 let (a, b) = (find(&mut parent, i), find(&mut parent, j));
                 if a != b {
                     parent[b] = a;
@@ -1205,7 +1237,13 @@ fn merge_equivalent(
             .flat_map(|&m| regions[m].tris.iter().copied())
             .collect();
         tris.sort_unstable();
-        let base = regions[members[0]].surface;
+        // The largest member's fit is the best conditioned start for the group's.
+        let lead = members
+            .iter()
+            .copied()
+            .max_by_key(|&m| regions[m].tris.len())
+            .unwrap_or(members[0]);
+        let base = regions[lead].surface;
         let (pts, _) = samples(mesh, &tris);
         let refit = if members.len() > 1 {
             let r = match base.kind() {

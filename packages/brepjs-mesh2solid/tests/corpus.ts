@@ -89,6 +89,22 @@ export const CAD_CORPUS: readonly CorpusCase[] = [
     code: ['box(30, 20, 15)', 'fillet(slab1, 3)'],
   },
   {
+    // A fillet's strip along a tangent seam can grow as a sliver of its own,
+    // with a corner-blend vertex on it that only a union fit can absorb.
+    name: 'filleted plate with hole',
+    build: () =>
+      owned((keep) =>
+        unwrap(
+          cut(
+            keep(unwrap(fillet(keep(box(40, 30, 12)), 3))),
+            keep(translate(keep(cylinder(5, 20)), [20, 15, -4]))
+          )
+        )
+      ),
+    surfaces: { plane: 6, cylinder: 13, sphere: 8 },
+    code: ['box(40, 30, 12)', 'cylinder(5, 12, { at: [20, 15, 0] })', 'fillet('],
+  },
+  {
     name: 'cylinder',
     build: () => cylinder(10, 25),
     surfaces: { plane: 2, cylinder: 1 },
