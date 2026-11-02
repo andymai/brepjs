@@ -21,6 +21,8 @@ pub struct RepairReport {
     pub holes_filled: usize,
     pub hole_triangles_added: usize,
     pub holes_remaining: usize,
+    /// Holes left open because their outline is too long to triangulate.
+    pub holes_too_large: usize,
     pub non_manifold_edges: usize,
     pub zero_area_triangles: usize,
 }
@@ -54,10 +56,11 @@ pub fn repair(mesh: &mut Mesh, fill: HoleFill) -> (RepairReport, Vec<Component>)
 
     if fill != HoleFill::None {
         let topo = Topology::build(mesh);
-        let (filled, added, remaining) = fill_holes(mesh, &topo, fill);
-        report.holes_filled = filled;
-        report.hole_triangles_added = added;
-        report.holes_remaining = remaining;
+        let out = fill_holes(mesh, &topo, fill);
+        report.holes_filled = out.filled;
+        report.hole_triangles_added = out.added;
+        report.holes_remaining = out.remaining;
+        report.holes_too_large = out.too_large;
     } else {
         let topo = Topology::build(mesh);
         let (loops, broken) = boundary_loops(mesh, &topo);
@@ -223,20 +226,35 @@ fn boundary_loops(mesh: &Mesh, topo: &Topology) -> (Vec<Vec<u32>>, usize) {
     (loops, broken)
 }
 
-/// Ear clipping is quadratic in the loop length; longer holes get a centroid fan.
-const MAX_EARCUT_HOLE: usize = 4096;
+/// Ear clipping is quadratic in the loop length (about 0.4 s natively at this
+/// size). Longer holes stay open: a centroid fan would overlap itself across a
+/// concave opening.
+const MAX_EARCUT_HOLE: usize = 8192;
 
-fn fill_holes(mesh: &mut Mesh, topo: &Topology, fill: HoleFill) -> (usize, usize, usize) {
+struct HoleFillOutcome {
+    filled: usize,
+    added: usize,
+    remaining: usize,
+    too_large: usize,
+}
+
+fn fill_holes(mesh: &mut Mesh, topo: &Topology, fill: HoleFill) -> HoleFillOutcome {
     let (loops, broken) = boundary_loops(mesh, topo);
     let mut filled = 0;
     let mut added = 0;
     let mut remaining = broken;
+    let mut too_large = 0;
     for lp in loops {
         if let HoleFill::UpTo(max) = fill {
             if lp.len() > max {
                 remaining += 1;
                 continue;
             }
+        }
+        if lp.len() > MAX_EARCUT_HOLE {
+            remaining += 1;
+            too_large += 1;
+            continue;
         }
         let pts: Vec<V3> = lp.iter().map(|&v| mesh.positions[v as usize]).collect();
         if lp.len() == 3 {
@@ -245,9 +263,7 @@ fn fill_holes(mesh: &mut Mesh, topo: &Topology, fill: HoleFill) -> (usize, usize
             added += 1;
             continue;
         }
-        let tris = (lp.len() <= MAX_EARCUT_HOLE)
-            .then(|| normalize(crate::math::newell_normal(&pts)))
-            .flatten()
+        let tris = normalize(crate::math::newell_normal(&pts))
             .and_then(|n| earcut::triangulate_3d(std::slice::from_ref(&pts), n));
         match tris {
             Some(ts) if ts.len() == lp.len() - 2 => {
@@ -271,7 +287,12 @@ fn fill_holes(mesh: &mut Mesh, topo: &Topology, fill: HoleFill) -> (usize, usize
         }
         filled += 1;
     }
-    (filled, added, remaining)
+    HoleFillOutcome {
+        filled,
+        added,
+        remaining,
+        too_large,
+    }
 }
 
 /// Triangles below this quality (altitude over longest edge, squared scale) are
@@ -533,6 +554,25 @@ mod tests {
         assert_eq!(r.hole_triangles_added, 2);
         assert!(comps[0].closed);
         assert!((m.signed_volume_of(&all(&m)) - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn oversized_hole_stays_open_instead_of_fanned() {
+        let n = MAX_EARCUT_HOLE + 2;
+        let mut m = Mesh::default();
+        m.positions.push([0.0, 0.0, -1.0]);
+        for i in 0..n {
+            let a = 2.0 * std::f64::consts::PI * i as f64 / n as f64;
+            let r = if i % 2 == 0 { 10.0 } else { 9.0 };
+            m.positions.push([r * a.cos(), r * a.sin(), 0.0]);
+        }
+        for i in 0..n as u32 {
+            m.triangles.push([0, 1 + (i + 1) % n as u32, 1 + i]);
+        }
+        let (r, comps) = repair(&mut m, HoleFill::All);
+        assert_eq!(r.holes_too_large, 1);
+        assert_eq!(r.holes_filled, 0);
+        assert!(!comps[0].closed);
     }
 
     #[test]

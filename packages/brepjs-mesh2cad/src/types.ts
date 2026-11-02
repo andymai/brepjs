@@ -67,6 +67,8 @@ export interface ConversionReport {
     readonly holesFilled: number;
     readonly holeTrianglesAdded: number;
     readonly holesRemaining: number;
+    /** Holes left open because their outline is too long to triangulate reliably. */
+    readonly holesTooLarge: number;
     readonly nonManifoldEdges: number;
     readonly zeroAreaTriangles: number;
     /** Zero-area triangles removed by edge flips or collapses before faces were built. */

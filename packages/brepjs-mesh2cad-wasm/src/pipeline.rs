@@ -207,6 +207,12 @@ fn collect_warnings(warnings: &mut Vec<String>, r: &RepairReport, comps: &[Compo
     if r.holes_remaining > 0 {
         warnings.push(format!("{} hole(s) left open", r.holes_remaining));
     }
+    if r.holes_too_large > 0 {
+        warnings.push(format!(
+            "{} hole(s) have outlines too long to fill reliably and were left open",
+            r.holes_too_large
+        ));
+    }
     if r.non_manifold_edges > 0 {
         warnings.push(format!("{} non-manifold edge(s)", r.non_manifold_edges));
     }
@@ -267,6 +273,7 @@ fn report_json(p: &ReportParts) -> String {
         .int("holesFilled", r.holes_filled)
         .int("holeTrianglesAdded", r.hole_triangles_added)
         .int("holesRemaining", r.holes_remaining)
+        .int("holesTooLarge", r.holes_too_large)
         .int("nonManifoldEdges", r.non_manifold_edges)
         .int("zeroAreaTriangles", r.zero_area_triangles)
         .int("degeneratesFixed", p.degenerates_fixed)
