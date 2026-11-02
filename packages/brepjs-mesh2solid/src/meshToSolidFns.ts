@@ -223,8 +223,10 @@ export async function meshToSolid(
           } else {
             tier2 = { features: [], fallbackReason: program.reason };
             warnings.push(`tier 2 stopped at tier 1: ${program.reason}`);
-            // Re-measure the tier 1 shape so the heatmap matches what is returned.
-            deviation = deviationOf(shape, (p, i) => session.deviation(p, i), gates.triangulation);
+            // The program may have been measured last; re-measure the tier 1 shape for the heatmap.
+            if (heatmap !== undefined) {
+              deviationOf(shape, (p, i) => session.deviation(p, i), gates.triangulation);
+            }
           }
         }
         const faces = {
