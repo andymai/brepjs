@@ -269,16 +269,12 @@ pub fn parse(bytes: &[u8]) -> Result<Ingested, String> {
         build
     };
     let mut memo = HashMap::new();
-    let mut total = 0usize;
+    let mut total = Cost::default();
     for (path, id, _) in &items {
         let path = path.clone().unwrap_or_else(|| root.clone());
-        total = total.saturating_add(expanded_triangles(&mut pkg, &path, *id, 0, &mut memo)?);
+        total = total.add(expanded_cost(&mut pkg, &path, *id, 0, &mut memo)?);
     }
-    if total > MAX_EXPANDED_TRIANGLES {
-        return Err(format!(
-            "3MF build expands to {total} triangles, more than the {MAX_EXPANDED_TRIANGLES} limit"
-        ));
-    }
+    total.check()?;
     let mut skipped_kinds = 0usize;
     for (path, id, xf) in items {
         let path = path.unwrap_or_else(|| root.clone());
@@ -305,22 +301,56 @@ pub fn parse(bytes: &[u8]) -> Result<Ingested, String> {
 }
 
 /// Components instance objects, so a small file can describe an enormous mesh.
-/// Refuse builds that expand past this many triangles.
+/// Refuse builds that expand past these limits before emitting anything.
 const MAX_EXPANDED_TRIANGLES: usize = 20_000_000;
+const MAX_EXPANDED_VERTICES: usize = 3 * MAX_EXPANDED_TRIANGLES;
+const MAX_INSTANCES: usize = 1_000_000;
 
-/// Triangles `id` expands to once its components are instanced (memoized).
-fn expanded_triangles(
+/// What one object costs once its components are instanced.
+#[derive(Clone, Copy, Default)]
+struct Cost {
+    triangles: usize,
+    vertices: usize,
+    instances: usize,
+}
+
+impl Cost {
+    fn add(self, o: Cost) -> Cost {
+        Cost {
+            triangles: self.triangles.saturating_add(o.triangles),
+            vertices: self.vertices.saturating_add(o.vertices),
+            instances: self.instances.saturating_add(o.instances),
+        }
+    }
+
+    fn check(self) -> Result<(), String> {
+        if self.triangles > MAX_EXPANDED_TRIANGLES
+            || self.vertices > MAX_EXPANDED_VERTICES
+            || self.instances > MAX_INSTANCES
+        {
+            return Err(format!(
+                "3MF build expands to {} triangles, {} vertices and {} instances, over the limits \
+                 ({MAX_EXPANDED_TRIANGLES}, {MAX_EXPANDED_VERTICES}, {MAX_INSTANCES})",
+                self.triangles, self.vertices, self.instances
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// Cost of instancing `id` (memoized per part and object).
+fn expanded_cost(
     pkg: &mut Package,
     path: &str,
     id: u32,
     depth: usize,
-    memo: &mut HashMap<(String, u32), usize>,
-) -> Result<usize, String> {
+    memo: &mut HashMap<(String, u32), Cost>,
+) -> Result<Cost, String> {
     if depth > 32 {
         return Err("3MF component nesting is too deep (cycle?)".into());
     }
-    if let Some(&n) = memo.get(&(path.to_string(), id)) {
-        return Ok(n);
+    if let Some(&c) = memo.get(&(path.to_string(), id)) {
+        return Ok(c);
     }
     pkg.load(path)?;
     let (own, comps) = {
@@ -329,9 +359,16 @@ fn expanded_triangles(
             .get(&id)
             .ok_or_else(|| format!("3MF object {id} not found in {path}"))?;
         let own = if obj.kind == "model" || obj.kind.is_empty() {
-            obj.triangles.len()
+            Cost {
+                triangles: obj.triangles.len(),
+                vertices: obj.positions.len(),
+                instances: 1,
+            }
         } else {
-            0
+            Cost {
+                instances: 1,
+                ..Cost::default()
+            }
         };
         let comps: Vec<(Option<String>, u32)> = obj
             .components
@@ -340,13 +377,13 @@ fn expanded_triangles(
             .collect();
         (own, comps)
     };
-    let mut n = own;
+    let mut cost = own;
     for (cpath, cid) in comps {
         let child = cpath.unwrap_or_else(|| path.to_string());
-        n = n.saturating_add(expanded_triangles(pkg, &child, cid, depth + 1, memo)?);
+        cost = cost.add(expanded_cost(pkg, &child, cid, depth + 1, memo)?);
     }
-    memo.insert((path.to_string(), id), n);
-    Ok(n)
+    memo.insert((path.to_string(), id), cost);
+    Ok(cost)
 }
 
 fn emit(
@@ -374,7 +411,9 @@ fn emit(
             .ok_or_else(|| format!("3MF object {id} not found in {path}"))?;
         let kind_ok = obj.kind == "model" || obj.kind.is_empty();
         if kind_ok {
-            if mesh.triangles.len() + obj.triangles.len() > MAX_EXPANDED_TRIANGLES {
+            if mesh.triangles.len() + obj.triangles.len() > MAX_EXPANDED_TRIANGLES
+                || mesh.positions.len() + obj.positions.len() > MAX_EXPANDED_VERTICES
+            {
                 return Err(format!(
                     "3MF build expands to more than {MAX_EXPANDED_TRIANGLES} triangles"
                 ));
@@ -480,6 +519,31 @@ mod tests {
         ]);
         let err = parse(&pkg).unwrap_err();
         assert!(err.contains("expands") || err.contains("deep"), "{err}");
+    }
+
+    #[test]
+    fn vertex_only_instancing_is_capped() {
+        let verts: String = (0..200)
+            .map(|i| format!(r#"<vertex x="{i}" y="0" z="0"/>"#))
+            .collect();
+        let mut objects = format!(
+            r#"<object id="1" type="model"><mesh><vertices>{verts}</vertices><triangles/></mesh></object>"#
+        );
+        for k in 2..=30 {
+            objects.push_str(&format!(
+                r#"<object id="{k}" type="model"><components><component objectid="{p}"/><component objectid="{p}"/></components></object>"#,
+                p = k - 1
+            ));
+        }
+        let model = format!(
+            r#"<model unit="millimeter" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"><resources>{objects}</resources><build><item objectid="30"/></build></model>"#
+        );
+        let pkg = zip::write_deflated(&[
+            ("_rels/.rels", RELS),
+            ("3D/3dmodel.model", model.as_bytes()),
+        ]);
+        let err = parse(&pkg).unwrap_err();
+        assert!(err.contains("over the limits"), "{err}");
     }
 
     #[test]
