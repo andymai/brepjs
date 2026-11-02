@@ -1,0 +1,89 @@
+packages/brepjs-mesh2cad-wasm/src/mesh.rs
+  s_4164cd16e48c0e::t_6c708154ae577f 384-385,388-389
+  s_4164cd16e48c0e::t_1796fb3c65494d 45-46,48-51,54,184,380-383,386-387
+  s_4164cd16e48c0e::t_23f29d6e878f79 390-391
+packages/brepjs-mesh2cad-wasm/NOTICE
+  s_4164cd16e48c0e::t_a87b5b4391cd10 17,19,26-47
+  s_4164cd16e48c0e::t_df25b69d5bb7b7 18,20-25
+packages/brepjs-mesh2cad-wasm/src/ingest/mod.rs
+  s_4164cd16e48c0e::t_d62b11f6d36157 267-277
+  s_4164cd16e48c0e::t_a6237a697ce3f5 164-166,201,232-234,244,291,301-302
+  s_4164cd16e48c0e::t_5055be833add9c 266
+packages/brepjs-mesh2cad/src/buildFns.ts
+  s_4164cd16e48c0e::t_cde59b9fdff220 127-131,133,140
+packages/brepjs-mesh2cad-wasm/src/estimate.rs
+  s_4164cd16e48c0e::t_1796fb3c65494d 134-137,190-192,279-280
+packages/brepjs-mesh2cad-wasm/src/deviation.rs
+  s_4164cd16e48c0e::t_d62b11f6d36157 198-199
+packages/brepjs-mesh2cad-wasm/src/ingest/obj.rs
+  s_4164cd16e48c0e::t_a6237a697ce3f5 12,97-102
+  s_4164cd16e48c0e::t_56afc27818dc0f 103-104
+packages/brepjs-mesh2cad-wasm/pkg/index.d.ts
+  s_4164cd16e48c0e::t_3dc7239d004e74 7-9
+packages/brepjs-mesh2cad/src/types.ts
+  s_4164cd16e48c0e::t_cde59b9fdff220 32,34-35,94-95,116,125-128
+packages/brepjs-mesh2cad/README.md
+  s_4164cd16e48c0e::t_cde59b9fdff220 15,22,38-40
+  s_4164cd16e48c0e::t_3dc7239d004e74 60
+packages/brepjs-mesh2cad-wasm/src/decimate.rs
+  s_4164cd16e48c0e::t_0a47a96222a9ec 117-119,417
+packages/brepjs-mesh2cad-wasm/src/ingest/zip.rs
+  s_4164cd16e48c0e::t_d62b11f6d36157 128-131
+  s_4164cd16e48c0e::t_9d99ffb2fe4a05 127
+packages/brepjs-mesh2cad-wasm/src/repair.rs
+  s_4164cd16e48c0e::t_1796fb3c65494d 31,33-34,63-64,103-104,115-124,226-228,248-250,407-411,414,548-558
+  s_4164cd16e48c0e::t_d62b11f6d36157 105-114,559-562
+  s_4164cd16e48c0e::t_0f1dc57a82565c 563-564
+packages/brepjs-mesh2cad-wasm/tests/watertight.rs
+  s_4164cd16e48c0e::t_a87b5b4391cd10 12-16
+packages/brepjs-mesh2cad-wasm/src/ingest/threemf.rs
+  s_4164cd16e48c0e::t_9d99ffb2fe4a05 26-27,78-79,112-117,285,288-297,301-307,418-423,431,480,581-600
+  s_4164cd16e48c0e::t_d62b11f6d36157 298-300,308-310,466-470,485
+  s_4164cd16e48c0e::t_8fce5dedacd78b 601
+packages/brepjs-mesh2cad-wasm/src/regions.rs
+  s_4164cd16e48c0e::t_0a47a96222a9ec 858-864,1014
+  s_4164cd16e48c0e::t_d62b11f6d36157 401-403,1013,1015-1016
+  s_4164cd16e48c0e::t_4f3b85962ab09a 865-867
+CLAUDE.md
+  s_4164cd16e48c0e::t_cde59b9fdff220 25-26
+packages/brepjs-mesh2cad/src/reportFns.ts
+  s_4164cd16e48c0e::t_cde59b9fdff220 29
+packages/brepjs-mesh2cad/tests/eval.test.ts
+  s_4164cd16e48c0e::t_cde59b9fdff220 92
+packages/brepjs-mesh2cad/tests/meshToSolid.test.ts
+  s_4164cd16e48c0e::t_cde59b9fdff220 246-249
+packages/brepjs-mesh2cad/src/meshToSolidFns.ts
+  s_4164cd16e48c0e::t_cde59b9fdff220 9-11,35,37-40,44,48
+packages/brepjs-mesh2cad-wasm/pkg/index.js
+  s_4164cd16e48c0e::t_3dc7239d004e74 6-8
+packages/brepjs-mesh2cad-wasm/src/pipeline.rs
+  s_4164cd16e48c0e::t_d62b11f6d36157 54-56,78-87,90,115-120,296,330,421-437
+  s_4164cd16e48c0e::t_9893d6fecf55c8 438
+packages/brepjs-mesh2cad-wasm/src/ingest/stl.rs
+  s_4164cd16e48c0e::t_a6237a697ce3f5 16-25,105-107,163-178
+  s_4164cd16e48c0e::t_cbdaccdec89294 179
+packages/brepjs-mesh2cad-wasm/README.md
+  s_4164cd16e48c0e::t_cde59b9fdff220 12
+packages/brepjs-mesh2cad-wasm/src/ingest/ply.rs
+  s_4164cd16e48c0e::t_a6237a697ce3f5 182,230-231,236-239,243-244,253,262-265,270,272-273,292,296-300,392-397
+  s_4164cd16e48c0e::t_d62b11f6d36157 240-242,257-261
+  s_4164cd16e48c0e::t_06bd803f2f779f 398-399
+packages/brepjs-mesh2cad-wasm/src/lib.rs
+  s_4164cd16e48c0e::t_d62b11f6d36157 31-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6fa53cfea543c59a324b563589df19bd58a9825b",
+  "prompts": {},
+  "sessions": {
+    "s_4164cd16e48c0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39b56ca7-b90d-49fe-ad28-4c54a3c049c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
