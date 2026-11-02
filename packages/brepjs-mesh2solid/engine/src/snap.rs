@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::fit::{max_residual, solve, Kind, Surface};
 use crate::math::{add, cross, dot, norm, normalize, scale, sub, V3};
 use crate::mesh::{Mesh, Topology};
-use crate::segment::{fits, unique_vertices, Segmentation, APEX_REACH};
+use crate::segment::{fits, region_bodies, unique_vertices, Segmentation, APEX_REACH};
 
 /// Surface normals within about a degree along a shared boundary mark a tangent pair.
 const TANGENT_COS: f64 = 0.99985;
@@ -563,6 +563,7 @@ pub fn snap(
     seg: &mut Segmentation,
     tol: f64,
     robust: bool,
+    tri_body: &[u32],
 ) -> SnapReport {
     let n = seg.regions.len();
     let verts: Vec<Vec<V3>> = seg
@@ -595,13 +596,18 @@ pub fn snap(
     }
     if robust {
         // A scan's regions can be eroded apart by noise along a tangent seam;
-        // neighbours close in space whose fits are tangent count as well.
+        // neighbours close in space whose fits are tangent count as well. Only
+        // within one body: a part resting a hair above another stays apart.
         let boxes: Vec<crate::math::Bbox> =
             verts.iter().map(|v| crate::math::Bbox::of(v)).collect();
+        let homes = region_bodies(&seg.regions, tri_body);
         let gap = 10.0 * tol;
         for i in 0..boxes.len() {
             for j in i + 1..boxes.len() {
                 if pairs.contains(&(i, j)) || !boxes_near(&boxes[i], &boxes[j], gap) {
+                    continue;
+                }
+                if !homes[i].iter().any(|b| homes[j].binary_search(b).is_ok()) {
                     continue;
                 }
                 let (a, b) = (&seg.regions[i].surface, &seg.regions[j].surface);
@@ -804,7 +810,8 @@ mod tests {
             },
         );
         let dissolved = dissolve_kinks(mesh, &topo, &mut seg, tol);
-        let report = snap(mesh, &topo, &mut seg, tol, false);
+        let one_body = vec![0; mesh.triangles.len()];
+        let report = snap(mesh, &topo, &mut seg, tol, false, &one_body);
         (seg, dissolved, report)
     }
 
@@ -1036,5 +1043,60 @@ mod tests {
         let (mut seg, boundaries, verts) = corner(2.0, 3.0);
         corner_spheres(&mut seg, &boundaries, &verts, 0.06);
         assert_eq!(seg.regions[0].surface.kind(), Kind::Torus);
+    }
+
+    #[test]
+    fn a_separate_part_resting_just_above_another_stays_apart() {
+        // A ball 0.1 mm above a slab: within three scan tolerances of tangent,
+        // but a different body, so nothing may close the gap.
+        let mut mesh = crate::mesh::fixtures::sphere(2.0, 12, 24);
+        for p in &mut mesh.positions {
+            *p = add(*p, [5.0, 5.0, 2.1]);
+        }
+        let ball_tris = mesh.triangles.len() as u32;
+        let base = mesh.positions.len() as u32;
+        mesh.positions.extend([
+            [0.0, 0.0, 0.0],
+            [10.0, 0.0, 0.0],
+            [10.0, 10.0, 0.0],
+            [0.0, 10.0, 0.0],
+        ]);
+        mesh.triangles
+            .extend([[base, base + 1, base + 2], [base, base + 2, base + 3]]);
+        let region = |surface, tris: std::ops::Range<u32>| Region {
+            surface,
+            tris: tris.collect(),
+            max_residual: 0.0,
+        };
+        let ball = Surface::Sphere {
+            c: [5.0, 5.0, 2.1],
+            r: 2.0,
+        };
+        let total = mesh.triangles.len() as u32;
+        let mut region_of = vec![0; ball_tris as usize];
+        region_of.extend([1, 1]);
+        let mut seg = Segmentation {
+            regions: vec![
+                region(ball, 0..ball_tris),
+                region(
+                    Surface::Plane {
+                        n: [0.0, 0.0, 1.0],
+                        d: 0.0,
+                    },
+                    ball_tris..total,
+                ),
+            ],
+            region_of,
+            unfit_triangles: 0,
+        };
+        let tri_body: Vec<u32> = (0..total).map(|t| u32::from(t >= ball_tris)).collect();
+        let topo = Topology::build(&mesh);
+        let report = snap(&mesh, &topo, &mut seg, 0.06, true, &tri_body);
+        assert!(
+            report.tangent_pairs.is_empty(),
+            "{:?}",
+            report.tangent_pairs
+        );
+        assert_eq!(seg.regions[0].surface, ball);
     }
 }

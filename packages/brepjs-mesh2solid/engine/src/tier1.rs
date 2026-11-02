@@ -48,16 +48,6 @@ pub fn run_tier1(bytes: &[u8], opts: &Options) -> Result<Tier1, String> {
         crease_deg: CREASE_DEG,
         robust: matches!(t0.kind, MeshKind::Scan),
     };
-    let mut seg = segment(&t0.mesh, &topo, &params);
-    if params.robust {
-        // Noisy fits of tangent neighbours meet a few degrees apart, which
-        // would read as a kink, so a scan skips the dissolve.
-        consolidate(&t0.mesh, &mut seg, &params);
-    } else {
-        dissolve_kinks(&t0.mesh, &topo, &mut seg, tol);
-        absorb(&t0.mesh, &topo, &mut seg, &params);
-    }
-    let snapped = snap(&t0.mesh, &topo, &mut seg, tol, params.robust);
     // Same mesh and adjacency as Tier 0's classify_components, so the same order.
     let mut tri_body = vec![u32::MAX; t0.mesh.triangles.len()];
     for (b, comp) in topo.components().iter().enumerate() {
@@ -65,6 +55,16 @@ pub fn run_tier1(bytes: &[u8], opts: &Options) -> Result<Tier1, String> {
             tri_body[t as usize] = b as u32;
         }
     }
+    let mut seg = segment(&t0.mesh, &topo, &params);
+    if params.robust {
+        // Noisy fits of tangent neighbours meet a few degrees apart, which
+        // would read as a kink, so a scan skips the dissolve.
+        consolidate(&t0.mesh, &mut seg, &params, &tri_body);
+    } else {
+        dissolve_kinks(&t0.mesh, &topo, &mut seg, tol);
+        absorb(&t0.mesh, &topo, &mut seg, &params);
+    }
+    let snapped = snap(&t0.mesh, &topo, &mut seg, tol, params.robust, &tri_body);
     let bvh = Bvh::new(
         t0.mesh
             .triangles

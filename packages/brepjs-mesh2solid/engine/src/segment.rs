@@ -222,20 +222,56 @@ fn p95(s: &Surface, pts: &[V3]) -> f64 {
 /// How close to a cone's apex (in fit tolerances) the facet normal check is skipped.
 pub const APEX_REACH: f64 = 10.0;
 
-/// On a scan, regions covering at least this share of the surface area are
-/// faces; smaller ones are noise fragments or slivers bridging a crease.
+/// On a scan, regions covering at least this share of their body's surface
+/// area are faces; smaller ones are noise fragments or slivers bridging a crease.
 const MAJOR_AREA: f64 = 0.002;
 
+/// The mesh bodies each region's triangles lie in, sorted. Merging can join
+/// faces of separate bodies that share one surface, so there may be several.
+pub fn region_bodies(regions: &[Region], tri_body: &[u32]) -> Vec<Vec<u32>> {
+    regions
+        .iter()
+        .map(|r| {
+            let mut b: Vec<u32> = r.tris.iter().map(|&t| tri_body[t as usize]).collect();
+            b.sort_unstable();
+            b.dedup();
+            b
+        })
+        .collect()
+}
+
 /// Keep the major regions of a scan (see `MAJOR_AREA`) and hand every other
-/// triangle to the major surface that accepts it with its centroid closest;
-/// what none accepts stays unfit. Returns how many regions were folded in.
-pub fn consolidate(mesh: &Mesh, seg: &mut Segmentation, params: &Params) -> usize {
+/// triangle to the major surface in its own body that accepts it with its
+/// centroid closest; what none accepts stays unfit. Returns how many regions
+/// were folded in.
+pub fn consolidate(
+    mesh: &Mesh,
+    seg: &mut Segmentation,
+    params: &Params,
+    tri_body: &[u32],
+) -> usize {
     let areas: Vec<f64> = (0..mesh.triangles.len()).map(|t| mesh.area(t)).collect();
-    let total: f64 = areas.iter().sum();
+    let bodies = tri_body.iter().map(|&b| b as usize + 1).max().unwrap_or(0);
+    let mut body_area = vec![0.0; bodies];
+    for (t, &b) in tri_body.iter().enumerate() {
+        body_area[b as usize] += areas[t];
+    }
+    // Judged per body, so a small part beside a large one keeps its faces.
     let major: Vec<bool> = seg
         .regions
         .iter()
-        .map(|r| r.tris.iter().map(|&t| areas[t as usize]).sum::<f64>() >= MAJOR_AREA * total)
+        .map(|r| {
+            let mut by_body: Vec<(u32, f64)> = r
+                .tris
+                .iter()
+                .map(|&t| (tri_body[t as usize], areas[t as usize]))
+                .collect();
+            by_body.sort_unstable_by_key(|x| x.0);
+            by_body.chunk_by(|x, y| x.0 == y.0).any(|run| {
+                let a: f64 = run.iter().map(|x| x.1).sum();
+                a >= MAJOR_AREA * body_area[run[0].0 as usize]
+            })
+        })
         .collect();
     let folded = major.iter().filter(|&&m| !m).count();
     let old = std::mem::take(&mut seg.regions);
@@ -247,8 +283,9 @@ pub fn consolidate(mesh: &Mesh, seg: &mut Segmentation, params: &Params) -> usiz
             regions.push(r);
         }
     }
+    let homes = region_bodies(&regions, tri_body);
     let facing = normals(mesh);
-    for t in 0..mesh.triangles.len() {
+    for (t, body) in tri_body.iter().enumerate() {
         let r = seg.region_of[t];
         let kept = r != u32::MAX && remap[r as usize] != u32::MAX;
         if kept {
@@ -259,6 +296,9 @@ pub fn consolidate(mesh: &Mesh, seg: &mut Segmentation, params: &Params) -> usiz
         let centroid = scale(add(add(a, b), c), 1.0 / 3.0);
         let mut best: Option<(usize, f64)> = None;
         for (i, reg) in regions.iter().enumerate() {
+            if homes[i].binary_search(body).is_err() {
+                continue;
+            }
             let reference = match reg.surface {
                 Surface::Plane { n, .. } => n,
                 _ => [0.0, 0.0, 1.0],
@@ -1052,7 +1092,7 @@ mod tests {
             crease_deg: 50.0,
             robust: true,
         };
-        assert_eq!(consolidate(&mesh, &mut seg, &params), 1);
+        assert_eq!(consolidate(&mesh, &mut seg, &params, &vec![0; tris]), 1);
         assert_eq!(seg.regions.len(), 1);
         assert_eq!(seg.unfit_triangles, 6);
         assert_eq!(seg.regions[0].tris.len(), tris - 6);
@@ -1065,5 +1105,51 @@ mod tests {
             .sum();
         let total: f64 = (0..tris).map(|t| mesh.area(t)).sum();
         assert!((unfit_area(&mesh, &seg) - unfit / total).abs() < 1e-12);
+    }
+
+    #[test]
+    fn a_small_body_keeps_its_faces() {
+        // A 0.2 mm square plate beside a 10 mm one: 0.04% of the mesh area, but
+        // all of its own body. Its triangles also lie on the big plate's plane
+        // extended, and must not be handed across.
+        let mut mesh = grid(30);
+        let big = mesh.triangles.len() as u32;
+        let small = grid(2);
+        let base = mesh.positions.len() as u32;
+        mesh.positions.extend(
+            small
+                .positions
+                .iter()
+                .map(|p| [20.0 + 0.02 * p[0], 0.02 * p[1], 0.0]),
+        );
+        mesh.triangles
+            .extend(small.triangles.iter().map(|t| t.map(|v| v + base)));
+        let total = mesh.triangles.len() as u32;
+        let tri_body: Vec<u32> = (0..total).map(|t| u32::from(t >= big)).collect();
+        let mut seg = Segmentation {
+            regions: vec![
+                Region {
+                    surface: FLAT,
+                    tris: (0..big).collect(),
+                    max_residual: 0.0,
+                },
+                Region {
+                    surface: FLAT,
+                    tris: (big..total).collect(),
+                    max_residual: 0.0,
+                },
+            ],
+            region_of: (0..total).map(|t| u32::from(t >= big)).collect(),
+            unfit_triangles: 0,
+        };
+        let params = Params {
+            tol: 0.06,
+            max_sag: f64::INFINITY,
+            crease_deg: 50.0,
+            robust: true,
+        };
+        assert_eq!(consolidate(&mesh, &mut seg, &params, &tri_body), 0);
+        assert_eq!(seg.regions.len(), 2);
+        assert_eq!(seg.regions[1].tris, (big..total).collect::<Vec<_>>());
     }
 }

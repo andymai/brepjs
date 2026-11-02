@@ -52,6 +52,8 @@ export interface ConversionReport {
     | {
         readonly fitTolerance: number;
         readonly unfitTriangles: number;
+        /** Share of the mesh area no fitted surface covers. */
+        readonly unfitArea: number;
         /** Neighbouring surfaces found to meet tangentially (fillets), and how many were snapped exact. */
         readonly tangentPairs: number;
         readonly snappedSurfaces: number;

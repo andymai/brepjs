@@ -481,6 +481,11 @@ export function buildAnalytic(seg: Segmentation, opts: AnalyticOptions): Analyti
       kept++;
     }
     if (kept === 0) return { ok: false, reason: 'no arrangement piece is covered by the mesh' };
+    // A body with no pieces would vanish, and the distance check can't see it
+    // when another body lies within the deviation limit.
+    for (let b = 0; b < seg.bodyClosed.length; b++) {
+      if (!groups.has(b)) return { ok: false, reason: `no arrangement piece covers body ${b}` };
+    }
 
     const solids = new Map<number, Solid>();
     for (const [body, g] of groups) {
