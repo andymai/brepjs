@@ -1,14 +1,19 @@
 import {
+  type Compound,
   type Result,
+  type Shell,
+  type Solid,
   type Vec3,
   err,
+  getFaces,
   ioError,
   isSolid,
   moduleInitError,
   ok,
   validationError,
 } from 'brepjs';
-import { type AnalyticResult, buildAnalytic, decodeSurfaces } from './analyticFns.js';
+import { type AnalyticResult, buildAnalytic, decodeSurfaces, deviationOf } from './analyticFns.js';
+import { type Tier2Result, buildTier2 } from './tier2Fns.js';
 import { buildShape } from './buildFns.js';
 import { loadMeshEngine } from './engine.js';
 import { type EngineReport, type Tier1EngineReport, finishReport } from './reportFns.js';
@@ -19,6 +24,8 @@ import type {
   MeshToSolidResult,
 } from './types.js';
 import type { Tier0Result, Tier1Session } from '../wasm/index.js';
+
+type Shape = Solid | Shell | Compound;
 
 const UNITS = new Set(['auto', 'um', 'mm', 'cm', 'm', 'in', 'ft']);
 const DEFAULT_MAX_TRIANGLES = 200_000;
@@ -102,17 +109,23 @@ function message(e: unknown): string {
  * from the body around them. The report measures how far the result is from the
  * input in both directions.
  *
- * Tier 1 (the default) goes further: it segments the mesh into planes,
+ * Tier 1 goes further: it segments the mesh into planes,
  * cylinders, cones, spheres and tori, makes fillets exactly tangent, and
  * rebuilds the solid from those exact surfaces, trimmed by their intersections.
  * When a region fits no analytic surface or the rebuild misses the mesh, the
  * result falls back to Tier 0 and the report says why.
+ *
+ * Tier 2 (the default) then writes that solid as a feature program, returned in
+ * `code`: fillets, cavities, extruded slabs with holes, or a revolved profile,
+ * with dimensions snapped to round values. The program's own solid is returned
+ * when it still matches the mesh; otherwise the result stays at Tier 1.
  *
  * @example
  * ```ts
  * const res = await meshToSolid(file);
  * if (res.ok && res.value.solid) {
  *   const step = exportSTEP(res.value.shape);
+ *   const source = res.value.code; // `.brep.ts`, when tier 2 succeeded
  * }
  * ```
  */
@@ -136,7 +149,7 @@ export async function meshToSolid(
   } catch (e) {
     return err(ioError('MESH_READ_FAILED', `could not read the mesh input: ${message(e)}`, e));
   }
-  const tier = options.tier ?? 1;
+  const tier = options.tier ?? 2;
   const engineStart = performance.now();
   let session: Tier1Session | undefined;
   let raw: Tier0Result;
@@ -186,29 +199,51 @@ export async function meshToSolid(
     let fallback: { note: string; tier1: ConversionReport['tier1'] } | undefined;
     if (session !== undefined) {
       const tier1Report = JSON.parse(session.tier1_report) as Tier1EngineReport;
+      const gates = gatesFor(session, engineReport);
       let analytic: AnalyticResult;
       try {
-        analytic = runTier1(session, engineReport);
+        analytic = runTier1(session, engineReport, gates);
       } catch (e) {
         analytic = { ok: false, reason: `the rebuild failed: ${message(e)}` };
       }
       if (analytic.ok) {
-        const shape = analytic.value.shape;
+        let shape: Shape = analytic.value.shape;
+        let deviation = analytic.value.deviation;
+        let tierReached: 1 | 2 = 1;
+        let code: string | undefined;
+        let tier2: ConversionReport['tier2'];
+        const warnings: string[] = [];
+        if (tier >= 2) {
+          const program = runTier2(shape, session, gates);
+          if (program.ok) {
+            shape[Symbol.dispose]();
+            ({ shape, deviation, code } = program.value);
+            tierReached = 2;
+            tier2 = { features: program.value.features };
+          } else {
+            tier2 = { features: [], fallbackReason: program.reason };
+            warnings.push(`tier 2 stopped at tier 1: ${program.reason}`);
+            // The program may have been measured last; re-measure the tier 1 shape for the heatmap.
+            if (heatmap !== undefined) {
+              deviationOf(shape, (p, i) => session.deviation(p, i), gates.triangulation);
+            }
+          }
+        }
         const faces = {
           triangles: triangles.length / 3,
-          faces: analytic.value.stats.faces,
+          faces: getFaces(shape).length,
           unified: true,
         };
         const timings = { engineMs, buildMs: performance.now() - buildStart };
-        const measuredReport = { ...engineReport, deviation: analytic.value.deviation };
-        const report = finishReport(measuredReport, faces, timings, [], {
-          tierReached: 1,
+        const report = finishReport({ ...engineReport, deviation }, faces, timings, warnings, {
+          tierReached,
           tier1: { ...tier1Report, arrangement: analytic.value.stats },
+          tier2,
         });
-        // The heatmap measures the shape actually returned.
+        // The heatmap measures the shape actually returned (the last one measured).
         const measured =
           heatmap === undefined ? undefined : { ...heatmap, deviation: session.measured_deviation };
-        return ok({ shape, solid: isSolid(shape), report, heatmap: measured });
+        return ok({ shape, solid: isSolid(shape), report, heatmap: measured, code });
       }
       fallback = {
         note: `tier 1 fell back to tier 0: ${analytic.reason}`,
@@ -231,10 +266,15 @@ export async function meshToSolid(
 }
 
 /** Rebuild from the session's fitted surfaces, with gates scaled to the mesh's own sag. */
-function runTier1(session: Tier1Session, engineReport: EngineReport): AnalyticResult {
-  if (engineReport.estimate.kind === 'scan') {
-    return { ok: false, reason: 'the mesh looks like a scan; tier 1 rebuilds CAD exports' };
-  }
+interface Gates {
+  readonly tolerance: number;
+  readonly coverage: number;
+  readonly maxDeviation: number;
+  readonly triangulation: number;
+}
+
+/** How close exact surfaces must come to the mesh, scaled to the mesh's own sag. */
+function gatesFor(session: Tier1Session, engineReport: EngineReport): Gates {
   // Exact surfaces sit up to the mesh's sag away from it; our own
   // triangulation of the result adds its chord on the forward side.
   const sag = session.sag;
@@ -243,11 +283,23 @@ function runTier1(session: Tier1Session, engineReport: EngineReport): AnalyticRe
   const diag = Math.hypot(...bboxMax.map((v, i) => v - (bboxMin[i] ?? 0)));
   // The mesher rejects a deflection near float precision; planar results are exact at any.
   const triangulation = Math.max(sag / 2, 2 * tol, 1e-6 * diag);
+  return {
+    tolerance: tol,
+    coverage: 1.25 * sag + 10 * tol,
+    maxDeviation: 1.25 * Math.max(sag, triangulation) + 20 * tol,
+    triangulation,
+  };
+}
+
+function runTier1(session: Tier1Session, engineReport: EngineReport, gates: Gates): AnalyticResult {
+  if (engineReport.estimate.kind === 'scan') {
+    return { ok: false, reason: 'the mesh looks like a scan; tier 1 rebuilds CAD exports' };
+  }
   return buildAnalytic(
     {
       surfaces: decodeSurfaces(session.surface_kinds, session.surface_params),
       bounds: boundsOf(session.surface_bounds),
-      tolerance: tol,
+      tolerance: gates.tolerance,
       unfitTriangles: session.unfit_triangles,
       nearest: (pts) => session.nearest(pts),
       bodiesOf: (pts) => session.bodies_of(pts),
@@ -255,12 +307,21 @@ function runTier1(session: Tier1Session, engineReport: EngineReport): AnalyticRe
       bodyClosed: session.body_closed,
       deviation: (p, i) => session.deviation(p, i),
     },
-    {
-      coverage: 1.25 * sag + 10 * tol,
-      maxDeviation: 1.25 * Math.max(sag, triangulation) + 20 * tol,
-      triangulation,
-    }
+    gates
   );
+}
+
+function runTier2(shape: Shape, session: Tier1Session, gates: Gates): Tier2Result {
+  try {
+    return buildTier2(
+      shape,
+      { deviation: (p, i) => session.deviation(p, i) },
+      decodeSurfaces(session.surface_kinds, session.surface_params),
+      gates
+    );
+  } catch (e) {
+    return { ok: false, reason: `the feature program failed: ${message(e)}` };
+  }
 }
 
 function boundsOf(flat: Float64Array): Array<readonly [Vec3, Vec3]> {

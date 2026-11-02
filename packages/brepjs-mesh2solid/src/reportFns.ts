@@ -3,7 +3,7 @@ import type { ConversionReport, MeshUnit, UnitSuggestion } from './types.js';
 /** The report as the engine serializes it, before the TS-side fields are added. */
 export type EngineReport = Omit<
   ConversionReport,
-  'tierReached' | 'units' | 'faces' | 'timings' | 'tier1'
+  'tierReached' | 'units' | 'faces' | 'timings' | 'tier1' | 'tier2'
 > & {
   readonly units: Omit<ConversionReport['units'], 'suggestions'>;
 };
@@ -49,7 +49,11 @@ export function finishReport(
   faces: ConversionReport['faces'],
   timings: ConversionReport['timings'],
   extraWarnings: readonly string[],
-  tiers: { tierReached: ConversionReport['tierReached']; tier1?: ConversionReport['tier1'] } = {
+  tiers: {
+    tierReached: ConversionReport['tierReached'];
+    tier1?: ConversionReport['tier1'];
+    tier2?: ConversionReport['tier2'];
+  } = {
     tierReached: 0,
   }
 ): ConversionReport {
@@ -66,6 +70,7 @@ export function finishReport(
     ...engine,
     tierReached: tiers.tierReached,
     ...(tiers.tier1 !== undefined ? { tier1: tiers.tier1 } : {}),
+    ...(tiers.tier2 !== undefined ? { tier2: tiers.tier2 } : {}),
     units: { ...engine.units, suggestions },
     faces,
     timings,

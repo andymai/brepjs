@@ -17,11 +17,12 @@ const res = await meshToSolid(file); // File, Blob, ArrayBuffer, or Uint8Array
 if (res.ok && res.value.solid) {
   // res.value.report: units, repairs, tolerance, deviation, warnings
   const step = unwrap(exportSTEP(res.value.shape)); // Blob
+  // res.value.code: the part as an editable .brep.ts module (tier 2)
 }
 ```
 
-`meshToSolid` runs tier 1 by default and falls back to tier 0 when tier 1 can't rebuild the part;
-`report.tierReached` says which one you got.
+`meshToSolid` runs tier 2 by default. Each tier falls back to the one below when it can't rebuild
+the part, and `report.tierReached` says which one you got.
 
 ## What tier 0 does
 
@@ -61,11 +62,40 @@ It falls back to tier 0 when any triangles fit no analytic surface (freeform sha
 open, or when the rebuild fails or strays from the mesh. Meshes that look like scans skip tier 1.
 `report.tier1.fallbackReason` says why, and `report.warnings` records the fallback.
 
+## What tier 2 does
+
+Tier 2 turns the exact tier 1 solid into a feature program: a `.brep.ts` module whose default export
+rebuilds the part with brepjs calls, so you can change a hole diameter or a slab height and re-run
+it. A filleted 30 by 20 by 15 mm block comes back as:
+
+```ts
+export default () => {
+  using slab1 = box(30, 20, 15);
+  return unwrap(fillet(slab1, 3));
+};
+```
+
+1. **Strips fillets**: curved faces tangent to all their neighbours are removed by defeaturing,
+   which restores the sharp edges they rounded; each becomes a fillet on those edges.
+2. **Splits off cavities**: each internal void is recognized on its own and cut from the part.
+3. **Describes the rest** as slabs extruded along one direction (every face a cap square to it or a
+   wall along it; circular holes become cylinder cuts), or, for a turned part, as a half-section
+   revolved about its axis. Spheres and tori stay primitives.
+4. **Snaps** every dimension to the roundest value within the fit tolerance (40, not 39.9999997) and
+   every direction within a microradian of an axis onto it.
+5. **Checks** the solid the program builds against the mesh, with the same gate tier 1 uses, and
+   returns that solid. `res.value.code` holds the source, with an `expected` block (volume, area,
+   bounds) that brepjs-cad's verifier reads. Every intermediate shape in it is bound with `using`,
+   so running it repeatedly releases them.
+
+It stops at tier 1 when no direction or axis describes every face, or when the program misses the
+mesh; `report.tier2.fallbackReason` says why.
+
 ## Options
 
 | Option         | Default  | Meaning                                                               |
 | -------------- | -------- | --------------------------------------------------------------------- |
-| `tier`         | `1`      | `0` skips tier 1 and returns the faceted tier 0 solid                 |
+| `tier`         | `2`      | `1` skips the feature program; `0` returns the faceted tier 0 solid   |
 | `units`        | `'auto'` | `'um' \| 'mm' \| 'cm' \| 'm' \| 'in' \| 'ft'`, or read from the file  |
 | `tolerance`    | `'auto'` | Merge and decimation tolerance in mm                                  |
 | `maxTriangles` | 200,000  | Triangle budget after decimation                                      |
@@ -80,14 +110,17 @@ open, or when the rebuild fails or strays from the mesh. Meshes that look like s
 percentile distance from the input to the result (`reverseMax` is the other direction, sampled at each output triangle's corners and centroid).
 `report.faces` counts triangles in and faces out, and `report.warnings` lists every repair and
 fallback that happened. `report.tier1` lists the fitted surfaces with their residuals, the tangent
-pairs found, and the arrangement's piece counts.
+pairs found, and the arrangement's piece counts. `report.tier2.features` lists the recognized
+features in build order.
 
 ## Quality gate
 
 `tests/eval.test.ts` round-trips known brepjs solids through their own tessellation (CAD) and through
 subdivided, noise-perturbed versions (scans), and gates validity, volume, deviation, and face count.
 The tier 1 cases also gate the fitted surface kinds and require the source solid's volume to within
-one part in a million.
+one part in a million. The tier 2 cases import each generated program, run it, and require the
+calls a person would write (`box(30, 20, 15)`, `fillet(slab1, 3)`) and the source solid's volume to
+within one part in a billion.
 Set `MESH2SOLID_SCORECARD=<path>` when running it to write per-case metrics.
 
 ## Developing the engine

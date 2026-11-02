@@ -259,7 +259,7 @@ describe('meshToSolid tier 1', () => {
     using c = cylinder(6, 20);
     using cm = translate(c, [20, 15, -5]);
     using part = unwrap(cut(b, cm));
-    const res = unwrap(await meshToSolid(await stlOf(part)));
+    const res = unwrap(await meshToSolid(await stlOf(part), { tier: 1 }));
     using shape = res.shape;
     expect(res.report.tierReached).toBe(1);
     expect(res.solid).toBe(true);
@@ -276,7 +276,7 @@ describe('meshToSolid tier 1', () => {
 
   it('turns a sphere mesh back into one spherical face', async () => {
     using s = sphere(10);
-    const res = unwrap(await meshToSolid(await stlOf(s)));
+    const res = unwrap(await meshToSolid(await stlOf(s), { tier: 1 }));
     using shape = res.shape;
     expect(res.report.tierReached).toBe(1);
     expect(getFaces(shape)).toHaveLength(1);
@@ -287,7 +287,7 @@ describe('meshToSolid tier 1', () => {
   it('snaps fillets exactly tangent so they sew', async () => {
     using b = box(30, 20, 15);
     using f = unwrap(fillet(b, 3));
-    const res = unwrap(await meshToSolid(await stlOf(f)));
+    const res = unwrap(await meshToSolid(await stlOf(f), { tier: 1 }));
     using shape = res.shape;
     expect(res.report.tierReached).toBe(1);
     expect(res.report.tier1?.tangentPairs).toBeGreaterThanOrEqual(48);
@@ -300,7 +300,7 @@ describe('meshToSolid tier 1', () => {
     using b0 = box(5, 5, 5);
     using b = translate(b0, [20, 0, 0]);
     using both = unwrap(fuse(a, b));
-    const two = unwrap(await meshToSolid(await stlOf(both)));
+    const two = unwrap(await meshToSolid(await stlOf(both), { tier: 1 }));
     using twoShape = two.shape;
     expect(two.report.tierReached).toBe(1);
     expect(isCompound(twoShape)).toBe(true);
@@ -311,7 +311,7 @@ describe('meshToSolid tier 1', () => {
     using inner0 = box(4, 4, 4);
     using inner = translate(inner0, [8, 8, 8]);
     using hollow = unwrap(cut(outer, inner));
-    const res = unwrap(await meshToSolid(await stlOf(hollow)));
+    const res = unwrap(await meshToSolid(await stlOf(hollow), { tier: 1 }));
     using shape = res.shape;
     expect(res.report.tierReached).toBe(1);
     expect(res.solid).toBe(true);
@@ -343,6 +343,45 @@ describe('meshToSolid tier 1', () => {
     expect(res.report.tier1?.unfitTriangles).toBeGreaterThan(0);
     expect(res.report.tier1?.fallbackReason).toMatch(/fit no analytic surface/);
     expect(res.report.warnings.some((w) => w.startsWith('tier 1 fell back to tier 0'))).toBe(true);
+  });
+});
+
+describe('meshToSolid tier 2', () => {
+  it('writes the part as a feature program with round dimensions', async () => {
+    using b = box(40, 30, 10);
+    using c = cylinder(6, 20);
+    using cm = translate(c, [20, 15, -5]);
+    using part = unwrap(cut(b, cm));
+    const res = unwrap(await meshToSolid(await stlOf(part)));
+    using shape = res.shape;
+    expect(res.report.tierReached).toBe(2);
+    expect(res.code).toContain('box(40, 30, 10)');
+    expect(res.code).toContain('cylinder(6, 10, { at: [20, 15, 0] })');
+    expect(res.report.tier2?.features).toEqual(['extrude 10 mm with 1 hole(s)']);
+    expect(Math.abs(vol(shape) - vol(part)) / vol(part)).toBeLessThan(1e-9);
+  });
+
+  it('stops at tier 1 with a reason when no feature describes the part', async () => {
+    using b = box(40, 30, 10);
+    using c = cylinder(3, 80, { at: [-10, -10, 5], axis: [1, 1, 0] });
+    using part = unwrap(cut(b, c));
+    const res = unwrap(await meshToSolid(await stlOf(part)));
+    using shape = res.shape;
+    expect(res.report.tierReached).toBe(1);
+    expect(res.code).toBeUndefined();
+    expect(res.report.tier2?.fallbackReason).toMatch(/no extrusion direction/);
+    expect(res.report.warnings.some((w) => w.startsWith('tier 2 stopped at tier 1'))).toBe(true);
+    expect(isValid(shape)).toBe(true);
+  });
+
+  it('writes no program when asked for tier 1', async () => {
+    using b = box(10, 10, 10);
+    const res = unwrap(await meshToSolid(await stlOf(b), { tier: 1 }));
+    using shape = res.shape;
+    expect(isSolid(shape)).toBe(true);
+    expect(res.report.tierReached).toBe(1);
+    expect(res.code).toBeUndefined();
+    expect(res.report.tier2).toBeUndefined();
   });
 });
 
