@@ -1,6 +1,6 @@
 {
   "name": "brepjs-mesh2cad",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Mesh-to-solid conversion for brepjs: turn STL, OBJ, PLY and 3MF meshes (CAD exports or 3D scans) into B-Rep solids",
   "keywords": [
     "mesh",
