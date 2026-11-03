@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.18.0](https://github.com/andymai/brepjs/compare/brepjs-v20.17.0...brepjs-v20.18.0) (2026-11-03)
+
+
+### Features
+
+* **topology:** build B-spline surfaces exactly from poles and knots (occt-wasm 5.15.0) ([#2603](https://github.com/andymai/brepjs/issues/2603)) ([4b69a24](https://github.com/andymai/brepjs/commit/4b69a2466626d4854bd20cf68120cb087a6acc6c))
+
 ## [20.17.0](https://github.com/andymai/brepjs/compare/brepjs-v20.16.0...brepjs-v20.17.0) (2026-11-02)
 
 
