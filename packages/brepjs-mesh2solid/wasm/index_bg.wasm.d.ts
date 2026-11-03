@@ -1,10 +1,19 @@
 /* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
+export const __wbg_freeformcharts_free: (a: number, b: number) => void;
 export const __wbg_tier0result_free: (a: number, b: number) => void;
 export const __wbg_tier1session_free: (a: number, b: number) => void;
 export const convert_tier0: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number];
 export const convert_tier1: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number];
+export const freeformcharts_chart_bodies: (a: number) => [number, number];
+export const freeformcharts_fit_errors: (a: number) => [number, number];
+export const freeformcharts_run_offsets: (a: number) => [number, number];
+export const freeformcharts_run_points: (a: number) => [number, number];
+export const freeformcharts_side_offsets: (a: number) => [number, number];
+export const freeformcharts_sides: (a: number) => [number, number];
+export const freeformcharts_surface_offsets: (a: number) => [number, number];
+export const freeformcharts_surface_poles: (a: number) => [number, number];
 export const inspect: (a: number, b: number, c: number, d: number) => [number, number, number, number];
 export const tier0result_body_closed: (a: number) => [number, number];
 export const tier0result_body_parent: (a: number) => [number, number];
@@ -20,6 +29,7 @@ export const tier0result_triangles: (a: number) => [number, number];
 export const tier1session_bodies_of: (a: number, b: number, c: number) => [number, number];
 export const tier1session_body_closed: (a: number) => [number, number];
 export const tier1session_body_parent: (a: number) => [number, number];
+export const tier1session_charts: (a: number) => number;
 export const tier1session_deviation: (a: number, b: number, c: number, d: number, e: number) => [number, number];
 export const tier1session_measured_deviation: (a: number) => [number, number];
 export const tier1session_nearest: (a: number, b: number, c: number) => [number, number];

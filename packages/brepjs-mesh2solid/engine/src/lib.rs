@@ -3,6 +3,7 @@
 //! flat typed arrays plus a JSON report; all B-Rep construction happens in the
 //! TypeScript package that consumes it.
 
+pub mod charts;
 pub mod decimate;
 pub mod deviation;
 pub mod earcut;
@@ -393,6 +394,98 @@ impl Tier1Session {
     pub fn tier0(&self) -> Tier0Result {
         pack(&self.inner.t0, self.heatmap)
     }
+
+    /// Every body split into freeform charts for a B-spline rebuild, or
+    /// `undefined` when the mesh doesn't split into few enough discs.
+    pub fn charts(&self) -> Option<FreeformCharts> {
+        self.inner.charts().map(|inner| FreeformCharts { inner })
+    }
+}
+
+/// Freeform charts: each a disc of the mesh bounded by runs (polylines between
+/// corners) it shares with its neighbours. Call `free()` when done.
+#[wasm_bindgen]
+pub struct FreeformCharts {
+    inner: charts::Charts,
+}
+
+#[wasm_bindgen]
+impl FreeformCharts {
+    /// Start of each run in `run_points` (in points), plus the end.
+    #[wasm_bindgen(getter)]
+    pub fn run_offsets(&self) -> Vec<u32> {
+        offsets(self.inner.runs.iter().map(|r| r.pts.len()))
+    }
+
+    /// Flat xyz of every run, corner to corner.
+    #[wasm_bindgen(getter)]
+    pub fn run_points(&self) -> Vec<f64> {
+        self.inner
+            .runs
+            .iter()
+            .flat_map(|r| r.pts.iter().flatten().copied())
+            .collect()
+    }
+
+    /// Body (as in the Tier 0 result) of each chart.
+    #[wasm_bindgen(getter)]
+    pub fn chart_bodies(&self) -> Vec<u32> {
+        self.inner.charts.iter().map(|c| c.body).collect()
+    }
+
+    /// Start of each chart's sides in `sides`, plus the end.
+    #[wasm_bindgen(getter)]
+    pub fn side_offsets(&self) -> Vec<u32> {
+        offsets(self.inner.charts.iter().map(|c| c.sides.len()))
+    }
+
+    /// Each chart's boundary loop in order: a run id, or `-(id + 1)` for a run
+    /// traversed backwards.
+    #[wasm_bindgen(getter)]
+    pub fn sides(&self) -> Vec<i32> {
+        self.inner
+            .charts
+            .iter()
+            .flat_map(|c| {
+                c.sides
+                    .iter()
+                    .map(|&(r, back)| if back { -(r as i32) - 1 } else { r as i32 })
+            })
+            .collect()
+    }
+
+    /// Start of each chart's surface poles in `surface_poles` (in points),
+    /// plus the end. A chart's surface is a uniform cubic B-spline with k × k poles,
+    /// row by row, and knots -3, -2, ..., k each of multiplicity 1; none for
+    /// a chart too small to fit.
+    #[wasm_bindgen(getter)]
+    pub fn surface_offsets(&self) -> Vec<u32> {
+        offsets(self.inner.charts.iter().map(|c| c.poles.len()))
+    }
+
+    /// Flat xyz surface poles, chart by chart.
+    #[wasm_bindgen(getter)]
+    pub fn surface_poles(&self) -> Vec<f64> {
+        self.inner
+            .charts
+            .iter()
+            .flat_map(|c| c.poles.iter().flatten().copied())
+            .collect()
+    }
+
+    /// Largest height of a chart's fitted points off its surface, per chart.
+    #[wasm_bindgen(getter)]
+    pub fn fit_errors(&self) -> Vec<f64> {
+        self.inner.charts.iter().map(|c| c.fit_error).collect()
+    }
+}
+
+fn offsets(lens: impl Iterator<Item = usize>) -> Vec<u32> {
+    let mut out = vec![0u32];
+    for n in lens {
+        out.push(out[out.len() - 1] + n as u32);
+    }
+    out
 }
 
 /// Run Tier 0 and the Tier 1 segmentation. Arguments as for `convert_tier0`.

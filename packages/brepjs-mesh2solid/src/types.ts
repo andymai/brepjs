@@ -82,6 +82,20 @@ export interface ConversionReport {
               readonly faces: number;
             }
           | undefined;
+        /**
+         * Present when no analytic surfaces rebuilt the mesh and it was rebuilt from B-spline
+         * faces instead, each fitted to one smooth disc-shaped chart of the mesh.
+         */
+        readonly freeform?:
+          | {
+              readonly charts: number;
+              /** Chart boundaries, each fitted once as a curve both neighbouring faces share. */
+              readonly runs: number;
+              readonly faces: number;
+              /** Why the analytic rebuild failed. */
+              readonly analyticReason: string;
+            }
+          | undefined;
         /** Why the result fell back to tier 0. */
         readonly fallbackReason?: string | undefined;
       }
@@ -178,7 +192,8 @@ export interface ConversionReport {
     readonly faces: number;
     /**
      * True when the kernel's coplanar-face unification ran and its result passed validation (on a
-     * mesh with no coplanar neighbors it merges nothing). False means the triangulated shape was kept.
+     * mesh with no coplanar neighbors it merges nothing). False means the shape was kept as built:
+     * triangulated at tier 0, or the B-spline faces of a freeform rebuild, which never share a surface.
      */
     readonly unified: boolean;
   };

@@ -335,15 +335,21 @@ describe('meshToSolid tier 1', () => {
     expect(isShell(shape)).toBe(true);
   });
 
-  it('falls back to tier 0 with a reason when a surface is freeform', async () => {
+  it('rebuilds a part with a freeform surface from B-spline faces', async () => {
     const res = unwrap(await meshToSolid(saddleBlockStl(16)));
     using shape = res.shape;
+    const r = res.report;
     expect(res.solid).toBe(true);
     expect(isValid(shape)).toBe(true);
-    expect(res.report.tierReached).toBe(0);
-    expect(res.report.tier1?.unfitTriangles).toBeGreaterThan(0);
-    expect(res.report.tier1?.fallbackReason).toMatch(/fit no analytic surface/);
-    expect(res.report.warnings.some((w) => w.startsWith('tier 1 fell back to tier 0'))).toBe(true);
+    expect(r.tierReached).toBe(1);
+    expect(r.tier1?.unfitTriangles).toBeGreaterThan(0);
+    expect(r.tier1?.freeform?.analyticReason).toMatch(/fit no analytic surface/);
+    expect(r.tier1?.freeform?.faces).toBe(getFaces(shape).length);
+    expect(r.faces.unified).toBe(false);
+    expect(r.tier2?.fallbackReason).toBe('B-spline faces have no feature program');
+    expect(r.warnings.some((w) => w.startsWith('rebuilt from'))).toBe(true);
+    // The top z = 5 + (x² - y²) / 40 over a 20 mm square encloses exactly 2000 mm³.
+    expect(vol(shape)).toBeCloseTo(2000, 0);
   });
 });
 
