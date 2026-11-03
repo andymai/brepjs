@@ -1,0 +1,23 @@
+tests/primitiveFns.test.ts
+  s_f4b6d3a89e6265::t_59b9456063e868 347
+src/topology/surfaceBuilders.ts
+  s_f4b6d3a89e6265::t_cd9ec013ea1183 200
+.size-limit.json
+  s_f4b6d3a89e6265::t_0d12d2a8feb4c4 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "743f5effb7b377f904fb85d9c865670fa9c79258",
+  "prompts": {},
+  "sessions": {
+    "s_f4b6d3a89e6265": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "576c9111-ae72-49e9-ade1-3900f5f4be46",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
