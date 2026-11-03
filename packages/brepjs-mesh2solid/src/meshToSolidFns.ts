@@ -234,7 +234,7 @@ export async function meshToSolid(
         const faces = {
           triangles: triangles.length / 3,
           faces: getFaces(shape).length,
-          unified: true,
+          unified: freeform === undefined,
         };
         const timings = { engineMs, buildMs: performance.now() - buildStart };
         const tier1: ConversionReport['tier1'] =

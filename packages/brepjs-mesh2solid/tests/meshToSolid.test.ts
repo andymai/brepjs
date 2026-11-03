@@ -345,6 +345,7 @@ describe('meshToSolid tier 1', () => {
     expect(r.tier1?.unfitTriangles).toBeGreaterThan(0);
     expect(r.tier1?.freeform?.analyticReason).toMatch(/fit no analytic surface/);
     expect(r.tier1?.freeform?.faces).toBe(getFaces(shape).length);
+    expect(r.faces.unified).toBe(false);
     expect(r.tier2?.fallbackReason).toBe('B-spline faces have no feature program');
     expect(r.warnings.some((w) => w.startsWith('rebuilt from'))).toBe(true);
     // The top z = 5 + (x² - y²) / 40 over a 20 mm square encloses exactly 2000 mm³.

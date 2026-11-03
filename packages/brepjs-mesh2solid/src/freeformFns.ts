@@ -62,23 +62,30 @@ function pointsIn(flat: Float64Array, from: number, to: number): Vec3[] {
 }
 
 export function decodeCharts(p: PackedCharts): FreeformCharts {
+  // Each wasm getter copies its whole array, so every one is read once.
+  const runOffsets = p.run_offsets;
+  const runPoints = p.run_points;
+  const bodies = p.chart_bodies;
+  const sideOffsets = p.side_offsets;
+  const allSides = p.sides;
+  const surfaceOffsets = p.surface_offsets;
+  const surfacePoles = p.surface_poles;
+  const fitErrors = p.fit_errors;
   const runs: FreeformRun[] = [];
-  for (let r = 0; r + 1 < p.run_offsets.length; r++) {
-    runs.push({
-      points: pointsIn(p.run_points, p.run_offsets[r] ?? 0, p.run_offsets[r + 1] ?? 0),
-    });
+  for (let r = 0; r + 1 < runOffsets.length; r++) {
+    runs.push({ points: pointsIn(runPoints, runOffsets[r] ?? 0, runOffsets[r + 1] ?? 0) });
   }
   const charts: FreeformChart[] = [];
-  for (let c = 0; c < p.chart_bodies.length; c++) {
+  for (let c = 0; c < bodies.length; c++) {
     const sides = Array.from(
-      p.sides.subarray(p.side_offsets[c] ?? 0, p.side_offsets[c + 1] ?? 0),
+      allSides.subarray(sideOffsets[c] ?? 0, sideOffsets[c + 1] ?? 0),
       (s) => (s < 0 ? { run: -s - 1, reversed: true } : { run: s, reversed: false })
     );
     charts.push({
-      body: p.chart_bodies[c] ?? 0,
+      body: bodies[c] ?? 0,
       sides,
-      poles: pointsIn(p.surface_poles, p.surface_offsets[c] ?? 0, p.surface_offsets[c + 1] ?? 0),
-      fitError: p.fit_errors[c] ?? Infinity,
+      poles: pointsIn(surfacePoles, surfaceOffsets[c] ?? 0, surfaceOffsets[c + 1] ?? 0),
+      fitError: fitErrors[c] ?? Infinity,
     });
   }
   return { runs, charts };

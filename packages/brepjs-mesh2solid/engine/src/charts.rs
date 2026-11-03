@@ -561,6 +561,9 @@ pub fn build(src: &ChartInput, p: &ChartParams) -> Option<Charts> {
     let mut seeds = Vec::new();
     let mut proxies = Vec::new();
     let mut chart = partition(&g, mask, &mut seeds, &mut proxies);
+    if seeds.len() > p.max_charts {
+        return None;
+    }
     tidy(mesh, &g, &mut chart, &proxies, cos_cone);
     let mut done = false;
     for _ in 0..MAX_ROUNDS {
@@ -1119,6 +1122,10 @@ mod tests {
     }
 
     fn charts_of(mesh: &Mesh) -> Charts {
+        charts_with(mesh, &params()).expect("charts")
+    }
+
+    fn charts_with(mesh: &Mesh, p: &ChartParams) -> Option<Charts> {
         let topo = Topology::build(mesh);
         let n = mesh.triangles.len();
         let bvh = Bvh::new((0..n).map(|t| mesh.tri(t)).collect());
@@ -1132,7 +1139,7 @@ mod tests {
             input: mesh,
             stride: 1,
         };
-        build(&src, &params()).expect("charts")
+        build(&src, p)
     }
 
     /// Every side starts where the previous one ended, and every run is a side
@@ -1241,6 +1248,15 @@ mod tests {
         assert_eq!(c.runs.len(), 12);
         assert!(c.runs.iter().all(|r| !r.smooth));
         assert_closed(&c);
+    }
+
+    #[test]
+    fn sharp_regions_past_the_chart_budget_give_no_charts() {
+        let p = ChartParams {
+            max_charts: 5,
+            ..params()
+        };
+        assert!(charts_with(&cube(10.0), &p).is_none());
     }
 
     #[test]
