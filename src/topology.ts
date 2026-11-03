@@ -52,6 +52,7 @@ export {
   filledFace,
   nSidedFace,
   edgeOnFace,
+  nurbsSurface,
   subFace,
   polygon,
   vertex,
@@ -73,6 +74,7 @@ export type {
   NSidedBoundaryEdge,
   NSidedFaceOptions,
   EdgeOnFaceOptions,
+  NurbsSurfaceInput,
 } from './topology/surfaceBuilders.js';
 
 // ── Boolean operations ──

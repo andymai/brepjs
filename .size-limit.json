@@ -1,5 +1,5 @@
 [
-  { "name": "total (all JS)", "path": "dist/*.js", "limit": "428.3 kB" },
+  { "name": "total (all JS)", "path": "dist/*.js", "limit": "429.8 kB" },
   { "name": "brepjs", "path": "dist/brepjs.js", "limit": "75 kB" },
   { "name": "brepjs/core", "path": "dist/core.js", "limit": "2 kB" },
   { "name": "brepjs/result", "path": "dist/result.js", "limit": "1 kB" },

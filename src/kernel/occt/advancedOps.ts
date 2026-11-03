@@ -1227,6 +1227,11 @@ export function makeAdvancedOps(oc: KernelInstance) {
         'edgeOnSurface is only available with the occt-wasm kernel'
       );
     },
+    nurbsSurface: () => {
+      throw new UnsupportedKernelOperationError(
+        'nurbsSurface is only available with the occt-wasm kernel'
+      );
+    },
     addHolesInFace: (face, holeWires) => addHolesInFace(oc, face, holeWires),
     removeHolesFromFace: (face) => removeHolesFromFace(oc, face),
     makeFaceOnSurface: (surface, wire) => makeFaceOnSurface(oc, surface, wire),
@@ -1261,6 +1266,7 @@ export function makeAdvancedOps(oc: KernelInstance) {
     | 'makeNonPlanarFace'
     | 'fillNSided'
     | 'edgeOnSurface'
+    | 'nurbsSurface'
     | 'addHolesInFace'
     | 'removeHolesFromFace'
     | 'makeFaceOnSurface'

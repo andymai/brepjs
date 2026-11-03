@@ -101,6 +101,7 @@ export function makeBuilderOps(module: ManifoldModule): KernelBuilderOps {
     makeNonPlanarFace: () => notImplemented('makeNonPlanarFace'),
     fillNSided: () => notImplemented('fillNSided'),
     edgeOnSurface: () => notImplemented('edgeOnSurface'),
+    nurbsSurface: () => notImplemented('nurbsSurface'),
     addHolesInFace: (face, holeWires) => profile.addHolesInFace(face, holeWires),
     removeHolesFromFace: () => notImplemented('removeHolesFromFace'),
     makeFaceOnSurface: () => notImplemented('makeFaceOnSurface'),

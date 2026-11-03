@@ -1266,6 +1266,11 @@ export function makeConstructionOps(bk: BrepkitKernel) {
         'edgeOnSurface is only available with the occt-wasm kernel'
       );
     },
+    nurbsSurface: () => {
+      throw new UnsupportedKernelOperationError(
+        'nurbsSurface is only available with the occt-wasm kernel'
+      );
+    },
     addHolesInFace: (face, holeWires) => addHolesInFace(bk, face, holeWires),
     removeHolesFromFace: (face) => removeHolesFromFace(bk, face),
     makeFaceOnSurface: (surface, wire) => makeFaceOnSurface(bk, surface, wire),
@@ -1312,6 +1317,7 @@ export function makeConstructionOps(bk: BrepkitKernel) {
     | 'makeNonPlanarFace'
     | 'fillNSided'
     | 'edgeOnSurface'
+    | 'nurbsSurface'
     | 'addHolesInFace'
     | 'removeHolesFromFace'
     | 'makeFaceOnSurface'

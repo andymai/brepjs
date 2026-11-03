@@ -45,7 +45,12 @@ export type KernelAdapter = KernelCore &
 
 // --- New sub-interfaces ---
 export type { KernelBooleanOps } from './booleanOps.js';
-export type { FillBoundaryEdge, FillSurfaceOptions, KernelBuilderOps } from './builderOps.js';
+export type {
+  FillBoundaryEdge,
+  FillSurfaceOptions,
+  KernelBuilderOps,
+  NurbsSurfaceInput,
+} from './builderOps.js';
 export type { KernelCore } from './core.js';
 export type { KernelCurveOps } from './curveOps.js';
 export type { KernelEvolutionOps } from './evolutionOps.js';

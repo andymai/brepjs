@@ -46,6 +46,28 @@ export interface FillSurfaceOptions {
   readonly maxSegments?: number | undefined;
 }
 
+/**
+ * A B-spline surface given exactly, for {@link KernelBuilderOps.nurbsSurface}:
+ * the same fields `getNurbsSurfaceData` reads back. Knots strictly
+ * increase; multiplicities follow OCCT's rules (ends at most `degree + 1` on a
+ * non-periodic surface, interior knots at most `degree`) and account for
+ * exactly the poles in their direction.
+ */
+export interface NurbsSurfaceInput {
+  readonly degreeU: number;
+  readonly degreeV: number;
+  /** `poles[i][j]`: the `i`-th pole along u, the `j`-th along v. */
+  readonly poles: ReadonlyArray<ReadonlyArray<readonly [number, number, number]>>;
+  /** One positive weight per pole, in the same layout; omit for a non-rational surface. */
+  readonly weights?: ReadonlyArray<ReadonlyArray<number>> | undefined;
+  readonly knotsU: ReadonlyArray<number>;
+  readonly knotsV: ReadonlyArray<number>;
+  readonly multiplicitiesU: ReadonlyArray<number>;
+  readonly multiplicitiesV: ReadonlyArray<number>;
+  readonly isPeriodicU?: boolean | undefined;
+  readonly isPeriodicV?: boolean | undefined;
+}
+
 export interface KernelBuilderOps {
   // --- Basic construction ---
   makeVertex(x: number, y: number, z: number): KernelShape;
@@ -145,6 +167,8 @@ export interface KernelBuilderOps {
   makeFaceOnSurface(surface: KernelType, wire: KernelShape): KernelShape;
   /** Fit a B-spline surface through a grid of Z-heights. */
   bsplineSurface(points: [number, number, number][], rows: number, cols: number): KernelShape;
+  /** A face over a whole B-spline surface given exactly by its poles and knots. */
+  nurbsSurface(data: NurbsSurfaceInput): KernelShape;
   /** Build a triangulated surface from a height grid. */
   triangulatedSurface(points: [number, number, number][], rows: number, cols: number): KernelShape;
 

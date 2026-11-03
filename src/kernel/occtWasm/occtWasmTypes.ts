@@ -477,6 +477,16 @@ export interface OcctKernelWasm {
     initFaceId: number,
     params: EmVectorDouble
   ): number;
+  /** occt-wasm 5.15.0 and later. */
+  nurbsSurface?(
+    flatPoles: EmVectorDouble,
+    weights: EmVectorDouble,
+    knotsU: EmVectorDouble,
+    knotsV: EmVectorDouble,
+    multsU: EmVectorInt,
+    multsV: EmVectorInt,
+    layout: EmVectorInt
+  ): number;
   /** occt-wasm 5.12.0 and later. */
   edgeOnSurface?(
     faceId: number,
