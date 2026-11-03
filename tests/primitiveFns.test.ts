@@ -344,6 +344,7 @@ describe.skipIf(shouldSkipSuite('primitiveFns.nurbsSurface'))('nurbsSurface', ()
     expect(code({ weights: wavy.poles.map((row) => row.map(() => 0)) })).toBe('NURBS_BAD_WEIGHTS');
     expect(code({ knotsU: [0, 2, 1, 3] })).toBe('NURBS_BAD_KNOTS');
     expect(code({ multiplicitiesU: [4, 2, 1, 4] })).toBe('NURBS_BAD_KNOTS');
+    expect(code({ multiplicitiesU: [3.5, 2, 1, 3.5] })).toBe('NURBS_BAD_KNOTS');
     expect(code({ isPeriodicV: true })).toBe('NURBS_BAD_KNOTS');
     const bad: readonly [number, number, number] = [NaN, 0, 0];
     const nan = wavy.poles.map((row, i) => row.map((q, j) => (i + j === 0 ? bad : q)));

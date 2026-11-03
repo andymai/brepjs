@@ -197,6 +197,7 @@ const MAX_NURBS_DEGREE = 25;
 function polesForKnots(mults: readonly number[], degree: number, periodic: boolean): number {
   const first = mults[0] ?? 0;
   const last = mults[mults.length - 1] ?? 0;
+  if (!Number.isInteger(first) || !Number.isInteger(last)) return -1;
   if (periodic) {
     if (first < 1 || first > degree || first !== last) return -1;
   } else if (first < 1 || last < 1 || first > degree + 1 || last > degree + 1) {
