@@ -19,6 +19,15 @@ const PLUGIN_FILES = [
   ...readdirSync(join(PKG, 'commands')).map((f) => join('commands', f)),
 ];
 
+function siblingLinks(markdown: string): string[] {
+  const links: string[] = [];
+  for (const [, code, link] of markdown.matchAll(/`(\.\.\/[\w./-]+)`|\]\((\.\.\/[\w./-]+)\)/g)) {
+    const rel = code ?? link;
+    if (rel !== undefined) links.push(rel);
+  }
+  return links;
+}
+
 function frontmatter(file: string): Record<string, unknown> {
   const text = readFileSync(join(PKG, file), 'utf8');
   const match = /^---\n([\s\S]*?)\n---\n/.exec(text);
@@ -49,13 +58,17 @@ describe('plugin files', () => {
     expect(text).not.toMatch(/(^|[\s`(])reference\/llms/);
   });
 
+  it('finds sibling links in code spans and in Markdown links', () => {
+    expect(siblingLinks('see `../a/x.md` and [y](../b/y.md), not `references/z.md`')).toEqual([
+      '../a/x.md',
+      '../b/y.md',
+    ]);
+  });
+
   it.each(SKILLS)('skill %s links only to sibling skill files that exist', (dir) => {
-    const text = readFileSync(join(PKG, 'skills', dir, 'SKILL.md'), 'utf8');
-    for (const [, rel] of text.matchAll(/`(\.\.\/[\w./-]+)`/g)) {
-      if (rel === undefined) continue;
-      expect(existsSync(resolve(dirname(join(PKG, 'skills', dir, 'SKILL.md')), rel)), rel).toBe(
-        true
-      );
+    const skillMd = join(PKG, 'skills', dir, 'SKILL.md');
+    for (const rel of siblingLinks(readFileSync(skillMd, 'utf8'))) {
+      expect(existsSync(resolve(dirname(skillMd), rel)), rel).toBe(true);
     }
   });
 });
