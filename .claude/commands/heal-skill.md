@@ -15,17 +15,17 @@ The geometry-producing skills each have an automated signal — pick one with th
 (default `implement`). Brainstorm/design are text-only and are reviewed via the `skill-reviewer`
 agent + `bench/specFixtures.ts`, not healed here.
 
-- **implement** — heals `skills/implement/SKILL.md`. Fan out **clean-room subagent authors** (each
+- **implement** — heals `skills/brepjs-implement/SKILL.md`. Fan out **clean-room subagent authors** (each
   reads only the implement skill + its references) over the corpus; signal = `auto` (valid +
   declared dims) + blind visual judge. The full procedure below is this target.
-- **verify** — heals `skills/verify/SKILL.md` (and, if the gap is in code, the `HINT_TABLE` in
+- **verify** — heals `skills/brepjs-verify/SKILL.md` (and, if the gap is in code, the `HINT_TABLE` in
   `src/verify/report.ts` **with a matching `tests/report.test.ts` case**). Signal =
   `npm run eval:verify -w brepjs-cad` (`bench/verifyEval.ts`): precision over the good corpus +
   recall over the known-bad fixtures (`bench/mutate.ts`). RED→GREEN = a missed code in the recall
   table flips to PASS because the verifier now emits/explains it. Recall is a lower bound (only the
   mutate.ts codes) — say so; add a fixture when a new code appears.
-- **polish** — heals `skills/polish/SKILL.md`. Corpus = the implement heal's first-valid parts
-  (fallback: the 16 `skills/implement/examples`). Signal = the pre/post protocol in
+- **polish** — heals `skills/brepjs-polish/SKILL.md`. Corpus = the implement heal's first-valid parts
+  (fallback: the 16 `skills/brepjs-implement/examples`). Signal = the pre/post protocol in
   `bench/blind-judge-polish.md`: render pre → run polish → render post; a heal is confirmed only if
   post is **still valid** AND the blind judge prefers post AND the change is attributable to a
   named polish rule.
@@ -61,7 +61,7 @@ prove it with a 3-line part first (turns an N-way silent failure into a 5-second
 
 One **general-purpose subagent per example**, dispatched in parallel batches. Each subagent:
 
-- Reads ONLY `packages/brepjs-cad/skills/implement/SKILL.md` + its references/examples + the bundled
+- Reads ONLY `packages/brepjs-cad/skills/brepjs-implement/SKILL.md` + its references/examples + the bundled
   `reference/llms-full.txt`. **MUST NOT** read anything under `apps/playground/**` (the answer
   key) or lean on remembered brepjs API — that measures the model, not the skill.
 - Gets the example's `description` as the whole prompt (+ `id`/`label`).
@@ -94,7 +94,7 @@ class and a must-fix; an omission is lower-severity. **Never heal a phantom.**
 
 ## 4. Fix — surgical SKILL.md prose
 
-Edit the canonical `packages/brepjs-cad/skills/implement/SKILL.md` (+ its `references/*.md`) in the house
+Edit the canonical `packages/brepjs-cad/skills/brepjs-implement/SKILL.md` (+ its `references/*.md`) in the house
 style: terse, failure-mode-keyed, cite the error code. The fix must live in **prose** (the real
 eval author is prompt-only — file-only example fixes don't transfer). If a bundled reference
 (`llms-full.txt`/`llms.txt`) is itself wrong, fix it **and grep everywhere** — root `llms.txt` +
