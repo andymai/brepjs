@@ -7,7 +7,7 @@ argument-hint: '[target: implement | verify]  [scope]   (default: implement, all
 
 For **`verify`**: run `npm run eval:verify -w brepjs-cad` (`bench/verifyEval.ts`) and report the
 precision/recall table + any false-positive or missed-code finding; propose a
-`skills/verify/SKILL.md` (or `HINT_TABLE`) fix. For **`implement`** (default), continue below.
+`skills/brepjs-verify/SKILL.md` (or `HINT_TABLE`) fix. For **`implement`** (default), continue below.
 
 Measure the deployed implement skill by re-authoring the **playground examples** — the quality
 bar — from their descriptions through **this** Claude Code session: you author each part, and a
@@ -32,7 +32,7 @@ for the legacy `bench/prompts.ts`.)
   side-by-side, adapt it to a `.brep.ts` — change `from 'brepjs/quick'` → `from 'brepjs'`
   and `export default <shape>` → `export default () => <shape>` — then `verify --check
 --snapshot`. The author's part should read as designed as the reference, not just valid.
-- **Authoring contract:** `packages/brepjs-cad/skills/implement/SKILL.md` — follow it exactly;
+- **Authoring contract:** `packages/brepjs-cad/skills/brepjs-implement/SKILL.md` — follow it exactly;
   that is the thing under test. Do **not** show the author the reference `code`, or lean on
   outside brepjs knowledge the skill doesn't give you, or you measure yourself.
 
@@ -61,7 +61,7 @@ Author parts into a scratch ESM dir so `import 'brepjs'` resolves and the kernel
 ## The loop — per selected example, ≤ 4 attempts (designed parts need the polish pass)
 
 1. **Brief.** Convert the example's `description` to explicit params (mm, datums, features)
-   per SKILL.md step 1. Read the closest `skills/implement/examples/*.brep.ts` first. Do **not** read
+   per SKILL.md step 1. Read the closest `skills/brepjs-implement/examples/*.brep.ts` first. Do **not** read
    the playground example's `code` — that's the answer key.
 2. **Author** `<id>.brep.ts` following SKILL.md: short API, `unwrap()` the `Result`-ops,
    `export default () => <shape>`. Snapshot **serially** (the render server is a singleton

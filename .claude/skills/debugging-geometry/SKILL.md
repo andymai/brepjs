@@ -81,7 +81,7 @@ When a modifier lands on the wrong entities, the defect is the _selection_, not 
 
 ## Step 5 — Visual debugging with the `brep` CLI
 
-The `brep` CLI (bin in `packages/brepjs-cad`) renders and validates `.brep.ts` modules. For interpreting the verify **report** (checks, hints, body relations, the multi-body fragmentation advisory), defer to the sibling skill `brepjs:verify` (`packages/brepjs-cad/skills/verify/SKILL.md`) — this skill covers the debugging loop, not the report anatomy.
+The `brep` CLI (bin in `packages/brepjs-cad`) renders and validates `.brep.ts` modules. For interpreting the verify **report** (checks, hints, body relations, the multi-body fragmentation advisory), defer to the sibling skill `brepjs:brepjs-verify` (`packages/brepjs-cad/skills/brepjs-verify/SKILL.md`) — this skill covers the debugging loop, not the report anatomy.
 
 - `brep verify <file>.brep.ts [--check] [--json] [--metrics]` is the primary loop. `--check` typechecks first; `--metrics` adds deterministic manufacturability metrics + the interference matrix (off by default, slow). `--expect-code <CODE>` / `--expect-invalid` assert a known-bad part fails the _right_ way.
 - `brep snapshot <file>.brep.ts [--out dir] [--label tag]` renders all views in one pass: `iso`, `front`, `top`, `right`, `iso-xray` (reveals bores/internal walls an opaque render is blind to), plus a conditional aimed `section` shot and a `marks` (Set-of-Marks B#/H# label) shot when the report detects bores/bodies (`snapshot/shoot.ts`). Each PNG has its bbox size (W×D×H) burned in, so scale is readable from the image. `--label` writes to a subfolder for pre/post A/B pairing.
@@ -113,4 +113,4 @@ Note: the default **occt-wasm kernel exposes no raw `oc` handle** (`kernelDiverg
 - `references/boolean-failures.md` — `checkBoolean` vs `BooleanDiagnostics`, error codes + baked-in suggestions, `fuzzyValue`, the #1126 case study.
 - `references/kernel-divergence.md` — registry mechanics, divergence kinds, kernel capability table, occt-wasm no-raw-`oc` limits, brepkit #965–968 family status.
 - `docs/errors.md` — full error-code catalog. `docs/getting-started.md` §Troubleshooting — the 4-step boolean recovery recipe. `docs/kernel-conformance.md` — capability matrix.
-- Sibling skills: `result-error-handling` (Result/BrepError construction), `writing-tests` (test skeleton + divergence skips), `kernel-abstraction` (adding kernel methods), `brepjs:verify` (CLI report interpretation).
+- Sibling skills: `result-error-handling` (Result/BrepError construction), `writing-tests` (test skeleton + divergence skips), `kernel-abstraction` (adding kernel methods), `brepjs:brepjs-verify` (CLI report interpretation).
