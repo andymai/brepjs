@@ -1,0 +1,21 @@
+SECURITY.md
+  s_2210bb38a72219::t_cad4b1aab81e1a 5,9,11-12
+apps/docs/public/.well-known/security.txt
+  s_2210bb38a72219::t_f5cc4712147095 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4cdedcdfc9c33518bdc1ed9f80e95d1dd2ce360d",
+  "prompts": {},
+  "sessions": {
+    "s_2210bb38a72219": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eefb387c-1258-4f2e-95a8-face6aaa5878",
+        "model": "unknown"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
