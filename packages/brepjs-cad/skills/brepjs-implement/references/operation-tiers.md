@@ -1,7 +1,7 @@
 # Operation reliability tiers (canonical)
 
 Which brepjs operations succeed first-try vs. need iteration. This is the single source of truth for
-operation selection — the `brepjs:design` skill links here rather than holding a second copy.
+operation selection — the `brepjs-design` skill links here rather than holding a second copy.
 
 ## Reliable first-try — prefer these
 

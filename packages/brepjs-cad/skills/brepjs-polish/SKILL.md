@@ -1,5 +1,5 @@
 ---
-name: polish
+name: brepjs-polish
 description: Use when a valid brepjs part should look designed rather than glued-from-primitives (products, toys, mechanisms, anything a human eyeballs), and when exporting/handing off the result — the polish pass plus STEP/GLB/STL export. Skip for purely functional or internal parts.
 version: 0.1.0
 ---

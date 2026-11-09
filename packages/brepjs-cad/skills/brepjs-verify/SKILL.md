@@ -1,5 +1,5 @@
 ---
-name: verify
+name: brepjs-verify
 description: Use when running brep on a `.brep.ts` part and interpreting the result — reading the JSON report (ok / checks / assertions / hints), verifying visually from snapshots, driving repair of the smallest responsible section, and using the brep CLI subcommands. This is the checking step that decides whether a part is done.
 version: 0.1.0
 ---
@@ -39,7 +39,7 @@ of truth. Iterate fast with `brep watch part.brep.ts`.
 - **`shapeType: 'Compound'` is normal for a single body.** A `cut`, a `fillet`, or a chain of cuts
   often reports the result as `Compound` even though it's one watertight solid — fine as long as
   `ok:true` and the validity checks pass. Only a _loose_ `Compound` from a failed `fuse` of
-  merely-touching solids is a problem (`../implement/references/booleans.md`). Don't retry a valid
+  merely-touching solids is a problem (`../brepjs-implement/references/booleans.md`). Don't retry a valid
   part just because it isn't labelled `Solid`.
 - **`assertions`** = declared intent vs reality. A failed assertion means valid-but-wrong.
 - **`hints`** = actionable fix + next step keyed on the error code. Read these before guessing.
@@ -52,7 +52,7 @@ of truth. Iterate fast with `brep watch part.brep.ts`.
 Add `--snapshot shots/` for iso/front/top/right PNGs; each has the bbox size (`W × D × H`) burned in,
 so you can read scale from the image. Review against the brief. A visual concern is **not** a
 conclusion: convert a _dimensional_ one to a measurement ("hole looks off-center → check `bounds`");
-a _design-quality_ one ("looks lumpy / glued-from-primitives") goes to `brepjs:polish`. Don't declare
+a _design-quality_ one ("looks lumpy / glued-from-primitives") goes to `brepjs-polish`. Don't declare
 done without a snapshot.
 
 ## Repair discipline

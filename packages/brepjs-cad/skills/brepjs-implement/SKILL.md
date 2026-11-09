@@ -1,13 +1,13 @@
 ---
-name: implement
-description: Use when authoring or editing a brepjs `.brep.ts` part — writing the geometry with the functional API (box, cylinder, fuse, cut, fillet, sketch→extrude…), declaring an `expected` block, and following the hard rules (import every function, unwrap Results, select edges, coordinate semantics). Also covers buildings/BIM/IFC via the declarative family layer (references/families-bim.md). This is the authoring step; pair it with brepjs:verify to check the result.
+name: brepjs-implement
+description: Use when authoring or editing a brepjs `.brep.ts` part — writing the geometry with the functional API (box, cylinder, fuse, cut, fillet, sketch→extrude…), declaring an `expected` block, and following the hard rules (import every function, unwrap Results, select edges, coordinate semantics). Also covers buildings/BIM/IFC via the declarative family layer (references/families-bim.md). This is the authoring step; pair it with brepjs-verify to check the result.
 version: 0.1.0
 ---
 
 # Author a brepjs part
 
 You write a `.brep.ts` part; the `brep` CLI runs it on a geometry kernel and reports what it
-measured. Judge the part by the report (see `brepjs:verify`), not by how the code reads. This skill
+measured. Judge the part by the report (see `brepjs-verify`), not by how the code reads. This skill
 is **self-contained** — everything needed to author correctly is here or in `references/`.
 
 The CLI ships in the `brepjs-cad` package as `brep`. Installed: `brep verify part.brep.ts …`.
@@ -155,6 +155,12 @@ length `14` → `xMin=-29`). Compute these from the SAME const that places the g
   `await importSTEP(...)`. `--check` type-checks Node built-ins, so a part may
   `import { readFile } from 'node:fs/promises'`.
 - Author in ESM (the tool's default) so the kernel loads.
+- **Dispose shapes in code that runs inside an app or a long-running process.** Shapes live in
+  WASM memory, and the garbage collector does not free them. Each op returns a new shape and keeps
+  its inputs, so declare each input and intermediate with `using` (an inner `box` in
+  `translate(box(...), v)` leaks a slot). Do not `using` the shape you return, because it is
+  disposed when the scope ends. A one-shot `.brep.ts` part that `brep` runs does not need this. See
+  "Memory Management" in `llms-full.txt`.
 
 ## Reference index (load only what the task needs)
 
@@ -163,8 +169,9 @@ length `14` → `xMin=-29`). Compute these from the SAME const that places the g
 `operation-tiers.md`. Maker recipes: `fdm-conventions.md` · `mechanical-joints.md` ·
 `gridfinity.md` · `gears.md` · `threads.md` · `airfoils.md` (fans/props/impellers/vanes).
 Buildings/BIM/IFC: `families-bim.md` (declarative components → viewport meshes + IFC export).
-**Backstop:** any symbol not covered →
-`reference/llms-full.txt` (every export with signatures), bundled in the package.
+**Backstop:** any symbol not covered → `llms-full.txt` (every export with signatures). The
+`brepjs-cad` npm package bundles it at `node_modules/brepjs-cad/reference/llms-full.txt`. If the
+package is not installed, read <https://raw.githubusercontent.com/andymai/brepjs/main/llms-full.txt>.
 
 ## Examples index (read the closest before authoring)
 

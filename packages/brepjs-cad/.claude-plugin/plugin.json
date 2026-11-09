@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "description": "Brainstorm, design, author, verify, and polish parametric brepjs CAD models",
   "skills": [
-    "./skills/brainstorm",
-    "./skills/design",
-    "./skills/implement",
-    "./skills/verify",
-    "./skills/polish"
+    "./skills/brepjs-brainstorm",
+    "./skills/brepjs-design",
+    "./skills/brepjs-implement",
+    "./skills/brepjs-verify",
+    "./skills/brepjs-polish"
   ]
 }

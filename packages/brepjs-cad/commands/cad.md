@@ -11,7 +11,7 @@ Run the phases in order. Stop at each **GATE** and wait for the user before cont
 
 ## 1. Brainstorm (main session)
 
-Load the `brepjs:brainstorm` skill. Turn `$ARGUMENTS` into an explicit spec (envelope, datums,
+Load the `brepjs-brainstorm` skill. Turn `$ARGUMENTS` into an explicit spec (envelope, datums,
 features, material, tolerances, assumptions). Ask open scoping questions in prose; use
 AskUserQuestion only for concrete mutually-exclusive choices (fastener size, material, edge finish).
 
@@ -20,7 +20,7 @@ continuing. Incorporate corrections.
 
 ## 2. Design (main session)
 
-Load the `brepjs:design` skill. Decompose the confirmed spec into a numbered build sequence (base
+Load the `brepjs-design` skill. Decompose the confirmed spec into a numbered build sequence (base
 primitive → booleans → sketched features → modifiers → multiplicity), preferring reliable ops and
 flagging advanced/risky steps and any mechanism motion-validation step.
 
@@ -51,7 +51,7 @@ Report the final STEP path, measured dimensions, and the pre/post renders.
 
 ## Notes
 
-- The CLI is `brep` (in the `brepjs-cad` package). In-repo, call
-  `node packages/brepjs-cad/dist/cli/main.js` if `brep` isn't on PATH.
-- Standalone, the five skills (`brepjs:brainstorm` … `brepjs:polish`) also auto-trigger on their own
+- The CLI is `brep` (in the `brepjs-cad` package). If `brep` isn't on PATH, run
+  `npx -y -p brepjs-cad brep …`.
+- Standalone, the five skills (`brepjs-brainstorm` … `brepjs-polish`) also auto-trigger on their own
   for single-phase use; this command is the orchestrated full-pipeline path.

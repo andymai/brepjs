@@ -6,7 +6,7 @@ It ships as **two cooperating pieces on two rails**; install both.
 
 ## 1. The skills (Claude Code plugin)
 
-Five composable, individually-improvable skills — **`brepjs:brainstorm`** (scope a request into a spec) → **`brepjs:design`** (decompose it into a build sequence) → **`brepjs:implement`** (author the `.brep.ts`) → **`brepjs:verify`** (judge it by the report) → **`brepjs:polish`** (make it look designed, then export) — plus a wait-gated **`/brepjs:cad`** command that drives the whole pipeline and `brepjs-implementer`/`verifier`/`polisher` worker agents it fans out to. The geometry-producing skills self-heal via `/heal-skill <target>`. Each skill also auto-triggers standalone. Delivered via the brepjs marketplace (git), **not** npm — Claude Code discovers skills from plugins, never from `node_modules`:
+Five composable, individually-improvable skills — **`brepjs:brepjs-brainstorm`** (scope a request into a spec) → **`brepjs:brepjs-design`** (decompose it into a build sequence) → **`brepjs:brepjs-implement`** (author the `.brep.ts`) → **`brepjs:brepjs-verify`** (judge it by the report) → **`brepjs:brepjs-polish`** (make it look designed, then export) — plus a wait-gated **`/brepjs:cad`** command that drives the whole pipeline and `brepjs-implementer`/`verifier`/`polisher` worker agents it fans out to. The geometry-producing skills self-heal via `/heal-skill <target>`. Each skill also auto-triggers standalone. Delivered via the brepjs marketplace (git), **not** npm — Claude Code discovers skills from plugins, never from `node_modules`:
 
 ```
 /plugin marketplace add andymai/brepjs
@@ -15,7 +15,7 @@ Five composable, individually-improvable skills — **`brepjs:brainstorm`** (sco
 
 Or non-interactively from a terminal: `claude plugin marketplace add andymai/brepjs && claude plugin install brepjs@brepjs`.
 
-Then ask for a part in plain English and Claude reaches for the pipeline on its own, or drive it explicitly: `/brepjs:cad "a wall bracket for a 40 mm pipe with two M4 holes"` runs the full gated pipeline; `/brepjs:brainstorm` … `/brepjs:polish` run a single phase.
+Then ask for a part in plain English and Claude reaches for the pipeline on its own, or drive it explicitly: `/brepjs:cad "a wall bracket for a 40 mm pipe with two M4 holes"` runs the full gated pipeline; `/brepjs:brepjs-brainstorm` … `/brepjs:brepjs-polish` run a single phase.
 
 ## 2. The runtime (npm)
 
@@ -141,7 +141,7 @@ The server runs locally as a child process of your agent (stdio); geometry never
 
 ## Examples gallery
 
-Few-shot examples live under `skills/implement/examples/<name>.brep.ts`, each with a `<name>.expected.json` baseline. Grouped by category:
+Few-shot examples live under `skills/brepjs-implement/examples/<name>.brep.ts`, each with a `<name>.expected.json` baseline. Grouped by category:
 
 - **Primitives + booleans**: `mounting-bracket`, `flanged-coupler`, `transform-bracket`
 - **2D sketch → solid**: `extruded-bracket` (extrude), `revolved-pulley` (revolve), `swept-gasket` (sweep)
@@ -150,7 +150,7 @@ Few-shot examples live under `skills/implement/examples/<name>.brep.ts`, each wi
 
 ## Eval / scorecard
 
-`npm run eval` (`bench/run.ts`) replays every `skills/implement/examples/*.brep.ts` with a sibling `*.expected.json` through the public `runPart` runtime, compares measured volume/area/validity/shape-type against the recorded baseline within each file's tolerance (default 0.5%), prints a PASS/FAIL scorecard, and exits non-zero on any regression. It is deterministic (no LLM or API key) so it runs in CI as the package's regression net. Refresh a baseline by re-recording the example's `*.expected.json` after an intentional geometry change.
+`npm run eval` (`bench/run.ts`) replays every `skills/brepjs-implement/examples/*.brep.ts` with a sibling `*.expected.json` through the public `runPart` runtime, compares measured volume/area/validity/shape-type against the recorded baseline within each file's tolerance (default 0.5%), prints a PASS/FAIL scorecard, and exits non-zero on any regression. It is deterministic (no LLM or API key) so it runs in CI as the package's regression net. Refresh a baseline by re-recording the example's `*.expected.json` after an intentional geometry change.
 
 ### Manual skill eval (`/eval-skill`)
 

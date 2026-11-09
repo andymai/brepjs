@@ -1,6 +1,6 @@
 ---
-name: brainstorm
-description: Use at the START of any request to design, model, create, build, or 3D-print a physical part or assembly in brepjs — a bracket, enclosure, mount, gear, gridfinity bin, fixture, knob, adapter, and the like. This is the entry point to the brepjs CAD pipeline: it turns a vague or natural-language request ("a bracket for my router", "a gridfinity bin") into an explicit, buildable spec (dimensions in mm, datums, features, material/finish, tolerances) before any geometry is written, then hands off to brepjs:design → implement → verify → polish. Runs in the main session so it can ask the user clarifying questions.
+name: brepjs-brainstorm
+description: Use at the START of any request to design, model, create, build, or 3D-print a physical part or assembly in brepjs — a bracket, enclosure, mount, gear, gridfinity bin, fixture, knob, adapter, and the like. This is the entry point to the brepjs CAD pipeline. It turns a vague or natural-language request ("a bracket for my router", "a gridfinity bin") into an explicit, buildable spec (dimensions in mm, datums, features, material/finish, tolerances) before any geometry is written, then hands off to brepjs-design → brepjs-implement → brepjs-verify → brepjs-polish. Runs in the main session so it can ask the user clarifying questions.
 version: 0.1.0
 ---
 
@@ -39,12 +39,12 @@ and state the assumption rather than asking.
 
 Maker conventions inform what to assume and what to ask. These live with the implement skill:
 
-- FDM clearance holes / walls / fits → `../implement/references/fdm-conventions.md`
-- Snap-fits, press-fits, heat-set inserts → `../implement/references/mechanical-joints.md`
-- Gridfinity 42 mm grid / magnets / stacking → `../implement/references/gridfinity.md`
+- FDM clearance holes / walls / fits → `../brepjs-implement/references/fdm-conventions.md`
+- Snap-fits, press-fits, heat-set inserts → `../brepjs-implement/references/mechanical-joints.md`
+- Gridfinity 42 mm grid / magnets / stacking → `../brepjs-implement/references/gridfinity.md`
 
 ## Output
 
 Emit the spec as a compact markdown table (envelope, datums, features, material, tolerances,
 assumptions). In the `/brepjs:cad` pipeline this is the gate where the orchestrator confirms the
-spec with the user; standalone, hand it to **`brepjs:design`** to decompose into a build sequence.
+spec with the user; standalone, hand it to **`brepjs-design`** to decompose into a build sequence.
