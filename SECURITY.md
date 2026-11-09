@@ -2,19 +2,14 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 4.x     | :white_check_mark: |
-| 3.x     | :x:                |
-| < 3.0   | :x:                |
-
-Only the current major version (4.x) receives security updates. We recommend upgrading to the latest version.
+Only the latest release of each published package receives security fixes. Upgrade to the latest version to get them.
 
 ## Reporting a Vulnerability
 
-To report a security vulnerability, please use [GitHub Security Advisories](https://github.com/andymai/brepjs/security/advisories/new).
+Do not open a public issue for a security vulnerability. Report it privately in one of these ways:
 
-This provides private vulnerability reporting without requiring email.
+- [GitHub Security Advisories](https://github.com/andymai/brepjs/security/advisories/new) (preferred)
+- Email to [security@brepjs.dev](mailto:security@brepjs.dev)
 
 ### What to Include
 
