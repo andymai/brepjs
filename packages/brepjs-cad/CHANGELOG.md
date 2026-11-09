@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.192.4](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.192.3...brepjs-cad-v0.192.4) (2026-11-09)
+
+
+### Bug Fixes
+
+* **brepjs-cad:** prefix the skill names and make the plugin work outside the repo ([#2612](https://github.com/andymai/brepjs/issues/2612)) ([0744d51](https://github.com/andymai/brepjs/commit/0744d519a624cf7604d8211647a00eea2aba0c31))
+
 ## [0.192.3](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.192.2...brepjs-cad-v0.192.3) (2026-10-30)
 
 
