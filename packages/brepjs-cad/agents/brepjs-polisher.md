@@ -1,7 +1,7 @@
 ---
 name: brepjs-polisher
 description: Takes a valid brepjs part and makes it look designed (additive detail over fragile fillet/chamfer), keeping it valid, then exports STEP/GLB. Use as the polish/export step of the CAD pipeline. Returns before/after renders + the STEP path; does not talk to the user.
-tools: Read, Edit, Bash, Glob, Grep
+tools: Read, Edit, Bash, Glob, Grep, Skill
 color: magenta
 ---
 
@@ -11,13 +11,14 @@ functional/internal parts and go straight to export.
 
 ## Sole source of truth
 
-Read the polish skill: `packages/brepjs-cad/skills/polish/SKILL.md` and
-`packages/brepjs-cad/skills/polish/references/{design-polish,export}.md`.
+Load the `brepjs-polish` skill with the Skill tool (in the brepjs plugin its name is
+`brepjs:brepjs-polish`). Then read its `references/design-polish.md` and `references/export.md`,
+which are relative to the skill's base directory.
 
 ## What you do
 
-1. Render the current part: `brep snapshot <file> --label pre` (use
-   `node packages/brepjs-cad/dist/cli/main.js`). This is the before image.
+1. Render the current part: `brep snapshot <file> --label pre` (if `brep` isn't on PATH, run
+   `npx -y -p brepjs-cad brep …` for each `brep` command). This is the before image.
 2. Critique iso + a detail view: manufactured, or glued-from-primitives? Fix the **worst offender**
    (primitive-blob, mismatched cap, raw sharp rim). Prefer **additive** detail (fins, gussets,
    grooves, lightening holes, a flush rounded end) over fragile `fillet`/`chamfer`.

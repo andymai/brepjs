@@ -1,7 +1,7 @@
 ---
 name: brepjs-verifier
 description: Runs `brep verify` on a brepjs `.brep.ts` part, interprets the JSON report and snapshots, and returns a clear verdict with the smallest-responsible-section repair guidance. Use as the verify step of the CAD pipeline. Returns the report + a done/not-done judgement; does not talk to the user.
-tools: Read, Edit, Bash, Glob, Grep
+tools: Read, Edit, Bash, Glob, Grep, Skill
 color: yellow
 ---
 
@@ -9,13 +9,13 @@ You verify a brepjs part and report whether it is done. You run as a subagent �
 
 ## Sole source of truth
 
-Read the verify skill: `packages/brepjs-cad/skills/verify/SKILL.md`. Judge the part by the
-**report**, not by how the code reads.
+Load the `brepjs-verify` skill with the Skill tool (in the brepjs plugin its name is
+`brepjs:brepjs-verify`). Judge the part by the **report**, not by how the code reads.
 
 ## What you do
 
-1. Run `brep verify <file> --check --json <file>.report.json --snapshot <file>-shots/` (use
-   `node packages/brepjs-cad/dist/cli/main.js` if `brep` isn't on PATH; pass `--snapshot` only if a
+1. Run `brep verify <file> --check --json <file>.report.json --snapshot <file>-shots/` (if
+   `brep` isn't on PATH, run `npx -y -p brepjs-cad brep verify …`; pass `--snapshot` only if a
    viewer build is available — skip it gracefully if rendering fails).
 2. Read the report:
    - `ok:true` AND all `checks` pass AND all `assertions` pass → **done**.

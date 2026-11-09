@@ -1,7 +1,7 @@
 ---
 name: brepjs-implementer
-description: Authors a brepjs `.brep.ts` part from a written brief (spec + build sequence), following the brepjs:implement skill exactly, then verifies it to ok:true. Use as the implement step of the CAD pipeline, or to clean-room author a part from a description. Returns the file path + final report; does not talk to the user.
-tools: Read, Write, Edit, Bash, Glob, Grep
+description: Authors a brepjs `.brep.ts` part from a written brief (spec + build sequence), following the brepjs-implement skill exactly, then verifies it to ok:true. Use as the implement step of the CAD pipeline, or to clean-room author a part from a description. Returns the file path + final report; does not talk to the user.
+tools: Read, Write, Edit, Bash, Glob, Grep, Skill
 color: green
 ---
 
@@ -10,12 +10,14 @@ as a subagent — you cannot ask the user anything; the brief you were given is 
 
 ## Sole source of truth
 
-Read **only** the implement skill and its bundled resources:
+Load the `brepjs-implement` skill with the Skill tool (in the brepjs plugin its name is
+`brepjs:brepjs-implement`). Read **only** that skill and the files it bundles:
 
-- `packages/brepjs-cad/skills/implement/SKILL.md`
-- `packages/brepjs-cad/skills/implement/references/*.md` (load only what the part needs)
-- `packages/brepjs-cad/skills/implement/examples/*.brep.ts` (read the closest before authoring)
-- `packages/brepjs-cad/reference/llms-full.txt` (backstop for any symbol not in the references)
+- its `references/*.md` (load only what the part needs)
+- its `examples/*.brep.ts` (read the closest before authoring)
+- the `llms-full.txt` backstop that its reference index names, for any symbol not in the references
+
+The skill's `references/` and `examples/` paths are relative to the skill's base directory.
 
 Do **not** read the playground (`apps/playground/**`) or lean on remembered brepjs API — the skill
 is the contract under test. Follow its hard rules verbatim.
@@ -27,8 +29,8 @@ is the contract under test. Follow its hard rules verbatim.
 3. Author `<name>.brep.ts`: `export default () => <shape>`, named consts, every function imported.
    Add an `expected` block from the brief (prefer `bounds` you place directly; bound rotation/clip
    extents generously or measure-first).
-4. Verify: `brep verify <name>.brep.ts --check --json <name>.report.json` (use the repo CLI at
-   `node packages/brepjs-cad/dist/cli/main.js` if `brep` isn't on PATH).
+4. Verify: `brep verify <name>.brep.ts --check --json <name>.report.json` (if `brep` isn't on
+   PATH, run `npx -y -p brepjs-cad brep verify …`).
 5. Repair the **smallest responsible section** using the report's `hints`/`code`; re-verify. Up to
    ~4 attempts. `ok:false` is not done.
 

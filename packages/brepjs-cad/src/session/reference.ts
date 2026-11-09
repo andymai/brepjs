@@ -43,7 +43,7 @@ export function referenceDocs(dir: string = toolDir()): ReferenceDoc[] {
   add(
     'families-bim.md',
     join(bundled, 'families-bim.md'),
-    join(dir, 'skills', 'implement', 'references', 'families-bim.md')
+    join(dir, 'skills', 'brepjs-implement', 'references', 'families-bim.md')
   );
   for (const famDir of [join(bundled, 'families'), join(repo, 'apps', 'docs', 'families')]) {
     if (!existsSync(famDir)) continue;

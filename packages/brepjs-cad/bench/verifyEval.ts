@@ -18,7 +18,7 @@ import { disposeShape } from '../src/disposeShape.js';
 import { BAD_FIXTURES } from './mutate.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const examplesDir = resolve(here, '../skills/implement/examples');
+const examplesDir = resolve(here, '../skills/brepjs-implement/examples');
 
 function codesOf(r: VerifyReport): string[] {
   // hints derive from errorInfos, so the codes already live there — dedupe.

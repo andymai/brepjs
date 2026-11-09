@@ -1,12 +1,12 @@
 ---
-name: design
+name: brepjs-design
 description: Use when you have a brepjs part spec and need to decompose it into an ordered build sequence — choosing which kernel operations to use and in what order, preferring reliable ops and flagging advanced ones (sweeps, lofts, mechanisms) before any code is authored. Runs in the main session.
 version: 0.1.0
 ---
 
 # Design the build sequence
 
-Turn a spec (from `brepjs:brainstorm`) into an **ordered list of operations** the implementer will
+Turn a spec (from `brepjs-brainstorm`) into an **ordered list of operations** the implementer will
 author. You decide _how_ to build the part — which ops, what order — not the code itself. Run this
 in the main session.
 
@@ -27,7 +27,7 @@ Prefer kernel ops that succeed first-try; reach for advanced ops only when a fea
 needs them, and flag those steps as "expect iteration". The canonical reliability tiers live with
 the implementer (so its clean-room worker always has them):
 
-→ **`../implement/references/operation-tiers.md`** (reliable-first-try vs advanced vs assemblies vs
+→ **`../brepjs-implement/references/operation-tiers.md`** (reliable-first-try vs advanced vs assemblies vs
 mechanisms).
 
 Key consequences for the sequence:
@@ -38,10 +38,10 @@ Key consequences for the sequence:
 - A hemisphere/dome is a full `sphere` clipped by a half-space, not a primitive.
 - **Mechanisms** (anything that moves) need a motion-validation step in the plan: sweep the drive
   parameter and assert no interpenetration — a statically-valid assembly can still jam.
-  See `../implement/references/assemblies-motion.md`.
+  See `../brepjs-implement/references/assemblies-motion.md`.
 
 ## Output
 
 Emit a numbered build sequence, each step naming the operation and its inputs, with advanced/risky
 steps flagged. In the `/brepjs:cad` pipeline this is the gate where the orchestrator gets approval;
-standalone, hand it to **`brepjs:implement`**.
+standalone, hand it to **`brepjs-implement`**.

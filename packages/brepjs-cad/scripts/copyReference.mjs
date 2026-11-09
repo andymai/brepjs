@@ -53,7 +53,7 @@ if (existsSync(resolve(registrySrc, 'manifest.json'))) {
 } else {
   console.warn(`copyReference: ${registrySrc} has no manifest.json; skipping the starter registry`);
 }
-const bimGuide = resolve(pkgDir, 'skills', 'implement', 'references', 'families-bim.md');
+const bimGuide = resolve(pkgDir, 'skills', 'brepjs-implement', 'references', 'families-bim.md');
 if (existsSync(bimGuide)) {
   copyFileSync(bimGuide, resolve(outDir, 'families-bim.md'));
   families += 1;

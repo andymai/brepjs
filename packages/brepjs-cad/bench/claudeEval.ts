@@ -166,7 +166,7 @@ async function author(part: Part): Promise<void> {
   // VM or container.
   // The skill ships few-shot examples; one with this part's name would be its answer, so the
   // author can't see it. Other examples stay readable, as they are for any user of the skill.
-  const sameExample = join(PLUGIN, 'skills', 'implement', 'examples', part.id);
+  const sameExample = join(PLUGIN, 'skills', 'brepjs-implement', 'examples', part.id);
   const deny = [
     ...[REPO, REFS, JUDGE].flatMap((root) =>
       ['Read', 'Grep', 'Glob', 'Edit', 'Write'].map((t) => `${t}(/${root}/**)`)

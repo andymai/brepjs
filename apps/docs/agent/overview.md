@@ -100,7 +100,7 @@ It scopes the spec, designs the build sequence, authors the `.brep.ts`, verifies
 /brepjs:cad a wall bracket for a 40 mm pipe with two M4 holes
 ```
 
-`/brepjs:cad` runs the whole pipeline and pauses for your confirmation between phases. To run a single phase, invoke it directly: `/brepjs:brainstorm`, `/brepjs:design`, `/brepjs:implement`, `/brepjs:verify`, or `/brepjs:polish`.
+`/brepjs:cad` runs the whole pipeline and pauses for your confirmation between phases. To run a single phase, invoke it directly: `/brepjs:brepjs-brainstorm`, `/brepjs:brepjs-design`, `/brepjs:brepjs-implement`, `/brepjs:brepjs-verify`, or `/brepjs:brepjs-polish`.
 
 ## The `.brep.ts` contract
 
