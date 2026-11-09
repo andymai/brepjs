@@ -1,0 +1,67 @@
+apps/docs/agent/examples.md
+  s_4a853ffb394ecf::t_c5afb450e50c99 8
+packages/brepjs-cad/agents/brepjs-verifier.md
+  s_4a853ffb394ecf::t_e7d0feb3798a1a 4,12-13,17-18
+packages/brepjs-cad/bench/claudeEval.ts
+  s_4a853ffb394ecf::t_c5afb450e50c99 169
+packages/brepjs-cad/skills/brepjs-implement/references/operation-tiers.md
+  s_4a853ffb394ecf::t_c5afb450e50c99 1-39
+packages/brepjs-cad/.claude-plugin/plugin.json
+  s_4a853ffb394ecf::t_c5afb450e50c99 6-10
+packages/brepjs-cad/skills/brepjs-brainstorm/SKILL.md
+  s_4a853ffb394ecf::t_59507c7fb644c3 3
+  s_4a853ffb394ecf::t_804d23da140b01 42-44
+  s_4a853ffb394ecf::t_c5afb450e50c99 1-2,4-41,45-50
+packages/brepjs-cad/bench/verifyEval.ts
+  s_4a853ffb394ecf::t_c5afb450e50c99 21
+packages/brepjs-cad/scripts/copyReference.mjs
+  s_4a853ffb394ecf::t_c5afb450e50c99 56
+packages/brepjs-cad/skills/brepjs-verify/SKILL.md
+  s_4a853ffb394ecf::t_c5afb450e50c99 1-41,43-84
+  s_4a853ffb394ecf::t_804d23da140b01 42
+packages/brepjs-cad/README.md
+  s_4a853ffb394ecf::t_c5afb450e50c99 9,18,144,153
+packages/brepjs-cad/bench/run.ts
+  s_4a853ffb394ecf::t_c5afb450e50c99 10,100
+apps/docs/agent/overview.md
+  s_4a853ffb394ecf::t_c5afb450e50c99 103
+apps/docs/agent/eval.md
+  s_4a853ffb394ecf::t_c5afb450e50c99 16
+packages/brepjs-cad/agents/brepjs-polisher.md
+  s_4a853ffb394ecf::t_e7d0feb3798a1a 4,14-16,20-21
+packages/brepjs-cad/skills/brepjs-design/SKILL.md
+  s_4a853ffb394ecf::t_804d23da140b01 30,41
+  s_4a853ffb394ecf::t_c5afb450e50c99 1-29,31-40,42-47
+packages/brepjs-cad/skills/brepjs-polish/SKILL.md
+  s_4a853ffb394ecf::t_c5afb450e50c99 1-45
+packages/brepjs-cad/agents/brepjs-implementer.md
+  s_4a853ffb394ecf::t_c5afb450e50c99 3
+  s_4a853ffb394ecf::t_e7d0feb3798a1a 4,13-14,16-20,32-33
+packages/brepjs-cad/src/session/reference.ts
+  s_4a853ffb394ecf::t_c5afb450e50c99 46
+packages/brepjs-cad/bench/live.ts
+  s_4a853ffb394ecf::t_c5afb450e50c99 92,254
+packages/brepjs-cad/skills/brepjs-implement/SKILL.md
+  s_4a853ffb394ecf::t_c5afb450e50c99 1-157,164-171,175-185
+  s_4a853ffb394ecf::t_0d6f2d66fe8a25 172-174
+  s_4a853ffb394ecf::t_822cbae0d1aa6d 158-163
+packages/brepjs-cad/commands/cad.md
+  s_4a853ffb394ecf::t_e7d0feb3798a1a 54-55
+  s_4a853ffb394ecf::t_c5afb450e50c99 14,23,56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "378d6dfe406de8f33bda2a4c542ee180d90408a9",
+  "prompts": {},
+  "sessions": {
+    "s_4a853ffb394ecf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fe48902-d7d9-406f-b14f-1dd4afe60528",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
