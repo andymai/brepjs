@@ -105,16 +105,16 @@
   "devDependencies": {
     "@react-three/drei": "10.7.9",
     "@react-three/fiber": "9.8.2",
-    "@types/node": "26.6.5",
+    "@types/node": "26.6.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
-    "@types/three": "0.186.0",
-    "@types/vscode": "1.140.0",
+    "@types/three": "0.187.0",
+    "@types/vscode": "1.144.0",
     "@vitejs/plugin-react": "6.1.2",
     "esbuild": "0.28.2",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "three": "0.186.1",
+    "three": "0.187.0",
     "typescript": "*",
     "vite": "^8.0.0"
   }
