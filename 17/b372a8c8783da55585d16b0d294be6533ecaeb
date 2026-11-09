@@ -1,0 +1,33 @@
+.claude/skills/debugging-geometry/SKILL.md
+  s_4a853ffb394ecf::t_c5afb450e50c99 84,116
+.claude/commands/eval-skill.md
+  s_4a853ffb394ecf::t_c5afb450e50c99 10,35,64
+packages/brepjs-cad/tests/pluginFiles.test.ts
+  s_4a853ffb394ecf::t_f0fd0fc1a12eb8 1-61
+.github/workflows/ci.yml
+  s_4a853ffb394ecf::t_c5afb450e50c99 240
+packages/brepjs-cad/package.json
+  s_4a853ffb394ecf::t_f85bdc09bf1269 94
+.claude/agents/skill-reviewer.md
+  s_4a853ffb394ecf::t_804d23da140b01 1-33
+.claude/commands/heal-skill.md
+  s_4a853ffb394ecf::t_c5afb450e50c99 18,21,27-28,64,97
+package-lock.json
+  s_4a853ffb394ecf::t_5378d2cec0d290 15427
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "17b372a8c8783da55585d16b0d294be6533ecaeb",
+  "prompts": {},
+  "sessions": {
+    "s_4a853ffb394ecf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fe48902-d7d9-406f-b14f-1dd4afe60528",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
