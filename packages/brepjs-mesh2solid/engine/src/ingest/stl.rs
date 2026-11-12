@@ -120,8 +120,8 @@ pub(crate) fn write_binary(mesh: &Mesh) -> Vec<u8> {
     for tri in &mesh.triangles {
         out.extend_from_slice(&[0u8; 12]);
         for &v in tri {
-            for k in 0..3 {
-                out.extend_from_slice(&(mesh.positions[v as usize][k] as f32).to_le_bytes());
+            for c in mesh.positions[v as usize] {
+                out.extend_from_slice(&(c as f32).to_le_bytes());
             }
         }
         out.extend_from_slice(&[0u8; 2]);
