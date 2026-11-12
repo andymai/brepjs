@@ -1,0 +1,23 @@
+src/kernel/brepkit/sweepOps.ts
+  s_81e0220acef924::t_170f8959639eb4 485-498,500
+src/operations/loftFns.ts
+  s_81e0220acef924::t_ae60ded9085ec5 11-18,84-93
+tests/openWireSheets.test.ts
+  s_81e0220acef924::t_d4b9f51c0a96d2 71-72,75-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f5f01db58bfa44cc88019de8fa2364854b39dcc6",
+  "prompts": {},
+  "sessions": {
+    "s_81e0220acef924": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b26411a-0202-4d23-8ca5-4bfa4ebdb323",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
