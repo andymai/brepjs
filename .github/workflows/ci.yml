@@ -418,6 +418,24 @@ jobs:
       - run: npm run docs:extract-tests
       - run: npm run test:ci -- --shard=${{ matrix.shard }}/4 --reporter=default --reporter=github-actions
 
+  test-brepkit:
+    # The whole suite again on the brepkit kernel. Known brepkit faults keep some
+    # tests red until the kernel is fixed, so vitest's own exit code is no gate:
+    # the job compares the failures with tests/knownFailures/brepkit.json, each
+    # file there linked to its kernel issue. A new failure, or a listed test that
+    # no longer fails, fails the job. A brepkit-wasm bump that changes the set
+    # must regenerate the list (see scripts/checkKernelBaseline.ts).
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - name: Run the brepkit project
+        run: npx vitest run --project brepkit --reporter=dot --reporter=json --outputFile.json=brepkit-report.json || true
+      - run: npx tsx scripts/checkKernelBaseline.ts brepkit brepkit-report.json
+
   docs-tests:
     # Docs-only changes never set the `code` filter, so the sharded `test` job
     # (which owns doc-snippet execution otherwise) skips them entirely; this
@@ -658,6 +676,7 @@ jobs:
         voxel-wasm-rust,
         mesh2solid-engine-rust,
         test,
+        test-brepkit,
         docs-tests,
         size,
         benchmark,

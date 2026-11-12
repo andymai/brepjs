@@ -333,7 +333,8 @@ describe('exact wall mutation and multi-solid placement', () => {
       expect(placed).toHaveLength(1);
       const placedSolid = placed[0];
       if (placedSolid === undefined) throw new Error('Expected one placed wall Body item');
-      expect(required(measureVolume(placedSolid))).toBeCloseTo(localVolume, 6);
+      // A ratio: digits after the point on a volume of 5.5e7 would ask for 14 significant digits.
+      expect(required(measureVolume(placedSolid)) / localVolume).toBeCloseTo(1, 9);
     } finally {
       for (const solid of placed) solid[Symbol.dispose]();
       model[Symbol.dispose]();

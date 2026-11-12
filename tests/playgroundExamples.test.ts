@@ -11,10 +11,16 @@ import { describe, it, beforeAll, expect } from 'vitest';
 import { initKernel } from './setup.js';
 import { EXAMPLES } from '../apps/playground/src/lib/examples/index.js';
 import { evalAndMeshExample, bodySolidCounts } from './helpers/playgroundExampleEval.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 60000);
+
+// A test timeout cannot stop a synchronous kernel call that never returns, so
+// an example that hangs on a kernel must be skipped before it starts.
+const hangs = (id: string): boolean =>
+  id === 'bench-vise' && shouldSkipSuite('playgroundExamples.benchVise');
 
 describe('playground examples', () => {
   it('has a unique id and label for every entry', () => {
@@ -25,7 +31,7 @@ describe('playground examples', () => {
   });
 
   for (const example of EXAMPLES) {
-    it(`evaluates and meshes: ${example.id}`, async () => {
+    it.skipIf(hangs(example.id))(`evaluates and meshes: ${example.id}`, async () => {
       const { shapeCount, totalVertices } = await evalAndMeshExample(example.code);
       expect(shapeCount).toBeGreaterThan(0);
       expect(totalVertices).toBeGreaterThan(0);
@@ -61,7 +67,7 @@ describe('playground examples', () => {
     'worm-gear-drive',
   ];
   for (const id of CONNECTED_BODY_EXAMPLES) {
-    it(`every returned body is a single connected solid: ${id}`, async () => {
+    it.skipIf(hangs(id))(`every returned body is a single connected solid: ${id}`, async () => {
       const example = EXAMPLES.find((e) => e.id === id);
       if (!example) throw new Error(`example ${id} not found`);
       const counts = await bodySolidCounts(example.code);

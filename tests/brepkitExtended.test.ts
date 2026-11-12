@@ -158,17 +158,25 @@ descBk('Advanced modeling (brepkit)', () => {
   it('draft applies taper angle', () => {
     const kernel = getKernel();
     const b = box(10, 10, 10);
-    const faces = getFaces(castShape(b.wrapped));
-    // Draft the top face
-    const topFace = faces[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
-    const result = kernel.draft(
-      b.wrapped,
-      [topFace.wrapped],
-      [0, 0, 1], // pull direction
-      [0, 0, 0], // neutral plane origin
-      5 // angle degrees
+    // Only a face that runs along the pull direction can take a draft.
+    const side = getFaces(castShape(b.wrapped)).find((f) => {
+      const bounds = getBounds(f);
+      return bounds.zMax - bounds.zMin > 1;
+    });
+    if (!side) throw new Error('box has no side face');
+    const result = castShape(
+      kernel.draft(
+        b.wrapped,
+        [side.wrapped],
+        [0, 0, 1], // pull direction
+        [0, 0, 0], // neutral plane origin
+        5 // angle degrees
+      )
     );
-    expect(isSolid(castShape(result))).toBe(true);
+    if (!isSolid(result)) throw new Error('draft did not return a solid');
+    // The face turns 5 degrees about its bottom edge: a wedge of 10 * 10 * 10 * tan(5) / 2.
+    const wedge = (1000 * Math.tan((5 * Math.PI) / 180)) / 2;
+    expect(Math.abs(unwrap(measureVolume(result)) - 1000)).toBeCloseTo(wedge, 3);
   });
 
   it('helicalSweep creates a helix solid', () => {

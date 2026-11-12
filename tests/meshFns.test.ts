@@ -119,7 +119,8 @@ describe('meshFns', () => {
     // B-rep kernels.
     const itBrep = it.skipIf(currentKernel === 'manifold');
 
-    itBrep('meshes a BIM-scale sphere with a bounded triangle count', () => {
+    itBrep('meshes a BIM-scale sphere with a bounded triangle count', (ctx) => {
+      skipIfDiverges(ctx, 'meshFns.sphereTriangleCount');
       using s = sphere(2000);
       const m = mesh(s, { cache: false });
       expect(m.triangles.length / 3).toBeGreaterThan(100);
@@ -166,7 +167,8 @@ describe('meshFns', () => {
       }
     );
 
-    itBrep('exportSTL tessellates large shapes at the relative default', () => {
+    itBrep('exportSTL tessellates large shapes at the relative default', (ctx) => {
+      skipIfDiverges(ctx, 'meshFns.sphereTriangleCount');
       using s = sphere(2000);
       const blob = unwrap(exportSTL(s, { binary: true }));
       // Binary STL is 84 header bytes + 50 per triangle: a bounded blob proves

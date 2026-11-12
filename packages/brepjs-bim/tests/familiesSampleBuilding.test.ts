@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
+import { skipIfDiverges } from '../../../tests/helpers/kernelDivergences.js';
 import { isOk, unwrap } from 'brepjs';
 import { family, el, resolve, tTranslate, type Element } from 'brepjs-families';
 import { familiesToBim } from '../src/familiesAdapter.js';
@@ -120,7 +121,8 @@ describe('families sample building (Phase 6 gate)', () => {
     expect(isOk(familiesToBim(resolve(build(3600)), { project }))).toBe(false);
   });
 
-  it('matches the committed fixture (regenerate via the example script on change)', async () => {
+  it('matches the committed fixture (regenerate via the example script on change)', async (ctx) => {
+    skipIfDiverges(ctx, 'familiesSampleBuilding.ifcFixture');
     const fixture = await readFile(
       join(dirname(fileURLToPath(import.meta.url)), '../examples/sample-building-families.ifc'),
       'utf8'

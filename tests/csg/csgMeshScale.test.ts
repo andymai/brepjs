@@ -9,6 +9,7 @@
 
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel, currentKernel } from '../setup.js';
+import { skipIfDiverges } from '../helpers/kernelDivergences.js';
 import { Evaluator, cylinder, rotate, sphere, translate } from '@/csg/index.js';
 import { unwrap } from '@/index.js';
 
@@ -21,7 +22,8 @@ beforeAll(async () => {
 const itBrep = it.skipIf(currentKernel === 'manifold');
 
 describe('Evaluator.evaluateMesh scale-relative default', () => {
-  itBrep('meshes a BIM-scale sphere with a bounded triangle count', () => {
+  itBrep('meshes a BIM-scale sphere with a bounded triangle count', (ctx) => {
+    skipIfDiverges(ctx, 'meshFns.sphereTriangleCount');
     using ev = new Evaluator();
     const m = unwrap(ev.evaluateMesh(sphere(2000)));
     expect(m.triangles.length / 3).toBeGreaterThan(100);
