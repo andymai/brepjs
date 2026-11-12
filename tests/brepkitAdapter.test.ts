@@ -299,6 +299,22 @@ describe('BrepkitAdapter', () => {
       expect(copy.id).not.toBe(4);
     });
 
+    it('copyShape copies a solid inside a synthetic compound', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+      const id = nextSyntheticId();
+      syntheticCompounds.set(id, [solidHandle(3), edgeHandle(1)]);
+      const source = compoundHandle(id);
+      const copy = adapter.copyShape(source) as BrepkitHandle;
+      const [solid, edge] = syntheticCompounds.get(copy.id) ?? [];
+
+      expect(mock.copySolid).toHaveBeenCalledWith(3);
+      expect(solid?.id).not.toBe(3);
+      expect(edge?.id).toBe(1);
+      copy.delete();
+      source.delete();
+    });
+
     it('copyShape gives any other shape its own wrapper over the same arena id', () => {
       const adapter = new BrepkitAdapter(createMockBrepKernel());
       const edge = edgeHandle(7);

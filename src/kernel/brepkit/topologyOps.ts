@@ -230,7 +230,7 @@ export function downcast(_bk: BrepkitKernel, shape: KernelShape, _type?: ShapeTy
  * each solid of a compound, gets an arena copy. No operation changes any other
  * shape in place, so it shares its arena id under a new wrapper: callers track
  * ownership by `.wrapped` identity. A synthetic compound's `delete` clears its
- * child list, so its copy gets a list of its own.
+ * child list, so its copy gets a list of its own, of copied children.
  */
 export function copyShape(bk: BrepkitKernel, shape: KernelShape): KernelShape {
   if (!isBrepkitHandle(shape)) return shape;
@@ -239,7 +239,10 @@ export function copyShape(bk: BrepkitKernel, shape: KernelShape): KernelShape {
   const children = syntheticCompounds.get(shape.id);
   if (children) {
     const id = nextSyntheticId();
-    syntheticCompounds.set(id, [...children]);
+    syntheticCompounds.set(
+      id,
+      children.map((child) => copyShape(bk, child) as BrepkitHandle)
+    );
     return compoundHandle(id);
   }
   const copies = toArray(bk.getCompoundSolids(shape.id)).map((id) => bk.copySolid(id));
