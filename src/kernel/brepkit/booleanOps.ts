@@ -371,16 +371,22 @@ function splitToolIds(
 ): { faceIds: number[]; edgeIds: number[] } {
   const faceIds = new Set<number>();
   const edgeIds = new Set<number>();
-  for (const tool of tools) {
-    const type = (tool as BrepkitHandle).type;
-    if (type === 'edge' || type === 'wire') {
+  const collect = (tool: KernelShape): void => {
+    const h = tool as BrepkitHandle;
+    // A compound that holds anything but solids keeps its children JS-side,
+    // and its edges and wires are tools in their own right.
+    const grouped = h.type === 'compound' ? syntheticCompounds.get(h.id) : undefined;
+    if (grouped) {
+      grouped.forEach(collect);
+    } else if (h.type === 'edge' || h.type === 'wire') {
       for (const e of iterShapes(bk, tool, 'edge')) edgeIds.add(unwrap(e, 'edge'));
-    } else if (type === 'vertex') {
+    } else if (h.type === 'vertex') {
       throw new Error('brepkit: split takes faces, edges and wires as tools, not a vertex');
     } else {
       for (const f of iterShapes(bk, tool, 'face')) faceIds.add(unwrap(f, 'face'));
     }
-  }
+  };
+  tools.forEach(collect);
   return { faceIds: [...faceIds], edgeIds: [...edgeIds] };
 }
 

@@ -22,8 +22,8 @@ import { surfaceNormal } from './geometryOps.js';
 import { fuse } from './booleanOps.js';
 import { vec3At, wasmIndex } from '@/utils/vec3.js';
 
-/** Edge ends that lie this close are one point of a wire. */
-const WIRE_JOIN_TOLERANCE = 1e-6;
+/** Edge ends that lie this close are one point of a wire: brepkit's linear tolerance. */
+const WIRE_JOIN_TOLERANCE = 1e-7;
 
 /**
  * A wire handle that is open: some point ends only one of its edges. brepjs
@@ -487,6 +487,11 @@ export function sweepPipeShell(
         'brepkit: an open profile sweeps along its spine alone, with no auxiliary spine'
       );
     }
+    if (options?.['shellMode']) {
+      throw new UnsupportedKernelOperationError(
+        'brepkit: an open profile sweeps into a shell with no start and end wires for shell mode'
+      );
+    }
     const pathEdges = iterShapes(bk, spine, 'edge').map((e) => unwrap(e, 'edge'));
     return shellHandle(bk.sweepWire(profileHandle.id, pathEdges));
   }
@@ -531,6 +536,11 @@ export function loftAdvanced(
     if (options?.startVertex || options?.endVertex) {
       throw new UnsupportedKernelOperationError(
         'brepkit: open wires loft into a sheet between the wires, with no start or end point'
+      );
+    }
+    if (options?.ruled === false && wires.length > 2) {
+      throw new UnsupportedKernelOperationError(
+        'brepkit: open wires loft into straight bands, so three or more need ruled: true'
       );
     }
     return shellHandle(bk.loftWires(wires.map((w) => unwrap(w, 'wire'))));

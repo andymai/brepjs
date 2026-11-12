@@ -2,6 +2,7 @@ import { describe, it, beforeAll, expect } from 'vitest';
 import { initKernel } from './setup.js';
 import {
   box,
+  compound,
   getFaces,
   getSolids,
   line,
@@ -11,7 +12,6 @@ import {
   translate,
   unwrap,
   type Face,
-  type Solid,
 } from '@/index.js';
 
 beforeAll(async () => {
@@ -25,57 +25,56 @@ type P = [number, number, number];
 // A face tool cuts where it is, not along its whole plane, and an edge or a
 // face lying on the body marks the face it lies on.
 descBk('brepkit split by faces and edges', () => {
-  const body = (): Solid => box(20, 20, 10, { at: [0, 0, 5] });
-  const rect = (pts: P[]): Face => unwrap(polygon(pts));
-  const pieces = (tools: Parameters<typeof split>[1]): Array<[number, number]> =>
-    getSolids(unwrap(split(body(), tools)))
+  /** Volume and face count of each piece of a 20 x 20 x 10 box split by `tools`, smallest first. */
+  const pieces = (tools: Parameters<typeof split>[1]): Array<[number, number]> => {
+    using body = box(20, 20, 10, { at: [0, 0, 5] });
+    using result = unwrap(split(body, tools));
+    return getSolids(result)
       .map((s): [number, number] => [unwrap(measureVolume(s)), getFaces(s).length])
       .sort((a, b) => a[0] - b[0]);
+  };
+  const rect = (pts: P[]): Face => unwrap(polygon(pts));
+  /** A face standing in the plane y = 0, 30 wide, from z = `low` to z = `high`. */
+  const standing = (low: number, high: number): Face =>
+    rect([
+      [-15, 0, low],
+      [15, 0, low],
+      [15, 0, high],
+      [-15, 0, high],
+    ]);
 
   it('marks the top with a face that only dips into it', () => {
-    const got = pieces([
-      rect([
-        [-15, 0, 9],
-        [15, 0, 9],
-        [15, 0, 11],
-        [-15, 0, 11],
-      ]),
-    ]);
+    using dip = standing(9, 11);
+    const got = pieces([dip]);
     expect(got).toHaveLength(1);
     expect(got[0]?.[0]).toBeCloseTo(4000, 6);
     expect(got[0]?.[1]).toBe(7);
   });
 
   it('marks the top with a face lying on it', () => {
-    const got = pieces([
-      rect([
-        [-15, 0, 10],
-        [15, 0, 10],
-        [15, 15, 10],
-        [-15, 15, 10],
-      ]),
+    using lid = rect([
+      [-15, 0, 10],
+      [15, 0, 10],
+      [15, 15, 10],
+      [-15, 15, 10],
     ]);
+    const got = pieces([lid]);
     expect(got).toHaveLength(1);
     expect(got[0]?.[0]).toBeCloseTo(4000, 6);
     expect(got[0]?.[1]).toBe(7);
   });
 
   it('marks the top with an edge lying on it', () => {
-    const got = pieces([line([-10, 0, 10], [10, 0, 10])]);
+    using mark = line([-10, 0, 10], [10, 0, 10]);
+    const got = pieces([mark]);
     expect(got).toHaveLength(1);
     expect(got[0]?.[0]).toBeCloseTo(4000, 6);
     expect(got[0]?.[1]).toBe(7);
   });
 
   it('cuts the body in two with a face across all of it', () => {
-    const got = pieces([
-      rect([
-        [-15, 0, -1],
-        [15, 0, -1],
-        [15, 0, 11],
-        [-15, 0, 11],
-      ]),
-    ]);
+    using across = standing(-1, 11);
+    const got = pieces([across]);
     expect(got.map((g) => g[1])).toEqual([6, 6]);
     expect(got[0]?.[0]).toBeCloseTo(2000, 6);
     expect(got[1]?.[0]).toBeCloseTo(2000, 6);
@@ -90,18 +89,21 @@ descBk('brepkit split by faces and edges', () => {
   });
 
   it('cuts with a face and marks with an edge in one call', () => {
-    using wall = translate(
-      rect([
-        [-15, 0, -1],
-        [15, 0, -1],
-        [15, 0, 11],
-        [-15, 0, 11],
-      ]),
-      [0, 5, 0]
-    );
-    const got = pieces([wall, line([-10, -5, 10], [10, -5, 10])]);
+    using across = standing(-1, 11);
+    using wall = translate(across, [0, 5, 0]);
+    using mark = line([-10, -5, 10], [10, -5, 10]);
+    const got = pieces([wall, mark]);
     expect(got.map((g) => g[0]).reduce((a, b) => a + b, 0)).toBeCloseTo(4000, 6);
     expect(got).toHaveLength(2);
     expect(got.map((g) => g[1]).sort()).toEqual([6, 7]);
+  });
+
+  it('marks with an edge grouped in a compound', () => {
+    using mark = line([-10, 0, 10], [10, 0, 10]);
+    using group = compound([mark]);
+    const got = pieces([group]);
+    expect(got).toHaveLength(1);
+    expect(got[0]?.[0]).toBeCloseTo(4000, 6);
+    expect(got[0]?.[1]).toBe(7);
   });
 });
