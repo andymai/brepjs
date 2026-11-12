@@ -1,0 +1,21 @@
+src/sketching/sketchFns.ts
+  s_81e0220acef924::t_670fd55809e147 387-392
+tests/sketchFns.test.ts
+  s_81e0220acef924::t_de558405d809da 15,174-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "79b160a8dd10f8cc1e8bd5a0f490c29c8b170118",
+  "prompts": {},
+  "sessions": {
+    "s_81e0220acef924": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b26411a-0202-4d23-8ca5-4bfa4ebdb323",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
