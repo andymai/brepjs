@@ -10,11 +10,13 @@ Exact B-Rep CAD in TypeScript, built so AI agents can write parts and check them
 [![Commit activity](https://img.shields.io/github/commit-activity/m/andymai/brepjs?label=commits%2Fmonth)](https://github.com/andymai/brepjs/commits/main)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
-https://github.com/user-attachments/assets/a8dce262-2a86-4db2-8956-9d8ca8adcae4
+[![A turbofan jet engine built with brepjs: this jet engine is a TypeScript file](./media/turbofan-reel.jpg)](https://brepjs.dev/playground/examples/turbofan-engine)
 
 </div>
 
-In this real session, a coding agent (Claude Code) reads the official Raspberry Pi 5 drawing, writes the case as a brepjs part, gets an error back from `brep verify`, fixes it, and adds a fan mount on request. The exported STEP opens in FreeCAD. [Watch the narrated version](https://youtu.be/n8Cbg345NRI).
+This jet engine is one TypeScript file: 200 lines of brepjs that build 1,897 solids. It is a 1:10 display model, and you can [run it in the playground](https://brepjs.dev/playground/examples/turbofan-engine). Boolean cuts open the casings, a change to one parameter rebuilds the engine in about half a second, and the result exports to STEP. A coding agent (Claude Code) wrote the file, and `brep verify` checked it.
+
+For a full agent session, [watch an agent design a Raspberry Pi 5 case](https://youtu.be/n8Cbg345NRI) from the official drawing.
 
 Parts are plain TypeScript files and the checker is a CLI, so it isn't tied to one agent:
 
