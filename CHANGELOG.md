@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.18.1](https://github.com/andymai/brepjs/compare/brepjs-v20.18.0...brepjs-v20.18.1) (2026-11-12)
+
+
+### Bug Fixes
+
+* **brepkit:** split by tool faces and sweep open wires on brepkit-wasm 4.11.4 ([#2616](https://github.com/andymai/brepjs/issues/2616)) ([1dfc62e](https://github.com/andymai/brepjs/commit/1dfc62e0b954516e2326e4270d91df4bbe682073))
+
 ## [20.18.0](https://github.com/andymai/brepjs/compare/brepjs-v20.17.0...brepjs-v20.18.0) (2026-11-03)
 
 
