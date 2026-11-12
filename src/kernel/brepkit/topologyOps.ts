@@ -19,6 +19,9 @@ import {
   unwrapSolidOrThrow,
   toArray,
   syntheticCompounds,
+  nextSyntheticId,
+  handle,
+  compoundHandle,
   cachedSolidPieces,
 } from './helpers.js';
 import { wasmIndex } from '@/utils/vec3.js';
@@ -222,6 +225,24 @@ export function downcast(_bk: BrepkitKernel, shape: KernelShape, _type?: ShapeTy
   return shape;
 }
 
+/**
+ * The adapter never changes a shape in place (it copies before a transform) and
+ * frees nothing per handle, so a copy can share the arena id. It still needs a
+ * wrapper object of its own: callers track ownership by `.wrapped` identity. A
+ * synthetic compound's `delete` clears its child list, so its copy gets a list
+ * of its own.
+ */
+export function copyShape(shape: KernelShape): KernelShape {
+  if (!isBrepkitHandle(shape)) return shape;
+  const children = shape.type === 'compound' ? syntheticCompounds.get(shape.id) : undefined;
+  if (children) {
+    const id = nextSyntheticId();
+    syntheticCompounds.set(id, [...children]);
+    return compoundHandle(id);
+  }
+  return handle(shape.type, shape.id);
+}
+
 export function hashCode(_bk: BrepkitKernel, shape: KernelShape, upperBound: number): number {
   if (!isBrepkitHandle(shape)) return 0;
   return shape.id % upperBound;
@@ -304,9 +325,7 @@ export function makeTopologyOps(bk: BrepkitKernel) {
     isSame: (a, b) => isSame(bk, a, b),
     isEqual: (a, b) => isEqual(bk, a, b),
     downcast: (shape, type) => downcast(bk, shape, type),
-    // brepkit never frees handles individually (arena; delete is a no-op), so
-    // the aliased handle is safe to "dispose" independently of the source.
-    copyShape: (shape) => downcast(bk, shape),
+    copyShape,
     hashCode: (shape, upperBound) => hashCode(bk, shape, upperBound),
     isNull: (shape) => isNull(bk, shape),
     shapeOrientation: (shape) => shapeOrientation(bk, shape),

@@ -13,7 +13,14 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { BrepkitAdapter } from '@/kernel/brepkit/brepkitAdapter.js';
-import { type BrepkitHandle, edgeHandle, solidHandle } from '@/kernel/brepkit/helpers.js';
+import {
+  type BrepkitHandle,
+  compoundHandle,
+  edgeHandle,
+  nextSyntheticId,
+  solidHandle,
+  syntheticCompounds,
+} from '@/kernel/brepkit/helpers.js';
 import type { BrepkitKernel } from '@/kernel/brepkit/brepkitWasmTypes.js';
 import { registerKernel, getKernel, withKernel } from '@/kernel/index.js';
 import { isUnsupportedKernelOperationError } from '@/kernel/unsupported.js';
@@ -267,6 +274,30 @@ describe('BrepkitAdapter', () => {
       const box = adapter.makeBox(1, 1, 1);
 
       expect(adapter.isNull(box)).toBe(false);
+    });
+
+    it('copyShape gives the copy its own wrapper over the same arena id', () => {
+      const adapter = new BrepkitAdapter(createMockBrepKernel());
+      const box = adapter.makeBox(1, 1, 1) as BrepkitHandle;
+      const copy = adapter.copyShape(box) as BrepkitHandle;
+
+      expect(copy).not.toBe(box);
+      expect(copy.type).toBe('solid');
+      expect(copy.id).toBe(box.id);
+    });
+
+    it('copyShape gives a synthetic compound a child list of its own', () => {
+      const adapter = new BrepkitAdapter(createMockBrepKernel());
+      const id = nextSyntheticId();
+      syntheticCompounds.set(id, [edgeHandle(1), edgeHandle(2)]);
+      const source = compoundHandle(id);
+      const copy = adapter.copyShape(source) as BrepkitHandle;
+
+      expect(copy.id).not.toBe(id);
+      copy.delete();
+      expect(syntheticCompounds.has(copy.id)).toBe(false);
+      expect(syntheticCompounds.get(id)).toHaveLength(2);
+      source.delete();
     });
   });
 
