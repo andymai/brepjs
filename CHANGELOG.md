@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.21.2](https://github.com/andymai/brepjs/compare/brepjs-v20.21.1...brepjs-v20.21.2) (2026-11-12)
+
+
+### Bug Fixes
+
+* **kernel:** make a brepkit shape copy independent of its source ([#2628](https://github.com/andymai/brepjs/issues/2628)) ([d91eaf8](https://github.com/andymai/brepjs/commit/d91eaf8058089c76aeb40e35510f038e91d3ac45))
+
 ## [20.21.1](https://github.com/andymai/brepjs/compare/brepjs-v20.21.0...brepjs-v20.21.1) (2026-11-12)
 
 
