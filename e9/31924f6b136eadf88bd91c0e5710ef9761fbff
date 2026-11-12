@@ -1,0 +1,21 @@
+src/operations/sweepFns.ts
+  s_81e0220acef924::t_aba0dd291354a0 14,201-203
+tests/openWireSheets.test.ts
+  s_81e0220acef924::t_16af4cf8ba5905 102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e931924f6b136eadf88bd91c0e5710ef9761fbff",
+  "prompts": {},
+  "sessions": {
+    "s_81e0220acef924": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b26411a-0202-4d23-8ca5-4bfa4ebdb323",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
