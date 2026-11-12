@@ -22,6 +22,9 @@ import { surfaceNormal } from './geometryOps.js';
 import { fuse } from './booleanOps.js';
 import { vec3At, wasmIndex } from '@/utils/vec3.js';
 
+/** Edge ends that lie this close are one point of a wire. */
+const WIRE_JOIN_TOLERANCE = 1e-6;
+
 /**
  * A wire handle that is open: some point ends only one of its edges. brepjs
  * flags every wire it makes as closed, so the ends decide.
@@ -29,16 +32,19 @@ import { vec3At, wasmIndex } from '@/utils/vec3.js';
 function isOpenWire(bk: BrepkitKernel, shape: KernelShape): boolean {
   const h = shape as BrepkitHandle;
   if (h.type !== 'wire') return false;
-  const uses = new Map<string, number>();
+  const loose: Array<[number, number, number]> = [];
   for (const edgeId of toArray(bk.getWireEdges(h.id))) {
     const ends = bk.getEdgeVertices(edgeId);
     for (const at of [0, 3]) {
-      const key = [0, 1, 2].map((k) => Math.round(wasmIndex(ends, at + k) * 1e6)).join(',');
-      uses.set(key, (uses.get(key) ?? 0) + 1);
+      const end = vec3At(ends, at);
+      const mate = loose.findIndex(
+        (p) => Math.hypot(p[0] - end[0], p[1] - end[1], p[2] - end[2]) < WIRE_JOIN_TOLERANCE
+      );
+      if (mate >= 0) loose.splice(mate, 1);
+      else loose.push(end);
     }
   }
-  for (const count of uses.values()) if (count % 2 === 1) return true;
-  return false;
+  return loose.length > 0;
 }
 
 function axisAngleDegrees(angle: number): number {
