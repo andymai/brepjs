@@ -128,6 +128,16 @@ descBk('brepkit blend, match and fair surfaces', () => {
       matchSurface(blend, edgeAt(blend, [6, 5, 2]), edgeAt(high, [6, 5, 3]), { continuity: 'g1' })
     );
     expect(faceGeomType(matched)).toBe('BSPLINE_SURFACE');
+    // The matched edge lies on the higher sheet's edge, and the far edge stays where it was.
+    for (const t of [0, 0.5, 1]) {
+      const [was, now] = [edgeAt(blend, [6, 5, 2]), edgeAt(matched, [6, 5, 3])];
+      const [from, to] = [curvePointAt(was, t), curvePointAt(now, t)];
+      expect(to[0]).toBeCloseTo(6, 9);
+      expect(to[2]).toBeCloseTo(3, 9);
+      expect(from[2]).toBeCloseTo(2, 9);
+    }
+    expect(() => edgeAt(matched, [0, 5, 0])).not.toThrow();
+    expect(() => edgeAt(matched, [6, 5, 2])).toThrow();
     expect(angleBetween(normalAt(matched, [6, 5, 3]), [0, 0, 1])).toBeLessThan(1e-6);
     expect(angleBetween(normalAt(matched, [0, 5, 0]), [0, 0, 1])).toBeLessThan(1e-6);
   });
