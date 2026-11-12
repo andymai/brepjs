@@ -51,14 +51,32 @@ const lerpTable = (table: P2[], z: number): number => {
   return table[table.length - 1]![1];
 };
 
+// Kernel shapes live in WASM memory. Each helper frees the temporary shapes that it made.
+const free = (...shapes: Disposable[]) => shapes.forEach((s) => s[Symbol.dispose]());
+
+// One compound that owns its parts: the part handles are free after the kernel copies them in.
+const group = (parts: Shape[]): Shape => {
+  const all = compound(parts) as Shape;
+  free(...parts);
+  return all;
+};
+
 // A closed profile in the (r, z) half-plane, revolved about the engine axis.
-const lathe = (pts: P2[], angle = 2 * Math.PI): Shape =>
-  unwrap(revolve(unwrap(polygon(pts.map(([z, r]): P3 => [r, 0, z]))), { axis: [0, 0, 1], angle })) as Shape;
+const lathe = (pts: P2[], angle = 2 * Math.PI): Shape => {
+  const profile = unwrap(polygon(pts.map(([z, r]): P3 => [r, 0, z])));
+  const solid = unwrap(revolve(profile, { axis: [0, 0, 1], angle })) as Shape;
+  free(profile);
+  return solid;
+};
 
 // The same, but through a smooth closed spline (nacelle lip, cowls, combustor).
 const latheSpline = (pts: P2[]): Shape => {
   const edge = unwrap(interpolateCurve(pts.map(([z, r]): P3 => [r, 0, z]), { periodic: true }));
-  return unwrap(revolve(unwrap(face(unwrap(wire([edge])) as never)), { axis: [0, 0, 1] })) as Shape;
+  const loop = unwrap(wire([edge]));
+  const profile = unwrap(face(loop as never));
+  const solid = unwrap(revolve(profile, { axis: [0, 0, 1] })) as Shape;
+  free(edge, loop, profile);
+  return solid;
 };
 
 // A thin shell that follows a wall line, t thick on the outside.
@@ -80,7 +98,10 @@ const aerofoil = (r: number, z: number, chord: number, stagger: number, camber: 
   const xs = Array.from({ length: N + 1 }, (_, i) => 0.5 * (1 - Math.cos((Math.PI * i) / N)));
   const upper = xs.map((x) => at(x, 1));
   const lower = xs.map((x) => at(x, -1)).reverse();
-  return unwrap(wire([unwrap(interpolateCurve(upper)), unwrap(interpolateCurve(lower))]));
+  const edges = [unwrap(interpolateCurve(upper)), unwrap(interpolateCurve(lower))];
+  const section = unwrap(wire(edges));
+  free(...edges);
+  return section;
 };
 
 interface Row {
@@ -105,7 +126,9 @@ const bladeRow = (row: Row): Shape[] => {
     return aerofoil(r, row.z, chord, stagger, row.camber * (1 - 0.5 * u), row.thick * (1 - 0.45 * u));
   });
   const blade = unwrap(loft(sections, { ruled: false })) as Shape;
-  return Array.from({ length: row.count }, (_, i) => rotate(blade, (360 * i) / row.count, { axis: [0, 0, 1] }) as Shape);
+  const ring = Array.from({ length: row.count }, (_, i) => rotate(blade, (360 * i) / row.count, { axis: [0, 0, 1] }) as Shape);
+  free(blade, ...sections);
+  return ring;
 };
 
 function turbofan({ fanBlades = 20, fanRadius = 100, hpcStages = 9, lptStages = 4, cutaway = 130 }: TurbofanParams = {}) {
@@ -128,7 +151,7 @@ function turbofan({ fanBlades = 20, fanRadius = 100, hpcStages = 9, lptStages = 
     [150, 103.5 + grow], [70, 102.5 + grow], [0, 101.5 + grow], [-34, 101 + grow], [-54, 102 + grow],
   ]);
   const cowlLine: P2[] = [[48, 47], [62, 51], [80, 56], [130, 62], [hpcEnd + 20, 62], [hptEnd, 59], [lptEnd, 46 + lptStages * 3], [nozzleEnd, 44]];
-  const coreCase = compound([
+  const coreCase = group([
     wall(cowlLine, 2.4),
     wall([...casing.map(([z, r]): P2 => [z, r + 0.6]), [nozzleEnd, 41]], 2),
   ]);
@@ -138,11 +161,13 @@ function turbofan({ fanBlades = 20, fanRadius = 100, hpcStages = 9, lptStages = 
   const zb = (hpcEnd + burnEnd) / 2 + 3;
   const ring: P2[] = [[-20, 0], [-14, 5.5], [6, 5], [19, 2], [19, -1.5], [6, -4.5], [-14, -5], [-20, -1.5]];
   const can = (k: number): Shape => latheSpline(ring.map(([dz, dr]): P2 => [zb + dz * k, 28 + dr * k]));
-  const liner = unwrap(cut(can(1), can(0.78))) as Shape;
-  const nozzles = Array.from({ length: 18 }, (_, i) =>
-    rotate(cylinder(1.6, 14, { at: [24, 0, zb - 26], axis: [0.35, 0, 1] }), i * 20, { axis: [0, 0, 1] }) as Shape,
-  );
-  const combustor = compound([liner, ...nozzles]);
+  const outer = can(1);
+  const inner = can(0.78);
+  const liner = unwrap(cut(outer, inner)) as Shape;
+  const nozzle = cylinder(1.6, 14, { at: [24, 0, zb - 26], axis: [0.35, 0, 1] });
+  const nozzles = Array.from({ length: 18 }, (_, i) => rotate(nozzle, i * 20, { axis: [0, 0, 1] }) as Shape);
+  free(outer, inner, nozzle);
+  const combustor = group([liner, ...nozzles]);
 
   // ---- blading
   const stators: Shape[] = [];
@@ -168,7 +193,7 @@ function turbofan({ fanBlades = 20, fanRadius = 100, hpcStages = 9, lptStages = 
   stators.push(...bladeRow({ z: 92, chord: 22, count: 34, rRoot: 54, rTip: 104 + grow, stagger: [-18, -8], camber: -0.07, thick: 0.07, taper: 1 }));
 
   // ---- rotating assemblies
-  const fan = compound([
+  const fan = group([
     lathe([[-50, 0], [-49, 3], [-40, 12], [-24, 22], [-8, 28.5], [0, 30], [44, 30], [44, 0]]),
     ...bladeRow({ z: 22, chord: 40, count: fanBlades, rRoot: 28, rTip: fanRadius - 1.2, stagger: [24, 63], camber: 0.09, thick: 0.085, taper: 1.05 }),
   ]);
@@ -181,31 +206,43 @@ function turbofan({ fanBlades = 20, fanRadius = 100, hpcStages = 9, lptStages = 
 
   // Cutaway: a real boolean cut of every static shell, centred on the top. The rotors and vanes stay whole.
   const sweep = (Math.max(cutaway, 1) * Math.PI) / 180;
-  const wedge = rotate(lathe([[-120, 0], [-120, 260], [nozzleEnd + 200, 260], [nozzleEnd + 200, 0]], sweep), -cutaway / 2, { axis: [0, 0, 1] });
-  const open = (shell: Shape): Shape =>
-    cutaway > 0 ? (compound(getSolids(shell).map((s) => unwrap(cut(s, wedge)))) as Shape) : shell;
+  const slice = lathe([[-120, 0], [-120, 260], [nozzleEnd + 200, 260], [nozzleEnd + 200, 0]], sweep);
+  const wedge = rotate(slice, -cutaway / 2, { axis: [0, 0, 1] });
+  const open = (shell: Shape): Shape => {
+    if (cutaway <= 0) return shell;
+    const solids = getSolids(shell);
+    const opened = group(solids.map((s) => unwrap(cut(s, wedge)) as Shape));
+    free(shell, ...solids);
+    return opened;
+  };
 
-  return {
+  const engine = {
     nacelle: open(nacelle),
     fan,
-    stators: compound(stators),
-    lpCore: compound(lpCore),
-    hpSpool: compound(hpSpool),
-    combustor: open(combustor as Shape),
-    coreCase: open(coreCase as Shape),
+    stators: group(stators),
+    lpCore: group(lpCore),
+    hpSpool: group(hpSpool),
+    combustor: open(combustor),
+    coreCase: open(coreCase),
     plug: open(plug),
   };
+  free(slice, wedge);
+  return engine;
 }
 
 // Lay the engine on its side: low-pressure spool teal, high-pressure spool orange.
 const engine = turbofan();
-const lay = (s: Shape) => rotate(s, -90, { axis: [0, 1, 0] });
+const lay = (s: Shape) => {
+  const laid = rotate(s, -90, { axis: [0, 1, 0] });
+  free(s);
+  return laid;
+};
 export default [
   color(lay(engine.nacelle), '#f5f2ea'),
-  color(lay(engine.fan as Shape), '#12b5b0'),
-  color(lay(engine.stators as Shape), '#a9b1ba'),
-  color(lay(engine.lpCore as Shape), '#12b5b0'),
-  color(lay(engine.hpSpool as Shape), '#ff5a1f'),
+  color(lay(engine.fan), '#12b5b0'),
+  color(lay(engine.stators), '#a9b1ba'),
+  color(lay(engine.lpCore), '#12b5b0'),
+  color(lay(engine.hpSpool), '#ff5a1f'),
   color(lay(engine.combustor), '#48515c'),
   color(lay(engine.coreCase), '#e2ded3'),
   color(lay(engine.plug), '#f5f2ea'),
