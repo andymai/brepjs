@@ -1,0 +1,86 @@
+src/operations/api.ts
+  s_81e0220acef924::t_2bb823f08dfa1a 8,13,25,27,29-30,32,36-40,43,61-62,65
+  s_81e0220acef924::t_5bd4f0a54fc5e4 17
+tests/brepkitSplitByTools.test.ts
+  s_81e0220acef924::t_0a9ae006b32dab 1-4,6-14,15-27,33-34,45-46,49-54,60,62-67,70-75,78-91,96-99,117
+  s_1cc363bb3cc76d::t_b58f8ea81b5c0f 5,28-32,35-44,47-48,55-59,61,68-69,76-77,92-95,100,109-116
+  s_81e0220acef924::t_606b053ed9a5a5 101-108
+llms-full.txt
+  s_81e0220acef924::t_c1ad7f4f65ba51 129
+  s_81e0220acef924::t_b31460d9f962d9 364
+src/kernel/brepkit/brepkitWasmTypes.ts
+  s_81e0220acef924::t_9ea5cf50553329 5,190-197,275-291,299-306,427-441,659,661,663,665,667,669,822,992,995,998
+  s_81e0220acef924::t_d465315c7dd76b 647-648
+src/kernel/brepkit/sweepOps.ts
+  s_81e0220acef924::t_9f117d4e68a86b 11-19,29-35,37-39,46-47,49-54,61-65,81,93-107,219-222,485,501,503-507,541-550,556-557
+  s_81e0220acef924::t_602f447b6df531 28,36,40-45,48
+  s_81e0220acef924::t_8d623ca93e53a7 26-27,501,503-504,551-555
+  s_81e0220acef924::t_e7b749e444d97c 501,503-504
+  s_81e0220acef924::t_170f8959639eb4 486-493,495-500,502
+  s_1cc363bb3cc76d::t_14f27b0bf07659 494
+  s_81e0220acef924::t_45955ac405658f 9,594-668,724,741
+package-lock.json
+  s_81e0220acef924::t_bc3440280339ab 47,7622-7624
+src/operations/extrudeFns.ts
+  s_81e0220acef924::t_cf09db2dbcec47 11-18,25-26,46-48,50-51,53,57-61,73-78,98-100,107
+scripts/sync-brepkit-types.ts
+  s_81e0220acef924::t_e8c0460d3ce035 50-52,223-233,253-256,264,300-308
+  s_81e0220acef924::t_ae7376ba7d9d07 411
+package.json
+  s_81e0220acef924::t_c793ad3b2fd7ef 279
+src/kernel/brepkit/booleanOps.ts
+  s_81e0220acef924::t_1a99d19a7a2e13 32,367-373,382,384-387,390-403,406-411,415
+  s_81e0220acef924::t_681ba554713898 374-381,383,388-389
+  s_81e0220acef924::t_cd15fcd095eafd 413-414,416-419
+llms.txt
+  s_81e0220acef924::t_26e7cd6197e668 129
+  s_81e0220acef924::t_f06d95734afcf4 364
+tests/openWireSheets.test.ts
+  s_81e0220acef924::t_649b2f0f87123a 1-13,15,17-29,39-57,60-64,95-96,98-102,104,106-111,117,119-124
+  s_81e0220acef924::t_5808ce5bdcb117 14,16,30-38,58-59,65-70,73-74,76-77,93-94,97,105,112-116,118
+  s_81e0220acef924::t_250a444d6a82ce 85-86,88-92
+  s_81e0220acef924::t_16af4cf8ba5905 103
+  s_81e0220acef924::t_d4b9f51c0a96d2 71-72,75-79,81-84
+  s_1cc363bb3cc76d::t_5f93d762b848db 80
+src/operations/sweepFns.ts
+  s_81e0220acef924::t_44c7fc40dde376 163,172,179,186,192
+  s_81e0220acef924::t_cef1e70e4c1fe7 147-156,207-208,256
+  s_81e0220acef924::t_aba0dd291354a0 14,201-203
+src/kernel/brepkit/ioOps.ts
+  s_81e0220acef924::t_b36f7daa515843 73-80
+src/operations/loftFns.ts
+  s_81e0220acef924::t_ae60ded9085ec5 13-18,20,109-118
+  s_81e0220acef924::t_47fe9f173d2318 8-10,19,21-32,36-39,41-46,76,79,83,131-204
+.size-limit.json
+  s_81e0220acef924::t_99545581d645ec 2
+src/index.ts
+  s_81e0220acef924::t_9ade8ee69b2ef8 1206
+src/kernel/interfaces/sweepOps.ts
+  s_81e0220acef924::t_6e17d5c4a6738c 13-17,82-96
+tests/loftGuided.test.ts
+  s_81e0220acef924::t_09be347261cb3e 1-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0102469f2ca36756080fed4353eb4fe61e62c860",
+  "prompts": {},
+  "sessions": {
+    "s_1cc363bb3cc76d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76df731c-9399-4e68-b0d6-f1c0aef06bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    },
+    "s_81e0220acef924": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b26411a-0202-4d23-8ca5-4bfa4ebdb323",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
