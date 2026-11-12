@@ -2007,6 +2007,55 @@ describe('BrepkitAdapter', () => {
     });
   });
 
+  describe('fillet corner options', () => {
+    const cornerOf = (adapter: BrepkitAdapter) => {
+      const solid = adapter.makeBox(10, 10, 10);
+      const edges = (adapter.iterShapes(solid, 'edge') as BrepkitHandle[]).slice(0, 3);
+      const vertex = adapter.makeVertex(0, 0, 0) as BrepkitHandle;
+      return { solid, edges, vertex };
+    };
+
+    it('sends the corners to filletV2Corners as its JSON', () => {
+      let next = 800;
+      const mock = Object.assign(createMockBrepKernel(), {
+        filletV2Corners: vi.fn(
+          (_solid: number, _edges: number[], _radius: number, _corners: string) => next++
+        ),
+      });
+      const adapter = new BrepkitAdapter(mock);
+      const { solid, edges, vertex } = cornerOf(adapter);
+      const [first] = edges;
+      if (!first) throw new Error('the mock box has no edges');
+
+      const result = adapter.filletCorners?.(solid, edges, 2, [
+        { vertex, setbacks: [{ edge: first, distance: 3 }], corner: 'g2' },
+        { vertex },
+      ]) as BrepkitHandle;
+      expect(result.type).toBe('solid');
+      expect(mock.filletV2Corners).toHaveBeenCalledExactlyOnceWith(
+        (solid as BrepkitHandle).id,
+        edges.map((e) => e.id),
+        2,
+        JSON.stringify([
+          { vertex: vertex.id, setbacks: [{ edge: first.id, distance: 3 }], corner: 'g2' },
+          { vertex: vertex.id },
+        ])
+      );
+    });
+
+    it('refuses them on a brepkit-wasm without the binding', () => {
+      const adapter = new BrepkitAdapter(createMockBrepKernel());
+      const { solid, edges, vertex } = cornerOf(adapter);
+      let caught: unknown;
+      try {
+        adapter.filletCorners?.(solid, edges, 2, [{ vertex }]);
+      } catch (e) {
+        caught = e;
+      }
+      expect(isUnsupportedKernelOperationError(caught)).toBe(true);
+    });
+  });
+
   describe('fillet (variable radius)', () => {
     /**
      * A mock kernel whose probe fillet, a 10 mm cube edge rounded from 1 to 2,

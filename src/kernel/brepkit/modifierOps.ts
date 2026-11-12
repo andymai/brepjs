@@ -6,6 +6,7 @@
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
+import type { KernelFilletCorner } from '@/kernel/interfaces/modifierOps.js';
 import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import {
   type BrepkitHandle,
@@ -21,6 +22,37 @@ import {
 } from './helpers.js';
 import { iterShapes } from './topologyOps.js';
 import { wasmIndex } from '@/utils/vec3.js';
+
+export function filletCorners(
+  bk: BrepkitKernel,
+  shape: KernelShape,
+  edges: KernelShape[],
+  radius: number,
+  corners: readonly KernelFilletCorner[]
+): KernelShape {
+  if (typeof bk.filletV2Corners !== 'function') {
+    throw new UnsupportedKernelOperationError(
+      'brepkit: fillet corner options need brepkit-wasm 4.10.0 or later'
+    );
+  }
+  const spec = corners.map((c) => ({
+    vertex: unwrap(c.vertex, 'vertex'),
+    ...(c.setbacks
+      ? {
+          setbacks: c.setbacks.map((s) => ({ edge: unwrap(s.edge, 'edge'), distance: s.distance })),
+        }
+      : {}),
+    ...(c.corner ? { corner: c.corner } : {}),
+  }));
+  return solidHandle(
+    bk.filletV2Corners(
+      unwrapSolidOrThrow(shape, 'fillet'),
+      edges.map((e) => unwrap(e, 'edge')),
+      radius,
+      JSON.stringify(spec)
+    )
+  );
+}
 
 export function fillet(
   bk: BrepkitKernel,
@@ -499,6 +531,8 @@ export function makeModifierOps(bk: BrepkitKernel) {
     thicken: (shape, thickness) => thicken(bk, shape, thickness),
     offset: (shape, distance, tolerance) => offset(bk, shape, distance, tolerance),
     filletVariable: (shape, spec) => filletVariable(bk, shape, spec),
+    filletCorners: (shape, edges, radius, corners) =>
+      filletCorners(bk, shape, edges, radius, corners),
     draft: (shape, faces, pullDirection, neutralPlane, angleDeg) =>
       draft(bk, shape, faces, pullDirection, neutralPlane, resolveUniformAngle(faces, angleDeg)),
     defeature: (shape, faces) => defeature(bk, shape, faces),
@@ -514,6 +548,7 @@ export function makeModifierOps(bk: BrepkitKernel) {
     | 'thicken'
     | 'offset'
     | 'filletVariable'
+    | 'filletCorners'
     | 'draft'
     | 'defeature'
     | 'offsetWire2D'

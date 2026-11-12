@@ -8,7 +8,16 @@
 import { getKernel, getKernelCapabilities } from '@/kernel/index.js';
 import { isUnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import { faultyEdgeIndexesOf } from '@/kernel/faultyEdges.js';
-import type { Edge, Face, Shell, Solid, Shape3D, AnyShape, Dimension } from '@/core/shapeTypes.js';
+import type {
+  Edge,
+  Face,
+  Shell,
+  Solid,
+  Shape3D,
+  AnyShape,
+  Dimension,
+  Vertex,
+} from '@/core/shapeTypes.js';
 import type { ValidSolid } from '@/core/validityTypes.js';
 import {
   castResultShape,
@@ -295,23 +304,104 @@ function normalizeFilletInputs(
 }
 
 /**
+ * How a fillet closes the corner where three of its rounds meet at a vertex.
+ * The three rounds must be straight, of one radius, and between flat faces.
+ */
+export interface FilletCorner {
+  /** The vertex of the shape where the three rounds meet. */
+  readonly vertex: Vertex;
+  /**
+   * How far back from the vertex the round along each edge stops. Each
+   * distance reaches past where a rolling ball would stop the round, and
+   * stops short of the edge's far end.
+   */
+  readonly setbacks?: ReadonlyArray<{ readonly edge: Edge; readonly distance: number }> | undefined;
+  /**
+   * `'rolling'` (the default) closes the corner with a ball, or with a
+   * patch when set-backs are given. `'g2'` closes it with a patch that
+   * holds each round's curvature.
+   */
+  readonly corner?: 'rolling' | 'g2' | undefined;
+}
+
+/** Options for {@link fillet}. */
+export interface FilletOptions {
+  readonly trackEvolution?: boolean | undefined;
+  /**
+   * Corners to set back or to close with a G2 patch. Takes a constant
+   * radius and the brepkit kernel, and records no face evolution.
+   */
+  readonly corners?: readonly FilletCorner[] | undefined;
+}
+
+function filletWithCorners(
+  shape: ValidSolid,
+  edges: readonly Edge[],
+  radius: FilletKernelRadius,
+  corners: readonly FilletCorner[]
+): Result<ValidSolid> {
+  if (typeof radius !== 'number') {
+    return err(
+      validationError(
+        'FILLET_CORNERS_NEED_CONSTANT_RADIUS',
+        'fillet: corner options take one constant radius',
+        undefined,
+        undefined,
+        'Pass a single number as the radius, or drop the corner options'
+      )
+    );
+  }
+  for (const c of corners) {
+    if (c.setbacks?.some((s) => !(Number.isFinite(s.distance) && s.distance > 0))) {
+      return err(
+        validationError('FILLET_BAD_SETBACK', 'fillet: each corner set-back must be positive')
+      );
+    }
+  }
+  const kernel = getKernel();
+  if (!kernel.filletCorners) {
+    return err(filletCornersUnsupportedError());
+  }
+  const resultShape = kernel.filletCorners(
+    shape.wrapped,
+    edges.map((e) => e.wrapped),
+    radius,
+    corners.map((c) => ({
+      vertex: c.vertex.wrapped,
+      setbacks: c.setbacks?.map((s) => ({ edge: s.edge.wrapped, distance: s.distance })),
+      corner: c.corner,
+    }))
+  );
+  const cast = castResultShape(resultShape);
+  if (!isShape3D(cast)) {
+    disposeResultShape(cast);
+    return err(kernelError(BrepErrorCode.FILLET_NOT_3D, 'Fillet result is not a 3D shape'));
+  }
+  return ok(cast as ValidSolid);
+}
+
+/**
  * Apply a fillet (rounded edge) to selected edges of a 3D shape.
  *
  * @param shape - The shape to modify.
  * @param edges - Edges to fillet. Pass `undefined` to fillet all edges.
  * @param radius - Constant radius, variable radius `[r1, r2]`, or per-edge callback.
+ * @param options - Evolution tracking, and how chosen corners are closed.
  */
 export function fillet(
   shape: ValidSolid,
   edges: ReadonlyArray<Edge> | undefined,
   radius: number | [number, number] | ((edge: Edge) => number | [number, number] | null),
-  { trackEvolution = true }: { trackEvolution?: boolean | undefined } = {}
+  { trackEvolution = true, corners }: FilletOptions = {}
 ): Result<ValidSolid> {
   const normalized = normalizeFilletInputs(shape, edges, radius);
   if (isErr(normalized)) return normalized;
   const { filteredEdges, kernelRadius, selectedCount } = normalized.value;
 
   try {
+    if (corners && corners.length > 0) {
+      return filletWithCorners(shape, filteredEdges, kernelRadius, corners);
+    }
     const edgeShapes = filteredEdges.map((e) => e.wrapped);
 
     if (!trackEvolution) {
@@ -340,7 +430,10 @@ export function fillet(
       'Fillet result is not a 3D shape'
     ) as Result<ValidSolid>;
   } catch (e) {
-    if (isUnsupportedKernelOperationError(e)) return err(filletUnsupportedError(e));
+    if (isUnsupportedKernelOperationError(e)) {
+      const cornered = corners !== undefined && corners.length > 0;
+      return err(cornered ? filletCornersUnsupportedError(e) : filletUnsupportedError(e));
+    }
     return err(
       edgeTreatmentError('fillet', e, filteredEdges, { edgeCount: selectedCount, radius })
     );
@@ -360,6 +453,19 @@ export function filletUnsupportedError(e: unknown): BrepError {
     e,
     { kernel: kernelId, operation: 'fillet' },
     'Use a constant or linear (start, end) radius per edge'
+  );
+}
+
+/** `UNSUPPORTED_CAPABILITY` for fillet corner options on a kernel that has none. */
+function filletCornersUnsupportedError(e?: unknown): BrepError {
+  const kernelId = getKernel().kernelId;
+  const raw = e instanceof Error ? ` (${e.message})` : '';
+  return unsupportedError(
+    BrepErrorCode.UNSUPPORTED_CAPABILITY,
+    `fillet: the ${kernelId} kernel cannot set back or patch a fillet's corners${raw}`,
+    e,
+    { kernel: kernelId, operation: 'fillet' },
+    'Use the brepkit kernel with brepkit-wasm 4.10.0 or later, or drop options.corners'
   );
 }
 

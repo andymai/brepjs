@@ -802,7 +802,12 @@ export { positionOnCurve } from './topology/positionFns.js';
 
 // ── Variable-radius modifiers (functional) ──
 
-export { variableFillet, type VariableFilletRadius } from './topology/modifierFns.js';
+export {
+  variableFillet,
+  type VariableFilletRadius,
+  type FilletCorner,
+  type FilletOptions,
+} from './topology/modifierFns.js';
 
 // ── Healing (functional) ──
 

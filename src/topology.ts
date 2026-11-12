@@ -108,7 +108,12 @@ export type { ShapeEvolution } from '@/kernel/types.js';
 
 export { chamferDistAngle as chamferDistAngleShape } from './topology/chamferAngleFns.js';
 
-export { variableFillet, type VariableFilletRadius } from './topology/modifierFns.js';
+export {
+  variableFillet,
+  type VariableFilletRadius,
+  type FilletCorner,
+  type FilletOptions,
+} from './topology/modifierFns.js';
 
 // ── Curves ──
 

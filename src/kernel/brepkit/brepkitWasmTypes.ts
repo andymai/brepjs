@@ -296,7 +296,6 @@ export interface BrepkitKernel {
   /** @unwired */
   filletV2(solid: number, edgeHandles: Uint32Array | number[], radius: number): number;
 
-  /** @unwired */
   filletV2Corners(
     solid: number,
     edgeHandles: Uint32Array | number[],

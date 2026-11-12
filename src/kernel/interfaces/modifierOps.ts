@@ -23,6 +23,14 @@ export interface ChamferDistAngleEdge {
   readonly face?: KernelShape | undefined;
 }
 
+/** How the corner where three rounds meet at a vertex is closed. */
+export interface KernelFilletCorner {
+  readonly vertex: KernelShape;
+  /** How far back from the vertex the round along each edge stops. */
+  readonly setbacks?: ReadonlyArray<{ edge: KernelShape; distance: number }> | undefined;
+  readonly corner?: 'rolling' | 'g2' | undefined;
+}
+
 export interface KernelModifierOps {
   fillet(
     shape: KernelShape,
@@ -58,6 +66,13 @@ export interface KernelModifierOps {
   thicken(shape: KernelShape, thickness: number): KernelShape;
   offset(shape: KernelShape, distance: number, tolerance?: number): KernelShape;
 
+  /** Constant-radius fillet with chosen corners set back or closed by a G2 patch. */
+  filletCorners?(
+    shape: KernelShape,
+    edges: KernelShape[],
+    radius: number,
+    corners: readonly KernelFilletCorner[]
+  ): KernelShape;
   /** Variable-radius fillet. Each entry specifies edges and radii per edge. */
   filletVariable(shape: KernelShape, spec: string): KernelShape;
 
