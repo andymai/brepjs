@@ -1,0 +1,143 @@
+{
+  "kernel": "brepkit",
+  "files": {
+    "packages/brepjs-bim/tests/geometryValidity.test.ts": {
+      "tracking": "andymai/brepkit#2376",
+      "tests": [
+        "checkGeometryValidity > attaches the supplied entity label to issues",
+        "checkGeometryValidity > indexes labels when validating a list of more than one solid",
+        "checkGeometryValidity > reports a ZERO_VOLUME error for a degenerate near-zero-volume solid"
+      ]
+    },
+    "packages/brepjs-bim/tests/importedBodyItems.test.ts": {
+      "tracking": "andymai/brepkit#2375",
+      "tests": [
+        "imported Body completeness and ownership > combines every lossy mesh item into the raw mesh aggregate",
+        "imported Body completeness and ownership > reports the least faithful item for a mixed PARTIAL Body"
+      ]
+    },
+    "packages/brepjs-bim/tests/phase2Geometry.test.ts": {
+      "tracking": "andymai/brepkit#2376",
+      "tests": [
+        "Phase 2 geometry-validity gate > toIfcValidated flags a proxy built from a degenerate solid as ZERO_VOLUME"
+      ]
+    },
+    "packages/brepjs-sheetmetal/tests/author.test.ts": {
+      "tracking": "andymai/brepkit#2374",
+      "tests": [
+        "authorPart — L-bracket (base + one 90° flange) > builds a valid solid with plausible volume"
+      ]
+    },
+    "packages/brepjs-sheetmetal/tests/fold.test.ts": {
+      "tracking": "andymai/brepkit#2374",
+      "tests": [
+        "round-trip oracle (c): direct FlatInput volume invariant > up-bend: folded volume = base + flange flat + bend patch"
+      ]
+    },
+    "packages/brepjs-sheetmetal/tests/foreignUnfold.test.ts": {
+      "tracking": "andymai/brepkit#2374",
+      "tests": [
+        "fromSolid facade > detects and unfolds via the fluent facade",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > L-bracket (two perpendicular flanges)",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > U-channel (chain of two opposite flanges)",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1 (inner radius 2) > as authored > 4-sided tray",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1 (inner radius 2) > as authored > L-bracket",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1 (inner radius 2) > as authored > U-channel",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1 (inner radius 2) > as authored > single bend",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1 (inner radius 2) > placed far from the origin > 4-sided tray",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1 (inner radius 2) > placed far from the origin > L-bracket",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1 (inner radius 2) > placed far from the origin > U-channel",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1 (inner radius 2) > placed far from the origin > single bend",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1 (inner radius 2) > with merged side faces > 4-sided tray",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1 (inner radius 2) > with merged side faces > L-bracket",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1 (inner radius 2) > with merged side faces > U-channel",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1 (inner radius 2) > with merged side faces > single bend",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1.5 (inner radius 2) > as authored > 4-sided tray",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1.5 (inner radius 2) > as authored > L-bracket",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1.5 (inner radius 2) > as authored > U-channel",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1.5 (inner radius 2) > as authored > single bend",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1.5 (inner radius 2) > placed far from the origin > 4-sided tray",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1.5 (inner radius 2) > placed far from the origin > L-bracket",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1.5 (inner radius 2) > placed far from the origin > U-channel",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1.5 (inner radius 2) > placed far from the origin > single bend",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1.5 (inner radius 2) > with merged side faces > 4-sided tray",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1.5 (inner radius 2) > with merged side faces > L-bracket",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1.5 (inner radius 2) > with merged side faces > U-channel",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 1.5 (inner radius 2) > with merged side faces > single bend",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 2 (inner radius 2) > as authored > 4-sided tray",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 2 (inner radius 2) > as authored > L-bracket",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 2 (inner radius 2) > as authored > U-channel",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 2 (inner radius 2) > as authored > single bend",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 2 (inner radius 2) > placed far from the origin > 4-sided tray",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 2 (inner radius 2) > placed far from the origin > L-bracket",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 2 (inner radius 2) > placed far from the origin > U-channel",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 2 (inner radius 2) > placed far from the origin > single bend",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 2 (inner radius 2) > with merged side faces > 4-sided tray",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 2 (inner radius 2) > with merged side faces > L-bracket",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 2 (inner radius 2) > with merged side faces > U-channel",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 2 (inner radius 2) > with merged side faces > single bend",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 3 (inner radius 2) > as authored > 4-sided tray",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 3 (inner radius 2) > as authored > L-bracket",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 3 (inner radius 2) > as authored > U-channel",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 3 (inner radius 2) > as authored > single bend",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 3 (inner radius 2) > placed far from the origin > 4-sided tray",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 3 (inner radius 2) > placed far from the origin > L-bracket",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 3 (inner radius 2) > placed far from the origin > U-channel",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 3 (inner radius 2) > placed far from the origin > single bend",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 3 (inner radius 2) > with merged side faces > 4-sided tray",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 3 (inner radius 2) > with merged side faces > L-bracket",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 3 (inner radius 2) > with merged side faces > U-channel",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > at thickness 3 (inner radius 2) > with merged side faces > single bend",
+        "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > single 90° bend (one flat + one flange)",
+        "unfoldForeignSolid — bend-direction detection > detects a down-fold flange as direction \"down\"",
+        "unfoldForeignSolid — bend-direction detection > detects an up-fold flange as direction \"up\"",
+        "unfoldForeignSolid — honest scope (no silently-wrong answer) > warns instead of throwing when a bend axis crosses its flats (a flanged cup)",
+        "unfoldForeignSolid — rounded corners on parallel walls > keeps same-axis corner rounds on opposite walls from pairing into a bend",
+        "unfoldForeignSolid — thickness detection > detects the sheet thickness and reproduces a thicker part"
+      ]
+    },
+    "packages/brepjs-sheetmetal/tests/multibend.test.ts": {
+      "tracking": "andymai/brepkit#2374",
+      "tests": [
+        "down-bend > records direction \"down\", stays valid, and matches an up-bend in volume"
+      ]
+    },
+    "tests/importFns.test.ts": {
+      "tracking": "andymai/brepkit#2375",
+      "tests": [
+        "importSTL > closes a body that sits beside a loose triangle",
+        "importSTL > imports an open mesh as a sewn shell",
+        "importSTL > imports disjoint closed bodies as a compound of solids",
+        "importSTL > keeps a sealed cavity hollow",
+        "importSTL > keeps an island inside a cavity as a body of its own",
+        "importSTL > keeps an open body as a shell beside the closed ones",
+        "importSTL > keeps an outward-facing part inside another as its own body"
+      ]
+    },
+    "tests/objImport.test.ts": {
+      "tracking": "andymai/brepkit#2375",
+      "tests": ["importOBJ > imports disjoint closed bodies as a compound of solids"]
+    },
+    "tests/playgroundExamples.test.ts": {
+      "tracking": "andymai/brepkit#2372",
+      "tests": [
+        "playground examples > evaluates and meshes: button-top-battery-cell",
+        "playground examples > evaluates and meshes: fan-guard",
+        "playground examples > evaluates and meshes: flanged-tee",
+        "playground examples > evaluates and meshes: hobby-rc-servo",
+        "playground examples > evaluates and meshes: panel-fuse-holder"
+      ]
+    },
+    "tests/sketchFns.test.ts": {
+      "tracking": "andymai/brepkit#2370",
+      "tests": ["compoundSketchLoft > lofts between two compound sketches"]
+    },
+    "tests/threemfImport.test.ts": {
+      "tracking": "andymai/brepkit#2375",
+      "tests": [
+        "importThreeMF > imports each object of a multi-object model as its own solid",
+        "importThreeMF > instantiates component objects with their transforms"
+      ]
+    }
+  }
+}

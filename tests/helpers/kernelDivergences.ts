@@ -289,6 +289,41 @@ export const divergences: DivergenceMap = {
       reason:
         'Tests use raw OCCT API (oc.TopoDS_Solid) to construct null shapes; unavailable in brepkit',
     },
+    // -----------------------------------------------------------------------
+    // meshFns.test.ts, csg/csgMeshScale.test.ts
+    // -----------------------------------------------------------------------
+    'meshFns.sphereTriangleCount': {
+      kind: 'skip',
+      reason:
+        'At the scale-relative default, brepkit meshes a sphere of radius 2000 into 113412 triangles where occt-wasm makes 29086, past the 100000 bound. The count follows the deflection (157416 at 0.5, 3844 at 50), so the default does scale.',
+      since: '4.11.5',
+    },
+    // -----------------------------------------------------------------------
+    // measureFns.test.ts
+    // -----------------------------------------------------------------------
+    'measureFns.distinctEdgeLength': {
+      kind: 'not-implemented',
+      reason:
+        "brepkit's length() takes one edge, wire or face. measureLinearProps measures a face or a solid as a compound of its distinct edges, which length() rejects.",
+    },
+    // -----------------------------------------------------------------------
+    // packages/brepjs-bim/tests/familiesSampleBuilding.test.ts
+    // -----------------------------------------------------------------------
+    'familiesSampleBuilding.ifcFixture': {
+      kind: 'skip',
+      reason:
+        "The committed IFC fixture holds occt-wasm's triangulation of each body. brepkit triangulates the same faces in another vertex and triangle order, so four IFCTRIANGULATEDFACESET bodies differ.",
+    },
+    // -----------------------------------------------------------------------
+    // playgroundExamples.test.ts
+    // -----------------------------------------------------------------------
+    'playgroundExamples.benchVise': {
+      kind: 'skip',
+      reason:
+        'The bench-vise example does not return on brepkit: the worker runs at 100% CPU until it is stopped. The kernel call is synchronous, so a test timeout cannot stop it.',
+      since: '4.6.20',
+      tracking: 'andymai/brepkit#2372',
+    },
 
     // -----------------------------------------------------------------------
     // brepkitExtended.test.ts

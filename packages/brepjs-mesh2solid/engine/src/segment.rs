@@ -765,10 +765,10 @@ pub fn refit_from(
 pub fn unfit_area(mesh: &Mesh, seg: &Segmentation) -> f64 {
     let mut total = 0.0;
     let mut unfit = 0.0;
-    for t in 0..mesh.triangles.len() {
+    for (t, &region) in seg.region_of.iter().enumerate().take(mesh.triangles.len()) {
         let a = mesh.area(t);
         total += a;
-        if seg.region_of[t] == u32::MAX {
+        if region == u32::MAX {
             unfit += a;
         }
     }

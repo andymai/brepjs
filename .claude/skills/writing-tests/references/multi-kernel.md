@@ -4,12 +4,12 @@
 
 Projects are generated in `vitest.config.ts` from `kernelConfigs` in `tests/helpers/kernelRegistry.ts`. Each project sets `env: { TEST_KERNEL: <id> }`, which drives `initKernel()` and `currentKernel`.
 
-| Project     | Kernel                                                                     | Gate status                                                      | Coverage thresholds                                          |
-| ----------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------ |
-| `occt-wasm` | occt-wasm npm package (`OcctKernel.init()` + `OcctWasmAdapter.fromKernel`) | **default; the CI merge gate** (`default: true` in the registry) | `'informational'` at project level; enforced via root config |
-| `occt`      | OpenCascade.js WASM (`brepjs-opencascade`, `initFromOC`)                   | opt-in (`npm run test:occt`)                                     | own thresholds: 84/74/90/84                                  |
-| `brepkit`   | brepkit-wasm (`BrepkitAdapter`)                                            | opt-in (`npm run test:brepkit`); not run in CI                   | `'informational'`                                            |
-| `manifold`  | Manifold mesh kernel (`brepjs-manifold`)                                   | opt-in (`npx vitest run --project manifold ...`); no npm script  | `'informational'`                                            |
+| Project     | Kernel                                                                     | Gate status                                                        | Coverage thresholds                                          |
+| ----------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------ |
+| `occt-wasm` | occt-wasm npm package (`OcctKernel.init()` + `OcctWasmAdapter.fromKernel`) | **default; the CI merge gate** (`default: true` in the registry)   | `'informational'` at project level; enforced via root config |
+| `occt`      | OpenCascade.js WASM (`brepjs-opencascade`, `initFromOC`)                   | opt-in (`npm run test:occt`)                                       | own thresholds: 84/74/90/84                                  |
+| `brepkit`   | brepkit-wasm (`BrepkitAdapter`)                                            | CI `test-brepkit` job, gated by `tests/knownFailures/brepkit.json` | `'informational'`                                            |
+| `manifold`  | Manifold mesh kernel (`brepjs-manifold`)                                   | opt-in (`npx vitest run --project manifold ...`); no npm script    | `'informational'`                                            |
 
 `defaultKernelId()` in `kernelRegistry.ts` is the single source of truth for the default. If the default kernel ever changes, re-measure coverage with `npm run test:full` and re-floor the root thresholds (see the comment above `thresholds` in `vitest.config.ts`).
 

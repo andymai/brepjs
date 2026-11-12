@@ -11,7 +11,7 @@ Most failure modes are documented in inline comments in the workflow files thems
 
 ## Job map — what runs, when
 
-The single required PR check is **`ci-pass`** (`ci.yml:431-459`). It `needs` every gate job and fails if any result is `failure` or `cancelled` (a `skipped` result passes). Its needs-list: `changes, typecheck, lint, quality, build, playground-build, packages-viewer, packages-verify, packages-sheetmetal, packages-bim, voxel-wasm-rust, test, size, benchmark`. Deliberately **not** in the list: `coverage`.
+The single required PR check is **`ci-pass`** (`ci.yml:431-459`). It `needs` every gate job and fails if any result is `failure` or `cancelled` (a `skipped` result passes). Its needs-list: `changes, typecheck, lint, quality, build, playground-build, packages-viewer, packages-verify, packages-sheetmetal, packages-bim, voxel-wasm-rust, test, test-brepkit, size, benchmark`. Deliberately **not** in the list: `coverage`.
 
 The `changes` job (`ci.yml:18-67`) path-filters into three outputs — `code`, `playground`, `voxel` — that gate the rest. Branches named `release-please--*` skip the filter entirely (`ci.yml:29-36`): release PRs run no code jobs (they touch only CHANGELOG/version/manifest).
 
@@ -26,6 +26,7 @@ The `changes` job (`ci.yml:18-67`) path-filters into three outputs — `code`, `
 | `packages-verify` (brepjs-cad)             | build root+viewer+cad, then `eval`, `smoke`, `smoke:standalone`                                              | PR+push, `code`                    |
 | `voxel-wasm-rust`                          | `cargo test` + `cargo clippy -D warnings`                                                                    | PR+push, `voxel` only              |
 | `test`                                     | `test:ci --shard=N/4`, matrix `[1,2,3,4]`                                                                    | PR+push, `code`                    |
+| `test-brepkit`                             | `vitest run --project brepkit`, then `scripts/checkKernelBaseline.ts` against the known-failure list         | PR+push, `code`                    |
 | `coverage`                                 | `test:full` (maxWorkers=2, timeout 180s)                                                                     | **push-only**, `continue-on-error` |
 | `size`                                     | size-limit-action                                                                                            | **PR-only**                        |
 | `benchmark`                                | compare vs main, 25% regression threshold                                                                    | **PR-only**                        |
@@ -64,6 +65,16 @@ An unbaselined pattern violation reached main and now fails the `quality` job on
 ### `test` shard times out or stalls
 
 OCCT WASM linear memory grows monotonically across tests; a long run over-commits the 16 GB runner into swap and a fork stalls past the 90s per-test timeout (`#1102`, rationale at `ci.yml:244-250`). The 4-way shard exists precisely so each fork exits before accumulation hits that threshold. **Do not "fix" by widening the timeout.** Check whether one shard is genuinely slower (real leak / new heavy test) or just an infra blip — re-run the single shard. Coverage can't shard (vitest `--merge-reports` can't recombine v8 coverage here), which is why the `coverage` job runs single-runner with a raised timeout. Test-authoring details in the `writing-tests` skill.
+
+### `test-brepkit` fails against the known-failure list
+
+The job ignores vitest's exit code and compares the failures with `tests/knownFailures/brepkit.json`, where each file names its kernel issue. Each `::error::` line names the cause:
+
+- **new brepkit failure**: the change broke a test on brepkit only. Fix the code when brepkit is right. When brepkit differs by design, register a divergence in `tests/helpers/kernelDivergences.ts`. Only a real kernel fault goes on the list, after it is filed in andymai/brepkit.
+- **listed test no longer fails**: brepkit (usually a `brepkit-wasm` bump) or the change fixed it. Remove it by regenerating the list.
+- **listed file did not run** or **no tracking issue**: a renamed test file, or a new file on the list with `TODO` tracking.
+
+Regenerate from a full run: `npx vitest run --project brepkit --reporter=json --outputFile=brepkit-report.json`, then `npx tsx scripts/checkKernelBaseline.ts brepkit --update brepkit-report.json`. The update keeps each file's `tracking`. A hang (one example, `bench-vise`, never returns on brepkit) cannot be stopped by a test timeout, because the kernel call is synchronous. Skip it through the registry before it starts.
 
 ### `packages-verify` fails on `smoke` or `smoke:standalone`
 
@@ -117,7 +128,8 @@ Expected during a release train: while the **root** brepjs release PR (branch `r
 ## Blind spots — things CI never runs
 
 - **`alwaysExclude` tests never execute in any CI project** (`vitest.config.ts`): `tests/brepkit-adapter.test.ts`, `tests/brepkit-validation.test.ts`, `tests/kernel-agreement.test.ts`, `tests/io-stress.test.ts`, plus `benchmarks/`, the cad/viewer packages (own jobs), `apps/`, and worktree dirs. They rot silently — run them locally when touching that code.
-- **The brepkit kernel is not a PR gate**: the default gate runs occt-wasm only. Run `npm run test:brepkit` locally for brepkit-affecting changes (see `kernel-abstraction`).
+- **The `occt` and `manifold` projects never run in CI**: the gates are occt-wasm (`test`) and brepkit (`test-brepkit`). Run `npm run test:occt` or `npx vitest run --project manifold` locally when touching those adapters.
+- **`test-brepkit` skips the docs snippets**: it does not run `docs:extract-tests`, so `tests/docs/extracted.test.ts` runs on occt-wasm only.
 - **apps/playground is outside root lint + vitest**: only `tsc -b` (via `playground-build`) gates it in CI. See `playground-examples`.
 
 ## Stale docs — do not inherit
