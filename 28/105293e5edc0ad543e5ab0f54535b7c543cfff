@@ -1,0 +1,21 @@
+llms-full.txt
+  s_81e0220acef924::t_e62361a67093a8 429-430
+llms.txt
+  s_81e0220acef924::t_65b6657d5a08ef 429-430
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "28105293e5edc0ad543e5ab0f54535b7c543cfff",
+  "prompts": {},
+  "sessions": {
+    "s_81e0220acef924": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b26411a-0202-4d23-8ca5-4bfa4ebdb323",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
