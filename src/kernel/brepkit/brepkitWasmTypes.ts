@@ -424,7 +424,6 @@ export interface BrepkitKernel {
 
   untrimFace(face: number, samplesPerCurve: number, interiorSamples: number): number;
 
-  /** @unwired */
   blendSurface(
     chainA: Uint32Array | number[],
     faceA: number,
@@ -433,10 +432,8 @@ export interface BrepkitKernel {
     options: string
   ): number;
 
-  /** @unwired */
   matchSurface(face: number, edge: number, targetEdge: number, options: string): number;
 
-  /** @unwired */
   fairSurface(face: number, tolerance: number): number;
 
   // ── Topology ──────────────────────────────────────────────────

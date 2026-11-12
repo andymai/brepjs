@@ -76,6 +76,12 @@ export type {
   EdgeOnFaceOptions,
   NurbsSurfaceInput,
 } from './topology/surfaceBuilders.js';
+export { blendSurface, matchSurface, fairSurface } from './topology/surfaceBlendFns.js';
+export type {
+  BlendSurfaceOptions,
+  MatchSurfaceOptions,
+  FairSurfaceOptions,
+} from './topology/surfaceBlendFns.js';
 
 // ── Boolean operations ──
 

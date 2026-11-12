@@ -1938,6 +1938,75 @@ describe('BrepkitAdapter', () => {
     });
   });
 
+  describe('blend, match and fair surfaces', () => {
+    function surfaceKernel() {
+      let next = 700;
+      return Object.assign(createMockBrepKernel(), {
+        blendSurface: vi.fn(
+          (_a: number[], _fa: number, _b: number[], _fb: number, _options: string) => next++
+        ),
+        matchSurface: vi.fn((_f: number, _e: number, _t: number, _options: string) => next++),
+        fairSurface: vi.fn((_f: number, _tolerance: number) => next++),
+      });
+    }
+    const handles = (adapter: BrepkitAdapter) => {
+      const edge = adapter.makeLineEdge([0, 0, 0], [1, 0, 0]) as BrepkitHandle;
+      const other = adapter.makeLineEdge([0, 1, 0], [1, 1, 0]) as BrepkitHandle;
+      const face = adapter.makeFace(adapter.makeWire([edge])) as BrepkitHandle;
+      const target = adapter.makeFace(adapter.makeWire([other])) as BrepkitHandle;
+      return { edge, other, face, target };
+    };
+
+    it('sends each operation its handles and options', () => {
+      const mock = surfaceKernel();
+      const adapter = new BrepkitAdapter(mock);
+      const { edge, other, face, target } = handles(adapter);
+
+      const blend = adapter.blendSurface?.([edge], face, [other], target, {
+        continuity: 'g2',
+        weights: [1, 1.5],
+      }) as BrepkitHandle;
+      expect(blend.type).toBe('face');
+      expect(mock.blendSurface).toHaveBeenCalledExactlyOnceWith(
+        [edge.id],
+        face.id,
+        [other.id],
+        target.id,
+        JSON.stringify({ continuity: 'g2', weights: [1, 1.5] })
+      );
+
+      adapter.matchSurface?.(face, edge, other, { continuity: 'g1', targetFace: target });
+      expect(mock.matchSurface).toHaveBeenCalledExactlyOnceWith(
+        face.id,
+        edge.id,
+        other.id,
+        JSON.stringify({ continuity: 'g1', targetFace: target.id })
+      );
+
+      adapter.fairSurface?.(face, 0.05);
+      expect(mock.fairSurface).toHaveBeenCalledExactlyOnceWith(face.id, 0.05);
+    });
+
+    it('refuses each on a brepkit-wasm without the bindings', () => {
+      const adapter = new BrepkitAdapter(createMockBrepKernel());
+      const { edge, other, face, target } = handles(adapter);
+      const calls = [
+        () => adapter.blendSurface?.([edge], face, [other], target, { continuity: 'g1' }),
+        () => adapter.matchSurface?.(face, edge, other, { continuity: 'g1' }),
+        () => adapter.fairSurface?.(face, 0.05),
+      ];
+      for (const call of calls) {
+        let caught: unknown;
+        try {
+          call();
+        } catch (e) {
+          caught = e;
+        }
+        expect(isUnsupportedKernelOperationError(caught)).toBe(true);
+      }
+    });
+  });
+
   describe('fillet (variable radius)', () => {
     /**
      * A mock kernel whose probe fillet, a 10 mm cube edge rounded from 1 to 2,

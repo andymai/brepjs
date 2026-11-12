@@ -60,6 +60,30 @@ export interface KernelSurfaceOps {
   ): KernelShape;
   /** Untrim a NURBS face to its full surface domain. */
   untrimFace(face: KernelShape, samplesPerCurve: number, interiorSamples: number): KernelShape;
+  /**
+   * A face bridging two edge chains, G1 or G2 to the face beside each. Each
+   * chain lists the edges of its face in running order.
+   */
+  blendSurface?(
+    chainA: KernelShape[],
+    faceA: KernelShape,
+    chainB: KernelShape[],
+    faceB: KernelShape,
+    options: { continuity: 'g1' | 'g2'; weights?: [number, number] | undefined }
+  ): KernelShape;
+  /**
+   * A copy of a face with one boundary edge moved on to another surface's
+   * edge at G0, G1 or G2. `targetFace` names the face a solid's edge is
+   * matched to, since it bounds two.
+   */
+  matchSurface?(
+    face: KernelShape,
+    edge: KernelShape,
+    targetEdge: KernelShape,
+    options: { continuity: 'g0' | 'g1' | 'g2'; targetFace?: KernelShape | undefined }
+  ): KernelShape;
+  /** A smoothed copy of a face, within `tolerance` of it, with its boundary held. */
+  fairSurface?(face: KernelShape, tolerance: number): KernelShape;
 
   // --- Surface geometry extraction ---
   /** Extract cylinder data from a surface handle. Returns null if not a cylinder. */
