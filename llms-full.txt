@@ -361,7 +361,7 @@ const coil = spine.sweepSketch((plane, origin) =>
 ```
 
 Functional API:
-- `loft(wires, config?): Result<Shape3D>` — Loft config: `{ruled?: boolean (default true), startPoint?: PointInput, endPoint?: PointInput}`
+- `loft(wires, config?): Result<Shape3D>` — Loft config: `{ruled?: boolean (default true), startPoint?: PointInput, endPoint?: PointInput, rails?: (Edge | Wire)[], start?: LoftEndCondition, end?: LoftEndCondition}`. Rails each pass through one vertex of every profile. An end condition is `'free'`, `'normal'`, `{kind: 'normal', weight?}` or `{kind: 'tangent', face, weight?}`. Rails and end conditions need the brepkit kernel
 - `sketchLoft(sketch, otherSketches, config?, returnShell?): Shape3D`
 - `sketchSweep(sketch, sketchOnPlane, sweepConfig?): Shape3D`
 - `sketchExtrude(sketch, height, config?): Shape3D` — Functional version of `sketch.extrude()`

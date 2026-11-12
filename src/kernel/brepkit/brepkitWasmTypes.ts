@@ -76,7 +76,6 @@ export interface BrepkitKernel {
 
   makeRectangle(width: number, height: number): number;
 
-  /** @unwired */
   makePolygon(coords: Float64Array | number[]): number;
 
   /** @unwired */

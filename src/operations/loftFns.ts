@@ -5,7 +5,9 @@
 import { getKernel } from '@/kernel/index.js';
 import type { PointInput } from '@/core/types.js';
 import { toVec3 } from '@/core/types.js';
-import type { Dimension, Wire, Shape3D } from '@/core/shapeTypes.js';
+import type { Dimension, Edge, Face, Wire, Shape3D } from '@/core/shapeTypes.js';
+import type { KernelLoftEnd } from '@/kernel/interfaces/sweepOps.js';
+import { isUnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import { castResultShape, disposeResultShape, isShape3D } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import {
@@ -14,13 +16,34 @@ import {
   kernelError,
   unsupportedError,
   BrepErrorCode,
+  type BrepError,
 } from '@/core/errors.js';
-import { isUnsupportedKernelOperationError } from '@/kernel/unsupported.js';
+
+/**
+ * How a loft's surface leaves its first or last profile: `'free'` (the
+ * default), `'normal'` to the profile's plane, or `'tangent'` to a face the
+ * profile lies on. A weight scales the derivative from its natural size; a
+ * negative weight on `'tangent'` leaves on the profile's other side.
+ */
+export type LoftEndCondition =
+  | 'free'
+  | 'normal'
+  | { kind: 'normal'; weight?: number }
+  | { kind: 'tangent'; face: Face<Dimension>; weight?: number };
 
 /** Configuration for the functional loft operation. */
 export interface LoftOptions {
-  /** Use ruled (straight) interpolation between profiles. Defaults to `true`. */
+  /**
+   * Use ruled (straight) interpolation between profiles. Defaults to `true`,
+   * and to `false` with rails or an end condition, which a ruled loft cannot follow.
+   */
   ruled?: boolean;
+  /** Guide rails: edges or wires, each through one vertex of every profile. */
+  rails?: ReadonlyArray<Edge<Dimension> | Wire<Dimension>>;
+  /** How the surface leaves the first profile. Defaults to `'free'`. */
+  start?: LoftEndCondition;
+  /** How the surface leaves the last profile. Defaults to `'free'`. */
+  end?: LoftEndCondition;
   /** Optional start vertex before the first wire profile. */
   startPoint?: PointInput;
   /** Optional end vertex after the last wire profile. */
@@ -50,12 +73,14 @@ export interface LoftOptions {
  */
 export function loft(
   wires: Wire<Dimension>[],
-  { ruled = true, startPoint, endPoint, tolerance = 1e-6 }: LoftOptions = {},
+  config: LoftOptions = {},
   returnShell = false
 ): Result<Shape3D> {
+  const { ruled = true, startPoint, endPoint, tolerance = 1e-6 } = config;
   if (wires.length === 0 && !startPoint && !endPoint) {
     return err(validationError('LOFT_EMPTY', 'Loft requires at least one wire or start/end point'));
   }
+  if (isGuided(config)) return loftGuided(wires, config, returnShell);
 
   const kernel = getKernel();
 
@@ -98,6 +123,80 @@ export function loft(
         e,
         undefined,
         'Common causes: wire profiles with different edge counts, self-intersecting result, or profiles too far apart. Ensure profiles are compatible and ordered.'
+      )
+    );
+  }
+}
+
+function kernelLoftEnd(end: LoftEndCondition | undefined): KernelLoftEnd | undefined {
+  if (end === undefined || end === 'free') return undefined;
+  if (end === 'normal') return { kind: 'normal' };
+  if (end.kind === 'normal') return { kind: 'normal', weight: end.weight };
+  return { kind: 'tangent', face: end.face.wrapped, weight: end.weight };
+}
+
+function isGuided({ rails, start, end }: LoftOptions): boolean {
+  return (
+    (rails !== undefined && rails.length > 0) ||
+    kernelLoftEnd(start) !== undefined ||
+    kernelLoftEnd(end) !== undefined
+  );
+}
+
+function guidedLoftUnsupported(kernelId: string, cause?: unknown): BrepError {
+  const raw = cause instanceof Error ? ` (${cause.message})` : '';
+  return unsupportedError(
+    BrepErrorCode.UNSUPPORTED_CAPABILITY,
+    `loft: the ${kernelId} kernel cannot loft along rails or under end conditions${raw}`,
+    cause,
+    { kernel: kernelId, operation: 'loft' },
+    'Drop the rails and end conditions, or use the brepkit kernel'
+  );
+}
+
+/** Loft along rails and under end conditions, which only some kernels build. */
+function loftGuided(
+  wires: Wire<Dimension>[],
+  { ruled, rails, start, end, startPoint, endPoint, tolerance }: LoftOptions,
+  returnShell: boolean
+): Result<Shape3D> {
+  if (ruled === true || startPoint !== undefined || endPoint !== undefined) {
+    return err(
+      validationError(
+        'LOFT_GUIDED_OPTIONS',
+        'loft: rails and end conditions build a smooth surface that closes on its profiles, so they take no ruled: true, startPoint or endPoint'
+      )
+    );
+  }
+  const kernel = getKernel();
+  if (!kernel.loftGuided) return err(guidedLoftUnsupported(kernel.kernelId));
+  try {
+    const shape = kernel.loftGuided(
+      wires.map((w) => w.wrapped),
+      {
+        solid: !returnShell,
+        tolerance,
+        rails: rails?.map((r) => r.wrapped),
+        start: kernelLoftEnd(start),
+        end: kernelLoftEnd(end),
+      }
+    );
+    const result = castResultShape(shape);
+    if (!isShape3D(result)) {
+      disposeResultShape(result);
+      return err(typeCastError('LOFT_NOT_3D', 'Loft did not produce a 3D shape'));
+    }
+    return ok(result);
+  } catch (e) {
+    if (isUnsupportedKernelOperationError(e)) return err(guidedLoftUnsupported(kernel.kernelId, e));
+    const raw = e instanceof Error ? e.message : String(e);
+    return err(
+      kernelError(
+        'LOFT_FAILED',
+        `Loft operation failed: ${raw}`,
+        e,
+        { operation: 'loft' },
+        'Each rail must pass through one vertex of every profile, in profile order, and a tangent end needs its profile to lie on the face.'
       )
     );
   }

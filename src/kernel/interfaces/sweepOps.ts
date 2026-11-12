@@ -10,6 +10,11 @@
 
 import type { KernelShape, KernelType } from '@/kernel/types.js';
 
+/** How a guided loft leaves its first or last profile. */
+export type KernelLoftEnd =
+  | { kind: 'normal'; weight?: number | undefined }
+  | { kind: 'tangent'; face: KernelShape; weight?: number | undefined };
+
 export interface KernelSweepOps {
   extrude(face: KernelShape, direction: [number, number, number], length: number): KernelShape;
   revolve(shape: KernelShape, axis: KernelType, angle: number): KernelShape;
@@ -71,6 +76,21 @@ export interface KernelSweepOps {
       tolerance?: number;
       startVertex?: KernelShape;
       endVertex?: KernelShape;
+    }
+  ): KernelShape;
+
+  /**
+   * Loft through closed wires along guide rails (edges or wires, each through
+   * one vertex of every profile) and under end conditions.
+   */
+  loftGuided?(
+    wires: KernelShape[],
+    options: {
+      solid?: boolean | undefined;
+      tolerance?: number | undefined;
+      rails?: KernelShape[] | undefined;
+      start?: KernelLoftEnd | undefined;
+      end?: KernelLoftEnd | undefined;
     }
   ): KernelShape;
 

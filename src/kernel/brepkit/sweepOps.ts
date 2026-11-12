@@ -6,6 +6,7 @@
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape, KernelType } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
+import type { KernelLoftEnd } from '@/kernel/interfaces/sweepOps.js';
 import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import {
   type BrepkitHandle,
@@ -590,6 +591,81 @@ export function loftAdvanced(
   return loft(bk, wires);
 }
 
+const guidedLoftProbes = new WeakMap<BrepkitKernel, boolean>();
+
+/**
+ * brepkit-wasm before 4.11.0 drops the rail and end-condition options it does
+ * not know and returns a plain loft, and the peer range still admits those
+ * builds. A build that reads them refuses a condition on a ruled loft, which
+ * tells the two apart. The probe runs once per kernel, inside a checkpoint it
+ * restores and discards.
+ */
+function readsLoftGuides(bk: BrepkitKernel): boolean {
+  const known = guidedLoftProbes.get(bk);
+  if (known !== undefined) return known;
+  let reads = false;
+  const mark = bk.checkpoint();
+  try {
+    const square = (z: number): number => bk.makePolygon([0, 0, z, 1, 0, z, 1, 1, z, 0, 1, z]);
+    const sections = [square(0), square(1)];
+    try {
+      bk.loftWithOptions(sections, JSON.stringify({ ruled: true, start: 'normal' }));
+    } catch {
+      reads = true;
+    }
+  } catch {
+    reads = false;
+  } finally {
+    bk.restore(mark);
+    bk.discardCheckpoint(mark);
+  }
+  guidedLoftProbes.set(bk, reads);
+  return reads;
+}
+
+function loftEndOption(end: KernelLoftEnd): Record<string, unknown> {
+  const option: Record<string, unknown> = { kind: end.kind };
+  if (end.kind === 'tangent') option['face'] = unwrap(end.face, 'face');
+  if (end.weight !== undefined) option['weight'] = end.weight;
+  return option;
+}
+
+export function loftGuided(
+  bk: BrepkitKernel,
+  wires: KernelShape[],
+  options: {
+    solid?: boolean | undefined;
+    tolerance?: number | undefined;
+    rails?: KernelShape[] | undefined;
+    start?: KernelLoftEnd | undefined;
+    end?: KernelLoftEnd | undefined;
+  }
+): KernelShape {
+  if (!readsLoftGuides(bk)) {
+    throw new UnsupportedKernelOperationError(
+      'brepkit: loft rails and end conditions need brepkit-wasm 4.11.0 or later'
+    );
+  }
+  const faceIds = wires.map((w) =>
+    (w as BrepkitHandle).type === 'wire'
+      ? bk.makeFaceFromWire(unwrap(w, 'wire'))
+      : unwrap(w, 'face')
+  );
+  const rails = options.rails ?? [];
+  const opts: Record<string, unknown> = {
+    rails: rails.filter((r) => (r as BrepkitHandle).type === 'edge').map((r) => unwrap(r, 'edge')),
+    railWires: rails
+      .filter((r) => (r as BrepkitHandle).type !== 'edge')
+      .map((r) => unwrap(r, 'wire')),
+  };
+  if (options.solid !== undefined) opts['solid'] = options.solid;
+  if (options.tolerance !== undefined) opts['tolerance'] = options.tolerance;
+  if (options.start) opts['start'] = loftEndOption(options.start);
+  if (options.end) opts['end'] = loftEndOption(options.end);
+  const id = bk.loftWithOptions(faceIds, JSON.stringify(opts));
+  return options.solid === false ? shellHandle(id) : solidHandle(id);
+}
+
 export function buildExtrusionLaw(
   _bk: BrepkitKernel,
   profile: 'linear' | 's-curve',
@@ -645,6 +721,7 @@ export function makeSweepOps(bk: BrepkitKernel) {
       sweepWithOptions(bk, profile, pathEdge, contactMode, scaleValues, segments),
     sweepPipeShell: (profile, spine, options) => sweepPipeShell(bk, profile, spine, options),
     loftAdvanced: (wires, options) => loftAdvanced(bk, wires, options),
+    loftGuided: (wires, options) => loftGuided(bk, wires, options),
     buildExtrusionLaw: (profile, length, endFactor) =>
       buildExtrusionLaw(bk, profile, length, endFactor),
     draftPrism: (shape, face, baseFace, height, angleDeg, fuse) =>
@@ -661,6 +738,7 @@ export function makeSweepOps(bk: BrepkitKernel) {
     | 'sweepWithOptions'
     | 'sweepPipeShell'
     | 'loftAdvanced'
+    | 'loftGuided'
     | 'buildExtrusionLaw'
     | 'draftPrism'
   >;

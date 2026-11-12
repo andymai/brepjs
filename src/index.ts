@@ -1203,6 +1203,7 @@ export {
   loft,
   type RevolveOptions,
   type LoftOptions as CleanLoftOptions,
+  type LoftEndCondition,
   type SweepOptions as CleanSweepOptions,
 } from './operations/api.js';
 
