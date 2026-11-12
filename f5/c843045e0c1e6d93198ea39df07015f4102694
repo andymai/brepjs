@@ -1,0 +1,45 @@
+src/operations/api.ts
+  s_81e0220acef924::t_2bb823f08dfa1a 8,13,25,27,29-30,32,36-40,43,61-62,65
+tests/brepkitSplitByTools.test.ts
+  s_81e0220acef924::t_0a9ae006b32dab 1-107
+llms-full.txt
+  s_81e0220acef924::t_c1ad7f4f65ba51 129
+src/kernel/brepkit/brepkitWasmTypes.ts
+  s_81e0220acef924::t_9ea5cf50553329 5,191-198,276-292,300-307,428-442,658,660,662,664,666,668,821,826-828,994,997,1000
+src/kernel/brepkit/sweepOps.ts
+  s_81e0220acef924::t_9f117d4e68a86b 10-18,25-47,54-58,74,86-100,212-215,478-486,520-531
+package-lock.json
+  s_81e0220acef924::t_bc3440280339ab 47,7622-7624
+src/operations/extrudeFns.ts
+  s_81e0220acef924::t_cf09db2dbcec47 11-18,25-26,46-48,50-51,53,57-61,73-78,98-100,107
+scripts/sync-brepkit-types.ts
+  s_81e0220acef924::t_e8c0460d3ce035 50-52,223-233,253-256,264,300-308
+package.json
+  s_81e0220acef924::t_c793ad3b2fd7ef 279
+src/kernel/brepkit/booleanOps.ts
+  s_81e0220acef924::t_1a99d19a7a2e13 32,367-397,400-405,407-410
+llms.txt
+  s_81e0220acef924::t_26e7cd6197e668 129
+tests/openWireSheets.test.ts
+  s_81e0220acef924::t_649b2f0f87123a 1-82
+src/operations/sweepFns.ts
+  s_81e0220acef924::t_44c7fc40dde376 152,161,168,175,181
+.size-limit.json
+  s_81e0220acef924::t_28bb2bcb8eb54c 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f5c843045e0c1e6d93198ea39df07015f4102694",
+  "prompts": {},
+  "sessions": {
+    "s_81e0220acef924": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b26411a-0202-4d23-8ca5-4bfa4ebdb323",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
