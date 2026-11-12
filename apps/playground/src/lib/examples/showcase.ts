@@ -9,7 +9,7 @@ export const SHOWCASE_EXAMPLES: readonly Example[] = [
     id: 'turbofan-engine',
     label: 'Turbofan Jet Engine (cutaway)',
     description:
-      'A two-spool high-bypass turbofan in cutaway: nacelle, 20-blade fan, booster, 7-stage high-pressure compressor, annular combustor, high- and low-pressure turbines and exhaust plug. More than 1,400 spline-lofted aerofoils, with the casings opened by a boolean cut.',
+      'A two-spool high-bypass turbofan in cutaway: nacelle, 20-blade fan, booster, 9-stage high-pressure compressor, annular combustor, high- and low-pressure turbines, rear frame and exhaust plug. A display model, not an engineered design. More than 1,800 spline-lofted aerofoils, with the casings opened by a boolean cut.',
     code: `import {
   compound,
   cut,
@@ -108,7 +108,7 @@ const bladeRow = (row: Row): Shape[] => {
   return Array.from({ length: row.count }, (_, i) => rotate(blade, (360 * i) / row.count, { axis: [0, 0, 1] }) as Shape);
 };
 
-function turbofan({ fanBlades = 20, fanRadius = 100, hpcStages = 7, lptStages = 4, cutaway = 130 }: TurbofanParams = {}) {
+function turbofan({ fanBlades = 20, fanRadius = 100, hpcStages = 9, lptStages = 4, cutaway = 130 }: TurbofanParams = {}) {
   const grow = fanRadius - 100; // extra fan radius goes straight into the bypass duct
 
   // Core gas path: inner (hub) and outer (casing) radius along the axis.
@@ -148,16 +148,21 @@ function turbofan({ fanBlades = 20, fanRadius = 100, hpcStages = 7, lptStages = 
   const stators: Shape[] = [];
   const lpCore: Shape[] = [];
   const hpSpool: Shape[] = [];
+  // Both spools turn clockwise seen from the front, so every rotor row staggers one way and every
+  // stator row the other. A turbine row keeps that stagger and reverses the camber: a compressor
+  // blade pushes the air with its concave side, a turbine blade is pushed on its concave side.
   const stage = (rotor: Shape[], z: number, pitch: number, chord: number, count: number, turbine: boolean) => {
     const zs = z + pitch / 2;
-    const s = turbine ? -1 : 1;
-    rotor.push(...bladeRow({ z: turbine ? zs : z, chord, count, rRoot: rHub(z) - 1, rTip: rCase(z) - 0.2, stagger: [s * 22, s * 50], camber: turbine ? -0.16 : 0.08, thick: 0.1 }));
-    stators.push(...bladeRow({ z: turbine ? z : zs, chord: chord * 0.9, count: count + 6, rRoot: rHub(zs) + 0.7, rTip: rCase(zs) + 1.2, stagger: [-s * 16, -s * 30], camber: turbine ? 0.16 : -0.08, thick: 0.09 }));
+    rotor.push(...bladeRow({ z: turbine ? zs : z, chord, count, rRoot: rHub(z) - 1, rTip: rCase(z) - 0.2, stagger: turbine ? [28, 48] : [22, 50], camber: turbine ? -0.18 : 0.08, thick: 0.1 }));
+    stators.push(...bladeRow({ z: turbine ? z : zs, chord: chord * 0.9, count: count + 6, rRoot: rHub(zs) + 0.7, rTip: rCase(zs) + 1.2, stagger: turbine ? [-38, -48] : [-16, -30], camber: turbine ? 0.18 : -0.08, thick: 0.09 }));
   };
   for (let i = 0; i < 3; i++) stage(lpCore, 62 + i * 15, 15, 6.5, 38 + 2 * i, false);
   for (let i = 0; i < hpcStages; i++) stage(hpSpool, 132 + i * 12.4, 12.4, 5.2 - 0.18 * i, 34 + 3 * i, false);
   for (let i = 0; i < 2; i++) stage(hpSpool, burnEnd + 2 + i * 13, 13, 5.6, 44 + 6 * i, true);
   for (let i = 0; i < lptStages; i++) stage(lpCore, hptEnd + 9 + i * 16.5, 16.5, 7.2, 50 + 4 * i, true);
+
+  // Turbine rear frame: thick struts that carry the rear bearing and straighten the core flow.
+  stators.push(...bladeRow({ z: lptEnd + 13, chord: 15, count: 10, rRoot: 20, rTip: rCase(lptEnd) - 1.5, stagger: [0, 0], camber: 0, thick: 0.2, taper: 1 }));
 
   // Outlet guide vanes carry the fan case on the core.
   stators.push(...bladeRow({ z: 92, chord: 22, count: 34, rRoot: 54, rTip: 104 + grow, stagger: [-18, -8], camber: -0.07, thick: 0.07, taper: 1 }));
