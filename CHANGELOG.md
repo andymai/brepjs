@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.21.1](https://github.com/andymai/brepjs/compare/brepjs-v20.21.0...brepjs-v20.21.1) (2026-11-12)
+
+
+### Bug Fixes
+
+* **brepkit:** bump brepkit-wasm to 4.11.5 for the IGES terminate line ([#2625](https://github.com/andymai/brepjs/issues/2625)) ([e9a744c](https://github.com/andymai/brepjs/commit/e9a744ceb1b57b384fe189050e8daaa76f029891))
+
 ## [20.21.0](https://github.com/andymai/brepjs/compare/brepjs-v20.20.0...brepjs-v20.21.0) (2026-11-12)
 
 
