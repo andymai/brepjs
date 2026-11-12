@@ -426,7 +426,8 @@ import { fillet, chamfer, getEdges, edgeFinder, unwrap } from 'brepjs';
 // Fillet all edges — returns Result<Shape3D>
 const rounded = unwrap(fillet(myBox, getEdges(myBox), 2));
 // brepkit kernel: set a corner back along its rounds, or close it with a G2 patch
-// fillet(myBox, edges, 2, { corners: [{ vertex, setbacks: [{ edge, distance: 3 }], corner: 'g2' }] })
+// `edges` are the three edges that meet at `vertex`, and each one needs a set-back
+// fillet(myBox, edges, 2, { corners: [{ vertex, setbacks: edges.map((edge) => ({ edge, distance: 3 })), corner: 'g2' }] })
 
 // Fillet specific edges using edgeFinder
 const selective = unwrap(fillet(myBox, edgeFinder().ofLength(20).findAll(myBox), 2));
