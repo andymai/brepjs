@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.21.0](https://github.com/andymai/brepjs/compare/brepjs-v20.20.0...brepjs-v20.21.0) (2026-11-12)
+
+
+### Features
+
+* **topology:** set a fillet's corners back or close them with a G2 patch ([#2621](https://github.com/andymai/brepjs/issues/2621)) ([8369d9b](https://github.com/andymai/brepjs/commit/8369d9bba5a42e88e58bb717d61d1c2dfbcf8fe5))
+
 ## [20.20.0](https://github.com/andymai/brepjs/compare/brepjs-v20.19.0...brepjs-v20.20.0) (2026-11-12)
 
 
