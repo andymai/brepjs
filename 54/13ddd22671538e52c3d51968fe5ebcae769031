@@ -1,0 +1,23 @@
+scripts/sync-brepkit-types.ts
+  s_81e0220acef924::t_ae7376ba7d9d07 411
+src/kernel/brepkit/brepkitWasmTypes.ts
+  s_81e0220acef924::t_d465315c7dd76b 648-649
+src/kernel/brepkit/ioOps.ts
+  s_81e0220acef924::t_b36f7daa515843 73-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5413ddd22671538e52c3d51968fe5ebcae769031",
+  "prompts": {},
+  "sessions": {
+    "s_81e0220acef924": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b26411a-0202-4d23-8ca5-4bfa4ebdb323",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
