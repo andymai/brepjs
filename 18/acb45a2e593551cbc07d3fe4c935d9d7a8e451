@@ -1,0 +1,35 @@
+src/operations/loftFns.ts
+  s_81e0220acef924::t_8af40223e1f97b 8-10,13-32,36-39,41-46,76,79,83,121-193
+tests/loftGuided.test.ts
+  s_81e0220acef924::t_32cad7a2b30712 1-141
+llms.txt
+  s_81e0220acef924::t_1eb61c30059564 364
+src/index.ts
+  s_81e0220acef924::t_6e454da08e5b9f 1206
+src/kernel/brepkit/sweepOps.ts
+  s_81e0220acef924::t_71d45477f9ac82 9,575-647,703,720
+src/operations/api.ts
+  s_81e0220acef924::t_43bf9a23ee7e6e 17
+.size-limit.json
+  s_81e0220acef924::t_28bb2bcb8eb54c 2
+src/kernel/interfaces/sweepOps.ts
+  s_81e0220acef924::t_02bbfda4ab8e64 13-17,82-95
+llms-full.txt
+  s_81e0220acef924::t_126dd081cb0ea0 364
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "18acb45a2e593551cbc07d3fe4c935d9d7a8e451",
+  "prompts": {},
+  "sessions": {
+    "s_81e0220acef924": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b26411a-0202-4d23-8ca5-4bfa4ebdb323",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
