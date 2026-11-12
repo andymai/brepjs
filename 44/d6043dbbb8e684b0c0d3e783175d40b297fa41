@@ -1,0 +1,19 @@
+src/kernel/brepkit/sweepOps.ts
+  s_81e0220acef924::t_602f447b6df531 25-27,35,39-44,47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "44d6043dbbb8e684b0c0d3e783175d40b297fa41",
+  "prompts": {},
+  "sessions": {
+    "s_81e0220acef924": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b26411a-0202-4d23-8ca5-4bfa4ebdb323",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
