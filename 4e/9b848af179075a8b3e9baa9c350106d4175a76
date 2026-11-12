@@ -1,0 +1,27 @@
+tests/kernelBaseline.test.ts
+  s_801143a7156085::t_c8bfb6ab226d09 1-106
+  s_801143a7156085::t_42e0334f0249de 107-110
+scripts/checkKernelBaseline.ts
+  s_801143a7156085::t_a231e059748816 24-30,38-39,48-49,52-56
+  s_801143a7156085::t_9b9f421171213d 57-58,62
+scripts/lib/kernelBaseline.ts
+  s_801143a7156085::t_9edd57f8cfe5b2 1-89
+tests/knownFailures/brepkit.json
+  s_801143a7156085::t_5686f62e11a32a 28,41-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4e9b848af179075a8b3e9baa9c350106d4175a76",
+  "prompts": {},
+  "sessions": {
+    "s_801143a7156085": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ffa0771d-6aae-4d46-89e9-fe7aa6a6c68a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
