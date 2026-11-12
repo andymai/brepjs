@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.19.0](https://github.com/andymai/brepjs/compare/brepjs-v20.18.1...brepjs-v20.19.0) (2026-11-12)
+
+
+### Features
+
+* **operations:** loft along guide rails and under end conditions ([#2618](https://github.com/andymai/brepjs/issues/2618)) ([8ce3995](https://github.com/andymai/brepjs/commit/8ce399566d8015157fdce383678af7602003b6ce))
+
 ## [20.18.1](https://github.com/andymai/brepjs/compare/brepjs-v20.18.0...brepjs-v20.18.1) (2026-11-12)
 
 
