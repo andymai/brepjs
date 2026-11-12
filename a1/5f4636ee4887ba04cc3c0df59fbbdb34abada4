@@ -1,0 +1,21 @@
+src/topology/modifierFns.ts
+  s_81e0220acef924::t_ccff950525e78b 363,433-436,459-471
+tests/filletCorners.test.ts
+  s_81e0220acef924::t_353b042069ecc4 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a15f4636ee4887ba04cc3c0df59fbbdb34abada4",
+  "prompts": {},
+  "sessions": {
+    "s_81e0220acef924": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b26411a-0202-4d23-8ca5-4bfa4ebdb323",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
