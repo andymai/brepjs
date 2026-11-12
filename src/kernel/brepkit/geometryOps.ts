@@ -12,6 +12,7 @@ import type {
   SurfaceType,
 } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import {
   type BrepkitHandle,
   isBrepkitHandle,
@@ -360,6 +361,60 @@ export function untrimFace(
   return faceHandle(bk.untrimFace(faceId, samplesPerCurve, interiorSamples));
 }
 
+/** The blend, match and fair bindings arrive together in brepkit-wasm 4.10.0. */
+function needSurfaceBlends(bk: BrepkitKernel, op: string): void {
+  if (typeof bk.blendSurface !== 'function') {
+    throw new UnsupportedKernelOperationError(`brepkit: ${op} needs brepkit-wasm 4.10.0 or later`);
+  }
+}
+
+export function blendSurface(
+  bk: BrepkitKernel,
+  chainA: KernelShape[],
+  faceA: KernelShape,
+  chainB: KernelShape[],
+  faceB: KernelShape,
+  options: { continuity: 'g1' | 'g2'; weights?: [number, number] | undefined }
+): KernelShape {
+  needSurfaceBlends(bk, 'blendSurface');
+  const opts: Record<string, unknown> = { continuity: options.continuity };
+  if (options.weights) opts['weights'] = options.weights;
+  return faceHandle(
+    bk.blendSurface(
+      chainA.map((e) => unwrap(e, 'edge')),
+      unwrap(faceA, 'face'),
+      chainB.map((e) => unwrap(e, 'edge')),
+      unwrap(faceB, 'face'),
+      JSON.stringify(opts)
+    )
+  );
+}
+
+export function matchSurface(
+  bk: BrepkitKernel,
+  face: KernelShape,
+  edge: KernelShape,
+  targetEdge: KernelShape,
+  options: { continuity: 'g0' | 'g1' | 'g2'; targetFace?: KernelShape | undefined }
+): KernelShape {
+  needSurfaceBlends(bk, 'matchSurface');
+  const opts: Record<string, unknown> = { continuity: options.continuity };
+  if (options.targetFace) opts['targetFace'] = unwrap(options.targetFace, 'face');
+  return faceHandle(
+    bk.matchSurface(
+      unwrap(face, 'face'),
+      unwrap(edge, 'edge'),
+      unwrap(targetEdge, 'edge'),
+      JSON.stringify(opts)
+    )
+  );
+}
+
+export function fairSurface(bk: BrepkitKernel, face: KernelShape, tolerance: number): KernelShape {
+  needSurfaceBlends(bk, 'fairSurface');
+  return faceHandle(bk.fairSurface(unwrap(face, 'face'), tolerance));
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // Curve adaptor & Bezier extraction
 // ═══════════════════════════════════════════════════════════════════════
@@ -706,6 +761,11 @@ export function makeGeometryOps(bk: BrepkitKernel) {
       approximateSurfaceLspia(bk, coords, rows, cols, degU, degV, cpsU, cpsV, tol, maxIter),
     untrimFace: (face, samplesPerCurve, interiorSamples) =>
       untrimFace(bk, face, samplesPerCurve, interiorSamples),
+    blendSurface: (chainA, faceA, chainB, faceB, options) =>
+      blendSurface(bk, chainA, faceA, chainB, faceB, options),
+    matchSurface: (face, edge, targetEdge, options) =>
+      matchSurface(bk, face, edge, targetEdge, options),
+    fairSurface: (face, tolerance) => fairSurface(bk, face, tolerance),
     createCurveAdaptor: (shape) => createCurveAdaptor(bk, shape),
     getBezierPenultimatePole: (edge) => getBezierPenultimatePole(bk, edge),
     getSurfaceCylinderData: (surface) => getSurfaceCylinderData(bk, surface),
@@ -746,6 +806,9 @@ export function makeGeometryOps(bk: BrepkitKernel) {
     | 'curveSplit'
     | 'approximateSurfaceLspia'
     | 'untrimFace'
+    | 'blendSurface'
+    | 'matchSurface'
+    | 'fairSurface'
     | 'createCurveAdaptor'
     | 'getBezierPenultimatePole'
     | 'getSurfaceCylinderData'
