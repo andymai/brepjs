@@ -492,6 +492,11 @@ export function sweepPipeShell(
         'brepkit: an open profile sweeps into a shell with no start and end wires for shell mode'
       );
     }
+    if (options?.['frenet']) {
+      throw new UnsupportedKernelOperationError(
+        'brepkit: an open profile sweeps in rotation-minimizing frames, with no Frenet framing'
+      );
+    }
     const pathEdges = iterShapes(bk, spine, 'edge').map((e) => unwrap(e, 'edge'));
     return shellHandle(bk.sweepWire(profileHandle.id, pathEdges));
   }

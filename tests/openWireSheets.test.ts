@@ -72,11 +72,23 @@ sheets('sheets from open wires', () => {
     expect(isErr(loft([a, b, c], { ruled: false }))).toBe(true);
   });
 
-  it.runIf(isBrepkit)('reports shell mode on an open profile as unsupported', () => {
+  it.runIf(isBrepkit)(
+    'reports shell mode and Frenet framing on an open profile as unsupported',
+    () => {
+      using w = profile();
+      using spine = lineWire([0, 0, 0], [0, 0, 30]);
+      expect(unwrapErr(sweep(w, spine, undefined, true)).code).toBe('UNSUPPORTED_CAPABILITY');
+      expect(unwrapErr(sweep(w, spine, { frenet: true })).code).toBe('UNSUPPORTED_CAPABILITY');
+    }
+  );
+
+  it.runIf(isBrepkit)('returns an error for an open profile along a spine with a corner', () => {
     using w = profile();
-    using spine = lineWire([0, 0, 0], [0, 0, 30]);
-    const error = unwrapErr(sweep(w, spine, undefined, true));
-    expect(error.code).toBe('UNSUPPORTED_CAPABILITY');
+    using up = line([0, 0, 0], [0, 0, 30]);
+    using over = line([0, 0, 30], [0, 30, 30]);
+    using spine = unwrap(wire([up, over]));
+    expect(unwrapErr(sweep(w, spine)).code).toBe('SWEEP_FAILED');
+    expect(unwrapErr(sweep(w, spine, { mode: 'simple' })).code).toBe('SWEEP_FAILED');
   });
 
   it('sweeps an open wire along a line into a shell', () => {

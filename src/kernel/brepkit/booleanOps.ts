@@ -410,10 +410,13 @@ export function split(bk: BrepkitKernel, shape: KernelShape, tools: KernelShape[
     return compoundHandle(bk.makeCompound(splitByPlane(bk, solidId, first)));
   }
 
+  // Faces cut first: an edge that ends on a cut divides a face of its piece,
+  // and divides nothing on the uncut body, where the kernel leaves it out.
   const { faceIds, edgeIds } = splitToolIds(bk, tools);
-  const marked = edgeIds.length > 0 ? bk.imprintFaces(solidId, [], edgeIds) : solidId;
-  const pieces = faceIds.length > 0 ? toArray(bk.splitByFaces(marked, faceIds)) : [marked];
-  return compoundHandle(bk.makeCompound(pieces));
+  const pieces = faceIds.length > 0 ? toArray(bk.splitByFaces(solidId, faceIds)) : [solidId];
+  const marked =
+    edgeIds.length > 0 ? pieces.map((piece) => bk.imprintFaces(piece, [], edgeIds)) : pieces;
+  return compoundHandle(bk.makeCompound(marked));
 }
 
 export function meshBoolean(

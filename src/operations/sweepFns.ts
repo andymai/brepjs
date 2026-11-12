@@ -143,6 +143,16 @@ function sweepUnsupportedError(kernelId: string, e: unknown): BrepError {
   );
 }
 
+/** The error for a sweep the kernel refused as unsupported, or failed to build. */
+function sweepError(kernelId: string, e: unknown): BrepError {
+  if (isUnsupportedKernelOperationError(e)) return sweepUnsupportedError(kernelId, e);
+  const raw = e instanceof Error ? e.message : String(e);
+  return kernelError('SWEEP_FAILED', `Sweep operation failed: ${raw}`, e, {
+    operation: 'sweep',
+    kernel: kernelId,
+  });
+}
+
 /**
  * Sweep a wire profile along a spine wire to create a 3D shape.
  *
@@ -192,6 +202,8 @@ export function sweep(
     let resultOc: KernelShape;
     try {
       resultOc = kernel.simplePipe(profileFace ?? wire.wrapped, spine.wrapped);
+    } catch (e) {
+      return err(sweepError(kernel.kernelId, e));
     } finally {
       if (profileFace) kernel.dispose(profileFace);
     }
@@ -239,8 +251,7 @@ export function sweep(
       maxSegments,
     });
   } catch (e) {
-    if (!isUnsupportedKernelOperationError(e)) throw e;
-    return err(sweepUnsupportedError(kernel.kernelId, e));
+    return err(sweepError(kernel.kernelId, e));
   }
 
   if (shellMode && typeof result === 'object' && 'firstShape' in result) {

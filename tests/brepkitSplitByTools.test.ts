@@ -98,6 +98,14 @@ descBk('brepkit split by faces and edges', () => {
     expect(got.map((g) => g[1]).sort()).toEqual([6, 7]);
   });
 
+  it('marks a piece with an edge that runs from its rim to the cut', () => {
+    using across = standing(-1, 11);
+    using mark = line([0, -10, 10], [0, 0, 10]);
+    const got = pieces([across, mark]);
+    expect(got.map((g) => g[0]).reduce((a, b) => a + b, 0)).toBeCloseTo(4000, 6);
+    expect(got.map((g) => g[1]).sort()).toEqual([6, 7]);
+  });
+
   it('marks with an edge grouped in a compound', () => {
     using mark = line([-10, 0, 10], [10, 0, 10]);
     using group = compound([mark]);
