@@ -1,0 +1,73 @@
+tests/playgroundExamples.test.ts
+  s_801143a7156085::t_5bcf6d74954cba 34
+  s_801143a7156085::t_6b067d300b9e63 70
+  s_801143a7156085::t_bb3a1a2323a4d2 14,20-23
+  s_7dc03ec4cfdd4b::t_3751234f30beea 24
+tests/helpers/kernelDivergences.ts
+  s_801143a7156085::t_bc4088335642db 293-317
+  s_801143a7156085::t_882b1000f13ad7 292,318-326
+packages/brepjs-bim/tests/familiesSampleBuilding.test.ts
+  s_801143a7156085::t_e9d651c089eca3 124-125
+  s_801143a7156085::t_a7233668c421c4 14
+tests/meshFns.test.ts
+  s_801143a7156085::t_b3ebf67a4735d3 170-171
+  s_801143a7156085::t_cfe27f9bbdda71 122-123
+scripts/checkKernelBaseline.ts
+  s_801143a7156085::t_b432eb8d5b6b3d 64,71-76,84-86
+  s_801143a7156085::t_e05a54403c398d 4-5,8-10,12-19,42,52-53,55,61-63,65-66,69-70,77-83,87-110,116,118-119,127-128,130-131,135-138,141,143-147
+  s_801143a7156085::t_fc8278f3e1ea4e 1-3,6-7,11,20-41,43-51,54,56-60,67-68,111-115,117,120-126,129,132-134,139-140,142,148-152
+tests/brepkitExtended.test.ts
+  s_801143a7156085::t_15122af2490f02 161-174,177-179
+  s_801143a7156085::t_cff67a88ed0a90 176
+.claude/skills/writing-tests/references/multi-kernel.md
+  s_801143a7156085::t_ec8b58221c9ea9 7-10,12
+  s_801143a7156085::t_d1110aa5517ebc 11
+packages/brepjs-bim/tests/exactProductBodyTakeover.test.ts
+  s_801143a7156085::t_cb2f995104e8c8 336-337
+docs/kernel-conformance.md
+  s_801143a7156085::t_ec8b58221c9ea9 79,89,99,120
+  s_801143a7156085::t_0b5f619e134403 3
+tests/measureFns.test.ts
+  s_801143a7156085::t_e9f1b1d13cb592 289-290
+  s_801143a7156085::t_f74ed13a11ccc2 302-303
+tests/csg/csgMeshScale.test.ts
+  s_801143a7156085::t_dfe7f4b389e81e 25-26
+  s_801143a7156085::t_48748ffffbdc97 12
+tests/knownFailures/brepkit.json
+  s_801143a7156085::t_b432eb8d5b6b3d 119,133
+  s_801143a7156085::t_811c4372c13514 1-118,120-132,134-143
+.claude/skills/ci-triage/SKILL.md
+  s_801143a7156085::t_a4aa17fc57680f 69-78
+  s_801143a7156085::t_3f10191d364cb2 29
+  s_801143a7156085::t_334dbdecbf4026 131-132
+  s_801143a7156085::t_9991d28dc1135f 14
+CLAUDE.md
+  s_801143a7156085::t_9c8470466d8a66 62
+.github/workflows/ci.yml
+  s_801143a7156085::t_fb7928c8fd1686 421-438
+  s_801143a7156085::t_2c30856142faa4 679
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "911da661a7a08ed8efcf64b137abd122483416a5",
+  "prompts": {},
+  "sessions": {
+    "s_7dc03ec4cfdd4b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e1971db-3144-4b89-9c8a-56a37ed47e41",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    },
+    "s_801143a7156085": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ffa0771d-6aae-4d46-89e9-fe7aa6a6c68a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
