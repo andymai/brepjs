@@ -99,7 +99,7 @@ sheets('sheets from open wires', () => {
     expect(unwrap(measureArea(sheet))).toBeCloseTo(30 * length, 6);
   });
 
-  it.runIf(isBrepkit)('pipes an open wire along a line into a shell', () => {
+  it('pipes an open wire along a line into a shell', () => {
     using w = profile();
     using spine = lineWire([0, 0, 0], [0, 0, 30]);
     using sheet = unwrap(sweep(w, spine, { mode: 'simple' }));

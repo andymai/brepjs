@@ -11,6 +11,7 @@ import type { KernelShape, KernelType } from '@/kernel/types.js';
 import type { Vec3 } from '@/core/types.js';
 import { vecAdd, vecLength } from '@/core/vecOps.js';
 import type { ClosedWire, Dimension, Wire, Shell, Solid, Shape3D } from '@/core/shapeTypes.js';
+import { isClosedWire } from '@/core/validityTypes.js';
 import {
   castResultShape,
   disposeResultShape,
@@ -197,8 +198,9 @@ export function sweep(
   if (config.mode === 'simple' && !shellMode) {
     const kernel = getKernel();
     // MakePipe turns a wire profile into an open tube; piping the profile's face
-    // gives the capped solid. A non-planar profile has no face and stays a tube.
-    const profileFace = planarFaceOf(wire);
+    // gives the capped solid. A non-planar profile has no face and stays a tube,
+    // and an open profile bounds no face and makes a sheet.
+    const profileFace = isClosedWire(wire) ? planarFaceOf(wire) : null;
     let resultOc: KernelShape;
     try {
       resultOc = kernel.simplePipe(profileFace ?? wire.wrapped, spine.wrapped);
