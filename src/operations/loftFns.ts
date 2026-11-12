@@ -136,11 +136,9 @@ function kernelLoftEnd(end: LoftEndCondition | undefined): KernelLoftEnd | undef
 }
 
 function isGuided({ rails, start, end }: LoftOptions): boolean {
-  return (
-    (rails !== undefined && rails.length > 0) ||
-    kernelLoftEnd(start) !== undefined ||
-    kernelLoftEnd(end) !== undefined
-  );
+  const set = (condition: LoftEndCondition | undefined): boolean =>
+    condition !== undefined && condition !== 'free';
+  return (rails !== undefined && rails.length > 0) || set(start) || set(end);
 }
 
 function guidedLoftUnsupported(kernelId: string, cause?: unknown): BrepError {

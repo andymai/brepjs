@@ -3,6 +3,7 @@ import { initKernel } from './setup.js';
 import {
   bezier,
   DisposalScope,
+  isErr,
   line,
   loft,
   measureVolume,
@@ -56,6 +57,21 @@ describe('loft rails and end conditions', () => {
     using b = square(5, 10);
     const error = unwrapErr(loft([a, b], { start: 'normal' }));
     expect(error.code).toBe('UNSUPPORTED_CAPABILITY');
+  });
+
+  it('returns an error for a tangent face that is disposed', () => {
+    using a = square(10, 0);
+    using b = square(5, 10);
+    const ground = unwrap(
+      polygon([
+        [-50, -50, 0],
+        [50, -50, 0],
+        [50, 50, 0],
+        [-50, 50, 0],
+      ])
+    );
+    ground[Symbol.dispose]();
+    expect(isErr(loft([a, b], { start: { kind: 'tangent', face: ground } }))).toBe(true);
   });
 
   it('refuses a ruled loft or an end point along with them', () => {

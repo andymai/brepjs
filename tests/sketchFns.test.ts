@@ -188,7 +188,12 @@ describe('compoundSketchLoft with loft guides', () => {
       { end: 'normal' as const },
     ]) {
       const [low, high] = pair();
-      expect(() => compoundSketchLoft(low, high, config)).toThrow(/rails or end conditions/);
+      try {
+        expect(() => compoundSketchLoft(low, high, config)).toThrow(/rails or end conditions/);
+      } finally {
+        low.delete();
+        high.delete();
+      }
     }
   });
 });
