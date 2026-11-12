@@ -29,6 +29,7 @@ import {
   syntheticCompounds,
 } from './helpers.js';
 import { extractPlaneFromFace } from './internalOps.js';
+import { iterShapes } from './topologyOps.js';
 import { isValid as _isValid } from './repairOps.js';
 import { wasmIndex } from '@/utils/vec3.js';
 
@@ -363,14 +364,50 @@ export function cutAll(
   }
 }
 
+/** The face and edge ids a set of split tools holds, each once. */
+function splitToolIds(
+  bk: BrepkitKernel,
+  tools: KernelShape[]
+): { faceIds: number[]; edgeIds: number[] } {
+  const faceIds = new Set<number>();
+  const edgeIds = new Set<number>();
+  for (const tool of tools) {
+    const type = (tool as BrepkitHandle).type;
+    if (type === 'edge' || type === 'wire') {
+      for (const e of iterShapes(bk, tool, 'edge')) edgeIds.add(unwrap(e, 'edge'));
+    } else if (type === 'vertex') {
+      throw new Error('brepkit: split takes faces, edges and wires as tools, not a vertex');
+    } else {
+      for (const f of iterShapes(bk, tool, 'face')) faceIds.add(unwrap(f, 'face'));
+    }
+  }
+  return { faceIds: [...faceIds], edgeIds: [...edgeIds] };
+}
+
+/** Split by the whole plane of the first tool: all a kernel before 4.9.0 can do. */
+function splitByPlane(bk: BrepkitKernel, solidId: number, tool: KernelShape): number[] {
+  const { point, normal } = extractPlaneFromFace(bk, tool);
+  return toArray(bk.split(solidId, point[0], point[1], point[2], normal[0], normal[1], normal[2]));
+}
+
+/**
+ * A solid in the pieces its tools separate it into. A tool that walls nothing
+ * off marks the faces it meets instead, so the result may be one solid with a
+ * face split.
+ */
 export function split(bk: BrepkitKernel, shape: KernelShape, tools: KernelShape[]): KernelShape {
   if (tools.length === 0) throw new Error('brepkit: split requires at least one tool');
-  const { point, normal } = extractPlaneFromFace(bk, tools[0]);
+  const solidId = unwrap(shape, 'solid');
+  const first = tools[0];
+  if (typeof bk.splitByFaces !== 'function' || typeof bk.imprintFaces !== 'function') {
+    if (first === undefined) throw new Error('brepkit: split requires at least one tool');
+    return compoundHandle(bk.makeCompound(splitByPlane(bk, solidId, first)));
+  }
 
-  const result = toArray(
-    bk.split(unwrap(shape, 'solid'), point[0], point[1], point[2], normal[0], normal[1], normal[2])
-  );
-  return compoundHandle(bk.makeCompound(result));
+  const { faceIds, edgeIds } = splitToolIds(bk, tools);
+  const marked = edgeIds.length > 0 ? bk.imprintFaces(solidId, [], edgeIds) : solidId;
+  const pieces = faceIds.length > 0 ? toArray(bk.splitByFaces(marked, faceIds)) : [marked];
+  return compoundHandle(bk.makeCompound(pieces));
 }
 
 export function meshBoolean(

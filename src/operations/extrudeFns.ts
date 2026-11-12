@@ -8,13 +8,22 @@
 import { getKernel } from '@/kernel/index.js';
 import type { Vec3 } from '@/core/types.js';
 import { vecLength, vecNormalize } from '@/core/vecOps.js';
-import type { Dimension, OrientedFace, Shape3D, ValidSolid } from '@/core/shapeTypes.js';
+import type {
+  Dimension,
+  OrientedFace,
+  Shape3D,
+  Shell,
+  ValidSolid,
+  Wire,
+} from '@/core/shapeTypes.js';
 import type { PlanarFace } from '@/core/validityTypes.js';
 import {
   castResultShape,
   disposeDowncastSource,
   disposeResultShape,
   isShape3D,
+  isShell,
+  isWire,
   createSolid,
 } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
@@ -34,14 +43,22 @@ export type { ExtrusionProfile, SweepOptions } from './extrudeUtils.js';
  * `extrude:side:<i>`, `extrude:hole<j>:side:<i>`) that
  * `assignRoles(solid, 'extrude')` returns in place of positional names.
  *
- * @param face - The planar face to extrude.
+ * An open wire extrudes into a shell, one face for each of its edges.
+ *
+ * @param face - The planar face to extrude, or an open wire.
  * @param extrusionVec - Direction and magnitude of the extrusion as `[x, y, z]`.
- * @returns `Result` containing the extruded solid, or an error if validation or operation fails.
+ * @returns `Result` containing the extruded solid (a shell for a wire), or an error if
+ *   validation or operation fails.
  */
+export function extrude(wire: Wire<Dimension>, extrusionVec: Vec3): Result<Shell>;
 export function extrude(
   face: OrientedFace<Dimension> & PlanarFace<Dimension>,
   extrusionVec: Vec3
-): Result<ValidSolid> {
+): Result<ValidSolid>;
+export function extrude(
+  face: (OrientedFace<Dimension> & PlanarFace<Dimension>) | Wire<Dimension>,
+  extrusionVec: Vec3
+): Result<ValidSolid | Shell> {
   if (getKernel().isNull(face.wrapped)) {
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'extrude: face is a null shape'));
   }
@@ -53,6 +70,12 @@ export function extrude(
     const kernel = getKernel();
     const len = vecLength(extrusionVec);
     const dir = vecNormalize(extrusionVec);
+    if (isWire(face)) {
+      const sheet = castResultShape(kernel.extrude(face.wrapped, [...dir], len));
+      if (isShell(sheet)) return ok(sheet);
+      disposeResultShape(sheet);
+      return err(typeCastError('EXTRUDE_NOT_SHELL', 'Extruding a wire did not produce a shell'));
+    }
     const shape = kernel.extrude(face.wrapped, [...dir], len);
     const downcastShape = kernel.downcast(shape, 'solid');
     const solid = createSolid(downcastShape) as ValidSolid;
@@ -72,14 +95,16 @@ export function extrude(
 /**
  * Revolve a face around an axis to create a solid of revolution.
  *
- * @param face - The face to revolve.
+ * An open wire revolves into a shell.
+ *
+ * @param face - The face to revolve, or an open wire.
  * @param center - A point on the rotation axis. Defaults to the origin.
  * @param direction - Direction vector of the rotation axis. Defaults to Z-up.
  * @param angle - Rotation angle in **radians**. Defaults to 2π (a full revolution).
  * @returns `Result` containing the revolved 3D shape, or an error if the result is not 3D.
  */
 export function revolve(
-  face: OrientedFace<Dimension> & PlanarFace<Dimension>,
+  face: (OrientedFace<Dimension> & PlanarFace<Dimension>) | Wire<Dimension>,
   center: Vec3 = [0, 0, 0],
   direction: Vec3 = [0, 0, 1],
   angle = 2 * Math.PI

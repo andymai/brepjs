@@ -149,7 +149,7 @@ function sweepUnsupportedError(kernelId: string, e: unknown): BrepError {
  * Supports Frenet framing, auxiliary spine twist, scaling laws, contact
  * detection, and configurable corner transition modes.
  *
- * @param wire - The profile wire to sweep (must be closed for solid output).
+ * @param wire - The profile wire to sweep: a closed wire for a solid, an open wire for a shell.
  * @param spine - The path wire to sweep along.
  * @param config - Sweep configuration (frenet, transition mode, scaling law, etc.).
  * @param shellMode - When `true`, return `[shell, startWire, endWire]` instead of a solid.
@@ -158,27 +158,27 @@ function sweepUnsupportedError(kernelId: string, e: unknown): BrepError {
  *   auxiliary spine along a spine of more than one edge (brepkit).
  */
 export function sweep(
-  wire: ClosedWire<Dimension>,
+  wire: Wire<Dimension>,
   spine: Wire<Dimension>,
   config?: SweepOptions,
   shellMode?: false
 ): Result<Shape3D>;
 /** Sweep in shell mode, returning `[shell, startWire, endWire]`. */
 export function sweep(
-  wire: ClosedWire<Dimension>,
+  wire: Wire<Dimension>,
   spine: Wire<Dimension>,
   config: SweepOptions | undefined,
   shellMode: true
 ): Result<[Shape3D, Wire, Wire]>;
 /** Sweep with a shell mode known only at runtime. */
 export function sweep(
-  wire: ClosedWire<Dimension>,
+  wire: Wire<Dimension>,
   spine: Wire<Dimension>,
   config?: SweepOptions,
   shellMode?: boolean
 ): Result<Shape3D | [Shape3D, Wire, Wire]>;
 export function sweep(
-  wire: ClosedWire<Dimension>,
+  wire: Wire<Dimension>,
   spine: Wire<Dimension>,
   config: SweepOptions = {},
   shellMode = false
