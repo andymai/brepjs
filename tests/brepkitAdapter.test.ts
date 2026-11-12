@@ -317,10 +317,10 @@ describe('BrepkitAdapter', () => {
       const copy = adapter.copyShape(source) as BrepkitHandle;
 
       expect(copy.id).not.toBe(id);
-      adapter.dispose(copy);
+      copy.delete();
       expect(syntheticCompounds.has(copy.id)).toBe(false);
       expect(syntheticCompounds.get(id)).toHaveLength(2);
-      adapter.dispose(source);
+      source.delete();
     });
   });
 
@@ -1831,19 +1831,21 @@ describe('BrepkitAdapter', () => {
   });
 
   describe('dispose', () => {
-    it("calls the handle's own delete", () => {
+    it('is a no-op (arena-based memory)', () => {
       const adapter = new BrepkitAdapter(createMockBrepKernel());
       const del = vi.fn();
       adapter.dispose({ delete: del });
-      expect(del).toHaveBeenCalledOnce();
+      expect(del).not.toHaveBeenCalled();
     });
 
-    it("drops a synthetic compound's child list", () => {
+    it("keeps a synthetic compound's child list, since an op can return its input", () => {
       const adapter = new BrepkitAdapter(createMockBrepKernel());
       const id = nextSyntheticId();
       syntheticCompounds.set(id, [edgeHandle(1)]);
-      adapter.dispose(compoundHandle(id));
-      expect(syntheticCompounds.has(id)).toBe(false);
+      const source = compoundHandle(id);
+      adapter.dispose(source);
+      expect(syntheticCompounds.get(id)).toHaveLength(1);
+      source.delete();
     });
   });
 
