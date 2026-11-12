@@ -1,0 +1,39 @@
+src/kernel/interfaces/modifierOps.ts
+  s_81e0220acef924::t_6e391d22a370bf 26-33,69-75
+src/topology/modifierFns.ts
+  s_81e0220acef924::t_3104b8d7a43bd2 11-20,306-382,389,395,402-404
+llms.txt
+  s_81e0220acef924::t_7f0cfdc0c5409c 428-429
+docs/function-lookup.md
+  s_81e0220acef924::t_e30c06554a77d9 3,231-232,599
+src/topology/api.ts
+  s_81e0220acef924::t_cb2d902de18995 379-382,386-387,392-393,410
+src/kernel/brepkit/modifierOps.ts
+  s_81e0220acef924::t_099c9ecff4cb4f 9,26-56,534-535,551
+llms-full.txt
+  s_81e0220acef924::t_5a038dc8c3cd3e 428-429
+src/index.ts
+  s_81e0220acef924::t_654cb9df3fb5e1 805-810
+tests/filletCorners.test.ts
+  s_81e0220acef924::t_a418f7e668e4a1 1-108
+src/topology.ts
+  s_81e0220acef924::t_4f08771920bb96 111-116
+tests/brepkitAdapter.test.ts
+  s_81e0220acef924::t_6bbc7cbb016785 2010-2058
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6d55dcb6c93bd061e3101862e0612786a10ee884",
+  "prompts": {},
+  "sessions": {
+    "s_81e0220acef924": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b26411a-0202-4d23-8ca5-4bfa4ebdb323",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
