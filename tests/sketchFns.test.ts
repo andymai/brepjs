@@ -12,6 +12,7 @@ import {
   CompoundSketch,
   isCompound,
   isValid,
+  line,
   unwrap,
 } from '@/index.js';
 import {
@@ -167,6 +168,33 @@ describe('compoundSketchLoft', () => {
     const solid = compoundSketchLoft(compound1, compound2, { ruled: true });
     expect(solid).toBeDefined();
     expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
+  });
+});
+
+describe('compoundSketchLoft with loft guides', () => {
+  const pair = (): [CompoundSketch, CompoundSketch] => [
+    new CompoundSketch([sketchRectangle(20, 20), sketchRectangle(8, 8)]),
+    new CompoundSketch([
+      sketchRectangle(12, 12, { plane: 'XY', origin: 10 }),
+      sketchRectangle(4, 4, { plane: 'XY', origin: 10 }),
+    ]),
+  ];
+
+  it('refuses rails and end conditions, which belong to one boundary', () => {
+    using rail = line([10, 10, 0], [6, 6, 10]);
+    for (const config of [
+      { rails: [rail] },
+      { start: 'normal' as const },
+      { end: 'normal' as const },
+    ]) {
+      const [low, high] = pair();
+      try {
+        expect(() => compoundSketchLoft(low, high, config)).toThrow(/rails or end conditions/);
+      } finally {
+        low.delete();
+        high.delete();
+      }
+    }
   });
 });
 

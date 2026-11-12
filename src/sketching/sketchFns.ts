@@ -384,6 +384,12 @@ export function compoundSketchLoft(
       'CompoundSketch.loftWith',
       'You need to loft with another compound with the same number of sketches'
     );
+  const guided = (end: LoftOptions['start']): boolean => end !== undefined && end !== 'free';
+  if ((loftConfig.rails?.length ?? 0) > 0 || guided(loftConfig.start) || guided(loftConfig.end))
+    bug(
+      'CompoundSketch.loftWith',
+      'A compound sketch takes no rails or end conditions; loft each boundary on its own with them'
+    );
 
   const shells: Array<Shell | Face> = sketch.sketches.map((base, cIndex) => {
     const outer = getAtOrThrow(other.sketches, cIndex);

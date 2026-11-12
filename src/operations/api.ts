@@ -14,7 +14,7 @@ import { isWire } from '@/core/shapeTypes.js';
 import * as extruding from './extrudeFns.js';
 import * as lofting from './loftFns.js';
 
-export type { LoftOptions } from './loftFns.js';
+export type { LoftOptions, LoftEndCondition } from './loftFns.js';
 export type { SweepOptions } from './extrudeFns.js';
 
 // ---------------------------------------------------------------------------

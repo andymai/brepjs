@@ -1864,6 +1864,80 @@ describe('BrepkitAdapter', () => {
     });
   });
 
+  describe('loft along rails and under end conditions', () => {
+    /**
+     * A mock kernel whose `loftWithOptions` refuses a condition on a ruled loft
+     * when `readsGuides`, as brepkit-wasm 4.11.0 does, and builds every loft it
+     * is given when not, as the builds before it do.
+     */
+    function guideKernel(readsGuides: boolean) {
+      let next = 500;
+      return Object.assign(createMockBrepKernel(), {
+        checkpoint: vi.fn(() => 7),
+        restore: vi.fn((_checkpoint: number) => {}),
+        discardCheckpoint: vi.fn((_checkpoint: number) => {}),
+        makePolygon: vi.fn((_coords: number[]) => next++),
+        loftWithOptions: vi.fn((_faces: number[], json: string) => {
+          const options = JSON.parse(json) as { ruled?: boolean; start?: unknown };
+          if (readsGuides && options.ruled === true && options.start !== undefined) {
+            throw new Error('a ruled loft takes no end condition');
+          }
+          return next++;
+        }),
+      });
+    }
+
+    const profileOf = (adapter: BrepkitAdapter): ReturnType<BrepkitAdapter['makeFace']> =>
+      adapter.makeFace(adapter.makeWire([adapter.makeLineEdge([0, 0, 0], [1, 0, 0])]));
+
+    it('sends rails and end conditions to a brepkit-wasm that reads them, probing once', () => {
+      const mock = guideKernel(true);
+      const adapter = new BrepkitAdapter(mock);
+      const profiles = [profileOf(adapter), profileOf(adapter)];
+      const rail = adapter.makeLineEdge([0, 0, 0], [0, 0, 10]) as BrepkitHandle;
+      const face = profiles[0] as BrepkitHandle;
+
+      for (let i = 0; i < 2; i++) {
+        adapter.loftGuided?.(profiles, {
+          rails: [rail],
+          start: { kind: 'tangent', face, weight: 2 },
+          end: { kind: 'normal' },
+        });
+      }
+      // One probe, then the two lofts.
+      expect(mock.loftWithOptions).toHaveBeenCalledTimes(3);
+      const [, json] = mock.loftWithOptions.mock.calls[2] ?? [];
+      expect(JSON.parse(json ?? '{}')).toEqual({
+        rails: [rail.id],
+        railWires: [],
+        start: { kind: 'tangent', face: face.id, weight: 2 },
+        end: { kind: 'normal' },
+      });
+      expect(mock.restore).toHaveBeenCalledExactlyOnceWith(7);
+      expect(mock.discardCheckpoint).toHaveBeenCalledExactlyOnceWith(7);
+    });
+
+    it('refuses them on a brepkit-wasm that drops the options, probing once', () => {
+      const mock = guideKernel(false);
+      const adapter = new BrepkitAdapter(mock);
+      const profiles = [profileOf(adapter), profileOf(adapter)];
+
+      for (let i = 0; i < 2; i++) {
+        let caught: unknown;
+        try {
+          adapter.loftGuided?.(profiles, { start: { kind: 'normal' } });
+        } catch (e) {
+          caught = e;
+        }
+        expect(isUnsupportedKernelOperationError(caught)).toBe(true);
+      }
+      // The probe alone: no loft went to the kernel without its guides.
+      expect(mock.loftWithOptions).toHaveBeenCalledOnce();
+      expect(mock.restore).toHaveBeenCalledExactlyOnceWith(7);
+      expect(mock.discardCheckpoint).toHaveBeenCalledExactlyOnceWith(7);
+    });
+  });
+
   describe('fillet (variable radius)', () => {
     /**
      * A mock kernel whose probe fillet, a 10 mm cube edge rounded from 1 to 2,
