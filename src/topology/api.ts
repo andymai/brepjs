@@ -376,16 +376,21 @@ function chamferEachEdge(
 
 /** Apply a fillet to all edges of a valid solid. */
 export function fillet<T extends ValidSolid>(shape: Shapeable<T>, radius: FilletRadius): Result<T>;
-/** Apply a fillet to selected edges of a valid solid. */
+/**
+ * Apply a fillet to selected edges of a valid solid. `options.corners` sets
+ * chosen corners back along their rounds, or closes them with a G2 patch.
+ */
 export function fillet<T extends ValidSolid>(
   shape: Shapeable<T>,
   edges: Edge[] | FinderFn<Edge> | ShapeFinder<Edge>,
-  radius: FilletRadius
+  radius: FilletRadius,
+  options?: modifiers.FilletOptions
 ): Result<T>;
 export function fillet<T extends ValidSolid>(
   shape: Shapeable<T>,
   edgesOrRadius: Edge[] | FinderFn<Edge> | ShapeFinder<Edge> | FilletRadius,
-  maybeRadius?: FilletRadius
+  maybeRadius?: FilletRadius,
+  options?: modifiers.FilletOptions
 ): Result<T> {
   const s = resolve(shape);
   let edges: ReadonlyArray<Edge> | undefined;
@@ -402,7 +407,7 @@ export function fillet<T extends ValidSolid>(
     radius = edgesOrRadius as FilletRadius;
   }
 
-  return modifiers.fillet(s, edges, radius) as Result<T>;
+  return modifiers.fillet(s, edges, radius, options) as Result<T>;
 }
 
 /** Apply a chamfer to all edges of a valid solid. */
