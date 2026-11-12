@@ -77,6 +77,7 @@ sheets('sheets from open wires', () => {
     using spine = lineWire([0, 0, 0], [0, 0, 30]);
     expect(unwrapErr(sweep(w, spine, undefined, true)).code).toBe('UNSUPPORTED_CAPABILITY');
     expect(unwrapErr(sweep(w, spine, { frenet: true })).code).toBe('UNSUPPORTED_CAPABILITY');
+    expect(unwrapErr(sweep(w, spine, { withContact: true })).code).toBe('UNSUPPORTED_CAPABILITY');
     expect(unwrapErr(sweep(w, spine, { forceProfileSpineOthogonality: true })).code).toBe(
       'UNSUPPORTED_CAPABILITY'
     );

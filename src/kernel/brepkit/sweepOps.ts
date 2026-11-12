@@ -490,6 +490,7 @@ export function sweepPipeShell(
         ['shellMode', 'shell mode'],
         ['frenet', 'Frenet framing'],
         ['correction', 'profile correction'],
+        ['contact', 'contact with the spine'],
         ['support', 'a support surface'],
       ] as const
     ).find(
