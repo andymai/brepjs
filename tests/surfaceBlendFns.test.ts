@@ -9,12 +9,16 @@ import {
   isFace,
   matchSurface,
   measureArea,
+  measureCurvatureAt,
   normalAt,
+  pointOnSurface,
   polygon,
+  projectPointOnFace,
   unwrap,
   unwrapErr,
   type Edge,
   type Face,
+  type OrientedFace,
   type Vec3,
 } from '@/index.js';
 
@@ -42,6 +46,12 @@ const edgeAt = (face: Face, mid: Vec3): Edge => {
   );
   if (!found) throw new Error(`no edge with its middle at ${mid.join(', ')}`);
   return found;
+};
+/** The larger principal curvature, by size, of a face at the point nearest `at`. */
+const seamCurvature = (face: Face, at: Vec3): number => {
+  const [u, v] = unwrap(projectPointOnFace(face, at)).uv;
+  const { maxCurvature, minCurvature } = unwrap(measureCurvatureAt(face as OrientedFace, u, v));
+  return Math.max(Math.abs(maxCurvature), Math.abs(minCurvature));
 };
 const angleBetween = (a: Vec3, b: Vec3): number => {
   const dot = Math.abs(a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
@@ -97,6 +107,15 @@ descBk('brepkit blend, match and fair surfaces', () => {
       expect(angleBetween(normalAt(blend, [0, 5, 0]), [0, 0, 1])).toBeLessThan(1e-6);
       expect(angleBetween(normalAt(blend, [6, 5, 2]), [0, 0, 1])).toBeLessThan(1e-6);
       expect(angleBetween(normalAt(blend, [3, 5, 1]), [0, 0, 1])).toBeGreaterThan(0.2);
+      // The sheets are flat, so a G2 blend is flat at each seam and a G1 blend bends there.
+      for (const seam of [
+        [0, 5, 0],
+        [6, 5, 2],
+      ] as Vec3[]) {
+        const bend = seamCurvature(blend, seam);
+        if (continuity === 'g2') expect(bend).toBeLessThan(1e-9);
+        else expect(bend).toBeGreaterThan(0.1);
+      }
     });
   }
 
@@ -113,12 +132,32 @@ descBk('brepkit blend, match and fair surfaces', () => {
     expect(angleBetween(normalAt(matched, [0, 5, 0]), [0, 0, 1])).toBeLessThan(1e-6);
   });
 
-  it('fairs a blend within its tolerance and returns a flat sheet as it is', () => {
+  it('fairs a blend within its tolerance, with its boundary held', () => {
     using a = sheet(-4, 0);
     using b = sheet(6, 2);
     using blend = unwrap(blendSurface(edgeAt(a, [0, 5, 0]), a, edgeAt(b, [6, 5, 2]), b));
-    using faired = unwrap(fairSurface(blend, { tolerance: 0.05 }));
-    expect(Math.abs(unwrap(measureArea(faired)) - unwrap(measureArea(blend)))).toBeLessThan(0.5);
+    const tolerance = 0.05;
+    using faired = unwrap(fairSurface(blend, { tolerance }));
+    let [inside, rim] = [0, 0];
+    for (let i = 0; i <= 10; i++) {
+      for (let j = 0; j <= 10; j++) {
+        const [p, q] = [
+          pointOnSurface(blend, i / 10, j / 10),
+          pointOnSurface(faired, i / 10, j / 10),
+        ];
+        const moved = Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+        if (i % 10 === 0 || j % 10 === 0) rim = Math.max(rim, moved);
+        else inside = Math.max(inside, moved);
+      }
+    }
+    // The surface moves, by less than the tolerance, and not at all on its boundary.
+    expect(inside).toBeGreaterThan(1e-4);
+    expect(inside).toBeLessThan(tolerance);
+    expect(rim).toBeLessThan(1e-9);
+  });
+
+  it('returns a flat sheet from a fair as it is', () => {
+    using a = sheet(-4, 0);
     using flat = unwrap(fairSurface(a, { tolerance: 0.05 }));
     expect(unwrap(measureArea(flat))).toBeCloseTo(40, 6);
   });
