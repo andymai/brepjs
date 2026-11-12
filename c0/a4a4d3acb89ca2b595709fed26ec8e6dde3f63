@@ -1,0 +1,63 @@
+.size-limit.json
+  s_1cc363bb3cc76d::t_9280f9d9bd2476 2
+docs/function-lookup.md
+  s_1cc363bb3cc76d::t_f803ab93781faf 41,229,360,597
+  s_81e0220acef924::t_e30c06554a77d9 3,231-232,599
+src/index.ts
+  s_81e0220acef924::t_9567275fd7ca57 1151-1156
+  s_81e0220acef924::t_654cb9df3fb5e1 805-810
+src/kernel/brepkit/geometryOps.ts
+  s_81e0220acef924::t_0703ace125c580 15,364-417,764-768,809-811
+src/kernel/interfaces/surfaceOps.ts
+  s_81e0220acef924::t_8cf658da2fceb6 63-86
+src/topology.ts
+  s_81e0220acef924::t_9ac47c21a2483a 79-84
+  s_81e0220acef924::t_4f08771920bb96 111-116
+src/topology/surfaceBlendFns.ts
+  s_81e0220acef924::t_0aaeca483196f2 1-177
+tests/brepkitAdapter.test.ts
+  s_81e0220acef924::t_5f036a41d7769f 1941-2009
+  s_81e0220acef924::t_6bbc7cbb016785 2010-2058
+tests/public-api-types.test.ts
+  s_81e0220acef924::t_faf3ae8fd4433a 181,339,517
+tests/surfaceBlendFns.test.ts
+  s_81e0220acef924::t_93797fb3cdfddd 1-11,13,15,17-20,22-49,56-109,119-130,141-144,146-148,171-181
+src/kernel/interfaces/modifierOps.ts
+  s_81e0220acef924::t_6e391d22a370bf 26-33,69-75
+src/topology/modifierFns.ts
+  s_81e0220acef924::t_3104b8d7a43bd2 11-20,306-382,389,395,402-404
+llms.txt
+  s_81e0220acef924::t_7f0cfdc0c5409c 428-429
+src/topology/api.ts
+  s_81e0220acef924::t_cb2d902de18995 379-382,386-387,392-393,410
+src/kernel/brepkit/modifierOps.ts
+  s_81e0220acef924::t_099c9ecff4cb4f 9,26-56,534-535,551
+llms-full.txt
+  s_81e0220acef924::t_5a038dc8c3cd3e 428-429
+tests/filletCorners.test.ts
+  s_81e0220acef924::t_a418f7e668e4a1 1-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c0a4a4d3acb89ca2b595709fed26ec8e6dde3f63",
+  "prompts": {},
+  "sessions": {
+    "s_1cc363bb3cc76d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76df731c-9399-4e68-b0d6-f1c0aef06bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    },
+    "s_81e0220acef924": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b26411a-0202-4d23-8ca5-4bfa4ebdb323",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
