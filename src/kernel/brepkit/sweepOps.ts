@@ -7,12 +7,49 @@ import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape, KernelType } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
-import { type BrepkitHandle, solidHandle, unwrap, noop, warnOnce } from './helpers.js';
+import {
+  type BrepkitHandle,
+  solidHandle,
+  shellHandle,
+  toArray,
+  unwrap,
+  noop,
+  warnOnce,
+} from './helpers.js';
 import { extractNurbsFromEdge } from './internalOps.js';
 import { iterShapes } from './topologyOps.js';
 import { surfaceNormal } from './geometryOps.js';
 import { fuse } from './booleanOps.js';
 import { vec3At, wasmIndex } from '@/utils/vec3.js';
+
+/** Edge ends that lie this close are one point of a wire: brepkit's linear tolerance. */
+const WIRE_JOIN_TOLERANCE = 1e-7;
+
+/**
+ * A wire handle that is open: some point ends only one of its edges. brepjs
+ * flags every wire it makes as closed, so the ends decide.
+ */
+function isOpenWire(bk: BrepkitKernel, shape: KernelShape): boolean {
+  const h = shape as BrepkitHandle;
+  if (h.type !== 'wire') return false;
+  const loose: Array<[number, number, number]> = [];
+  for (const edgeId of toArray(bk.getWireEdges(h.id))) {
+    const ends = bk.getEdgeVertices(edgeId);
+    for (const at of [0, 3]) {
+      const end = vec3At(ends, at);
+      const mate = loose.findIndex(
+        (p) => Math.hypot(p[0] - end[0], p[1] - end[1], p[2] - end[2]) < WIRE_JOIN_TOLERANCE
+      );
+      if (mate >= 0) loose.splice(mate, 1);
+      else loose.push(end);
+    }
+  }
+  return loose.length > 0;
+}
+
+function axisAngleDegrees(angle: number): number {
+  return Math.min(angle * (180 / Math.PI), 360);
+}
 
 export function extrude(
   bk: BrepkitKernel,
@@ -20,6 +57,11 @@ export function extrude(
   direction: [number, number, number],
   length: number
 ): KernelShape {
+  if (typeof bk.extrudeWire === 'function' && isOpenWire(bk, face)) {
+    return shellHandle(
+      bk.extrudeWire(unwrap(face, 'wire'), direction[0], direction[1], direction[2], length)
+    );
+  }
   const id = bk.extrude(unwrap(face, 'face'), direction[0], direction[1], direction[2], length);
   return solidHandle(id);
 }
@@ -35,19 +77,7 @@ export function revolve(
       origin: [number, number, number];
       direction: [number, number, number];
     };
-    let angleDeg = angle * (180 / Math.PI);
-    if (angleDeg > 360) angleDeg = 360;
-    const id = bk.revolve(
-      unwrap(shape, 'face'),
-      origin[0],
-      origin[1],
-      origin[2],
-      direction[0],
-      direction[1],
-      direction[2],
-      angleDeg
-    );
-    return solidHandle(id);
+    return revolveVec(bk, shape, origin, direction, angle);
   }
   throw new Error('brepkit: revolve requires axis with origin and direction');
 }
@@ -59,8 +89,21 @@ export function revolveVec(
   direction: [number, number, number],
   angle: number
 ): KernelShape {
-  let angleDeg = angle * (180 / Math.PI);
-  if (angleDeg > 360) angleDeg = 360;
+  const angleDeg = axisAngleDegrees(angle);
+  if (typeof bk.revolveWire === 'function' && isOpenWire(bk, shape)) {
+    return shellHandle(
+      bk.revolveWire(
+        unwrap(shape, 'wire'),
+        center[0],
+        center[1],
+        center[2],
+        direction[0],
+        direction[1],
+        direction[2],
+        angleDeg
+      )
+    );
+  }
   const id = bk.revolve(
     unwrap(shape, 'face'),
     center[0],
@@ -172,6 +215,10 @@ export function simplePipe(
   spine: KernelShape
 ): KernelShape {
   const profileHandle = profile as BrepkitHandle;
+  if (typeof bk.sweepWire === 'function' && isOpenWire(bk, profile)) {
+    const pathEdges = iterShapes(bk, spine, 'edge').map((e) => unwrap(e, 'edge'));
+    return shellHandle(bk.sweepWire(profileHandle.id, pathEdges));
+  }
   const faceId =
     profileHandle.type === 'wire' ? bk.makeFaceFromWire(profileHandle.id) : unwrap(profile, 'face');
 
@@ -434,6 +481,29 @@ export function sweepPipeShell(
     throw new UnsupportedKernelOperationError('brepkit: sweepPipeShell has no scaling law');
   }
   const profileHandle = profile as BrepkitHandle;
+  if (typeof bk.sweepWire === 'function' && isOpenWire(bk, profile)) {
+    // sweepWire takes the wire and the path alone, so an option that would
+    // change the surface is refused, not dropped.
+    const refused = (
+      [
+        ['auxiliary', 'an auxiliary spine'],
+        ['shellMode', 'shell mode'],
+        ['frenet', 'Frenet framing'],
+        ['correction', 'profile correction'],
+        ['contact', 'contact with the spine'],
+        ['support', 'a support surface'],
+      ] as const
+    ).find(
+      ([key]) => options?.[key] !== undefined && options[key] !== null && options[key] !== false
+    );
+    if (refused) {
+      throw new UnsupportedKernelOperationError(
+        `brepkit: an open profile sweeps along its spine in rotation-minimizing frames, with no ${refused[1]}`
+      );
+    }
+    const pathEdges = iterShapes(bk, spine, 'edge').map((e) => unwrap(e, 'edge'));
+    return shellHandle(bk.sweepWire(profileHandle.id, pathEdges));
+  }
   const faceId =
     profileHandle.type === 'wire' ? bk.makeFaceFromWire(profileHandle.id) : unwrap(profile, 'face');
 
@@ -467,6 +537,23 @@ export function loftAdvanced(
     tolerance?: number;
   }
 ): KernelShape {
+  if (
+    typeof bk.loftWires === 'function' &&
+    wires.length > 0 &&
+    wires.every((w) => isOpenWire(bk, w))
+  ) {
+    if (options?.startVertex || options?.endVertex) {
+      throw new UnsupportedKernelOperationError(
+        'brepkit: open wires loft into a sheet between the wires, with no start or end point'
+      );
+    }
+    if (options?.ruled === false && wires.length > 2) {
+      throw new UnsupportedKernelOperationError(
+        'brepkit: open wires loft into straight bands, so three or more need ruled: true'
+      );
+    }
+    return shellHandle(bk.loftWires(wires.map((w) => unwrap(w, 'wire'))));
+  }
   const faceIds: number[] = wires.map((w) => {
     const h = w as BrepkitHandle;
     if (h.type === 'wire') return bk.makeFaceFromWire(h.id);

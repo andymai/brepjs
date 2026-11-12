@@ -47,8 +47,9 @@ function convertParams(raw: string): string {
   // Widen typed array params to also accept plain number[]:
   // Float64Array → Float64Array | number[]
   // Uint32Array → Uint32Array | number[]
-  result = result.replace(/\bFloat64Array\b/g, 'Float64Array | number[]');
-  result = result.replace(/\bUint32Array\b/g, 'Uint32Array | number[]');
+  // A param the upstream .d.ts already widens stays as it is.
+  result = result.replace(/\bFloat64Array\b(?! \| number\[\])/g, 'Float64Array | number[]');
+  result = result.replace(/\bUint32Array\b(?! \| number\[\])/g, 'Uint32Array | number[]');
   return result;
 }
 
@@ -219,7 +220,17 @@ const METHOD_SECTIONS: Section[] = [
   },
   {
     label: 'Boolean ops',
-    methods: ['fuse', 'cut', 'intersect', 'compoundCut', 'convexHull', 'section', 'split'],
+    methods: [
+      'fuse',
+      'cut',
+      'intersect',
+      'compoundCut',
+      'convexHull',
+      'section',
+      'split',
+      'splitByFaces',
+      'imprintFaces',
+    ],
   },
   {
     label: 'Evolution tracking',
@@ -239,6 +250,10 @@ const METHOD_SECTIONS: Section[] = [
       'loftSmooth',
       'loftWithOptions',
       'helicalSweep',
+      'extrudeWire',
+      'revolveWire',
+      'sweepWire',
+      'loftWires',
     ],
   },
   {
@@ -246,6 +261,7 @@ const METHOD_SECTIONS: Section[] = [
     methods: [
       'fillet',
       'filletV2',
+      'filletV2Corners',
       'filletVariable',
       'chamfer',
       'chamferV2',
@@ -281,7 +297,15 @@ const METHOD_SECTIONS: Section[] = [
   },
   {
     label: 'Sewing',
-    methods: ['sewFaces', 'weldShellsAndFaces', 'fillCoonsPatch', 'untrimFace'],
+    methods: [
+      'sewFaces',
+      'weldShellsAndFaces',
+      'fillCoonsPatch',
+      'untrimFace',
+      'blendSurface',
+      'matchSurface',
+      'fairSurface',
+    ],
   },
   {
     label: 'Topology',
@@ -384,6 +408,7 @@ const METHOD_SECTIONS: Section[] = [
       'exportStl',
       'exportStlAscii',
       'exportIges',
+      'exportIgesSolids',
       'export3mf',
       'exportObj',
       'exportGlb',

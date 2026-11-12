@@ -11,6 +11,7 @@ import type { KernelShape, KernelType } from '@/kernel/types.js';
 import type { Vec3 } from '@/core/types.js';
 import { vecAdd, vecLength } from '@/core/vecOps.js';
 import type { ClosedWire, Dimension, Wire, Shell, Solid, Shape3D } from '@/core/shapeTypes.js';
+import { isClosedWire } from '@/core/validityTypes.js';
 import {
   castResultShape,
   disposeResultShape,
@@ -143,13 +144,23 @@ function sweepUnsupportedError(kernelId: string, e: unknown): BrepError {
   );
 }
 
+/** The error for a sweep the kernel refused as unsupported, or failed to build. */
+function sweepError(kernelId: string, e: unknown): BrepError {
+  if (isUnsupportedKernelOperationError(e)) return sweepUnsupportedError(kernelId, e);
+  const raw = e instanceof Error ? e.message : String(e);
+  return kernelError('SWEEP_FAILED', `Sweep operation failed: ${raw}`, e, {
+    operation: 'sweep',
+    kernel: kernelId,
+  });
+}
+
 /**
  * Sweep a wire profile along a spine wire to create a 3D shape.
  *
  * Supports Frenet framing, auxiliary spine twist, scaling laws, contact
  * detection, and configurable corner transition modes.
  *
- * @param wire - The profile wire to sweep (must be closed for solid output).
+ * @param wire - The profile wire to sweep: a closed wire for a solid, an open wire for a shell.
  * @param spine - The path wire to sweep along.
  * @param config - Sweep configuration (frenet, transition mode, scaling law, etc.).
  * @param shellMode - When `true`, return `[shell, startWire, endWire]` instead of a solid.
@@ -158,27 +169,27 @@ function sweepUnsupportedError(kernelId: string, e: unknown): BrepError {
  *   auxiliary spine along a spine of more than one edge (brepkit).
  */
 export function sweep(
-  wire: ClosedWire<Dimension>,
+  wire: Wire<Dimension>,
   spine: Wire<Dimension>,
   config?: SweepOptions,
   shellMode?: false
 ): Result<Shape3D>;
 /** Sweep in shell mode, returning `[shell, startWire, endWire]`. */
 export function sweep(
-  wire: ClosedWire<Dimension>,
+  wire: Wire<Dimension>,
   spine: Wire<Dimension>,
   config: SweepOptions | undefined,
   shellMode: true
 ): Result<[Shape3D, Wire, Wire]>;
 /** Sweep with a shell mode known only at runtime. */
 export function sweep(
-  wire: ClosedWire<Dimension>,
+  wire: Wire<Dimension>,
   spine: Wire<Dimension>,
   config?: SweepOptions,
   shellMode?: boolean
 ): Result<Shape3D | [Shape3D, Wire, Wire]>;
 export function sweep(
-  wire: ClosedWire<Dimension>,
+  wire: Wire<Dimension>,
   spine: Wire<Dimension>,
   config: SweepOptions = {},
   shellMode = false
@@ -187,11 +198,14 @@ export function sweep(
   if (config.mode === 'simple' && !shellMode) {
     const kernel = getKernel();
     // MakePipe turns a wire profile into an open tube; piping the profile's face
-    // gives the capped solid. A non-planar profile has no face and stays a tube.
-    const profileFace = planarFaceOf(wire);
+    // gives the capped solid. A non-planar profile has no face and stays a tube,
+    // and an open profile bounds no face and makes a sheet.
+    const profileFace = isClosedWire(wire) ? planarFaceOf(wire) : null;
     let resultOc: KernelShape;
     try {
       resultOc = kernel.simplePipe(profileFace ?? wire.wrapped, spine.wrapped);
+    } catch (e) {
+      return err(sweepError(kernel.kernelId, e));
     } finally {
       if (profileFace) kernel.dispose(profileFace);
     }
@@ -239,8 +253,7 @@ export function sweep(
       maxSegments,
     });
   } catch (e) {
-    if (!isUnsupportedKernelOperationError(e)) throw e;
-    return err(sweepUnsupportedError(kernel.kernelId, e));
+    return err(sweepError(kernel.kernelId, e));
   }
 
   if (shellMode && typeof result === 'object' && 'firstShape' in result) {

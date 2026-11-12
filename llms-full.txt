@@ -126,7 +126,7 @@ Shape types are lightweight branded handles (not classes) with a phantom `D exte
 Layered on top of base types to encode topological invariants at compile time:
 - `ClosedWire<D>`: wire proven to form a closed loop.
 - `PlanarWire<D>`, `PlanarFace<D>`: wire/face proven planar. `face()` requires `ClosedWire & PlanarWire` and returns `OrientedFace & PlanarFace`.
-- `OrientedFace<D>`: face with consistent normal. `extrude()` and `revolve()` require `OrientedFace & PlanarFace`.
+- `OrientedFace<D>`: face with consistent normal. `extrude()` and `revolve()` require `OrientedFace & PlanarFace`. Both also take an open `Wire` and return a shell.
 - `ManifoldShell` — shell proven to be watertight.
 - `ValidSolid`: solid passing BRepCheck validation. Returned by `box()`, `cylinder()`, etc. Required by `fillet()`, `chamfer()`, `shell()`, `offset()`; `Sketch.extrude()` returns plain `Shape3D`, which they reject at type check.
 
