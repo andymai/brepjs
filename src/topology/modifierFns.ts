@@ -360,7 +360,7 @@ function filletWithCorners(
   }
   const kernel = getKernel();
   if (!kernel.filletCorners) {
-    return err(filletUnsupportedError(new Error('corner options are only available with brepkit')));
+    return err(filletCornersUnsupportedError());
   }
   const resultShape = kernel.filletCorners(
     shape.wrapped,
@@ -430,7 +430,10 @@ export function fillet(
       'Fillet result is not a 3D shape'
     ) as Result<ValidSolid>;
   } catch (e) {
-    if (isUnsupportedKernelOperationError(e)) return err(filletUnsupportedError(e));
+    if (isUnsupportedKernelOperationError(e)) {
+      const cornered = corners !== undefined && corners.length > 0;
+      return err(cornered ? filletCornersUnsupportedError(e) : filletUnsupportedError(e));
+    }
     return err(
       edgeTreatmentError('fillet', e, filteredEdges, { edgeCount: selectedCount, radius })
     );
@@ -450,6 +453,19 @@ export function filletUnsupportedError(e: unknown): BrepError {
     e,
     { kernel: kernelId, operation: 'fillet' },
     'Use a constant or linear (start, end) radius per edge'
+  );
+}
+
+/** `UNSUPPORTED_CAPABILITY` for fillet corner options on a kernel that has none. */
+function filletCornersUnsupportedError(e?: unknown): BrepError {
+  const kernelId = getKernel().kernelId;
+  const raw = e instanceof Error ? ` (${e.message})` : '';
+  return unsupportedError(
+    BrepErrorCode.UNSUPPORTED_CAPABILITY,
+    `fillet: the ${kernelId} kernel cannot set back or patch a fillet's corners${raw}`,
+    e,
+    { kernel: kernelId, operation: 'fillet' },
+    'Use the brepkit kernel with brepkit-wasm 4.10.0 or later, or drop options.corners'
   );
 }
 

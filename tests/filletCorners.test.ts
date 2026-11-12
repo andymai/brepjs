@@ -46,6 +46,7 @@ describe('fillet corner options', () => {
     const { vertex, edges } = corner(b);
     const error = unwrapErr(fillet(b, edges, 2, { corners: [{ vertex, corner: 'g2' }] }));
     expect(error.code).toBe('UNSUPPORTED_CAPABILITY');
+    expect(error.suggestion).toMatch(/brepkit-wasm 4\.10\.0/);
   });
 
   it('refuses a varying radius and a set-back that is not positive', () => {
