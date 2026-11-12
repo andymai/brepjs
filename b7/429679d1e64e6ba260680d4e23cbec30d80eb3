@@ -1,0 +1,25 @@
+src/operations/loftFns.ts
+  s_81e0220acef924::t_b0f4ba7d7ef5af 139-141
+tests/brepkitAdapter.test.ts
+  s_81e0220acef924::t_67669f39e66880 1867-1940
+tests/loftGuided.test.ts
+  s_81e0220acef924::t_7262ff17ef8c58 6,62-76
+tests/sketchFns.test.ts
+  s_81e0220acef924::t_b3e45a285176a9 191-196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b7429679d1e64e6ba260680d4e23cbec30d80eb3",
+  "prompts": {},
+  "sessions": {
+    "s_81e0220acef924": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b26411a-0202-4d23-8ca5-4bfa4ebdb323",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
