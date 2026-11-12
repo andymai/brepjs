@@ -408,6 +408,7 @@ const METHOD_SECTIONS: Section[] = [
       'exportStl',
       'exportStlAscii',
       'exportIges',
+      'exportIgesSolids',
       'export3mf',
       'exportObj',
       'exportGlb',

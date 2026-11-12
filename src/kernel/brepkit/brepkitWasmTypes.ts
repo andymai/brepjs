@@ -645,6 +645,8 @@ export interface BrepkitKernel {
 
   exportIges(solid: number): Uint8Array;
 
+  exportIgesSolids(solids: Uint32Array | number[]): Uint8Array;
+
   export3mf(solid: number, deflection: number): Uint8Array;
 
   exportObj(solid: number, deflection: number): Uint8Array;
@@ -822,9 +824,6 @@ export interface BrepkitKernel {
 
   /** @unwired */
   detectCoincidentFaces(a: number, b: number): string;
-
-  /** @unwired */
-  exportIgesSolids(solids: Uint32Array | number[]): Uint8Array;
 
   /** @unwired */
   filletWithEvolution(solid: number, edgeHandles: Uint32Array | number[], radius: number): string;

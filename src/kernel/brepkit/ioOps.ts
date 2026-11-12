@@ -70,9 +70,14 @@ export function importSTL(bk: BrepkitKernel, data: string | ArrayBuffer): Kernel
 
 export function exportIGES(bk: BrepkitKernel, shapes: KernelShape[]): string {
   if (shapes.length === 0) return '';
-  const docs = shapes
-    .flatMap((shape) => unwrapSolidsForExport(bk, shape, 'exportIGES'))
-    .map((sid) => new TextDecoder().decode(bk.exportIges(sid)));
+  const solidIds = shapes.flatMap((shape) => unwrapSolidsForExport(bk, shape, 'exportIGES'));
+  // From brepkit-wasm 4.6.28 a face is a trimmed surface that refers to its
+  // other entities by number, so only the kernel can write several solids to
+  // one document.
+  if (typeof bk.exportIgesSolids === 'function') {
+    return new TextDecoder().decode(bk.exportIgesSolids(solidIds));
+  }
+  const docs = solidIds.map((sid) => new TextDecoder().decode(bk.exportIges(sid)));
   return mergeIgesDocuments(docs);
 }
 
