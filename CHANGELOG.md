@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.20.0](https://github.com/andymai/brepjs/compare/brepjs-v20.19.0...brepjs-v20.20.0) (2026-11-12)
+
+
+### Features
+
+* **topology:** blend, match and fair surfaces with continuity control ([#2619](https://github.com/andymai/brepjs/issues/2619)) ([f0c4ed1](https://github.com/andymai/brepjs/commit/f0c4ed119954d6f7fc4fc5791dedee154876d8f1))
+
 ## [20.19.0](https://github.com/andymai/brepjs/compare/brepjs-v20.18.1...brepjs-v20.19.0) (2026-11-12)
 
 
