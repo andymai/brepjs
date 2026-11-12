@@ -1,0 +1,23 @@
+package-lock.json
+  s_81e0220acef924::t_5ee9db30adbce2 47,7622-7624
+package.json
+  s_81e0220acef924::t_d42839330707f4 279
+src/kernel/brepkit/brepkitWasmTypes.ts
+  s_81e0220acef924::t_96babb27a462b8 5,988,991,994
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c8e3a808071ea94197913e271a49f61b41cfe760",
+  "prompts": {},
+  "sessions": {
+    "s_81e0220acef924": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b26411a-0202-4d23-8ca5-4bfa4ebdb323",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
