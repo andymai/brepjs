@@ -8,7 +8,14 @@ import { toVec3 } from '@/core/types.js';
 import type { Dimension, Wire, Shape3D } from '@/core/shapeTypes.js';
 import { castResultShape, disposeResultShape, isShape3D } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
-import { typeCastError, validationError, kernelError } from '@/core/errors.js';
+import {
+  typeCastError,
+  validationError,
+  kernelError,
+  unsupportedError,
+  BrepErrorCode,
+} from '@/core/errors.js';
+import { isUnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 
 /** Configuration for the functional loft operation. */
 export interface LoftOptions {
@@ -74,6 +81,16 @@ export function loft(
     }
     return ok(result);
   } catch (e) {
+    if (isUnsupportedKernelOperationError(e)) {
+      return err(
+        unsupportedError(
+          BrepErrorCode.UNSUPPORTED_CAPABILITY,
+          `loft: the ${kernel.kernelId} kernel cannot build this loft (${e instanceof Error ? e.message : String(e)})`,
+          e,
+          { kernel: kernel.kernelId, operation: 'loft' }
+        )
+      );
+    }
     return err(
       kernelError(
         'LOFT_FAILED',

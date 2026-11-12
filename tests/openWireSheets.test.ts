@@ -3,7 +3,6 @@ import { currentKernel, initKernel } from './setup.js';
 import {
   extrude,
   getFaces,
-  isErr,
   isShell,
   line,
   loft,
@@ -69,18 +68,19 @@ sheets('sheets from open wires', () => {
     using c = lineWire([0, 0, 20], [10, 0, 20]);
     using sheet = unwrap(loft([a, b, c]));
     expect(unwrap(measureArea(sheet))).toBeCloseTo(20 * Math.sqrt(125), 6);
-    expect(isErr(loft([a, b, c], { ruled: false }))).toBe(true);
+    expect(unwrapErr(loft([a, b, c], { ruled: false })).code).toBe('UNSUPPORTED_CAPABILITY');
+    expect(unwrapErr(loft([a, b], { endPoint: [5, 0, 30] })).code).toBe('UNSUPPORTED_CAPABILITY');
   });
 
-  it.runIf(isBrepkit)(
-    'reports shell mode and Frenet framing on an open profile as unsupported',
-    () => {
-      using w = profile();
-      using spine = lineWire([0, 0, 0], [0, 0, 30]);
-      expect(unwrapErr(sweep(w, spine, undefined, true)).code).toBe('UNSUPPORTED_CAPABILITY');
-      expect(unwrapErr(sweep(w, spine, { frenet: true })).code).toBe('UNSUPPORTED_CAPABILITY');
-    }
-  );
+  it.runIf(isBrepkit)('reports a sweep option an open profile cannot follow as unsupported', () => {
+    using w = profile();
+    using spine = lineWire([0, 0, 0], [0, 0, 30]);
+    expect(unwrapErr(sweep(w, spine, undefined, true)).code).toBe('UNSUPPORTED_CAPABILITY');
+    expect(unwrapErr(sweep(w, spine, { frenet: true })).code).toBe('UNSUPPORTED_CAPABILITY');
+    expect(unwrapErr(sweep(w, spine, { forceProfileSpineOthogonality: true })).code).toBe(
+      'UNSUPPORTED_CAPABILITY'
+    );
+  });
 
   it.runIf(isBrepkit)('returns an error for an open profile along a spine with a corner', () => {
     using w = profile();

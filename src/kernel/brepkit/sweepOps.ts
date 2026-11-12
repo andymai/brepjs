@@ -482,19 +482,22 @@ export function sweepPipeShell(
   }
   const profileHandle = profile as BrepkitHandle;
   if (typeof bk.sweepWire === 'function' && isOpenWire(bk, profile)) {
-    if (options?.['auxiliary'] !== undefined) {
+    // sweepWire takes the wire and the path alone, so an option that would
+    // change the surface is refused, not dropped.
+    const refused = (
+      [
+        ['auxiliary', 'an auxiliary spine'],
+        ['shellMode', 'shell mode'],
+        ['frenet', 'Frenet framing'],
+        ['correction', 'profile correction'],
+        ['support', 'a support surface'],
+      ] as const
+    ).find(
+      ([key]) => options?.[key] !== undefined && options[key] !== null && options[key] !== false
+    );
+    if (refused) {
       throw new UnsupportedKernelOperationError(
-        'brepkit: an open profile sweeps along its spine alone, with no auxiliary spine'
-      );
-    }
-    if (options?.['shellMode']) {
-      throw new UnsupportedKernelOperationError(
-        'brepkit: an open profile sweeps into a shell with no start and end wires for shell mode'
-      );
-    }
-    if (options?.['frenet']) {
-      throw new UnsupportedKernelOperationError(
-        'brepkit: an open profile sweeps in rotation-minimizing frames, with no Frenet framing'
+        `brepkit: an open profile sweeps along its spine in rotation-minimizing frames, with no ${refused[1]}`
       );
     }
     const pathEdges = iterShapes(bk, spine, 'edge').map((e) => unwrap(e, 'edge'));
