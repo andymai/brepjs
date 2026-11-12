@@ -80,6 +80,9 @@ function makeCoreOps(
   return {
     // Arena-based: individual handles are not freed.
     // Call brepkitKernel.free() to release the entire arena.
+    // Keep it a no-op: simplify, fixShape and the heal ops return their input,
+    // so two brepjs handles can own one wrapper, and a synthetic compound's
+    // delete would clear the child list under the other owner.
     dispose: () => {},
     executeBatch: (json) => {
       // A batch can transform a solid in place, even one that then fails, so

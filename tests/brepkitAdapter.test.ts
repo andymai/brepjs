@@ -13,7 +13,15 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { BrepkitAdapter } from '@/kernel/brepkit/brepkitAdapter.js';
-import { type BrepkitHandle, edgeHandle, solidHandle } from '@/kernel/brepkit/helpers.js';
+import {
+  type BrepkitHandle,
+  compoundHandle,
+  edgeHandle,
+  handle,
+  nextSyntheticId,
+  solidHandle,
+  syntheticCompounds,
+} from '@/kernel/brepkit/helpers.js';
 import type { BrepkitKernel } from '@/kernel/brepkit/brepkitWasmTypes.js';
 import { registerKernel, getKernel, withKernel } from '@/kernel/index.js';
 import { isUnsupportedKernelOperationError } from '@/kernel/unsupported.js';
@@ -267,6 +275,68 @@ describe('BrepkitAdapter', () => {
       const box = adapter.makeBox(1, 1, 1);
 
       expect(adapter.isNull(box)).toBe(false);
+    });
+
+    it('copyShape copies a solid in the arena, since repairs change a solid in place', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+      const box = adapter.makeBox(1, 1, 1) as BrepkitHandle;
+      const copy = adapter.copyShape(box) as BrepkitHandle;
+
+      expect(mock.copySolid).toHaveBeenCalledWith(box.id);
+      expect(copy.type).toBe('solid');
+      expect(copy.id).not.toBe(box.id);
+    });
+
+    it('copyShape copies each solid of a compound', () => {
+      const mock = createMockBrepKernel();
+      mock.getCompoundSolids.mockReturnValueOnce([5, 6]);
+      const adapter = new BrepkitAdapter(mock);
+      const copy = adapter.copyShape(handle('compound', 4)) as BrepkitHandle;
+
+      expect(mock.copySolid).toHaveBeenCalledTimes(2);
+      expect(copy.type).toBe('compound');
+      expect(copy.id).not.toBe(4);
+    });
+
+    it('copyShape copies a solid inside a synthetic compound', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+      const id = nextSyntheticId();
+      syntheticCompounds.set(id, [solidHandle(3), edgeHandle(1)]);
+      const source = compoundHandle(id);
+      const copy = adapter.copyShape(source) as BrepkitHandle;
+      const [solid, edge] = syntheticCompounds.get(copy.id) ?? [];
+
+      expect(mock.copySolid).toHaveBeenCalledWith(3);
+      expect(solid?.id).not.toBe(3);
+      expect(edge?.id).toBe(1);
+      copy.delete();
+      source.delete();
+    });
+
+    it('copyShape gives any other shape its own wrapper over the same arena id', () => {
+      const adapter = new BrepkitAdapter(createMockBrepKernel());
+      const edge = edgeHandle(7);
+      const copy = adapter.copyShape(edge) as BrepkitHandle;
+
+      expect(copy).not.toBe(edge);
+      expect(copy.type).toBe('edge');
+      expect(copy.id).toBe(7);
+    });
+
+    it('copyShape gives a synthetic compound a child list of its own', () => {
+      const adapter = new BrepkitAdapter(createMockBrepKernel());
+      const id = nextSyntheticId();
+      syntheticCompounds.set(id, [edgeHandle(1), edgeHandle(2)]);
+      const source = compoundHandle(id);
+      const copy = adapter.copyShape(source) as BrepkitHandle;
+
+      expect(copy.id).not.toBe(id);
+      copy.delete();
+      expect(syntheticCompounds.has(copy.id)).toBe(false);
+      expect(syntheticCompounds.get(id)).toHaveLength(2);
+      source.delete();
     });
   });
 
@@ -1778,11 +1848,20 @@ describe('BrepkitAdapter', () => {
 
   describe('dispose', () => {
     it('is a no-op (arena-based memory)', () => {
-      const mock = createMockBrepKernel();
-      const adapter = new BrepkitAdapter(mock);
+      const adapter = new BrepkitAdapter(createMockBrepKernel());
+      const del = vi.fn();
+      adapter.dispose({ delete: del });
+      expect(del).not.toHaveBeenCalled();
+    });
 
-      // Should not throw
-      adapter.dispose({ delete: () => {} });
+    it("keeps a synthetic compound's child list, since an op can return its input", () => {
+      const adapter = new BrepkitAdapter(createMockBrepKernel());
+      const id = nextSyntheticId();
+      syntheticCompounds.set(id, [edgeHandle(1)]);
+      const source = compoundHandle(id);
+      adapter.dispose(source);
+      expect(syntheticCompounds.get(id)).toHaveLength(1);
+      source.delete();
     });
   });
 
