@@ -28,9 +28,11 @@ export interface KernelTopologyOps {
    * same-type downcast returns the very same handle id, so disposing the
    * "copy" would free the source. `copyShape` guarantees a handle that can be
    * disposed without affecting the source — a real geometric copy where a
-   * primitive exists (occt-wasm `k.copy`), or the safe existing duplicate on
-   * kernels that never free handles individually (brepkit/manifold) or share
-   * refcounted geometry (occt Embind).
+   * primitive exists (occt-wasm `k.copy`, brepkit `copySolid` for solids), a
+   * new wrapper over the same id where nothing changes that shape in place
+   * (other brepkit shapes), or the safe existing duplicate on kernels that
+   * never free handles individually (manifold) or share refcounted geometry
+   * (occt Embind).
    */
   copyShape(shape: KernelShape): KernelShape;
   /** Compute a hash code for a shape (used for face tracking). */

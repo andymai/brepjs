@@ -226,21 +226,24 @@ export function downcast(_bk: BrepkitKernel, shape: KernelShape, _type?: ShapeTy
 }
 
 /**
- * The adapter never changes a shape in place (it copies before a transform) and
- * frees nothing per handle, so a copy can share the arena id. It still needs a
- * wrapper object of its own: callers track ownership by `.wrapped` identity. A
- * synthetic compound's `delete` clears its child list, so its copy gets a list
- * of its own.
+ * Repairs and batches change a solid in place under its own id, so a solid, and
+ * each solid of a compound, gets an arena copy. No operation changes any other
+ * shape in place, so it shares its arena id under a new wrapper: callers track
+ * ownership by `.wrapped` identity. A synthetic compound's `delete` clears its
+ * child list, so its copy gets a list of its own.
  */
-export function copyShape(shape: KernelShape): KernelShape {
+export function copyShape(bk: BrepkitKernel, shape: KernelShape): KernelShape {
   if (!isBrepkitHandle(shape)) return shape;
-  const children = shape.type === 'compound' ? syntheticCompounds.get(shape.id) : undefined;
+  if (shape.type === 'solid') return solidHandle(bk.copySolid(shape.id));
+  if (shape.type !== 'compound') return handle(shape.type, shape.id);
+  const children = syntheticCompounds.get(shape.id);
   if (children) {
     const id = nextSyntheticId();
     syntheticCompounds.set(id, [...children]);
     return compoundHandle(id);
   }
-  return handle(shape.type, shape.id);
+  const copies = toArray(bk.getCompoundSolids(shape.id)).map((id) => bk.copySolid(id));
+  return compoundHandle(bk.makeCompound(copies));
 }
 
 export function hashCode(_bk: BrepkitKernel, shape: KernelShape, upperBound: number): number {
@@ -325,7 +328,7 @@ export function makeTopologyOps(bk: BrepkitKernel) {
     isSame: (a, b) => isSame(bk, a, b),
     isEqual: (a, b) => isEqual(bk, a, b),
     downcast: (shape, type) => downcast(bk, shape, type),
-    copyShape,
+    copyShape: (shape) => copyShape(bk, shape),
     hashCode: (shape, upperBound) => hashCode(bk, shape, upperBound),
     isNull: (shape) => isNull(bk, shape),
     shapeOrientation: (shape) => shapeOrientation(bk, shape),

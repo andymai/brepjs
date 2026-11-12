@@ -27,8 +27,9 @@
  * ## Memory model
  *
  * brepkit uses arena allocation — entities are never individually freed.
- * `dispose()` is intentionally a no-op on individual handles. Call
- * `BrepKernel.free()` (wasm-bindgen destructor) to release the entire arena.
+ * `dispose()` frees no arena slot; it only drops the JS-side child list of a
+ * synthetic compound. Call `BrepKernel.free()` (wasm-bindgen destructor) to
+ * release the entire arena.
  *
  * @see docs/decisions/0007-kernel-interface-segregation.md
  * @module
@@ -63,7 +64,7 @@ import { makeTransformOps } from './transformOps.js';
 /**
  * Kernel-lifecycle ops that call directly into the brepkit WASM instance
  * without delegating through a `*Ops.ts` module. These are too thin to
- * justify their own file: arena-based dispose is a no-op, and checkpoint
+ * justify their own file: arena-based dispose frees no arena slot, and checkpoint
  * helpers are 1-line trampolines on `bk.*`.
  */
 function makeCoreOps(
@@ -78,9 +79,11 @@ function makeCoreOps(
   | 'discardCheckpoint'
 > {
   return {
-    // Arena-based: individual handles are not freed.
-    // Call brepkitKernel.free() to release the entire arena.
-    dispose: () => {},
+    // Arena-based: no arena slot is freed (brepkitKernel.free() releases the
+    // whole arena). A handle's own delete drops a synthetic compound's child list.
+    dispose: (handle) => {
+      handle.delete();
+    },
     executeBatch: (json) => {
       // A batch can transform a solid in place, even one that then fails, so
       // no split is known to hold after it.
