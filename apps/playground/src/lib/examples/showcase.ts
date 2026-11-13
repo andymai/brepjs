@@ -1619,4 +1619,324 @@ export default [
   color(model.ground, '#b5653f'),
 ];`,
   },
+  {
+    id: 'server-chassis',
+    label: 'Server Chassis (1U)',
+    description:
+      'A 1U rack-mount server chassis for a 19-inch rack. Seven sheet-metal parts make the enclosure, and each one is a feature tree of bends and cutouts: the kernel folds it, unfolds it to a flat blank, and nests the blanks of four chassis on one stock sheet. The DXF button downloads that sheet. The rack dimensions, the fans, the drives, the board size and the power supply size are published figures. The layout, the vents and all small parts are a display model.',
+    code: `import { box, compound, cutAll, cylinder, polygon, revolve, rotate, translate, unwrap } from 'brepjs/quick';
+import { addPolygonCutout, author, hem, louver, miterCorner, nest, nestToDXF, relieveCorner, unfold } from 'brepjs-sheetmetal';
+import { color, present } from 'brepjs/playground';
+
+// 1U rack-mount server chassis for a 19-inch rack. Seven sheet-metal parts make the enclosure: each one is a feature
+// tree of bends and cutouts, so the kernel folds it, unfolds it to a flat blank, and nests the blanks on a stock
+// sheet for a DXF. The rack dimensions, the fans, the drives, the board size and the power supply size are
+// published figures. The layout, the vents and all small parts are a display model. Units are millimetres.
+// X is from the front to the rear, Y is across the rack, Z is up, and the origin is at the front left of the floor.
+type P2 = [number, number];
+type P3 = [number, number, number];
+type Shape = ReturnType<typeof box>;
+type Part = Extract<ReturnType<typeof author>, { ok: true }>['value'];
+type Flat = Extract<ReturnType<typeof unfold>, { ok: true }>['value'];
+type Tone = 'steel' | 'bezel' | 'dark' | 'board' | 'alloy' | 'gold' | 'accent';
+
+// Kernel shapes live in WASM memory. Every shape goes through own(). freeing() runs a build and then frees them all.
+const owned: { delete(): void }[] = [];
+const own = <T extends { delete(): void }>(s: T): T => {
+  owned.push(s);
+  return s;
+};
+const freeing = <T,>(build: () => T): T => { try { return build(); } finally { owned.splice(0).forEach((s) => s.delete()); } }; // also when the build throws
+
+// The 19-inch rack (EIA-310): one unit, the panel of one unit, and the mounting holes.
+const RACK = { unit: 44.45, panelHeight: 43.66, panelWidth: 482.6, holeSpan: 465.1, holes: [6.35, 38.1], slot: [10.3, 6.8] };
+// The sheet: zinc-coated steel of 1 mm, bent in air to an inside radius of 1 mm.
+const T = 1;
+const RULE = { innerRadius: 1, kFactor: 0.44 };
+const S = T + RULE.innerRadius; // a wall at 90 degrees stands this far outside the edge of its parent
+const BODY = { depth: 400, width: 433, wall: 38, lip: 8 }; // the flat floor of the tray; the tray is 437 wide and 42 high
+const TOP = BODY.wall + 2 * S; // the top of the wall lips, where the cover sits
+const FAN = { size: 40, depth: 28, holes: 32, bore: 37, at: [56.5, 136.5, 216.5, 296.5, 376.5], x: 151 };
+const DRIVE = { width: 69.85, length: 100.45, height: 15, rows: [6, 23], columns: [15.1, 89.05] }; // 2.5 inch
+const BOARD = { size: 170, x: 222, y: 254, top: 9.1 }; // Mini-ITX
+const SUPPLY = { length: 150, width: 81.5, height: 40.5, x: 250.5, y: 12 }; // Flex ATX
+
+// ---- sheet metal: each function is one part in its own frame, folded to the angle of the fold parameter
+const made = (r: ReturnType<typeof author>): Part => {
+  const p = unwrap(r);
+  if (p.solid) own(p.solid);
+  return p;
+};
+const rect = (x0: number, y0: number, x1: number, y1: number): P2[] => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+const ngon = (x: number, y: number, r: number, n: number, turn = 0): P2[] =>
+  Array.from({ length: n }, (_, i): P2 => [x + r * Math.cos(turn + (i * 2 * Math.PI) / n), y + r * Math.sin(turn + (i * 2 * Math.PI) / n)]);
+const slot = (x: number, y: number, length: number, width: number): P2[] => [...ngon(x + (length - width) / 2, y, width / 2, 12).slice(0, 4), ...ngon(x - (length - width) / 2, y, width / 2, 12).slice(3, 10), ...ngon(x + (length - width) / 2, y, width / 2, 12).slice(9)];
+const punch = (p: Part, region: string, ...loops: P2[][]): Part => loops.reduce((q, loop) => made(addPolygonCutout(q, region, loop)), p);
+const screwHole = (x: number, y: number): P2[] => ngon(x, y, 1.75, 8, Math.PI / 8);
+const hexes = (x: number, y: number, columns: number, rows: number, r: number): P2[][] =>
+  Array.from({ length: columns * rows }, (_, i) => ngon(x + (i % columns) * r * 1.9 + (Math.floor(i / columns) % 2) * r * 0.95, y + Math.floor(i / columns) * r * 1.65, r, 6, Math.PI / 6));
+
+// The tray: the floor, two side walls with a lip for the cover, and the rear wall with the openings for the ports.
+function tray(angle: number): Part {
+  const wall = { length: BODY.wall, angleDeg: angle, rule: RULE };
+  const lip = { length: BODY.lip, angleDeg: angle, rule: RULE, side: 'ymax' as const, offset: 10, width: BODY.depth - 10 };
+  let p = made(author({ thickness: T, base: { length: BODY.depth, width: BODY.width }, flanges: [
+    { id: 'left', side: 'ymin', ...wall }, { id: 'right', side: 'ymax', ...wall }, { id: 'rear', side: 'xmax', ...wall },
+    { id: 'lipLeft', parent: 'left', ...lip }, { id: 'lipRight', parent: 'right', ...lip, offset: 0 },
+  ] }));
+  p = made(miterCorner(p, 'left', 'rear', 0.5));
+  p = made(miterCorner(p, 'right', 'rear', 0.5));
+  // Floor: the four holes of the board.
+  p = punch(p, 'base', ...BOARD_HOLES.map(([x, y]) => screwHole(BOARD.x + x, BOARD.y + y)));
+  // Rear wall, seen from inside: power inlet, vents for the power supply, then the ports of the board.
+  const z = (h: number): number => h - S;
+  p = punch(p, 'rear', rect(22.1, z(11.25), 49.4, z(30.75)), ...hexes(62, z(11), 3, 3, 5), rect(270, z(10.5), 286, z(24)), rect(290, z(10.5), 306, z(24)), rect(312, z(10.5), 326, z(26.5)), rect(339.6, z(12), 359.4, z(23.2)), ...hexes(380, z(12), 3, 3, 4));
+  // Side walls: two louvers each, and the three holes of the rack ear.
+  for (const side of ['left', 'right']) {
+    const x = (d: number): number => (side === 'left' ? d : BODY.depth - d);
+    for (const d of [200, 300]) p = made(louver(p, { region: side, x: x(d), y: 20, length: 60, width: 7, height: 3 }));
+    p = punch(p, side, ...EAR_HOLES.map(([d, h]) => screwHole(x(d), z(side === 'left' ? h : TOP + T - h))));
+  }
+  // Lips: three holes each for the cover.
+  for (const d of COVER_SCREWS) p = punch(p, 'lipLeft', screwHole(d - 10, 4.5));
+  for (const d of COVER_SCREWS) p = punch(p, 'lipRight', screwHole(BODY.depth - d, 4.5));
+  return p;
+}
+const BOARD_HOLES: P2[] = [[159.84, 6.35], [136.98, 163.83], [4.9, 6.35], [4.9, 163.83]]; // the holes C, F, H and J of the ATX pattern
+const EAR_HOLES: P2[] = [[14, 12], [34, 31], [52, 12]]; // distance from the front, and height
+const COVER_SCREWS = [40, 200, 360];
+
+// The cover is made upside down: three flanges, and a closed hem on the front edge that removes the sharp edge.
+const COVER = { length: BODY.depth + S + 0.25, width: BODY.width + 2 * S + 0.5 - 2 * RULE.innerRadius, flange: 10, clear: 64 };
+function cover(angle: number): Part {
+  const flange = { length: COVER.flange, angleDeg: angle, rule: RULE };
+  let p = made(author({ thickness: T, base: { length: COVER.length, width: COVER.width }, flanges: [
+    { id: 'left', side: 'ymin', ...flange, offset: COVER.clear, width: COVER.length - COVER.clear },
+    { id: 'right', side: 'ymax', ...flange, offset: 0, width: COVER.length - COVER.clear },
+    { id: 'rear', side: 'xmax', ...flange },
+  ] }));
+  p = made(miterCorner(p, 'left', 'rear', 0.5));
+  p = made(miterCorner(p, 'right', 'rear', 0.5));
+  p = made(hem(p, { region: 'base', side: 'xmin', type: 'closed', length: 8, rule: RULE }));
+  const y = (side: number): number => (side ? COVER.width - 5.75 : 5.75);
+  p = punch(p, 'base', ...[0, 1].flatMap((side) => COVER_SCREWS.map((d) => screwHole(d + 1, y(side)))), ...hexes(250, 262, 6, 4, 6));
+  return p;
+}
+
+// The front panel: openings for four drives, a field of vents, the power button, two lights and two ports.
+const PANEL = { length: 430.4, height: 37.6, y: 1.3, z: 3 };
+function panel(angle: number): Part {
+  const flange = { length: 10, angleDeg: angle, rule: RULE };
+  let p = made(author({ thickness: T, base: { length: PANEL.length, width: PANEL.height }, flanges: [
+    { id: 'bottom', side: 'ymin', ...flange }, { id: 'left', side: 'xmin', ...flange }, { id: 'right', side: 'xmax', ...flange },
+  ] }));
+  p = made(relieveCorner(p, 'bottom', 'left'));
+  p = made(relieveCorner(p, 'bottom', 'right'));
+  const bays = DRIVE.columns.flatMap((y) => DRIVE.rows.map((z) => rect(y - PANEL.y - 0.8, z - PANEL.z - 0.5, y - PANEL.y + DRIVE.width + 0.8, z - PANEL.z + DRIVE.height + 0.5)));
+  return punch(p, 'base', ...bays, ...hexes(178, 8.5, 9, 3, 6.5), ngon(385, 19, 6, 12), ngon(403, 26, 1.6, 6), ngon(403, 12, 1.6, 6), rect(350, 23, 363, 28.6), rect(350, 9, 363, 14.6));
+}
+
+// A rack ear: the leg goes on the side wall, and the face has the two slots of one rack unit.
+function ear(angle: number): Part {
+  const reach = (RACK.panelWidth - (BODY.width + 2 * S)) / 2 - S;
+  let p = made(author({ thickness: T, base: { length: 60, width: RACK.panelHeight }, flanges: [{ id: 'face', side: 'xmin', length: reach, angleDeg: angle, rule: RULE }] }));
+  const out = (RACK.holeSpan - (BODY.width + 2 * S)) / 2 - S; // the slot centre, from the bend
+  const low = (RACK.unit - RACK.panelHeight) / 2;
+  p = punch(p, 'face', ...RACK.holes.map((h) => rotated(slot(0, 0, RACK.slot[0], RACK.slot[1]), RACK.panelHeight - (h - low), out)));
+  return punch(p, 'base', ...EAR_HOLES.map(([d, h]) => screwHole(d, h + 0.33)));
+}
+const rotated = (loop: P2[], x: number, y: number): P2[] => loop.map(([a, b]): P2 => [x - b, y + a]);
+
+// The fan wall: five openings with two screw holes each, and a stiffening flange on the top edge.
+const WALL = { length: 413, height: 38.6, y: 10, z: 1.2 };
+function fanWall(angle: number): Part {
+  let p = made(author({ thickness: T, base: { length: WALL.length, width: WALL.height }, flanges: [{ id: 'top', side: 'ymax', length: 12, angleDeg: angle, rule: RULE }] }));
+  const mid = 1.1 + FAN.size / 2 - WALL.z;
+  for (const y of FAN.at) {
+    const x = WALL.y + WALL.length - y; // the wall faces the front, so its own X runs from right to left
+    p = punch(p, 'base', ngon(x, mid, FAN.bore / 2, 24), ngon(x - FAN.holes / 2, mid - FAN.holes / 2, 1.85, 8, Math.PI / 8), ngon(x + FAN.holes / 2, mid + FAN.holes / 2, 1.85, 8, Math.PI / 8));
+  }
+  return p;
+}
+
+// The drive cage, made upside down: a roof, two walls with slots, and two feet.
+const CAGE = { length: 106, width: 150, wall: 35.6, x: 14, y: 12 };
+function cage(angle: number): Part {
+  const wall = { length: CAGE.wall, angleDeg: angle, rule: RULE };
+  const foot = { length: 10, angleDeg: angle, rule: RULE, side: 'ymax' as const };
+  let p = made(author({ thickness: T, base: { length: CAGE.length, width: CAGE.width }, flanges: [
+    { id: 'left', side: 'ymin', ...wall }, { id: 'right', side: 'ymax', ...wall }, { id: 'footLeft', parent: 'left', ...foot }, { id: 'footRight', parent: 'right', ...foot },
+  ] }));
+  for (const side of ['left', 'right']) p = punch(p, side, ...[14, 44, 74].map((x) => rect(x, 8, x + 18, 28)));
+  return punch(p, 'base', ...hexes(20, 40, 5, 4, 7));
+}
+
+// ---- how each sheet-metal part goes into the chassis
+const turn = (s: Shape, angle: number, axis: P3, at: P3 = [0, 0, 0]): Shape => own(rotate(s, angle, { axis, at })) as Shape;
+const move = (s: Shape, by: P3): Shape => own(translate(s, by)) as Shape;
+const upright = (s: Shape, facing: 1 | -1): Shape => turn(turn(s, 90, [1, 0, 0]), 90 * facing, [0, 0, 1]); // the plate stands across the chassis; its flanges point to the rear (1) or to the front (-1)
+const flipped = (s: Shape, width: number): Shape => turn(s, 180, [1, 0, 0], [0, width / 2, 0]);
+const MID: P3 = [0, BODY.width / 2, (TOP + T) / 2];
+const SHEET = {
+  tray: { make: tray, place: (s: Shape): Shape => s },
+  cover: { make: cover, place: (s: Shape): Shape => move(flipped(s, COVER.width), [-S + RULE.innerRadius, -S - 0.25 + RULE.innerRadius, TOP + T]) },
+  panel: { make: panel, place: (s: Shape): Shape => move(upright(s, 1), [0, PANEL.y, PANEL.z]) },
+  earLeft: { make: ear, place: (s: Shape): Shape => move(turn(s, 90, [1, 0, 0]), [0, -S, -0.33]) },
+  earRight: { make: ear, place: (s: Shape): Shape => turn(move(turn(s, 90, [1, 0, 0]), [0, -S, -0.33]), 180, [1, 0, 0], MID) },
+  fanWall: { make: fanWall, place: (s: Shape): Shape => move(upright(s, -1), [FAN.x, WALL.y + WALL.length, WALL.z]) },
+  cage: { make: cage, place: (s: Shape): Shape => move(flipped(s, CAGE.width), [CAGE.x, CAGE.y, T + 2 * S + CAGE.wall]) },
+};
+type Name = keyof typeof SHEET;
+const NAMES = Object.keys(SHEET) as Name[];
+
+// ---- the parts that are not sheet metal
+const block = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number): Shape => own(translate(own(box(x1 - x0, y1 - y0, z1 - z0)), [x0, y0, z0])) as Shape;
+const rod = (at: P3, r: number, length: number, axis: P3 = [0, 0, 1]): Shape => own(cylinder(r, length, { at, axis })) as Shape;
+const lathe = (profile: P2[]): Shape => own(unwrap(revolve(own(unwrap(polygon(profile.map(([r, z]): P3 => [r, 0, z]))))))) as Shape;
+function hardware(): [Tone, Shape][] {
+  const out: [Tone, Shape][] = [];
+  const add = (tone: Tone, ...shapes: Shape[]): void => shapes.forEach((s) => out.push([tone, s]));
+  // A pan-head screw with its head on the origin. The shank points down, or into the left wall, the right wall or the rear.
+  const screwShape = lathe([[0, 0], [0, 1.6], [2.1, 1.6], [2.7, 0.9], [2.7, 0], [1.4, 0], [1.4, -4.5], [0, -4.5]]);
+  const screw = (at: P3, into: 'down' | 'left' | 'right' | 'rear'): void =>
+    add('steel', move(into === 'down' ? screwShape : into === 'rear' ? turn(screwShape, -90, [0, 1, 0]) : turn(screwShape, into === 'left' ? 90 : -90, [1, 0, 0]), at));
+  for (const d of COVER_SCREWS) for (const y of [4.5, BODY.width - 4.5]) screw([d, y, TOP + T], 'down');
+  for (const [d, h] of EAR_HOLES) { screw([d, -S - T, h], 'left'); screw([d, BODY.width + S + T, TOP + T - h], 'right'); }
+
+  // Fans: a frame with a round bore and four screw holes, a hub with its label, and seven blades.
+  for (const y of FAN.at) {
+    const c: P3 = [FAN.x + 0.2, y, 1.1 + FAN.size / 2];
+    const corners = [-1, 1].flatMap((u) => [-1, 1].map((v) => rod([c[0], y + (u * FAN.holes) / 2, c[2] + (v * FAN.holes) / 2], 1.9, FAN.depth, [1, 0, 0])));
+    add('dark', own(unwrap(cutAll(block(c[0], y - 20, 1.1, c[0] + FAN.depth, y + 20, 41.1), [rod(c, FAN.bore / 2, FAN.depth, [1, 0, 0]), ...corners]))) as Shape);
+    add('dark', rod([c[0] + 2, y, c[2]], 9, FAN.depth - 4, [1, 0, 0]));
+    add('alloy', rod([c[0] + FAN.depth - 2, y, c[2]], 7, 0.4, [1, 0, 0]));
+    for (let i = 0; i < 7; i++) add('dark', turn(turn(block(c[0] + 8, y - 0.6, c[2] + 9.3, c[0] + 20, y + 0.6, c[2] + 17.2), 32, [0, 0, 1], [c[0] + 14, y, c[2] + 13]), (i * 360) / 7, [1, 0, 0], c));
+    screw([FAN.x - T, y + FAN.holes / 2, c[2] - FAN.holes / 2], 'rear');
+    screw([FAN.x - T, y - FAN.holes / 2, c[2] + FAN.holes / 2], 'rear');
+  }
+
+  // Drives in their carriers: the body, a handle that comes through the front panel, its latch and lights, and
+  // the connector. A board behind the cage joins the four connectors.
+  const back = CAGE.x + DRIVE.length;
+  for (const y of DRIVE.columns) for (const z of DRIVE.rows) {
+    add('alloy', block(CAGE.x, y, z, back, y + DRIVE.width, z + DRIVE.height));
+    add('dark', block(-1.5, y + 0.4, z + 0.4, CAGE.x, y + DRIVE.width - 0.4, z + DRIVE.height - 0.4), block(back, y + 8, z + 4, back + 6.5, y + 50, z + 9));
+    add('accent', block(-2.5, y + DRIVE.width - 16, z + 3.5, -1.5, y + DRIVE.width - 3, z + DRIVE.height - 3.5));
+    add('gold', rod([-1.9, y + 5, z + 5], 0.9, 0.4, [1, 0, 0]), rod([-1.9, y + 5, z + 10], 0.9, 0.4, [1, 0, 0]));
+  }
+  add('board', block(back + 6.5, CAGE.y + 2, 3, back + 8.1, CAGE.y + CAGE.width - 2, 38));
+  for (let i = 0; i < 6; i++) add('dark', own(cylinder(2.5, 6, { at: [back + 8.1, CAGE.y + 20 + i * 22, 30], axis: [1, 0, 0] })) as Shape);
+
+  // The power supply: its case, the label, the inlet with three pins at the rear wall, and the plug for the board.
+  const { x, y, length, width, height } = SUPPLY;
+  add('alloy', block(x, y, T + 0.2, x + length - 1, y + width, T + 0.2 + height));
+  add('dark', block(x + length - 1, y + 10.6, 11.75, x + length + 4, y + 36.9, 30.25), block(x + 30, y + 10, T + 0.2 + height, x + 90, y + 70, T + 0.5 + height), block(x - 9, y + 20, 8, x, y + 62, 22));
+  add('gold', ...[-7, 0, 7].map((d) => block(x + length + 4, y + 23.75 + d - 1, 19 + (d ? 0 : 3), x + length + 5.2, y + 23.75 + d + 1, 23 + (d ? 0 : 3))));
+
+  // The board, on four standoffs.
+  const b = BOARD, top = b.top;
+  const at = (dx: number, dy: number, dz = 0): P3 => [b.x + dx, b.y + dy, top + dz];
+  const chip = (tone: Tone, dx: number, dy: number, w: number, d: number, h: number, dz = 0): void => add(tone, block(b.x + dx, b.y + dy, top + dz, b.x + dx + w, b.y + dy + d, top + dz + h));
+  add('board', own(unwrap(cutAll(block(b.x, b.y, top - 1.6, b.x + b.size, b.y + b.size, top), BOARD_HOLES.map(([hx, hy]) => rod([b.x + hx, b.y + hy, top - 1.6], 1.6, 1.6))))) as Shape);
+  for (const [hx, hy] of BOARD_HOLES) {
+    add('gold', move(lathe([[1.5, 0], [3, 0], [3, top - 1.6 - T], [1.5, top - 1.6 - T]]), [b.x + hx, b.y + hy, T]));
+    screw(at(hx, hy), 'down');
+  }
+  // The processor socket and its heat sink: a base with four screws and 30 fins along the air flow.
+  chip('dark', 55, 50, 50, 50, 3);
+  const posts: P2[] = [37, 123].flatMap((dx) => [41, 109].map((dy): P2 => [dx, dy]));
+  add('alloy', own(unwrap(cutAll(block(b.x + 34, b.y + 35, top + 3, b.x + 126, b.y + 115, top + 7), posts.map(([dx, dy]) => rod(at(dx, dy, 3), 1.55, 4))))) as Shape);
+  for (let i = 0; i < 30; i++) chip('alloy', 40, 35.4 + i * 2.7, 80, 1, 23, 7);
+  for (const [dx, dy] of posts) screw(at(dx, dy, 7), 'down');
+  // Four memory modules: two rails and two latches for each socket, the module, and its eight chips.
+  for (let i = 0; i < 4; i++) {
+    const dy = 128 + i * 9;
+    chip('dark', 12, dy, 140, 1.6, 4); chip('dark', 12, dy + 3.4, 140, 1.6, 4);
+    chip('alloy', 8, dy, 4, 5, 9); chip('alloy', 152, dy, 4, 5, 9);
+    chip('board', 15.3, dy + 1.8, 133.35, 1.4, 31.25, 1);
+    for (let k = 0; k < 8; k++) chip('dark', 20 + k * 16, dy + 3.2, 11, 0.9, 9, 12);
+  }
+  // Power for the processor: six chokes and eight capacitors. Then the plugs, the ports, and the small parts.
+  for (let i = 0; i < 6; i++) chip('dark', 12, 38 + i * 12.5, 8, 8, 6.5);
+  for (let i = 0; i < 8; i++) add('alloy', own(cylinder(2.6, 7.5, { at: at(27, 40 + i * 9.6) })) as Shape);
+  chip('alloy', 0.5, 124, 7, 32, 12);
+  for (let i = 0; i < 4; i++) chip('dark', 9, 4 + i * 7.5, 13, 6, 7);
+  for (const dy of [50, 70, 90]) chip('dark', 1.5, dy, 2.6, 10, 8);
+  chip('alloy', 126, 10, 28, 24, 2);
+  for (let i = 0; i < 8; i++) chip('alloy', 126, 10.4 + i * 3.1, 28, 1.2, 8, 2);
+  chip('board', 132, 38, 22, 80, 1.2, 2.2); chip('dark', 134, 46, 18, 14, 1.3, 3.4); chip('dark', 134, 70, 18, 22, 1.3, 3.4); chip('gold', 138, 113, 10, 5, 2.2);
+  add('alloy', own(cylinder(6, 3.2, { at: at(162, 120.5) })) as Shape);
+  // Ports at the rear edge. Each one comes through its opening in the rear wall.
+  const rear = BODY.depth + S;
+  const port = (y0: number, y1: number, z0: number, z1: number, depth: number, tone: Tone): void => add(tone, block(rear + 1.5 - depth, y0 + 0.5, z0 + 0.5, rear + 1.5, y1 - 0.5, z1 - 0.5));
+  port(270, 286, 10.5, 24, 21, 'alloy'); port(290, 306, 10.5, 24, 21, 'alloy'); port(312, 326, 10.5, 26.5, 17, 'alloy'); port(339.6, 359.4, 12, 23.2, 16, 'accent');
+
+  // The front: the power button, two light pipes, and two ports.
+  add('accent', rod([-1.2, PANEL.y + 385, PANEL.z + 19], 5, 5, [1, 0, 0]));
+  add('gold', rod([-0.6, PANEL.y + 403, PANEL.z + 26], 1.2, 4, [1, 0, 0]), rod([-0.6, PANEL.y + 403, PANEL.z + 12], 1.2, 4, [1, 0, 0]));
+  for (const z of [23, 9]) add('alloy', block(-0.5, PANEL.y + 350.4, PANEL.z + z + 0.4, 14, PANEL.y + 362.6, PANEL.z + z + 5.2));
+  return out;
+}
+
+interface ChassisParams {
+  fold?: number; // 0 to 1: how far each bend is folded. Below 1 the example shows only the sheet-metal parts, side by side
+  lid?: number; // 0 to 1: slides the cover to the rear
+  sheet?: { width: number; height: number }; // the stock sheet for the nest
+  sets?: number; // how many chassis the nest cuts from the sheet
+}
+const TONES: Tone[] = ['steel', 'bezel', 'dark', 'board', 'alloy', 'gold', 'accent'];
+// One compound for each tone that has a part.
+const byTone = (shown: [Tone, Shape][]): Partial<Record<Tone, Shape>> =>
+  Object.fromEntries(TONES.filter((tone) => shown.some(([t]) => t === tone)).map((tone) => [tone, compound(shown.filter(([t]) => t === tone).map(([, s]) => s)) as Shape]));
+const toneOf = (name: Name): Tone => (name === 'panel' ? 'bezel' : 'steel');
+
+const chassis = ({ fold = 1, lid = 0, sheet = { width: 1250, height: 2500 }, sets = 4 }: ChassisParams = {}) => freeing(() => {
+  const angle = 90 * Math.min(1, Math.max(0.01, fold));
+  const parts = Object.fromEntries(NAMES.map((name) => [name, SHEET[name].make(angle)])) as Record<Name, Part>;
+  if (fold < 1) {
+    // Part folded, the parts lie side by side on the bench, each in the frame that it is made in.
+    let x = 0;
+    const bench = NAMES.map((name): [Tone, Shape] => { const at = x; x += parts[name].baseLength + 130; return [toneOf(name), move(parts[name].solid as Shape, [at, 0, 0])]; });
+    return { ...byTone(bench), solids: bench.length };
+  }
+
+  // The flat blanks: one for each part, with its bend lines and its cutouts. The nest puts them on the sheet.
+  const flats = NAMES.map((name): Flat => {
+    const flat = unwrap(unfold(parts[name]));
+    [flat.pattern.outline, ...flat.pattern.holes, ...flat.pattern.formCuts, ...flat.pattern.formMarkers, ...flat.pattern.formHinges, ...flat.pattern.bendLines.map((l) => l.line)].forEach((handle) => own(handle));
+    return flat;
+  });
+  const patterns = Array.from({ length: sets }, () => flats.map((f) => f.pattern)).flat();
+  const nested = unwrap(nest(patterns, { sheet, margin: 10, spacing: 6, allowRotation: true }));
+
+  const shown = NAMES.map((name): [Tone, Shape] => [toneOf(name), name === 'cover' ? move(SHEET.cover.place(parts.cover.solid as Shape), [330 * lid, 0, 8 * lid]) : SHEET[name].place(parts[name].solid as Shape)]);
+  shown.push(...hardware());
+  return {
+    ...byTone(shown),
+    solids: shown.length,
+    dxf: unwrap(nestToDXF(nested, patterns, 0)),
+    bends: flats.reduce((sum, f) => sum + f.report.bends.length, 0),
+    blanks: Object.fromEntries(NAMES.map((name, i) => [name, flats[i]?.report.totalFlatSize])) as Record<Name, [number, number]>,
+    sheets: nested.sheets.length,
+    used: nested.sheets[0]?.utilization ?? 0,
+  };
+});
+
+// Show the chassis with its cover open. Try chassis() for the closed chassis, or chassis({ fold: 0.4 }) to see
+// the parts part folded on the bench.
+const model = chassis({ lid: 1 });
+if ('dxf' in model) console.log(model.solids, 'solids,', model.bends, 'bends, tray blank', model.blanks.tray.map((v) => v.toFixed(1)).join(' x '), 'mm,', (model.used * 100).toFixed(0) + '% of the sheet used');
+const COLORS: Record<Tone, string> = { steel: '#c9ccd1', bezel: '#2b2f36', dark: '#30343b', board: '#2f6b4f', alloy: '#dcdad3', gold: '#c9a227', accent: '#d8572a' };
+// Turn the front toward the camera, for the first view and for the Iso view.
+const show = (s: Shape, css: string) => {
+  const turned = rotate(s, 180, { axis: [0, 0, 1], at: [BODY.depth / 2, BODY.width / 2, 0] });
+  s.delete();
+  return color(turned, css);
+};
+// The DXF button downloads the nested blanks of four chassis, with a layer for the outlines, the bends and the cutouts.
+export default present(
+  TONES.flatMap((tone) => (model[tone] ? [show(model[tone] as Shape, COLORS[tone])] : [])),
+  'dxf' in model ? { dxf: model.dxf } : {},
+);`,
+  },
 ];

@@ -75,6 +75,13 @@ const REELS = [
     video: '/media/rover-reel.mp4',
     poster: '/media/rover-reel-poster.webp',
   },
+  {
+    id: 'server-chassis',
+    title: 'Server chassis',
+    fact: 'Seven sheet-metal parts with 18 bends. The kernel unfolds them and nests four sets on one sheet.',
+    video: '/media/chassis-reel.mp4',
+    poster: '/media/chassis-reel-poster.webp',
+  },
 ];
 const reducedMotion = () =>
   typeof window !== 'undefined' &&
@@ -413,11 +420,11 @@ onBeforeUnmount(() => observer?.disconnect());
             <p class="lead">
               Each model is one TypeScript file that runs in your browser. The robot arm moves by a
               published Denavit-Hartenberg table. The watch has the tooth counts of a real calibre.
-              The kernel measures the mass and the centre of mass of the rover. Each tile opens its
-              file in the playground.
+              The kernel measures the mass and the centre of mass of the rover, and it unfolds the
+              sheet metal of the chassis for a DXF. Each tile opens its file in the playground.
             </p>
           </div>
-          <div class="reels">
+          <div class="reels" :class="{ odd: REELS.length % 2 === 1 }">
             <a
               v-for="r in REELS"
               :key="r.id"
@@ -1250,6 +1257,10 @@ pre.term {
   grid-template-columns: repeat(2, 1fr);
   gap: 20px;
   margin-top: 36px;
+}
+/* With an odd count, the first tile takes a full row, so no row has an empty place. */
+.reels.odd .reel:first-child {
+  grid-column: 1 / -1;
 }
 .reel {
   display: flex;
