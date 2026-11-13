@@ -1,0 +1,22 @@
+apps/playground/scripts/checkExamples.ts
+  s_d47ce2fcef68a6::t_3e5d0259659a4d 29
+apps/playground/src/lib/monacoSetup.ts
+  s_d47ce2fcef68a6::t_3c91d9ac45eb9e 11
+  s_d47ce2fcef68a6::t_3e5d0259659a4d 1,10,12-13,39-41,43,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ea6ea2a5b6bb11b510eeec6eb7b969f9ebf69bf8",
+  "prompts": {},
+  "sessions": {
+    "s_d47ce2fcef68a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87734ef0-a56f-4f3a-86f6-514f8ed13244",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
