@@ -1,5 +1,13 @@
 # Changelog
 
+## [20.23.0](https://github.com/andymai/brepjs/compare/brepjs-v20.22.2...brepjs-v20.23.0) (2026-11-13)
+
+
+### Features
+
+* **playground:** add a pocket-watch showcase and a showcase grid on the landing page ([#2648](https://github.com/andymai/brepjs/issues/2648)) ([351997b](https://github.com/andymai/brepjs/commit/351997b3fb358dfd8fb36353f0829ecf2847e19c))
+* **playground:** add a pocket-watch showcase and a showcase grid on the landing page ([#2648](https://github.com/andymai/brepjs/issues/2648)) ([19472b5](https://github.com/andymai/brepjs/commit/19472b50e6eedc7750682c848ab8e7ef8faef1ba))
+
 ## [20.22.2](https://github.com/andymai/brepjs/compare/brepjs-v20.22.1...brepjs-v20.22.2) (2026-11-13)
 
 
