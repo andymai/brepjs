@@ -1,0 +1,19 @@
+apps/playground/src/lib/examples/showcase.ts
+  s_d47ce2fcef68a6::t_cd03b3351d70d4 1577-1594,1596,1599
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fb3a0a3e92d52daa554f755e9b5e8f9e872ee6fb",
+  "prompts": {},
+  "sessions": {
+    "s_d47ce2fcef68a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87734ef0-a56f-4f3a-86f6-514f8ed13244",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
