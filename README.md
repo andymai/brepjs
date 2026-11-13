@@ -15,6 +15,11 @@ https://github.com/user-attachments/assets/66a9308e-b7bf-4407-8718-2949332c67fc
 
 **[▶ Run this engine in your browser](https://brepjs.dev/playground/examples/turbofan-engine)**
 
+<a href="https://brepjs.dev/playground/examples/robot-arm"><img src="https://raw.githubusercontent.com/andymai/brepjs/main/media/arm-reel-poster.webp" alt="A six-axis robot arm in cutaway. The solver gives six joint angles for a tool position." width="49%"></a>
+<a href="https://brepjs.dev/playground/examples/pocket-watch"><img src="https://raw.githubusercontent.com/andymai/brepjs/main/media/watch-reel-poster.webp" alt="The gear train of a pocket-watch movement, with the tooth count on each wheel." width="49%"></a>
+
+Also in the playground: a [six-axis robot arm](https://brepjs.dev/playground/examples/robot-arm) that moves by a published Denavit-Hartenberg table, and a [pocket-watch movement](https://brepjs.dev/playground/examples/pocket-watch) with the tooth counts of a real calibre.
+
 </div>
 
 This jet engine is one TypeScript file: 237 lines of brepjs that build 1,897 solids. It is a 1:10 display model, not an engineered design. Boolean cuts open the casings, a change to one parameter rebuilds the engine in about half a second, and the result exports to STEP. A coding agent (Claude Code) wrote the file, and `brep verify` checked it.
