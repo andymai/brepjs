@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.26.0](https://github.com/andymai/brepjs/compare/brepjs-v20.25.0...brepjs-v20.26.0) (2026-11-13)
+
+
+### Features
+
+* **playground:** add a server chassis showcase that unfolds its sheet metal and nests it for a DXF ([#2665](https://github.com/andymai/brepjs/issues/2665)) ([dd20d5c](https://github.com/andymai/brepjs/commit/dd20d5c7f10ca3b02d5bf2cbcd007ffa5ac00d79))
+
 ## [20.25.0](https://github.com/andymai/brepjs/compare/brepjs-v20.24.0...brepjs-v20.25.0) (2026-11-13)
 
 
