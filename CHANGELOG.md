@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.22.0](https://github.com/andymai/brepjs/compare/brepjs-v20.21.2...brepjs-v20.22.0) (2026-11-13)
+
+
+### Features
+
+* **playground:** add a turbofan jet engine showcase and lead the README with it ([#2630](https://github.com/andymai/brepjs/issues/2630)) ([2c3374b](https://github.com/andymai/brepjs/commit/2c3374b1f03d044ab48ef0475b2d9f16c72426d0))
+
 ## [20.21.2](https://github.com/andymai/brepjs/compare/brepjs-v20.21.1...brepjs-v20.21.2) (2026-11-12)
 
 
