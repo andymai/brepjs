@@ -52,7 +52,7 @@ const lerpTable = (table: P2[], z: number): number => {
 };
 
 // Kernel shapes live in WASM memory. Each helper frees the temporary shapes that it made.
-const free = (...shapes: Disposable[]) => shapes.forEach((s) => s[Symbol.dispose]());
+const free = (...shapes: { delete(): void }[]) => shapes.forEach((s) => s.delete());
 
 // One compound that owns its parts: the part handles are free after the kernel copies them in.
 const group = (parts: Shape[]): Shape => {
