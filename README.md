@@ -11,7 +11,7 @@ Built so that AI agents can write parts and check them.
 [![Commit activity](https://img.shields.io/github/commit-activity/m/andymai/brepjs?label=commits%2Fmonth)](https://github.com/andymai/brepjs/commits/main)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
-https://github.com/user-attachments/assets/9c7850c9-929d-45be-8330-00a08c195f3e
+https://github.com/user-attachments/assets/66a9308e-b7bf-4407-8718-2949332c67fc
 
 **[▶ Run this engine in your browser](https://brepjs.dev/playground/examples/turbofan-engine)**
 

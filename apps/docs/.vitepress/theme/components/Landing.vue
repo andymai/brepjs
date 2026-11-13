@@ -235,23 +235,26 @@ onBeforeUnmount(() => observer?.disconnect());
 
           <figure class="panel demo">
             <div class="code-bar">
-              <span class="dot3"><i></i><i></i><i></i></span> real run · Claude Code · sped up
+              <span class="dot3"><i></i><i></i><i></i></span> turbofan.brep.ts · 237 lines · written
+              by an agent
             </div>
             <video
               ref="demo"
-              src="/media/agent-demo.mp4"
-              poster="/media/agent-demo-poster.webp"
+              src="/media/turbofan-reel.mp4"
+              poster="/media/turbofan-reel-poster.webp"
               muted
               loop
               playsinline
               preload="metadata"
               controls
-              aria-label="A coding agent turns the official Raspberry Pi 5 drawing into a case, brep verify catches a failed build, and the STEP opens in FreeCAD"
+              aria-label="A turbofan jet engine built from one TypeScript file: a fan blade is lofted, the casings are cut open, the engine is rebuilt from new parameters, and brep verify checks it"
             ></video>
             <figcaption>
-              An agent turns the official Raspberry Pi 5 drawing into a checked case.
+              An agent wrote this jet engine as one TypeScript file, and
+              <code>brep verify</code> checked it.
+              <a href="/playground/examples/turbofan-engine">Run it in the playground →</a>
               <a href="https://youtu.be/n8Cbg345NRI" target="_blank" rel="noopener"
-                >Watch the narrated version →</a
+                >Watch an agent design a Raspberry Pi 5 case →</a
               >
             </figcaption>
           </figure>
