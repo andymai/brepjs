@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.25.0](https://github.com/andymai/brepjs/compare/brepjs-v20.24.0...brepjs-v20.25.0) (2026-11-13)
+
+
+### Features
+
+* **playground:** add a Mars rover showcase with a mass budget that the kernel measures ([#2658](https://github.com/andymai/brepjs/issues/2658)) ([c6cbce3](https://github.com/andymai/brepjs/commit/c6cbce3d74daea67775783c1b667c77ab874c640))
+
 ## [20.24.0](https://github.com/andymai/brepjs/compare/brepjs-v20.23.1...brepjs-v20.24.0) (2026-11-13)
 
 
