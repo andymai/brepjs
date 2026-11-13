@@ -1,0 +1,21 @@
+src/kernel/brepkit/evolutionOps.ts
+  s_385aefe07faf61::t_cd8a74d9b16c43 210-212
+tests/brepkitAdapter.test.ts
+  s_385aefe07faf61::t_c84327de138581 1310-1324
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3cd0e93c0eab17270c5a642f3205dbe8a538c365",
+  "prompts": {},
+  "sessions": {
+    "s_385aefe07faf61": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ba532a8-609c-4534-9316-9e8d54346633",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
