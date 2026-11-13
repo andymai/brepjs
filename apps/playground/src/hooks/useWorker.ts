@@ -14,7 +14,9 @@ export function useWorker(onMessage: (msg: FromWorker) => void, onCrash?: () => 
   // store via getState() rather than subscribing, so the hook doesn't re-render
   // on every progress tick. `onSettled` fires on init-done AND init-error, so a
   // restart awaiting init doesn't hang forever when the new worker fails to init.
-  const wireWorker = useCallback((worker: Worker, onSettled?: () => void) => {
+  // It reports whether init succeeded: a worker that failed init answers every
+  // eval with "Worker not initialized", which would replace the real init error.
+  const wireWorker = useCallback((worker: Worker, onSettled?: (ready: boolean) => void) => {
     worker.onmessage = (e: MessageEvent<FromWorker>) => {
       const msg = e.data;
       const engine = useEngineStore.getState();
@@ -24,7 +26,7 @@ export function useWorker(onMessage: (msg: FromWorker) => void, onCrash?: () => 
           break;
         case 'init-done':
           engine.setStatus('ready');
-          onSettled?.();
+          onSettled?.(true);
           break;
         case 'init-error':
           // A redeploy renames the worker's content-hashed `brepjs` chunks and
@@ -35,7 +37,7 @@ export function useWorker(onMessage: (msg: FromWorker) => void, onCrash?: () => 
           // bundle still failed, so fall through to the error UI.
           if (isStaleAssetError(msg.error) && reloadForStaleBundle()) break;
           engine.setError(msg.error);
-          onSettled?.();
+          onSettled?.(false);
           break;
       }
       onMessageRef.current(msg);
@@ -76,7 +78,7 @@ export function useWorker(onMessage: (msg: FromWorker) => void, onCrash?: () => 
   }, []);
 
   const restart = useCallback(() => {
-    return new Promise<void>((resolve) => {
+    return new Promise<boolean>((resolve) => {
       // Terminate current worker
       if (workerRef.current) {
         workerRef.current.terminate();

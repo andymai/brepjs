@@ -41,7 +41,7 @@ export function useCodeExecution() {
 
   // Ref so onMessage can post directly without depending on React state
   const postMessageRef = useRef<(msg: ToWorker) => void>(() => {});
-  const restartRef = useRef<(() => Promise<void>) | null>(null);
+  const restartRef = useRef<(() => Promise<boolean>) | null>(null);
 
   const submitEval = useCallback((code: string) => {
     const id = `eval-${++evalCounter}`;
@@ -185,8 +185,7 @@ export function useCodeExecution() {
     // DON'T overwrite the editor: the code the user has now (which may be what
     // crashed) is their work, and silently replacing it loses edits.
     toastStore.addToast('Worker crashed and was restarted — your code is unchanged.');
-    if (restartRef.current) {
-      await restartRef.current();
+    if (restartRef.current && (await restartRef.current())) {
       submitEval(lastSuccessfulCode);
     }
   }, [submitEval]);
