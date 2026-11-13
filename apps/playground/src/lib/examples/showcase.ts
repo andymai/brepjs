@@ -609,4 +609,399 @@ export default [
   show(arm.dark, '#48515c'),
 ];`,
   },
+  {
+    id: 'pocket-watch',
+    label: 'Pocket-Watch Movement',
+    description:
+      'A hand-wound pocket-watch movement of the 16.5 ligne class: 36.6 mm, 17 jewels, 18,000 vibrations per hour. Each tooth count is from a published teardown, so the gear ratios are true, and the time parameter turns each wheel by its ratio. The bridges, the escapement shapes and the winding parts are a display model.',
+    code: `import {
+  box,
+  chamfer,
+  compound,
+  cut,
+  cutAll,
+  cylinder,
+  edgeFinder,
+  extrude,
+  face,
+  fillet,
+  fuseAll,
+  getBounds,
+  interpolateCurve,
+  intersect,
+  line,
+  makeExternalGear,
+  polygon,
+  rotate,
+  threePointArc,
+  translate,
+  unwrap,
+  wire,
+} from 'brepjs/quick';
+import { color } from 'brepjs/playground';
+
+// Hand-wound pocket-watch movement of the 16.5 ligne class: 36.6 mm, 17 jewels, 18,000 vibrations per hour.
+// Each tooth count is from a published teardown of this class, so each ratio is true. The arbor layout comes
+// from the centre distances of those gears. The bridges, the escapement shapes and the winding parts are a
+// display model. Units are millimetres. Z = 0 is the top of the main plate, and the dial side is below it.
+const TAU = 2 * Math.PI;
+const R = 18.3; // 36.6 mm movement
+
+type P2 = [number, number];
+type P3 = [number, number, number];
+type Shape = ReturnType<typeof cylinder>;
+type Tone = 'plate' | 'bridge' | 'brass' | 'steel' | 'blue' | 'ruby';
+type Mobile = 'barrel' | 'centre' | 'third' | 'fourth' | 'escape' | 'fork' | 'balance' | 'minute' | 'hour' | 'set1' | 'set2';
+interface Part {
+  tone: Tone;
+  shape: Shape;
+  lift: number; // level in the exploded view: -1 dial side, 0 plate, 1 wheels, 2 balance, 3 bridges, 4 top
+  on?: Mobile; // the mobile that the part turns with
+}
+const LIFT = 4; // millimetres between two levels of the exploded view
+
+// Kernel shapes live in WASM memory. Every shape goes through own(), and the caller frees them all at the end.
+const owned: { delete(): void }[] = [];
+const own = <T extends { delete(): void }>(s: T): T => {
+  owned.push(s);
+  return s;
+};
+
+// ---- the gears: wheel teeth and module, pinion leaves. A pinion has the module of the wheel that drives it.
+const BARREL = { teeth: 88, module: 0.191 };
+const CENTRE = { teeth: 80, module: 0.151, leaves: 12 };
+const THIRD = { teeth: 60, module: 0.138, leaves: 10 };
+const FOURTH = { teeth: 70, module: 0.116, leaves: 8 };
+const ESCAPE = { teeth: 15, leaves: 7, phase: (15.5 * Math.PI) / 180 }; // phase: the angle of the wheel on its arbor, which puts a tooth against a pallet stone
+const MOTION = { cannon: 12, minute: 36, minutePinion: 10, hour: 40, module: 0.214, hourModule: 0.2054 }; // 12 + 36 and 10 + 40 teeth on one centre distance
+const WINDING = { ratchet: 56, crown: 35, module: 0.238, setting: 16 };
+
+const centres = (module: number, z1: number, z2: number): number => (module * (z1 + z2)) / 2;
+const polar = (o: P2, r: number, a: number): P2 => [o[0] + r * Math.cos(a), o[1] + r * Math.sin(a)];
+// The point at r1 from a and r2 from b, on the left (side = 1) or the right (side = -1) of the line a to b.
+const meet = (a: P2, r1: number, b: P2, r2: number, side: 1 | -1): P2 => {
+  const d = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const t = (r1 * r1 - r2 * r2 + d * d) / (2 * d);
+  const h = side * Math.sqrt(r1 * r1 - t * t);
+  const u: P2 = [(b[0] - a[0]) / d, (b[1] - a[1]) / d];
+  return [a[0] + u[0] * t - u[1] * h, a[1] + u[1] * t + u[0] * h];
+};
+
+// ---- the arbors. The stem is on +X, and the small seconds is opposite it.
+const AT_CENTRE: P2 = [0, 0];
+const AT_CROWN: P2 = [13, 1.6]; // over the stem
+const AT_BARREL = meet(AT_CENTRE, centres(BARREL.module, BARREL.teeth, CENTRE.leaves), AT_CROWN, centres(WINDING.module, WINDING.ratchet, WINDING.crown), 1);
+const AT_FOURTH: P2 = [-10.6, 0];
+const AT_THIRD = meet(AT_CENTRE, centres(CENTRE.module, CENTRE.teeth, THIRD.leaves), AT_FOURTH, centres(THIRD.module, THIRD.teeth, FOURTH.leaves), -1);
+const AT_ESCAPE = polar(AT_FOURTH, centres(FOURTH.module, FOURTH.teeth, ESCAPE.leaves), (-62 * Math.PI) / 180);
+const AT_BALANCE: P2 = [1, -10.3];
+const TO_BALANCE = Math.atan2(AT_BALANCE[1] - AT_ESCAPE[1], AT_BALANCE[0] - AT_ESCAPE[0]);
+const AT_PALLET = polar(AT_ESCAPE, 3.66, TO_BALANCE);
+const COCK_FOOT = polar([0, 0], R - 2.2, (-38 * Math.PI) / 180);
+const STUD_DIR = Math.atan2(COCK_FOOT[1] - AT_BALANCE[1], COCK_FOOT[0] - AT_BALANCE[0]); // from the balance to the foot of its cock
+const HAIRSPRING = { r0: 0.75, r1: 4.4, turns: 11.5 };
+const AT_MINUTE = polar(AT_CENTRE, centres(MOTION.module, MOTION.cannon, MOTION.minute), (-50 * Math.PI) / 180);
+const AT_SET2: P2 = [9.6, -2.6];
+const AT_SET1 = meet(AT_MINUTE, centres(MOTION.module, MOTION.minute, WINDING.setting), AT_SET2, MOTION.module * WINDING.setting, 1);
+const ARBOR: Record<Mobile, P2> = {
+  barrel: AT_BARREL, centre: AT_CENTRE, third: AT_THIRD, fourth: AT_FOURTH, escape: AT_ESCAPE, fork: AT_PALLET,
+  balance: AT_BALANCE, minute: AT_MINUTE, hour: AT_CENTRE, set1: AT_SET1, set2: AT_SET2,
+};
+
+// ---- levels above the plate
+const Z = {
+  centreWheel: [0.25, 0.4],
+  barrelTeeth: [0.5, 0.8],
+  thirdWheel: [0.88, 1.03],
+  fourthWheel: [1.35, 1.5],
+  escapeWheel: [0.6, 0.72],
+  bridge: [2.45, 3.15],
+  plate: [-1.35, 0], // 4.5 mm from the dial side of the plate to the top of the bridges
+} as const;
+
+const at = (s: Shape, [x, y]: P2, z = 0, turn = 0): Shape => {
+  const turned = turn === 0 ? s : (own(rotate(s, (turn * 360) / TAU)) as Shape);
+  return own(translate(turned, [x, y, z]) as Shape);
+};
+const disc = (r: number, z0: number, z1: number, c: P2 = [0, 0]): Shape => own(cylinder(r, z1 - z0, { at: [c[0], c[1], z0] }));
+const ring = (r0: number, r1: number, z0: number, z1: number): Shape => own(unwrap(cut(disc(r1, z0, z1), disc(r0, z0 - 0.1, z1 + 0.1)))) as Shape;
+const prism = (pts: P2[], z0: number, z1: number): Shape =>
+  own(unwrap(extrude(own(unwrap(polygon(pts.map(([x, y]): P3 => [x, y, z0])))), z1 - z0))) as Shape;
+const fused = (parts: Shape[]): Shape => own(unwrap(fuseAll(parts))) as Shape;
+const minus = (s: Shape, tools: Shape[]): Shape => own(unwrap(cutAll(s, tools))) as Shape;
+
+// An involute gear from z0 to z1. A pinion gets a positive profile shift and its wheel the same negative shift,
+// so the centre distance stays at module * (z1 + z2) / 2.
+const gear = (teeth: number, module: number, [z0, z1]: readonly [number, number], shift = 0, bore = 0): Shape => {
+  const g = unwrap(makeExternalGear({ teeth, moduleSize: module, thickness: z1 - z0, shift, bore, flankThinning: module * 0.05, samples: 6 }));
+  return own(translate(own(g.solid), [0, 0, z0]) as Shape);
+};
+
+// A wheel: a toothed rim, a hub and arms.
+const wheel = (teeth: number, module: number, z: readonly [number, number], shift: number, arms: number, hub: number): Shape => {
+  const rim = (teeth * module) / 2 - 3.2 * module - 0.25;
+  const gap = 0.22 / ((rim + hub) / 2); // half the angle of one arm
+  const windows = Array.from({ length: arms }, (_, i) => {
+    const a0 = (i * TAU) / arms + gap;
+    const a1 = ((i + 1) * TAU) / arms - gap;
+    const am = (a0 + a1) / 2;
+    const p = (r: number, a: number): P3 => [r * Math.cos(a), r * Math.sin(a), z[0] - 0.05];
+    const edges = [
+      threePointArc(p(rim, a0), p(rim, am), p(rim, a1)),
+      line(p(rim, a1), p(hub, a1)),
+      threePointArc(p(hub, a1), p(hub, am), p(hub, a0)),
+      line(p(hub, a0), p(rim, a0)),
+    ].map(own);
+    return own(unwrap(extrude(own(unwrap(face(own(unwrap(wire(edges))) as never))), z[1] - z[0] + 0.1))) as Shape;
+  });
+  return minus(gear(teeth, module, z, shift, 0.6), windows);
+};
+
+// A flat spiral strip: the mainspring and the hairspring.
+const spiral = (r0: number, r1: number, turns: number, thick: number, z0: number, z1: number): Shape => {
+  const n = Math.ceil(turns * 20);
+  const side = (off: number): P3[] =>
+    Array.from({ length: n + 1 }, (_, i): P3 => {
+      const a = (i / n) * turns * TAU;
+      const r = r0 + ((r1 - r0) * i) / n + off;
+      return [r * Math.cos(a), r * Math.sin(a), z0];
+    });
+  const inner = side(-thick / 2);
+  const outer = side(thick / 2).reverse();
+  const edges = [
+    unwrap(interpolateCurve(inner)),
+    line(inner[n] as P3, outer[0] as P3),
+    unwrap(interpolateCurve(outer)),
+    line(outer[n] as P3, inner[0] as P3),
+  ].map(own);
+  return own(unwrap(extrude(own(unwrap(face(own(unwrap(wire(edges))) as never))), z1 - z0))) as Shape;
+};
+
+// A screw head with a slot.
+const screw = (c: P2, z: number, r = 0.75): Shape =>
+  at(own(unwrap(cut(disc(r, 0, 0.3), own(translate(own(box(2 * r + 0.2, 0.2, 0.2)), [-r - 0.1, -0.1, 0.16]))))) as Shape, c, z, (c[0] * 7 + c[1] * 3) % TAU);
+
+// A pierced jewel, flush with the face at z1.
+const jewel = (c: P2, z0: number, z1: number, r = 0.55): Shape => at(ring(0.13, r, z0, z1), c);
+
+// The angle of a driven gear that puts a tooth space on the tooth of its driver, on the line of centres.
+const meshAngle = (driver: P2, driverAngle: number, zDriver: number, driven: P2, zDriven: number): number => {
+  const phi = Math.atan2(driven[1] - driver[1], driven[0] - driver[0]);
+  const phase = (phi - driverAngle) / (TAU / zDriver);
+  return phi + Math.PI - (TAU / zDriven) * (0.5 - phase);
+};
+
+// The angle of each mobile after a running time in seconds. The escapement lets one tooth flank go at each vibration, so
+// the train moves in 5 steps each second. The balance makes 2.5 oscillations each second.
+function angles(time: number): Record<Mobile, number> {
+  const beat = Math.floor(time * 5 + 1e-9) / 5;
+  const centre = (beat / 3600) * TAU;
+  const third = meshAngle(AT_CENTRE, centre, CENTRE.teeth, AT_THIRD, THIRD.leaves);
+  const fourth = meshAngle(AT_THIRD, third, THIRD.teeth, AT_FOURTH, FOURTH.leaves);
+  const minute = meshAngle(AT_CENTRE, centre, MOTION.cannon, AT_MINUTE, MOTION.minute);
+  const set1 = meshAngle(AT_MINUTE, minute, MOTION.minute, AT_SET1, WINDING.setting);
+  const swing = Math.sin(time * 2.5 * TAU);
+  return {
+    centre, third, fourth, minute, set1,
+    barrel: meshAngle(AT_CENTRE, centre, CENTRE.leaves, AT_BARREL, BARREL.teeth),
+    escape: meshAngle(AT_FOURTH, fourth, FOURTH.teeth, AT_ESCAPE, ESCAPE.leaves),
+    hour: meshAngle(AT_MINUTE, minute, MOTION.minutePinion, AT_CENTRE, MOTION.hour),
+    set2: meshAngle(AT_SET1, set1, WINDING.setting, AT_SET2, WINDING.setting),
+    balance: ((270 * Math.PI) / 180) * swing,
+    fork: TO_BALANCE - ((swing >= 0 ? 1 : -1) * 7 * Math.PI) / 180, // the balance pushes the fork the other way
+  };
+}
+
+// All parts of the movement after a running time in seconds.
+function movementParts(time = 0): Part[] {
+  const A = angles(time);
+  const parts: Part[] = [];
+  const add = (tone: Tone, lift: number, ...shapes: Shape[]): void => {
+    for (const shape of shapes) parts.push({ tone, shape, lift });
+  };
+  const turn = (on: Mobile, tone: Tone, lift: number, ...shapes: Shape[]): void => {
+    for (const shape of shapes) parts.push({ tone, lift, on, shape: at(shape, ARBOR[on], 0, A[on]) });
+  };
+
+  // ---- main plate: the dial side has a recess for the motion works
+  const [p0, p1] = Z.plate;
+  const recess = [disc(4.9, p0 - 0.1, -0.7, AT_CENTRE), disc(4.7, p0 - 0.1, -0.7, AT_MINUTE), disc(2.3, p0 - 0.1, -0.7, AT_SET1), disc(2.3, p0 - 0.1, -0.7, AT_SET2)];
+  const pivots = [...[AT_CENTRE, AT_THIRD, AT_FOURTH, AT_ESCAPE, AT_PALLET].map((c) => disc(0.55, -0.3, 0.1, c)), disc(0.6, -0.62, 0.1, AT_BALANCE)];
+  const stemSlot = own(translate(own(box(R - 9.4, 3.7, 1.5)), [9.5, -1.85, -1.05])) as Shape;
+  add('plate', 0, minus(disc(R, p0, p1), [...recess, ...pivots, stemSlot, disc(1.0, p0 - 0.1, p1 + 0.1, AT_BARREL), disc(0.5, p0 - 0.1, p1 + 0.1, AT_CENTRE)]));
+
+  // ---- barrel: 88 teeth on the drum, the mainspring inside, the arbor up to the ratchet wheel
+  const [b0, b1] = Z.barrelTeeth;
+  const drum = minus(fused([gear(BARREL.teeth, BARREL.module, Z.barrelTeeth, -0.3), disc(7.75, b0, 2.3)]), [disc(7.2, b0 + 0.2, 2.4), disc(0.95, b0 - 0.1, b0 + 0.3)]);
+  turn('barrel', 'brass', 1, drum);
+  turn('barrel', 'brass', 1.5, ring(0.95, 7.2, 2.3, 2.42));
+  turn('barrel', 'blue', 1.25, spiral(1.75, 7.05, 19.53, 0.165, b0 + 0.25, b0 + 1.75)); // 1.5 x 0.165 x 540 mm
+  add('steel', 1, at(fused([disc(0.9, 0.05, 3.2), disc(1.6, b0 + 0.25, 2.3)]), AT_BARREL));
+
+  // ---- going train. Each mobile is a wheel and the pinion that the wheel before it drives.
+  const mobile = (on: Mobile, wheelShape: Shape, pinion: Shape, zArbor: readonly [number, number]): void => {
+    turn(on, 'brass', 1, wheelShape);
+    turn(on, 'steel', 1, fused([pinion, disc(0.12, zArbor[0], zArbor[1]), disc(0.3, zArbor[0] + 0.25, zArbor[1] - 0.45)]));
+  };
+  mobile('centre', wheel(CENTRE.teeth, CENTRE.module, Z.centreWheel, -0.35, 5, 1.1), gear(CENTRE.leaves, BARREL.module, [0.42, 1.05], 0.3), [-0.25, 3.0]);
+  mobile('third', wheel(THIRD.teeth, THIRD.module, Z.thirdWheel, -0.4, 5, 0.8), gear(THIRD.leaves, CENTRE.module, [0.12, 0.55], 0.35), [-0.25, 3.0]);
+  mobile('fourth', wheel(FOURTH.teeth, FOURTH.module, Z.fourthWheel, -0.3, 5, 0.7), gear(FOURTH.leaves, THIRD.module, [0.75, 1.12], 0.4), [-0.25, 3.0]);
+
+  // Escape wheel: 15 club teeth that lean in the direction of rotation. The tooth shape is a display shape.
+  const [e0, e1] = Z.escapeWheel;
+  const club = Array.from({ length: ESCAPE.teeth }, (_, i) => {
+    const a = ESCAPE.phase - (i * TAU) / ESCAPE.teeth;
+    const deg = -Math.PI / 180;
+    return [polar([0, 0], 2.4, a), polar([0, 0], 3.17, a + 11 * deg), polar([0, 0], 3.1, a + 15 * deg), polar([0, 0], 2.88, a + 13.4 * deg), polar([0, 0], 2.4, a + 6 * deg)];
+  }).flat();
+  const escapeWheel = minus(prism(club, e0, e1), [0, 1, 2, 3].map((i) => own(rotate(prism([polar([0, 0], 0.75, 0.35), polar([0, 0], 1.95, 0.16), polar([0, 0], 1.95, TAU / 4 - 0.16), polar([0, 0], 0.75, TAU / 4 - 0.35)], e0 - 0.05, e1 + 0.05), i * 90)) as Shape));
+  mobile('escape', minus(escapeWheel, [disc(0.3, e0 - 0.1, e1 + 0.1)]), gear(ESCAPE.leaves, FOURTH.module, [1.25, 1.6], 0.3), [-0.25, 3.0]);
+
+  // ---- pallet fork and its two stones (display shape)
+  const forkLen = Math.hypot(AT_BALANCE[0] - AT_PALLET[0], AT_BALANCE[1] - AT_PALLET[1]);
+  const lever = prism([[-0.3, -0.42], [forkLen - 1.9, -0.3], [forkLen - 1.25, -0.75], [forkLen - 1.0, -0.28], [forkLen - 1.45, 0], [forkLen - 1.0, 0.28], [forkLen - 1.25, 0.75], [forkLen - 1.9, 0.3], [-0.3, 0.42]], e0, e1);
+  const arms = prism([[0.45, -0.35], [-0.15, -1.95], [-0.45, -1.8], [-0.2, 0], [-0.45, 1.8], [-0.15, 1.95], [0.45, 0.35]], e0, e1);
+  const stones = [-1, 1].map((s) => own(translate(own(box(0.75, 0.3, e1 - e0 + 0.06)), [-1.05, s * 1.6 - 0.15, e0 - 0.03])) as Shape);
+  turn('fork', 'steel', 1, minus(fused([lever, arms, disc(0.12, -0.25, 1.15)]), stones));
+  turn('fork', 'ruby', 1, ...stones);
+
+  // ---- balance: a smooth rim on three arms, the roller with its impulse jewel, and the hairspring. The inner
+  // end of the hairspring turns with the balance. The outer end stays at its stud, so the coils open and close.
+  const rim = fused([ring(6.25, 7.025, 1.3, 1.75), ring(0.32, 0.9, 1.3, 1.75), ...[0, 120, 240].map((d) => own(rotate(own(translate(own(box(5.7, 0.7, 0.3)), [0.7, -0.35, 1.3])), d)) as Shape)]);
+  turn('balance', 'brass', 2, rim);
+  turn('balance', 'steel', 2, fused([disc(0.1, -0.42, 2.95), disc(0.32, 0.8, 2.3), disc(1.05, 0.82, 0.95), disc(HAIRSPRING.r0 - 0.03, 1.98, 2.24)]));
+  turn('balance', 'ruby', 2, disc(0.14, 0.5, 0.82, polar([0, 0], 0.82, TO_BALANCE + Math.PI)));
+  const coils = HAIRSPRING.turns - A.balance / TAU;
+  add('blue', 2, at(spiral(HAIRSPRING.r0, HAIRSPRING.r1, coils, 0.04, 2.0, 2.22), AT_BALANCE, 0, STUD_DIR - coils * TAU));
+
+  // ---- bridges. Each one is a slab on a wall at the rim of the plate.
+  const [g0, g1] = Z.bridge;
+  const rounded = (s: Shape, r: number): Shape => own(unwrap(fillet(s, edgeFinder().inDirection('Z').findAll(s), r))) as Shape;
+  const bevel = (s: Shape, z: number): Shape => {
+    const onTop = (e: Parameters<typeof getBounds>[0]) => {
+      const b = getBounds(e);
+      return Math.abs(b.zMin - z) < 1e-6 && Math.abs(b.zMax - z) < 1e-6;
+    };
+    return own(unwrap(chamfer(s, edgeFinder().when(onTop).findAll(s), 0.1))) as Shape;
+  };
+  const slab = (outline: P2[], holes: Shape[]): Shape => {
+    const top = bevel(own(unwrap(intersect(rounded(prism(outline, g0, g1), 0.9), disc(R - 0.15, g0, g1)))) as Shape, g1);
+    const wall = own(unwrap(intersect(prism(outline, 0, g0), ring(R - 1.5, R - 0.15, 0, g0)))) as Shape;
+    return minus(fused([top, wall]), holes);
+  };
+  const stemHole = own(cylinder(1.0, 4, { at: [R - 3, 0, 0.9], axis: [1, 0, 0] }));
+  const barrelBridge = slab(
+    [[-4, 20], [-4, 3.2], [-2.2, -1.4], [0.8, -2.6], [10, -2.6], [13.2, -4.9], [20, -4.9], [20, 20]],
+    [disc(7.15, 2.9, g1 + 0.1, AT_BARREL), disc(4.6, 2.9, g1 + 0.1, AT_CROWN), disc(1.0, g0 - 0.1, g1, AT_BARREL), disc(0.55, g0 - 0.1, g1 + 0.1, AT_CENTRE), stemHole, disc(8.9, -0.1, g0 - 0.02, AT_BARREL), own(translate(own(box(1.2, 2.6, 0.6)), [12.3, -1.3, g0 - 0.1])) as Shape],
+  );
+  const trainBridge = slab(
+    [[-20, 10.5], [-4.6, 10.5], [-4.6, 3.4], [-2.9, -1.0], [-4.9, -2.2], [-12.5, -8], [-20, -8]],
+    [AT_THIRD, AT_FOURTH, AT_ESCAPE].map((c) => disc(0.55, g0 - 0.1, g1 + 0.1, c)),
+  );
+  add('bridge', 3, barrelBridge, trainBridge);
+
+  // Balance cock: a foot at the rim and an arm to the balance staff.
+  const foot = COCK_FOOT;
+  const armDir = STUD_DIR;
+  const side = (c: P2, w: number, s: 1 | -1): P2 => polar(c, w, armDir + (s * Math.PI) / 2);
+  const head = Array.from({ length: 13 }, (_, i): P2 => polar(AT_BALANCE, 1.9, armDir - (130 * Math.PI) / 180 - (i * 100 * Math.PI) / 180 / 12));
+  const cockTop = prism([side(AT_BALANCE, 1.5, 1), side(foot, 2.6, 1), side(polar(foot, 2.6, armDir), 2.6, 1), side(polar(foot, 2.6, armDir), 2.6, -1), side(foot, 2.6, -1), side(AT_BALANCE, 1.5, -1), ...head], g0, g1);
+  const cock = minus(fused([bevel(own(unwrap(intersect(cockTop, disc(R - 0.15, g0, g1)))) as Shape, g1), own(unwrap(intersect(prism([side(polar(foot, -1.6, armDir), 2.6, 1), side(polar(foot, 2.6, armDir), 2.6, 1), side(polar(foot, 2.6, armDir), 2.6, -1), side(polar(foot, -1.6, armDir), 2.6, -1)], 0, g0), disc(R - 0.15, 0, g0)))) as Shape]), [disc(0.7, g0 - 0.1, g1 + 0.1, AT_BALANCE)]);
+  add('bridge', 3, cock);
+  add('steel', 3, disc(0.22, 2.0, g0, polar(AT_BALANCE, HAIRSPRING.r1 + 0.25, STUD_DIR))); // the stud that holds the hairspring
+  // Regulator: a pointer on the cock (display shape).
+  add('steel', 3, at(minus(fused([disc(1.25, g1, g1 + 0.12), prism([[0, -0.3], [4.6, -0.12], [4.6, 0.12], [0, 0.3]], g1, g1 + 0.12)]), [disc(0.75, g1 - 0.1, g1 + 0.2)]), AT_BALANCE, 0, armDir + 0.12));
+
+  // Pallet bridge: a low bar under the balance rim. Its foot is on the side away from the centre wheel.
+  const across = TO_BALANCE + Math.PI / 2;
+  const bar = (z0: number, z1: number, from: number, to: number): Shape =>
+    prism([polar(polar(AT_PALLET, from, across), 1.0, TO_BALANCE), polar(polar(AT_PALLET, to, across), 1.0, TO_BALANCE), polar(polar(AT_PALLET, to, across), -1.0, TO_BALANCE), polar(polar(AT_PALLET, from, across), -1.0, TO_BALANCE)], z0, z1);
+  add('bridge', 2.5, minus(fused([bar(0.95, 1.2, -5.7, 1.0), bar(0, 0.95, -5.7, -3.2)]), [disc(0.45, 0.9, 1.25, AT_PALLET)]));
+
+  // ---- 17 jewels: a pair for each of five arbors, hole and cap jewels for the balance, the impulse jewel, two stones
+  for (const c of [AT_CENTRE, AT_THIRD, AT_FOURTH, AT_ESCAPE]) {
+    add('ruby', 3, jewel(c, g1 - 0.3, g1));
+    add('ruby', 0, jewel(c, -0.3, 0));
+  }
+  add('ruby', 2.5, jewel(AT_PALLET, 0.95, 1.2, 0.45));
+  add('ruby', 0, jewel(AT_PALLET, -0.3, 0));
+  add('ruby', 3, jewel(AT_BALANCE, g0 + 0.05, g0 + 0.3, 0.6), at(disc(0.7, g1 - 0.2, g1), AT_BALANCE));
+  add('ruby', 0, jewel(AT_BALANCE, -0.3, 0, 0.6), at(disc(0.6, -0.62, -0.42), AT_BALANCE));
+
+  // ---- winding: ratchet wheel on the barrel arbor, crown wheel, click, stem and crown
+  add('steel', 4, at(gear(WINDING.ratchet, WINDING.module, [2.92, 3.2], 0, 1.8), AT_BARREL));
+  const crownA = meshAngle(AT_BARREL, 0, WINDING.ratchet, AT_CROWN, WINDING.crown);
+  add('steel', 4, at(minus(gear(WINDING.crown, WINDING.module, [2.92, 3.2]), [disc(0.6, 2.8, 3.3)]), AT_CROWN, 0, crownA));
+  const clickAt = polar(AT_BARREL, 8.75, (150 * Math.PI) / 180);
+  add('steel', 4, at(prism([[-0.6, -0.5], [2.1, -0.25], [2.3, 0.35], [-0.6, 0.5]], g1, g1 + 0.25), clickAt, 0, (-65 * Math.PI) / 180));
+  const stem = fused([
+    own(cylinder(0.6, R - 6.9, { at: [8.5, 0, 0.9], axis: [1, 0, 0] })),
+    own(cylinder(1.95, 0.9, { at: [12.45, 0, 0.9], axis: [1, 0, 0] })),
+    own(cylinder(1.3, 1.3, { at: [9.5, 0, 0.9], axis: [1, 0, 0] })),
+  ]);
+  add('steel', 1, stem);
+  const crown = own(rotate(gear(30, 0.2, [0, 2.6], 0, 0), 90, { axis: [0, 1, 0] })) as Shape; // the gear teeth are the grip
+  add('brass', 1, own(translate(crown, [R + 1.6, 0, 0.9])) as Shape);
+
+  // ---- motion works on the dial side: 12 to 1 from the cannon pinion to the hour wheel
+  turn('centre', 'steel', -1, fused([gear(MOTION.cannon, MOTION.module, [-0.9, -0.72], 0.2), ring(0.5, 0.75, -2.6, -0.72)]));
+  turn('minute', 'brass', -1, gear(MOTION.minute, MOTION.module, [-0.9, -0.76], -0.2, 0.5));
+  turn('minute', 'steel', -1, fused([gear(MOTION.minutePinion, MOTION.hourModule, [-1.2, -0.92], 0.35), disc(0.25, -1.2, -0.7)]));
+  turn('hour', 'brass', -1.5, minus(fused([gear(MOTION.hour, MOTION.hourModule, [-1.2, -1.0], -0.35), disc(1.15, -2.1, -1.0)]), [disc(0.8, -2.2, -0.9)]));
+  turn('set1', 'steel', -1, gear(WINDING.setting, MOTION.module, [-0.9, -0.76], 0.2));
+  turn('set2', 'steel', -1, gear(WINDING.setting, MOTION.module, [-0.9, -0.76], -0.2));
+
+  // ---- screws: three on the barrel bridge, two on the train bridge, two on the pallet bridge, one on the cock
+  const heads: [P2, number][] = [
+    [[-2, 14.2], g1], [[13.9, 9.4], g1], [[15.8, -3.4], g1],
+    [[-13.2, 8.2], g1], [[-14.6, -5.2], g1],
+    [polar(foot, 0.9, armDir), g1],
+  ];
+  add('blue', 4, ...heads.map(([c, z]) => screw(c, z)), ...[-3.85, -5.05].map((d) => screw(polar(AT_PALLET, d, across), 1.2, 0.5)), screw(AT_BARREL, 3.2, 0.95), screw(AT_CROWN, 3.2, 0.95), screw(clickAt, g1 + 0.25, 0.5));
+
+  return parts;
+}
+
+interface WatchParams {
+  time?: number; // seconds of running
+  explode?: number; // 0 = assembled, 1 = the levels lift apart
+}
+
+function watch({ time = 0, explode = 0 }: WatchParams = {}) {
+  const parts = movementParts(time);
+  const tones: Tone[] = ['plate', 'bridge', 'brass', 'steel', 'blue', 'ruby'];
+  const built = Object.fromEntries(
+    tones.map((tone) => [
+      tone,
+      compound(parts.filter((p) => p.tone === tone).map((p) => (explode > 0 ? (own(translate(p.shape, [0, 0, p.lift * explode * LIFT])) as Shape) : p.shape))) as Shape,
+    ]),
+  ) as Record<Tone, Shape>;
+  owned.splice(0).forEach((s) => s.delete());
+  const fourthTurnsPerHour = (CENTRE.teeth / THIRD.leaves) * (THIRD.teeth / FOURTH.leaves);
+  return {
+    ...built,
+    jewels: parts.filter((p) => p.tone === 'ruby').length,
+    beatsPerHour: fourthTurnsPerHour * (FOURTH.teeth / ESCAPE.leaves) * ESCAPE.teeth * 2,
+    hoursPerBarrelTurn: BARREL.teeth / CENTRE.leaves,
+  };
+}
+
+// Show the bridge side. Try watch({ time: 1800 }) for the pose after half an hour, or watch({ explode: 1 }).
+const movement = watch();
+// Turn the balance toward the camera, for the first view and for the Iso view.
+const show = (s: Shape, css: string) => {
+  const turned = rotate(s, 90);
+  s.delete();
+  return color(turned, css);
+};
+console.log(movement.jewels, 'jewels,', movement.beatsPerHour, 'vibrations per hour, one barrel turn in', movement.hoursPerBarrelTurn.toFixed(2), 'h');
+export default [
+  show(movement.plate, '#d9d6cf'),
+  show(movement.bridge, '#e9e6de'),
+  show(movement.brass, '#d8a943'),
+  show(movement.steel, '#a9b1ba'),
+  show(movement.blue, '#2f4fa8'),
+  show(movement.ruby, '#c2185b'),
+];`,
+  },
 ];

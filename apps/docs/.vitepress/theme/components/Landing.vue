@@ -45,6 +45,50 @@ const typeCardHtml = [
   highlightLine('const ok = filledFace(unwrap(closedWire(w)));') + ' <span class="ok">// ✓</span>',
 ].join('\n');
 
+// "Showcase": one tile for each reel. A tile plays its reel while the pointer or the focus is on it.
+const REELS = [
+  {
+    id: 'turbofan-engine',
+    title: 'Turbofan engine',
+    fact: '237 lines build 1,897 solids. One parameter rebuilds the engine.',
+    video: '/media/turbofan-reel.mp4',
+    poster: '/media/turbofan-reel-poster.webp',
+  },
+  {
+    id: 'robot-arm',
+    title: 'Six-axis robot arm',
+    fact: 'The joints follow a published DH table. The solved reach is 580 mm.',
+    video: '/media/arm-reel.mp4',
+    poster: '/media/arm-reel-poster.webp',
+  },
+  {
+    id: 'pocket-watch',
+    title: 'Pocket-watch movement',
+    fact: 'The tooth counts of a real calibre. 62 solids with 0 mm³ of interference.',
+    video: '/media/watch-reel.mp4',
+    poster: '/media/watch-reel-poster.webp',
+  },
+];
+const reducedMotion = () =>
+  typeof window !== 'undefined' &&
+  !!window.matchMedia &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function playReel(e: Event) {
+  if (reducedMotion()) return;
+  (e.currentTarget as HTMLElement)
+    .querySelector('video')
+    ?.play()
+    .catch(() => {});
+}
+function stopReel(e: Event) {
+  const video = (e.currentTarget as HTMLElement).querySelector('video');
+  if (!video) return;
+  video.pause();
+  video.currentTime = 0;
+  // Show the poster again.
+  video.load();
+}
+
 // Reveal-on-scroll, gated behind prefers-reduced-motion.
 const root = ref<HTMLElement | null>(null);
 let observer: IntersectionObserver | null = null;
@@ -347,6 +391,49 @@ onBeforeUnmount(() => observer?.disconnect());
             </div>
           </div>
           <p class="caption">Point your agent at a spec; get back a part you can manufacture.</p>
+        </div>
+      </section>
+
+      <!-- ──────────────────── SHOWCASE ──────────────────── -->
+      <section class="band alt" data-reveal>
+        <div class="wrap">
+          <div class="sec-head">
+            <p class="eyebrow">Showcase</p>
+            <h2>Whole machines, one file each.</h2>
+            <p class="lead">
+              Each model is one TypeScript file that runs in your browser. The robot arm moves by a
+              published Denavit-Hartenberg table, and the watch has the tooth counts of a real
+              calibre. Each tile opens its file in the playground.
+            </p>
+          </div>
+          <div class="reels">
+            <a
+              v-for="r in REELS"
+              :key="r.id"
+              class="panel reel"
+              :href="`/playground/examples/${r.id}`"
+              @pointerenter="playReel"
+              @pointerleave="stopReel"
+              @focus="playReel"
+              @blur="stopReel"
+            >
+              <video
+                :src="r.video"
+                :poster="r.poster"
+                muted
+                loop
+                playsinline
+                preload="none"
+                tabindex="-1"
+                aria-hidden="true"
+              ></video>
+              <span class="reel-cap">
+                <strong>{{ r.title }}</strong>
+                <span>{{ r.fact }}</span>
+                <em>Run it in the playground →</em>
+              </span>
+            </a>
+          </div>
         </div>
       </section>
 
@@ -1146,6 +1233,53 @@ pre.term {
   color: var(--ink-2);
 }
 
+/* showcase */
+.reels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 36px;
+}
+.reel {
+  display: flex;
+  flex-direction: column;
+  transition:
+    border-color 0.25s var(--ease),
+    transform 0.25s var(--ease);
+}
+.reel:hover,
+.reel:focus-visible {
+  border-color: color-mix(in srgb, var(--teal-200) 55%, var(--line));
+  transform: translateY(-3px);
+}
+.reel video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: var(--bg-0);
+}
+.reel-cap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.reel-cap strong {
+  font-family: var(--f-display);
+  font-weight: 500;
+  font-size: 1.08rem;
+  color: var(--ink-0);
+}
+.reel-cap em {
+  font-style: normal;
+  color: var(--teal-200);
+}
+
 /* kernels */
 .kernels {
   margin-top: 36px;
@@ -1396,6 +1530,9 @@ pre.term {
   .ai-grid {
     grid-template-columns: 1fr;
     gap: 34px;
+  }
+  .reels {
+    grid-template-columns: 1fr;
   }
   .kernels {
     grid-template-columns: 1fr;
