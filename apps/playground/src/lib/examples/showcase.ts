@@ -1908,7 +1908,7 @@ const chassis = ({ fold = 1, lid = 0, sheet = { width: 1250, height: 2500 }, set
   });
   const patterns = Array.from({ length: sets }, () => flats.map((f) => f.pattern)).flat();
   const nested = unwrap(nest(patterns, { sheet, margin: 10, spacing: 6, allowRotation: true }));
-
+  if (nested.sheets.length !== 1 || nested.unplaced.length > 0) throw new Error('The blanks of ' + sets + ' chassis do not fit on one sheet. Use fewer sets or a larger sheet.');
   const shown = NAMES.map((name): [Tone, Shape] => [toneOf(name), name === 'cover' ? move(SHEET.cover.place(parts.cover.solid as Shape), [330 * lid, 0, 8 * lid]) : SHEET[name].place(parts[name].solid as Shape)]);
   shown.push(...hardware());
   return {
