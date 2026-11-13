@@ -41,7 +41,7 @@ export function useCodeExecution() {
 
   // Ref so onMessage can post directly without depending on React state
   const postMessageRef = useRef<(msg: ToWorker) => void>(() => {});
-  const restartRef = useRef<(() => Promise<void>) | null>(null);
+  const restartRef = useRef<(() => Promise<boolean>) | null>(null);
 
   const submitEval = useCallback((code: string) => {
     const id = `eval-${++evalCounter}`;
@@ -172,12 +172,20 @@ export function useCodeExecution() {
 
     const { lastSuccessfulCode } = playgroundStore;
 
+    // A worker that fails its init again runs nothing, so no eval message
+    // arrives to clear the run and recovery flags.
+    const restartWorker = async (): Promise<boolean> => {
+      if (!restartRef.current) return false;
+      if (await restartRef.current()) return true;
+      isRecoveringRef.current = false;
+      usePlaygroundStore.getState().setIsRunning(false);
+      return false;
+    };
+
     if (!lastSuccessfulCode) {
       // No previous successful code - just restart worker
       toastStore.addToast('Worker crashed. Restarting...');
-      if (restartRef.current) {
-        await restartRef.current();
-      }
+      await restartWorker();
       return;
     }
 
@@ -185,10 +193,7 @@ export function useCodeExecution() {
     // DON'T overwrite the editor: the code the user has now (which may be what
     // crashed) is their work, and silently replacing it loses edits.
     toastStore.addToast('Worker crashed and was restarted — your code is unchanged.');
-    if (restartRef.current) {
-      await restartRef.current();
-      submitEval(lastSuccessfulCode);
-    }
+    if (await restartWorker()) submitEval(lastSuccessfulCode);
   }, [submitEval]);
 
   const { postMessage, restart } = useWorker(onMessage, recoverFromCrash);
