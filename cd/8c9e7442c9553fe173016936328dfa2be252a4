@@ -1,0 +1,30 @@
+apps/docs/.vitepress/theme/components/Landing.vue
+  s_d47ce2fcef68a6::t_d2c9c3239a6a25 79-82
+  s_d47ce2fcef68a6::t_9ce7b1f3710377 48,50-60,62-78,83-92,398-402,404,408-440,1237-1283,1535-1536
+  s_d47ce2fcef68a6::t_2d6788cd01065b 49,61,403,405-407
+  s_d47ce2fcef68a6::t_890bb8d097c340 1537
+README.md
+  s_d47ce2fcef68a6::t_e5da0ab716c95e 18-22
+apps/playground/src/lib/examples/showcase.ts
+  s_d47ce2fcef68a6::t_583654bde615c4 612-990,997-998
+  s_d47ce2fcef68a6::t_38cb18908789c5 991-996,999-1004
+  s_d47ce2fcef68a6::t_c2781a599da784 610-611
+tests/knownFailures/brepkit.json
+  s_d47ce2fcef68a6::t_7beae405ccafe5 129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cd8c9e7442c9553fe173016936328dfa2be252a4",
+  "prompts": {},
+  "sessions": {
+    "s_d47ce2fcef68a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87734ef0-a56f-4f3a-86f6-514f8ed13244",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
