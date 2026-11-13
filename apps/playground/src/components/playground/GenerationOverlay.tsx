@@ -1,4 +1,24 @@
+import { useEffect, useState } from 'react';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
+
+// A short run needs no counter. A long one (a heavy model on a phone) needs
+// proof that the page still works.
+const SHOW_ELAPSED_AFTER_S = 2;
+
+function ElapsedSeconds() {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const start = performance.now();
+    const id = setInterval(() => {
+      setSeconds(Math.floor((performance.now() - start) / 1000));
+    }, 1000);
+    return () => {
+      clearInterval(id);
+    };
+  }, []);
+  if (seconds < SHOW_ELAPSED_AFTER_S) return null;
+  return <span className="tabular-nums text-teal-primary/70"> {seconds} s</span>;
+}
 
 /**
  * Elegant generation indicator shown over the 3D viewer while geometry
@@ -27,8 +47,9 @@ export default function GenerationOverlay() {
         <line x1="50" y1="50" x2="74.2" y2="36" stroke="#4acecc" strokeWidth="2.2" />
         <line x1="50" y1="50" x2="25.8" y2="36" stroke="#4acecc" strokeWidth="2.2" />
       </svg>
-      <span className="animate-pulse text-xs font-medium tracking-wide text-teal-primary/90">
-        Generating…
+      <span className="text-xs font-medium tracking-wide text-teal-primary/90">
+        <span className="animate-pulse">Generating…</span>
+        <ElapsedSeconds />
       </span>
     </div>
   );
