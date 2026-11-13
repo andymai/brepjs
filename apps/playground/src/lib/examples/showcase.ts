@@ -611,9 +611,9 @@ export default [
   },
   {
     id: 'pocket-watch',
-    label: 'Pocket-Watch Movement',
+    label: 'Pocket Watch',
     description:
-      'A hand-wound pocket-watch movement of the 16.5 ligne class: 36.6 mm, 17 jewels, 18,000 vibrations per hour. Each tooth count is from a published teardown, so the gear ratios are true, and the time parameter turns each wheel by its ratio. The bridges, the escapement shapes and the winding parts are a display model.',
+      'An open-face pocket watch with a hand-wound movement of the 16.5 ligne class: 36.6 mm, 17 jewels, 18,000 vibrations per hour. Each tooth count is from a published teardown, so the gear ratios are true, and the three hands show the time that the train gives them. The time parameter runs the watch. The bridges, the escapement shapes, the winding parts, the dial and the case are a display model.',
     code: `import {
   box,
   chamfer,
@@ -632,30 +632,33 @@ export default [
   line,
   makeExternalGear,
   polygon,
+  revolve,
   rotate,
   threePointArc,
+  torus,
   translate,
   unwrap,
   wire,
 } from 'brepjs/quick';
 import { color } from 'brepjs/playground';
 
-// Hand-wound pocket-watch movement of the 16.5 ligne class: 36.6 mm, 17 jewels, 18,000 vibrations per hour.
-// Each tooth count is from a published teardown of this class, so each ratio is true. The arbor layout comes
-// from the centre distances of those gears. The bridges, the escapement shapes and the winding parts are a
-// display model. Units are millimetres. Z = 0 is the top of the main plate, and the dial side is below it.
+// Open-face pocket watch with a hand-wound movement of the 16.5 ligne class: 36.6 mm, 17 jewels, 18,000
+// vibrations per hour. Each tooth count is from a published teardown of this class, so each ratio is true, and
+// the three hands show the time that the train gives them. The arbor layout comes from the centre distances of
+// those gears. The bridges, the escapement shapes, the winding parts, the dial and the case are a display model.
+// Units are millimetres. Z = 0 is the top of the main plate, and the dial side is below it. 12 o'clock is at +X.
 const TAU = 2 * Math.PI;
 const R = 18.3; // 36.6 mm movement
 
 type P2 = [number, number];
 type P3 = [number, number, number];
 type Shape = ReturnType<typeof cylinder>;
-type Tone = 'plate' | 'bridge' | 'brass' | 'steel' | 'blue' | 'ruby';
+type Tone = 'plate' | 'bridge' | 'brass' | 'steel' | 'blue' | 'ruby' | 'dial' | 'ink' | 'case' | 'glass';
 type Mobile = 'barrel' | 'centre' | 'third' | 'fourth' | 'escape' | 'fork' | 'balance' | 'minute' | 'hour' | 'set1' | 'set2';
 interface Part {
   tone: Tone;
   shape: Shape;
-  lift: number; // level in the exploded view: -1 dial side, 0 plate, 1 wheels, 2 balance, 3 bridges, 4 top
+  lift: number; // level in the exploded view: -5 crystal, -4 hands, -3 dial, -1 dial side, 0 plate, 1 wheels, 2 balance, 3 bridges, 4 top, 6 case back
   on?: Mobile; // the mobile that the part turns with
 }
 const LIFT = 4; // millimetres between two levels of the exploded view
@@ -700,6 +703,9 @@ const AT_PALLET = polar(AT_ESCAPE, 3.66, TO_BALANCE);
 const COCK_FOOT = polar([0, 0], R - 2.2, (-38 * Math.PI) / 180);
 const STUD_DIR = Math.atan2(COCK_FOOT[1] - AT_BALANCE[1], COCK_FOOT[0] - AT_BALANCE[0]); // from the balance to the foot of its cock
 const HAIRSPRING = { r0: 0.75, r1: 4.4, turns: 11.5 };
+const DIAL = { radius: 17.6, face: -1.9, back: -1.5, numerals: 13.5, seconds: 4.1 };
+const START = { hours: 10, minutes: 8, seconds: 42 }; // the time on the dial at time = 0
+const CASE = { crown: 24.8 }; // where the stem ends and the crown starts
 const AT_MINUTE = polar(AT_CENTRE, centres(MOTION.module, MOTION.cannon, MOTION.minute), (-50 * Math.PI) / 180);
 const AT_SET2: P2 = [9.6, -2.6];
 const AT_SET1 = meet(AT_MINUTE, centres(MOTION.module, MOTION.minute, WINDING.setting), AT_SET2, MOTION.module * WINDING.setting, 1);
@@ -828,7 +834,7 @@ function movementParts(time = 0): Part[] {
   const recess = [disc(4.9, p0 - 0.1, -0.7, AT_CENTRE), disc(4.7, p0 - 0.1, -0.7, AT_MINUTE), disc(2.3, p0 - 0.1, -0.7, AT_SET1), disc(2.3, p0 - 0.1, -0.7, AT_SET2)];
   const pivots = [...[AT_CENTRE, AT_THIRD, AT_FOURTH, AT_ESCAPE, AT_PALLET].map((c) => disc(0.55, -0.3, 0.1, c)), disc(0.6, -0.62, 0.1, AT_BALANCE)];
   const stemSlot = own(translate(own(box(R - 9.4, 3.7, 1.5)), [9.5, -1.85, -1.05])) as Shape;
-  add('plate', 0, minus(disc(R, p0, p1), [...recess, ...pivots, stemSlot, disc(1.0, p0 - 0.1, p1 + 0.1, AT_BARREL), disc(0.5, p0 - 0.1, p1 + 0.1, AT_CENTRE)]));
+  add('plate', 0, minus(disc(R, p0, p1), [...recess, ...pivots, stemSlot, disc(1.0, p0 - 0.1, p1 + 0.1, AT_BARREL), disc(0.5, p0 - 0.1, p1 + 0.1, AT_CENTRE), disc(0.2, p0 - 0.1, p1 + 0.1, AT_FOURTH)]));
 
   // ---- barrel: 88 teeth on the drum, the mainspring inside, the arbor up to the ratchet wheel
   const [b0, b1] = Z.barrelTeeth;
@@ -846,6 +852,7 @@ function movementParts(time = 0): Part[] {
   mobile('centre', wheel(CENTRE.teeth, CENTRE.module, Z.centreWheel, -0.35, 5, 1.1), gear(CENTRE.leaves, BARREL.module, [0.42, 1.05], 0.3), [-0.25, 3.0]);
   mobile('third', wheel(THIRD.teeth, THIRD.module, Z.thirdWheel, -0.4, 5, 0.8), gear(THIRD.leaves, CENTRE.module, [0.12, 0.55], 0.35), [-0.25, 3.0]);
   mobile('fourth', wheel(FOURTH.teeth, FOURTH.module, Z.fourthWheel, -0.3, 5, 0.7), gear(FOURTH.leaves, THIRD.module, [0.75, 1.12], 0.4), [-0.25, 3.0]);
+  turn('fourth', 'steel', 1, disc(0.1, -2.14, -0.25)); // the fourth arbor goes through the plate and the dial to the seconds hand
 
   // Escape wheel: 15 club teeth that lean in the direction of rotation. The tooth shape is a display shape.
   const [e0, e1] = Z.escapeWheel;
@@ -934,20 +941,15 @@ function movementParts(time = 0): Part[] {
   add('steel', 4, at(minus(gear(WINDING.crown, WINDING.module, [2.92, 3.2]), [disc(0.6, 2.8, 3.3)]), AT_CROWN, 0, crownA));
   const clickAt = polar(AT_BARREL, 8.75, (150 * Math.PI) / 180);
   add('steel', 4, at(prism([[-0.6, -0.5], [2.1, -0.25], [2.3, 0.35], [-0.6, 0.5]], g1, g1 + 0.25), clickAt, 0, (-65 * Math.PI) / 180));
-  const stem = fused([
-    own(cylinder(0.6, R - 6.9, { at: [8.5, 0, 0.9], axis: [1, 0, 0] })),
-    own(cylinder(1.95, 0.9, { at: [12.45, 0, 0.9], axis: [1, 0, 0] })),
-    own(cylinder(1.3, 1.3, { at: [9.5, 0, 0.9], axis: [1, 0, 0] })),
-  ]);
-  add('steel', 1, stem);
-  const crown = own(rotate(gear(30, 0.2, [0, 2.6], 0, 0), 90, { axis: [0, 1, 0] })) as Shape; // the gear teeth are the grip
-  add('brass', 1, own(translate(crown, [R + 1.6, 0, 0.9])) as Shape);
+  // The stem carries the winding pinion and the sliding pinion. Their tooth counts are not published.
+  const onStem = (g: Shape, x: number): Shape => own(translate(own(rotate(g, 90, { axis: [0, 1, 0] })), [x, 0, 0.9])) as Shape;
+  add('steel', 1, fused([own(cylinder(0.6, CASE.crown - 8.5, { at: [8.5, 0, 0.9], axis: [1, 0, 0] })), onStem(gear(16, 0.2, [0, 0.9], 0, 0), 12.45), onStem(gear(12, 0.19, [0, 1.3], 0, 0), 9.5)]));
 
   // ---- motion works on the dial side: 12 to 1 from the cannon pinion to the hour wheel
-  turn('centre', 'steel', -1, fused([gear(MOTION.cannon, MOTION.module, [-0.9, -0.72], 0.2), ring(0.5, 0.75, -2.6, -0.72)]));
+  turn('centre', 'steel', -1, fused([gear(MOTION.cannon, MOTION.module, [-0.9, -0.72], 0.2), ring(0.5, 0.75, -2.75, -0.72)]));
   turn('minute', 'brass', -1, gear(MOTION.minute, MOTION.module, [-0.9, -0.76], -0.2, 0.5));
   turn('minute', 'steel', -1, fused([gear(MOTION.minutePinion, MOTION.hourModule, [-1.2, -0.92], 0.35), disc(0.25, -1.2, -0.7)]));
-  turn('hour', 'brass', -1.5, minus(fused([gear(MOTION.hour, MOTION.hourModule, [-1.2, -1.0], -0.35), disc(1.15, -2.1, -1.0)]), [disc(0.8, -2.2, -0.9)]));
+  turn('hour', 'brass', -1.5, minus(fused([gear(MOTION.hour, MOTION.hourModule, [-1.2, -1.0], -0.35), disc(1.15, -2.35, -1.0)]), [disc(0.8, -2.45, -0.9)]));
   turn('set1', 'steel', -1, gear(WINDING.setting, MOTION.module, [-0.9, -0.76], 0.2));
   turn('set2', 'steel', -1, gear(WINDING.setting, MOTION.module, [-0.9, -0.76], -0.2));
 
@@ -959,6 +961,78 @@ function movementParts(time = 0): Part[] {
   ];
   add('blue', 4, ...heads.map(([c, z]) => screw(c, z)), ...[-3.85, -5.05].map((d) => screw(polar(AT_PALLET, d, across), 1.2, 0.5)), screw(AT_BARREL, 3.2, 0.95), screw(AT_CROWN, 3.2, 0.95), screw(clickAt, g1 + 0.25, 0.5));
 
+  // Gold settings round the four train jewels of the bridges, and the scale of the regulator on the cock.
+  add('brass', 3, ...[AT_CENTRE, AT_THIRD, AT_FOURTH, AT_ESCAPE].map((c) => at(ring(0.55, 0.85, g1, g1 + 0.04), c)));
+  add('ink', 3, ...[-3, -2, -1, 0, 1, 2, 3].map((i) => at(own(translate(own(box(i === 0 ? 0.55 : 0.35, 0.07, 0.02)), [4.75, -0.035, g1])) as Shape, AT_BALANCE, 0, armDir + 0.12 + i * 0.09)));
+  // Setting parts under the dial: the setting lever, the yoke and its spring (display shapes).
+  add('steel', -1, prism([[14.5, 1.2], [16.5, 2.2], [16.2, 4.2], [12.5, 3.2], [11.2, 5.0], [10.4, 4.4], [12.0, 2.0]], -1.49, -1.37));
+  add('steel', -1, prism([[10.2, -1.0], [13.8, -1.6], [14.6, -4.2], [13.4, -4.6], [12.6, -2.6], [9.8, -2.4], [8.2, -5.2], [7.4, -4.6], [9.0, -1.4]], -1.49, -1.37));
+  add('steel', -1, prism([[15.6, -5.6], [16.4, -5.2], [14.6, -0.6], [13.9, -0.9]], -1.49, -1.37));
+
+  // ---- dial: a white disc with a recess for the small seconds. The marks are thin solids on its face.
+  const { face: d0, back: d1 } = DIAL;
+  add('dial', -3, minus(disc(DIAL.radius, d0, d1), [disc(1.3, d0 - 0.1, d1 + 0.1), disc(0.25, d0 - 0.1, d1 + 0.1, AT_FOURTH), disc(DIAL.seconds, d0 - 0.1, d0 + 0.08, AT_FOURTH)]));
+  // A mark from a to b on a plane of the dial, as a flat bar.
+  const mark = (a: P2, b: P2, width: number, z = d0): Shape =>
+    at(own(translate(own(box(Math.hypot(b[0] - a[0], b[1] - a[1]), width, 0.03)), [0, -width / 2, z - 0.03])) as Shape, a, 0, Math.atan2(b[1] - a[1], b[0] - a[0]));
+  const toSeconds = Math.atan2(-AT_FOURTH[1], -AT_FOURTH[0]); // on the small dial, 60 is toward the centre of the watch
+  const marks: Shape[] = [
+    ...Array.from({ length: 60 }, (_, i) => mark(polar([0, 0], i % 5 === 0 ? 15.92 : 16.35, (i * TAU) / 60), polar([0, 0], 16.88, (i * TAU) / 60), i % 5 === 0 ? 0.24 : 0.1)),
+    ring(16.9, 16.99, d0 - 0.03, d0),
+    ring(15.81, 15.9, d0 - 0.03, d0),
+    ...Array.from({ length: 60 }, (_, i) => mark(polar(AT_FOURTH, i % 5 === 0 ? 3.1 : 3.5, toSeconds + (i * TAU) / 60), polar(AT_FOURTH, 3.79, toSeconds + (i * TAU) / 60), i % 5 === 0 ? 0.12 : 0.05, d0 + 0.08)),
+    at(ring(3.8, 3.86, d0 + 0.05, d0 + 0.08), AT_FOURTH),
+  ];
+  // Roman numerals with their feet toward the centre. A numeral is a row of strokes between two thin bars.
+  // The small seconds takes the place of VI.
+  const half = 1.45;
+  const GLYPH: Record<string, { strokes: [number, number, number, number, number][]; advance: number }> = {
+    I: { strokes: [[0.4, half, 0.4, -half, 0.42]], advance: 0.8 },
+    V: { strokes: [[0.1, half, 0.75, -half, 0.42], [1.4, half, 0.75, -half, 0.16]], advance: 1.5 },
+    X: { strokes: [[0.1, half, 1.4, -half, 0.42], [1.4, half, 0.1, -half, 0.16]], advance: 1.5 },
+  };
+  ['XII', 'I', 'II', 'III', 'IIII', 'V', '', 'VII', 'VIII', 'IX', 'X', 'XI'].forEach((numeral, hour) => {
+    if (numeral === '') return;
+    const angle = (hour * TAU) / 12;
+    const width = [...numeral].reduce((sum, c) => sum + (GLYPH[c] as (typeof GLYPH)[string]).advance, 0);
+    // u goes to the right of a reader at the dial side, v goes away from the centre.
+    const point = (u: number, v: number): P2 => polar(polar([0, 0], DIAL.numerals + v, angle), u, angle + TAU / 4);
+    let u = -width / 2;
+    const strokes: Shape[] = [];
+    for (const c of numeral) {
+      const glyph = GLYPH[c] as (typeof GLYPH)[string];
+      for (const [u0, v0, u1, v1, w] of glyph.strokes) strokes.push(mark(point(u + u0, v0), point(u + u1, v1), w));
+      u += glyph.advance;
+    }
+    for (const v of [half, -half]) strokes.push(mark(point(-width / 2 - 0.12, v), point(width / 2 + 0.12, v), 0.13));
+    marks.push(fused(strokes));
+  });
+  add('ink', -3, ...marks);
+
+  // ---- hands. Each hand sits on its mobile at the angle that shows the start time at time = 0.
+  const A0 = angles(0);
+  const clock = { fourth: START.seconds / 60, centre: (START.minutes + START.seconds / 60) / 60, hour: (START.hours + START.minutes / 60 + START.seconds / 3600) / 12 };
+  const hand = (on: 'fourth' | 'centre' | 'hour', outline: P2[], hub: number, hole: number, z0: number, z1: number): void => {
+    const zero = on === 'fourth' ? toSeconds : 0;
+    const both = [...outline, ...outline.map(([x, y]): P2 => [x, -y]).reverse()];
+    const shape = minus(fused([prism(both, z0, z1), disc(hub, z0, z1)]), [disc(hole, z0 - 0.1, z1 + 0.1)]);
+    turn(on, 'blue', -4, own(rotate(shape, ((zero + clock[on] * TAU - A0[on]) * 360) / TAU)) as Shape);
+  };
+  hand('hour', [[-2.0, 0.3], [0, 0.85], [6.8, 0.55], [7.7, 1.25], [10.4, 0.02]], 1.7, 1.15, -2.3, -2.18);
+  hand('centre', [[-2.4, 0.24], [0, 0.62], [11.5, 0.4], [15.6, 0.02]], 1.3, 0.75, -2.7, -2.58);
+  hand('fourth', [[-1.2, 0.1], [0, 0.26], [3.5, 0.02]], 0.32, 0.1, -2.1, -2.02);
+
+  // ---- case: a band with the pendant, a bezel with the crystal, a back, the crown and the bow (display shapes)
+  const lathe = (profile: P2[]): Shape => own(unwrap(revolve(own(unwrap(polygon(profile.map(([r, z]): P3 => [r, 0, z]))))))) as Shape;
+  const pendant = fused([own(cylinder(2.3, 3.6, { at: [21.0, 0, 0.9], axis: [1, 0, 0] })), own(cylinder(2.7, 0.5, { at: [24.1, 0, 0.9], axis: [1, 0, 0] }))]);
+  const band = fused([lathe([[18.45, -2.2], [20.3, -2.2], [21.3, -0.8], [21.5, 0.9], [21.3, 2.6], [20.3, 4.0], [18.45, 4.0]]), pendant]);
+  add('case', 0, minus(band, [own(cylinder(0.8, 9, { at: [17, 0, 0.9], axis: [1, 0, 0] }))]));
+  add('case', -5, lathe([[17.3, -2.2], [20.3, -2.2], [19.8, -3.1], [18.3, -3.6], [17.3, -3.6]]));
+  add('glass', -5, disc(17.3, -3.5, -2.95));
+  add('case', 6, fused([lathe([[0.03, 4.75], [14, 4.6], [18.45, 4.0], [20.3, 4.0], [19.9, 4.7], [16, 5.4], [8, 5.85], [0.03, 5.95]]), disc(0.06, 4.76, 5.94)]));
+  add('case', 0, own(translate(own(rotate(gear(26, 0.22, [0, 2.8], 0, 0), 90, { axis: [0, 1, 0] })), [CASE.crown, 0, 0.9])) as Shape); // the gear teeth are the grip of the crown
+  add('case', 0, minus(own(torus(5.86, 0.65, { at: [28.2, 0, 0.9] })), [own(cylinder(2.7, 6, { at: [20, 0, 0.9], axis: [1, 0, 0] }))]));
+
   return parts;
 }
 
@@ -969,7 +1043,7 @@ interface WatchParams {
 
 function watch({ time = 0, explode = 0 }: WatchParams = {}) {
   const parts = movementParts(time);
-  const tones: Tone[] = ['plate', 'bridge', 'brass', 'steel', 'blue', 'ruby'];
+  const tones: Tone[] = ['plate', 'bridge', 'brass', 'steel', 'blue', 'ruby', 'dial', 'ink', 'case', 'glass'];
   const built = Object.fromEntries(
     tones.map((tone) => [
       tone,
@@ -980,21 +1054,23 @@ function watch({ time = 0, explode = 0 }: WatchParams = {}) {
   const fourthTurnsPerHour = (CENTRE.teeth / THIRD.leaves) * (THIRD.teeth / FOURTH.leaves);
   return {
     ...built,
+    solids: parts.length,
     jewels: parts.filter((p) => p.tone === 'ruby').length,
     beatsPerHour: fourthTurnsPerHour * (FOURTH.teeth / ESCAPE.leaves) * ESCAPE.teeth * 2,
     hoursPerBarrelTurn: BARREL.teeth / CENTRE.leaves,
   };
 }
 
-// Show the bridge side. Try watch({ time: 1800 }) for the pose after half an hour, or watch({ explode: 1 }).
+// Show the dial side. Try watch({ time: 1800 }) for the pose after half an hour, or watch({ explode: 1 }).
 const movement = watch();
-// Turn the balance toward the camera, for the first view and for the Iso view.
+// Turn the dial up. The crystal (movement.glass) stays out of the view, because the viewer draws solid colours.
 const show = (s: Shape, css: string) => {
-  const turned = rotate(s, 90);
+  const turned = rotate(s, 180, { axis: [1, 0, 0] });
   s.delete();
   return color(turned, css);
 };
-console.log(movement.jewels, 'jewels,', movement.beatsPerHour, 'vibrations per hour, one barrel turn in', movement.hoursPerBarrelTurn.toFixed(2), 'h');
+movement.glass.delete();
+console.log(movement.solids, 'solids,', movement.jewels, 'jewels,', movement.beatsPerHour, 'vibrations per hour, one barrel turn in', movement.hoursPerBarrelTurn.toFixed(2), 'h');
 export default [
   show(movement.plate, '#d9d6cf'),
   show(movement.bridge, '#e9e6de'),
@@ -1002,6 +1078,9 @@ export default [
   show(movement.steel, '#a9b1ba'),
   show(movement.blue, '#2f4fa8'),
   show(movement.ruby, '#c2185b'),
+  show(movement.dial, '#f4f1e6'),
+  show(movement.ink, '#16181c'),
+  show(movement.case, '#cfd2d6'),
 ];`,
   },
 ];

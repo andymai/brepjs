@@ -63,8 +63,8 @@ const REELS = [
   },
   {
     id: 'pocket-watch',
-    title: 'Pocket-watch movement',
-    fact: 'The tooth counts of a real calibre. 62 solids with 0 mm³ of interference.',
+    title: 'Pocket watch',
+    fact: 'The tooth counts of a real calibre drive the hands. 220 solids, 0 mm³ of interference.',
     video: '/media/watch-reel.mp4',
     poster: '/media/watch-reel-poster.webp',
   },
