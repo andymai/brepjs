@@ -311,12 +311,13 @@ interface Part {
   shape: Shape;
 }
 
-// Kernel shapes live in WASM memory. Every shape goes through own(), and the caller frees them all at the end.
+// Kernel shapes live in WASM memory. Every shape goes through own(). freeing() runs a build and then frees them all.
 const owned: { delete(): void }[] = [];
 const own = <T extends { delete(): void }>(s: T): T => {
   owned.push(s);
   return s;
 };
+const freeing = <T,>(build: () => T): T => { try { return build(); } finally { owned.splice(0).forEach((s) => s.delete()); } }; // also when the build throws
 
 const X: P3 = [1, 0, 0];
 const Y: P3 = [0, 1, 0];
@@ -345,11 +346,11 @@ const belt = (c1: P2, r1: number, c2: P2, r2: number, y0: number, y1: number): S
   const c = Math.sqrt(1 - s * s);
   const pt = (o: P2, r: number, a: number, b: number): P3 => [o[0] + r * (u[0] * a - u[1] * b), y0, o[1] + r * (u[1] * a + u[0] * b)];
   const edges = [
-    line(pt(c1, r1, s, c), pt(c2, r2, s, c)),
-    threePointArc(pt(c2, r2, s, c), pt(c2, r2, 1, 0), pt(c2, r2, s, -c)),
-    line(pt(c2, r2, s, -c), pt(c1, r1, s, -c)),
-    threePointArc(pt(c1, r1, s, -c), pt(c1, r1, -1, 0), pt(c1, r1, s, c)),
-  ].map(own);
+    own(line(pt(c1, r1, s, c), pt(c2, r2, s, c))),
+    own(threePointArc(pt(c2, r2, s, c), pt(c2, r2, 1, 0), pt(c2, r2, s, -c))),
+    own(line(pt(c2, r2, s, -c), pt(c1, r1, s, -c))),
+    own(threePointArc(pt(c1, r1, s, -c), pt(c1, r1, -1, 0), pt(c1, r1, s, c))),
+  ];
   const loop = own(unwrap(wire(edges)));
   const profile = own(unwrap(face(loop as never)));
   return own(unwrap(extrude(profile, [0, y1 - y0, 0]))) as Shape;
@@ -563,7 +564,7 @@ interface ArmParams {
   cutaway?: boolean; // open the base, shoulder, elbow and forearm to show the drives
 }
 
-function robotArm({ pose = [-35, 28, 12, 0, 50, 0], grip = 24, cutaway = true }: ArmParams = {}) {
+const robotArm = ({ pose = [-35, 28, 12, 0, 50, 0], grip = 24, cutaway = true }: ArmParams = {}) => freeing(() => {
   const parts = armParts(Math.min(52, Math.max(0, grip)), cutaway);
 
   // The kinematics API turns the DH table into a joint chain and solves the pose of every link.
@@ -589,9 +590,8 @@ function robotArm({ pose = [-35, 28, 12, 0, 50, 0], grip = 24, cutaway = true }:
       return [tone, compound(moved) as Shape];
     }),
   ) as Record<Tone, Shape>;
-  owned.splice(0).forEach((s) => s.delete());
   return { ...arm, flange: (posed.get('link6') as Pose).position };
-}
+});
 
 // Turn the open side toward the camera, for the first view and for the Iso view.
 const arm = robotArm();
@@ -663,12 +663,13 @@ interface Part {
 }
 const LIFT = 4; // millimetres between two levels of the exploded view
 
-// Kernel shapes live in WASM memory. Every shape goes through own(), and the caller frees them all at the end.
+// Kernel shapes live in WASM memory. Every shape goes through own(). freeing() runs a build and then frees them all.
 const owned: { delete(): void }[] = [];
 const own = <T extends { delete(): void }>(s: T): T => {
   owned.push(s);
   return s;
 };
+const freeing = <T,>(build: () => T): T => { try { return build(); } finally { owned.splice(0).forEach((s) => s.delete()); } }; // also when the build throws
 
 // ---- the gears: wheel teeth and module, pinion leaves. A pinion has the module of the wheel that drives it.
 const BARREL = { teeth: 88, module: 0.191 };
@@ -753,11 +754,11 @@ const wheel = (teeth: number, module: number, z: readonly [number, number], shif
     const am = (a0 + a1) / 2;
     const p = (r: number, a: number): P3 => [r * Math.cos(a), r * Math.sin(a), z[0] - 0.05];
     const edges = [
-      threePointArc(p(rim, a0), p(rim, am), p(rim, a1)),
-      line(p(rim, a1), p(hub, a1)),
-      threePointArc(p(hub, a1), p(hub, am), p(hub, a0)),
-      line(p(hub, a0), p(rim, a0)),
-    ].map(own);
+      own(threePointArc(p(rim, a0), p(rim, am), p(rim, a1))),
+      own(line(p(rim, a1), p(hub, a1))),
+      own(threePointArc(p(hub, a1), p(hub, am), p(hub, a0))),
+      own(line(p(hub, a0), p(rim, a0))),
+    ];
     return own(unwrap(extrude(own(unwrap(face(own(unwrap(wire(edges))) as never))), z[1] - z[0] + 0.1))) as Shape;
   });
   return minus(gear(teeth, module, z, shift, 0.6), windows);
@@ -775,11 +776,11 @@ const spiral = (r0: number, r1: number, turns: number, thick: number, z0: number
   const inner = side(-thick / 2);
   const outer = side(thick / 2).reverse();
   const edges = [
-    unwrap(interpolateCurve(inner)),
-    line(inner[n] as P3, outer[0] as P3),
-    unwrap(interpolateCurve(outer)),
-    line(outer[n] as P3, inner[0] as P3),
-  ].map(own);
+    own(unwrap(interpolateCurve(inner))),
+    own(line(inner[n] as P3, outer[0] as P3)),
+    own(unwrap(interpolateCurve(outer))),
+    own(line(outer[n] as P3, inner[0] as P3)),
+  ];
   return own(unwrap(extrude(own(unwrap(face(own(unwrap(wire(edges))) as never))), z1 - z0))) as Shape;
 };
 
@@ -1041,7 +1042,7 @@ interface WatchParams {
   explode?: number; // 0 = assembled, 1 = the levels lift apart
 }
 
-function watch({ time = 0, explode = 0 }: WatchParams = {}) {
+const watch = ({ time = 0, explode = 0 }: WatchParams = {}) => freeing(() => {
   const parts = movementParts(time);
   const tones: Tone[] = ['plate', 'bridge', 'brass', 'steel', 'blue', 'ruby', 'dial', 'ink', 'case', 'glass'];
   const built = Object.fromEntries(
@@ -1050,7 +1051,6 @@ function watch({ time = 0, explode = 0 }: WatchParams = {}) {
       compound(parts.filter((p) => p.tone === tone).map((p) => (explode > 0 ? (own(translate(p.shape, [0, 0, p.lift * explode * LIFT])) as Shape) : p.shape))) as Shape,
     ]),
   ) as Record<Tone, Shape>;
-  owned.splice(0).forEach((s) => s.delete());
   const fourthTurnsPerHour = (CENTRE.teeth / THIRD.leaves) * (THIRD.teeth / FOURTH.leaves);
   return {
     ...built,
@@ -1059,7 +1059,7 @@ function watch({ time = 0, explode = 0 }: WatchParams = {}) {
     beatsPerHour: fourthTurnsPerHour * (FOURTH.teeth / ESCAPE.leaves) * ESCAPE.teeth * 2,
     hoursPerBarrelTurn: BARREL.teeth / CENTRE.leaves,
   };
-}
+});
 
 // Show the dial side. Try watch({ time: 1800 }) for the pose after half an hour, or watch({ explode: 1 }).
 const movement = watch();
@@ -1251,11 +1251,11 @@ function wheelParts() {
   // Six flat spokes with a curve, from the hub to the stiffening ring inside the tread.
   const at = (x: number, y: number): P3 => [x, y, 30];
   const edges = [
-    threePointArc(at(66, -2), at(150, 34), at(226, -2)),
-    line(at(226, -2), at(226, 2)),
-    threePointArc(at(226, 2), at(150, 38), at(66, 2)),
-    line(at(66, 2), at(66, -2)),
-  ].map(own);
+    own(threePointArc(at(66, -2), at(150, 34), at(226, -2))),
+    own(line(at(226, -2), at(226, 2))),
+    own(threePointArc(at(226, 2), at(150, 38), at(66, 2))),
+    own(line(at(66, 2), at(66, -2))),
+  ];
   const spoke = own(unwrap(extrude(own(unwrap(face(own(unwrap(wire(edges))) as never))), 66))) as Shape;
   const spokes = Array.from({ length: 6 }, (_, i) => own(rotate(spoke, i * 60)) as Shape);
   // The drive actuator in the hub, with cooling ribs, and a cap with its bolts on the outer side.
