@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.22.1](https://github.com/andymai/brepjs/compare/brepjs-v20.22.0...brepjs-v20.22.1) (2026-11-13)
+
+
+### Performance Improvements
+
+* **brepkit:** skip the face signatures of a boolean with no input face hashes ([#2641](https://github.com/andymai/brepjs/issues/2641)) ([b2c1a14](https://github.com/andymai/brepjs/commit/b2c1a148fc25d7ccb01a967e96e6fa70020d9178))
+
 ## [20.22.0](https://github.com/andymai/brepjs/compare/brepjs-v20.21.2...brepjs-v20.22.0) (2026-11-13)
 
 
