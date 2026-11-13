@@ -1,0 +1,25 @@
+apps/playground/src/hooks/useCodeExecution.ts
+  s_31264c30950f92::t_adb21595ce2a2c 4-5,40,106-110
+apps/playground/src/components/playground/ViewerPanel.tsx
+  s_31264c30950f92::t_adb21595ce2a2c 169-171,173-175
+tests/playgroundMeshStream.test.ts
+  s_31264c30950f92::t_adb21595ce2a2c 1-70
+apps/playground/src/lib/meshStream.ts
+  s_31264c30950f92::t_adb21595ce2a2c 1-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d0443dfa06f75ede5fc5f87f560a05aa67761b1d",
+  "prompts": {},
+  "sessions": {
+    "s_31264c30950f92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b5c1ef1-945c-4d94-ada2-9322bc793a5d",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
