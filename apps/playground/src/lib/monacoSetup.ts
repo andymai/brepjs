@@ -1,4 +1,4 @@
-import type { Monaco } from '@monaco-editor/react';
+import type * as monacoApi from 'monaco-editor';
 import ambientTypes from '../types/brepjs-ambient.d.ts?raw';
 import sheetmetalAmbientTypes from '../types/brepjs-sheetmetal-ambient.d.ts?raw';
 import bimAmbientTypes from '../types/brepjs-bim-ambient.d.ts?raw';
@@ -7,7 +7,10 @@ import { buildBrepjsModuleDts } from './ambientModule';
 
 let initialized = false;
 
-export function setupMonaco(monaco: Monaco) {
+// `Monaco` from @monaco-editor/react is `any` here: it imports its types from a
+// monaco path that the package does not export. The real namespace type makes
+// tsc reject a compiler option that monaco does not have.
+export function setupMonaco(monaco: typeof monacoApi) {
   if (initialized) return;
   initialized = true;
 
@@ -33,8 +36,11 @@ export function setupMonaco(monaco: Monaco) {
     },
   });
 
+  // monaco's ScriptTarget has no member between ES2020 and ESNext. A member
+  // that does not exist reads as undefined, and the worker then checks the code
+  // as ES5.
   // We omit `lib` so Monaco's TS worker uses the default lib for the target
-  // (lib.es2022.full.d.ts), which transitively pulls in lib.es5.d.ts — the
+  // (lib.esnext.full.d.ts), which transitively pulls in lib.es5.d.ts — the
   // file declaring `Math`, `Array<T>`, etc. Passing `lib: ['es2022']`
   // explicitly hits a Monaco bug where the reference isn't expanded
   // transitively, leaving user code with "Cannot find name 'Math'" errors
@@ -43,7 +49,7 @@ export function setupMonaco(monaco: Monaco) {
   // to a top-level `typescript` namespace. The old path silently reads
   // undefined, so setupMonaco throws and the editor never mounts.
   monaco.typescript.typescriptDefaults.setCompilerOptions({
-    target: monaco.typescript.ScriptTarget.ES2022,
+    target: monaco.typescript.ScriptTarget.ESNext,
     module: monaco.typescript.ModuleKind.ESNext,
     moduleResolution: monaco.typescript.ModuleResolutionKind.NodeJs,
     strict: true,
