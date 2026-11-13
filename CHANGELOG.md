@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.23.1](https://github.com/andymai/brepjs/compare/brepjs-v20.23.0...brepjs-v20.23.1) (2026-11-13)
+
+
+### Performance Improvements
+
+* **brepkit:** bump brepkit-wasm to 4.11.10 ([#2649](https://github.com/andymai/brepjs/issues/2649)) ([5bc5536](https://github.com/andymai/brepjs/commit/5bc553616942d9bc24047776bea3bb0a5af1b3d9))
+
 ## [20.23.0](https://github.com/andymai/brepjs/compare/brepjs-v20.22.2...brepjs-v20.23.0) (2026-11-13)
 
 
