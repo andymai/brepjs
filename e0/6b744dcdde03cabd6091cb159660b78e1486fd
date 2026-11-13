@@ -1,0 +1,23 @@
+scripts/lib/kernelBaseline.ts
+  s_31264c30950f92::t_d650c39cd885de 40
+tests/kernelBaseline.test.ts
+  s_31264c30950f92::t_d0e825f68a0ed6 83-96
+tests/knownFailures/brepkit.json
+  s_31264c30950f92::t_d650c39cd885de 122,128-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e06b744dcdde03cabd6091cb159660b78e1486fd",
+  "prompts": {},
+  "sessions": {
+    "s_31264c30950f92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b5c1ef1-945c-4d94-ada2-9322bc793a5d",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
