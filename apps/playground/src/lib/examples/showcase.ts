@@ -1566,7 +1566,6 @@ interface RoverParams {
 function rover({ lift = 0, cutaway = true, arm = 0 }: RoverParams = {}) {
   const parts = roverParts(arm);
   const mass = parts.reduce((sum, p) => sum + p.kg, 0);
-  const centre = [0, 1, 2].map((k) => parts.reduce((sum, p) => sum + p.kg * (p.at[k] as number), 0) / mass) as P3;
   const budget: Partial<Record<System, number>> = {};
   for (const p of parts) budget[p.system] = (budget[p.system] ?? 0) + p.kg;
 
@@ -1575,19 +1574,29 @@ function rover({ lift = 0, cutaway = true, arm = 0 }: RoverParams = {}) {
   // Move each link to its pose. A link turns about a line along Y, the body also rolls about a line along X.
   const step = Math.min(500, Math.max(0, lift));
   const pose = suspension(step);
-  const tilt = (s: Shape, angle: number, about: P2): Shape => own(rotate(s, -angle / DEG, { axis: [0, 1, 0], at: [about[0], 0, about[1]] })) as Shape;
-  const moved = (p: Part): Shape => {
-    if (p.link === 'body') {
-      const pitched = tilt(p.shape, pose.pitch, PIVOT);
-      return own(translate(own(rotate(pitched, pose.roll / DEG, { axis: [1, 0, 0], at: [0, 0, PIVOT[1]] })), [0, 0, pose.rise])) as Shape;
-    }
-    const side = p.link.endsWith('L') ? pose.left : pose.right;
-    if (p.link.startsWith('rocker')) return own(translate(tilt(p.shape, side.rocker, PIVOT), [0, 0, side.pivotZ - PIVOT[1]])) as Shape;
-    return own(translate(tilt(p.shape, side.bogie, BOGIE), [side.bogieAt[0] - BOGIE[0], 0, side.bogieAt[1] - BOGIE[1]])) as Shape;
+  // The same three moves work on a shape and on a point, so the centre of each part moves with its link.
+  type Moves<T> = { tilt: (v: T, angle: number, about: P2) => T; roll: (v: T, angle: number) => T; shift: (v: T, by: P3) => T };
+  const onShape: Moves<Shape> = {
+    tilt: (s, angle, about) => own(rotate(s, -angle / DEG, { axis: [0, 1, 0], at: [about[0], 0, about[1]] })) as Shape,
+    roll: (s, angle) => own(rotate(s, angle / DEG, { axis: [1, 0, 0], at: [0, 0, PIVOT[1]] })) as Shape,
+    shift: (s, by) => own(translate(s, by)) as Shape,
   };
+  const onPoint: Moves<P3> = {
+    tilt: ([x, y, z], angle, about) => { const t = turn([x - about[0], z - about[1]], angle); return [about[0] + t[0], y, about[1] + t[1]]; },
+    roll: ([x, y, z], angle) => { const t = turn([y, z - PIVOT[1]], angle); return [x, t[0], PIVOT[1] + t[1]]; },
+    shift: ([x, y, z], by) => [x + by[0], y + by[1], z + by[2]],
+  };
+  const moved = <T,>(link: Link, v: T, m: Moves<T>): T => {
+    if (step === 0) return v;
+    if (link === 'body') return m.shift(m.roll(m.tilt(v, pose.pitch, PIVOT), pose.roll), [0, 0, pose.rise]);
+    const side = link.endsWith('L') ? pose.left : pose.right;
+    if (link.startsWith('rocker')) return m.shift(m.tilt(v, side.rocker, PIVOT), [0, 0, side.pivotZ - PIVOT[1]]);
+    return m.shift(m.tilt(v, side.bogie, BOGIE), [side.bogieAt[0] - BOGIE[0], 0, side.bogieAt[1] - BOGIE[1]]);
+  };
+  const centre = [0, 1, 2].map((k) => parts.reduce((sum, p) => sum + p.kg * (moved(p.link, p.at, onPoint)[k] as number), 0) / mass) as P3;
   const tones: Tone[] = ['white', 'dark', 'titanium', 'metal', 'gold', 'accent'];
   const built = Object.fromEntries(
-    tones.map((tone) => [tone, compound(shown.filter((p) => p.tone === tone).map((p) => (step > 0 ? moved(p) : p.shape))) as Shape]),
+    tones.map((tone) => [tone, compound(shown.filter((p) => p.tone === tone).map((p) => moved(p.link, p.shape, onShape))) as Shape]),
   ) as Record<Tone, Shape>;
   // The ground is where the grousers touch it, a little below the tread circle.
   const dip = WHEEL.grouserHeight;
