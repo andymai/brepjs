@@ -82,6 +82,13 @@ const REELS = [
     video: '/media/chassis-reel.mp4',
     poster: '/media/chassis-reel-poster.webp',
   },
+  {
+    id: 'office-building',
+    title: 'Office building',
+    fact: '895 typed BIM elements in seven storeys. The kernel takes off 332 t of steel and writes the IFC file.',
+    video: '/media/building-reel.mp4',
+    poster: '/media/building-reel-poster.webp',
+  },
 ];
 const reducedMotion = () =>
   typeof window !== 'undefined' &&
@@ -421,7 +428,8 @@ onBeforeUnmount(() => observer?.disconnect());
               Each model is one TypeScript file that runs in your browser. The robot arm moves by a
               published Denavit-Hartenberg table. The watch has the tooth counts of a real calibre.
               The kernel measures the mass and the centre of mass of the rover, and it unfolds the
-              sheet metal of the chassis for a DXF. Each tile opens its file in the playground.
+              sheet metal of the chassis for a DXF. The office building is a BIM model that exports
+              to IFC. Each tile opens its file in the playground.
             </p>
           </div>
           <div class="reels" :class="{ odd: REELS.length % 2 === 1 }">
