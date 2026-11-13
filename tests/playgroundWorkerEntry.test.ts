@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const WORKER_ENTRY = '../apps/playground/src/workers/cad.worker';
+const WORKER_ENTRY = '../apps/playground/src/workers/cad.worker.js';
 
 function stubWorkerScope(): ReturnType<typeof vi.fn> {
   const addListener = vi.fn();
