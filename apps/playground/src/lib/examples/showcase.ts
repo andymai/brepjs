@@ -346,11 +346,11 @@ const belt = (c1: P2, r1: number, c2: P2, r2: number, y0: number, y1: number): S
   const c = Math.sqrt(1 - s * s);
   const pt = (o: P2, r: number, a: number, b: number): P3 => [o[0] + r * (u[0] * a - u[1] * b), y0, o[1] + r * (u[1] * a + u[0] * b)];
   const edges = [
-    line(pt(c1, r1, s, c), pt(c2, r2, s, c)),
-    threePointArc(pt(c2, r2, s, c), pt(c2, r2, 1, 0), pt(c2, r2, s, -c)),
-    line(pt(c2, r2, s, -c), pt(c1, r1, s, -c)),
-    threePointArc(pt(c1, r1, s, -c), pt(c1, r1, -1, 0), pt(c1, r1, s, c)),
-  ].map(own);
+    own(line(pt(c1, r1, s, c), pt(c2, r2, s, c))),
+    own(threePointArc(pt(c2, r2, s, c), pt(c2, r2, 1, 0), pt(c2, r2, s, -c))),
+    own(line(pt(c2, r2, s, -c), pt(c1, r1, s, -c))),
+    own(threePointArc(pt(c1, r1, s, -c), pt(c1, r1, -1, 0), pt(c1, r1, s, c))),
+  ];
   const loop = own(unwrap(wire(edges)));
   const profile = own(unwrap(face(loop as never)));
   return own(unwrap(extrude(profile, [0, y1 - y0, 0]))) as Shape;
@@ -754,11 +754,11 @@ const wheel = (teeth: number, module: number, z: readonly [number, number], shif
     const am = (a0 + a1) / 2;
     const p = (r: number, a: number): P3 => [r * Math.cos(a), r * Math.sin(a), z[0] - 0.05];
     const edges = [
-      threePointArc(p(rim, a0), p(rim, am), p(rim, a1)),
-      line(p(rim, a1), p(hub, a1)),
-      threePointArc(p(hub, a1), p(hub, am), p(hub, a0)),
-      line(p(hub, a0), p(rim, a0)),
-    ].map(own);
+      own(threePointArc(p(rim, a0), p(rim, am), p(rim, a1))),
+      own(line(p(rim, a1), p(hub, a1))),
+      own(threePointArc(p(hub, a1), p(hub, am), p(hub, a0))),
+      own(line(p(hub, a0), p(rim, a0))),
+    ];
     return own(unwrap(extrude(own(unwrap(face(own(unwrap(wire(edges))) as never))), z[1] - z[0] + 0.1))) as Shape;
   });
   return minus(gear(teeth, module, z, shift, 0.6), windows);
@@ -776,11 +776,11 @@ const spiral = (r0: number, r1: number, turns: number, thick: number, z0: number
   const inner = side(-thick / 2);
   const outer = side(thick / 2).reverse();
   const edges = [
-    unwrap(interpolateCurve(inner)),
-    line(inner[n] as P3, outer[0] as P3),
-    unwrap(interpolateCurve(outer)),
-    line(outer[n] as P3, inner[0] as P3),
-  ].map(own);
+    own(unwrap(interpolateCurve(inner))),
+    own(line(inner[n] as P3, outer[0] as P3)),
+    own(unwrap(interpolateCurve(outer))),
+    own(line(outer[n] as P3, inner[0] as P3)),
+  ];
   return own(unwrap(extrude(own(unwrap(face(own(unwrap(wire(edges))) as never))), z1 - z0))) as Shape;
 };
 
@@ -1251,11 +1251,11 @@ function wheelParts() {
   // Six flat spokes with a curve, from the hub to the stiffening ring inside the tread.
   const at = (x: number, y: number): P3 => [x, y, 30];
   const edges = [
-    threePointArc(at(66, -2), at(150, 34), at(226, -2)),
-    line(at(226, -2), at(226, 2)),
-    threePointArc(at(226, 2), at(150, 38), at(66, 2)),
-    line(at(66, 2), at(66, -2)),
-  ].map(own);
+    own(threePointArc(at(66, -2), at(150, 34), at(226, -2))),
+    own(line(at(226, -2), at(226, 2))),
+    own(threePointArc(at(226, 2), at(150, 38), at(66, 2))),
+    own(line(at(66, 2), at(66, -2))),
+  ];
   const spoke = own(unwrap(extrude(own(unwrap(face(own(unwrap(wire(edges))) as never))), 66))) as Shape;
   const spokes = Array.from({ length: 6 }, (_, i) => own(rotate(spoke, i * 60)) as Shape);
   // The drive actuator in the hub, with cooling ribs, and a cap with its bolts on the outer side.
