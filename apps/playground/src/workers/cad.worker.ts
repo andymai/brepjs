@@ -829,7 +829,16 @@ async function handleExportFiles(id: string, code: string) {
   }
 }
 
-addEventListener('message', (e: MessageEvent<ToWorker>) => {
+// The bundler keeps shared helpers in this entry chunk, so the lazy `brepjs`
+// chunk imports this file back. WebKit then evaluates the entry a second time
+// in the same worker (https://bugs.webkit.org/show_bug.cgi?id=324459). The
+// second copy has no kernel, so its listener answers every eval with "Worker
+// not initialized" while the first copy runs it. Only the first copy listens.
+const workerScope = self as unknown as { __brepjsCadWorkerListening?: boolean };
+const isFirstEvaluation = workerScope.__brepjsCadWorkerListening !== true;
+workerScope.__brepjsCadWorkerListening = true;
+
+function onWorkerMessage(e: MessageEvent<ToWorker>) {
   const msg = e.data;
   switch (msg.type) {
     case 'init':
@@ -861,4 +870,6 @@ addEventListener('message', (e: MessageEvent<ToWorker>) => {
       void handleExportFiles(msg.id, msg.code);
       break;
   }
-});
+}
+
+if (isFirstEvaluation) addEventListener('message', onWorkerMessage);
