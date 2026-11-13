@@ -1,0 +1,19 @@
+packages/brepjs-sheetmetal/tests/miter.test.ts
+  s_d47ce2fcef68a6::t_060c5144fa4976 2,5,18-23,38-47,65-73,75,82-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9415deae8f041b98940d1149e90d452161a97af2",
+  "prompts": {},
+  "sessions": {
+    "s_d47ce2fcef68a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87734ef0-a56f-4f3a-86f6-514f8ed13244",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
