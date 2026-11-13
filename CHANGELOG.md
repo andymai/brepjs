@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.22.2](https://github.com/andymai/brepjs/compare/brepjs-v20.22.1...brepjs-v20.22.2) (2026-11-13)
+
+
+### Bug Fixes
+
+* **gear:** start the flank on the root circle when the base circle is inside it ([#2646](https://github.com/andymai/brepjs/issues/2646)) ([896defe](https://github.com/andymai/brepjs/commit/896defeba4d9b8b89c60b81dbb60fd3526bde9f3))
+
 ## [20.22.1](https://github.com/andymai/brepjs/compare/brepjs-v20.22.0...brepjs-v20.22.1) (2026-11-13)
 
 
