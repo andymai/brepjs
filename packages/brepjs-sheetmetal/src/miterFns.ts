@@ -17,7 +17,7 @@ import {
   vecDot,
   vecNormalize,
 } from 'brepjs';
-import type { SheetMetalPart } from './types.js';
+import type { BendFeature, SheetMetalPart } from './types.js';
 import { normalizeSolid } from './internal.js';
 
 /** An oriented cutting plane: material on the `+normal` side is removed. */
@@ -46,10 +46,10 @@ export function miterCut(part: SheetMetalPart, plane: MiterPlane): Result<SheetM
 }
 
 /**
- * Auto corner-miter between two adjacent flanges. The miter plane bisects the two
- * flanges' fold-up directions at their shared corner and is offset by half the gap,
- * so the cut falls on the flat/flange regions and never crosses a bend patch. The
- * single bisector cut trims both flanges to a clean mitered corner.
+ * Auto corner-miter between two adjacent flanges. The miter plane is vertical at
+ * their shared corner, bisects the two directions that point out of the part, and
+ * is offset outward by half the gap. The single cut trims the ends of both flanges
+ * to a clean mitered corner and leaves the base flat and the bend lines whole.
  */
 export function autoMiterCorner(
   part: SheetMetalPart,
@@ -75,10 +75,16 @@ export function autoMiterCorner(
   const axisB = vecNormalize(bendB.axisDir);
   const corner = cornerPoint(bendA.axisOrigin, axisA, bendB.axisOrigin, axisB);
 
-  // Each flange runs perpendicular to its own bend axis. The miter plane contains
-  // the corner and is spanned by the two bend axes; its normal is their bisector in
-  // the run plane, which is exactly the bisector of the two flange run directions.
-  const planeNormal = miterNormal(axisA, axisB);
+  // The miter plane is vertical at the corner, and its normal bisects the two
+  // directions that point out of the part across each bend line. The cut removes
+  // the +normal side, which holds only the ends of the two flanges.
+  const planeNormal = miterNormal(
+    axisA,
+    bendLineMid(part, bendA, axisA),
+    axisB,
+    bendLineMid(part, bendB, axisB),
+    corner
+  );
   if (planeNormal === undefined) {
     return err(
       validationError('PARALLEL_FLANGES', 'autoMiterCorner: flange bend axes are parallel; no corner to miter')
@@ -109,19 +115,28 @@ function cornerPoint(originA: Vec3, dirA: Vec3, originB: Vec3, dirB: Vec3): Vec3
   return vecAdd(originA, vecScale(dirA, sc));
 }
 
+/** Midpoint of a bend line. The line starts at the axis origin and runs the span of its flange. */
+function bendLineMid(part: SheetMetalPart, bend: BendFeature, axis: Vec3): Vec3 {
+  const span = part.flanges.find((f) => f.id === bend.id)?.span ?? 0;
+  return vecAdd(bend.axisOrigin, vecScale(axis, span / 2));
+}
+
 /**
- * Normal of the miter plane between two flanges whose bend axes are `dirA`/`dirB`.
- * The plane is spanned by the two axes (it contains the corner edge of each
- * flange); its normal is `dirA × dirB` rotated to bisect — equivalently the
- * normalized sum of the two run directions, which both lie perpendicular to the
- * respective axis in the part's run plane.
+ * Normal of the miter plane between two flanges whose bend axes are `dirA`/`dirB`:
+ * the bisector of the two directions that point out of the part. The outward
+ * direction of a flange is perpendicular to its bend axis in the plane of the two
+ * axes, and points away from the bend line of the other flange (`midA`/`midB` are
+ * the midpoints of the two bend lines). The bend axes do not give this direction:
+ * their sum lies along the diagonal of the part, and a cut there removes half of it.
  */
-function miterNormal(dirA: Vec3, dirB: Vec3): Vec3 | undefined {
-  const cross = vecCross(dirA, dirB);
-  if (Math.hypot(cross[0], cross[1], cross[2]) < 1e-9) return undefined;
-  const sum = vecAdd(dirA, dirB);
-  if (Math.hypot(sum[0], sum[1], sum[2]) < 1e-9) return vecNormalize(cross);
-  return vecNormalize(sum);
+function miterNormal(dirA: Vec3, midA: Vec3, dirB: Vec3, midB: Vec3, corner: Vec3): Vec3 | undefined {
+  const up = vecCross(dirA, dirB);
+  if (Math.hypot(up[0], up[1], up[2]) < 1e-9) return undefined;
+  const outward = (dir: Vec3, otherMid: Vec3): Vec3 => {
+    const run = vecNormalize(vecCross(dir, up));
+    return vecDot(run, vecSub(otherMid, corner)) > 0 ? vecScale(run, -1) : run;
+  };
+  return vecNormalize(vecAdd(outward(dirA, midB), outward(dirB, midA)));
 }
 
 const Z_AXIS: Vec3 = [0, 0, 1];
