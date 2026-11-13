@@ -1,5 +1,26 @@
 # Changelog
 
+## [20.26.0](https://github.com/andymai/brepjs/compare/brepjs-v20.25.0...brepjs-v20.26.0) (2026-11-13)
+
+
+### Features
+
+* **playground:** add a server chassis showcase that unfolds its sheet metal and nests it for a DXF ([#2665](https://github.com/andymai/brepjs/issues/2665)) ([dd20d5c](https://github.com/andymai/brepjs/commit/dd20d5c7f10ca3b02d5bf2cbcd007ffa5ac00d79))
+
+## [20.25.0](https://github.com/andymai/brepjs/compare/brepjs-v20.24.0...brepjs-v20.25.0) (2026-11-13)
+
+
+### Features
+
+* **playground:** add a Mars rover showcase with a mass budget that the kernel measures ([#2658](https://github.com/andymai/brepjs/issues/2658)) ([c6cbce3](https://github.com/andymai/brepjs/commit/c6cbce3d74daea67775783c1b667c77ab874c640))
+
+## [20.24.0](https://github.com/andymai/brepjs/compare/brepjs-v20.23.1...brepjs-v20.24.0) (2026-11-13)
+
+
+### Features
+
+* **playground:** make the pocket-watch example a full watch with dial, hands and case ([#2656](https://github.com/andymai/brepjs/issues/2656)) ([0d255a2](https://github.com/andymai/brepjs/commit/0d255a23011cd8eb34382bf0924a9ec57c0850c8))
+
 ## [20.23.1](https://github.com/andymai/brepjs/compare/brepjs-v20.23.0...brepjs-v20.23.1) (2026-11-13)
 
 

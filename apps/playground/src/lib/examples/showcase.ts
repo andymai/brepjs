@@ -311,12 +311,13 @@ interface Part {
   shape: Shape;
 }
 
-// Kernel shapes live in WASM memory. Every shape goes through own(), and the caller frees them all at the end.
+// Kernel shapes live in WASM memory. Every shape goes through own(). freeing() runs a build and then frees them all.
 const owned: { delete(): void }[] = [];
 const own = <T extends { delete(): void }>(s: T): T => {
   owned.push(s);
   return s;
 };
+const freeing = <T,>(build: () => T): T => { try { return build(); } finally { owned.splice(0).forEach((s) => s.delete()); } }; // also when the build throws
 
 const X: P3 = [1, 0, 0];
 const Y: P3 = [0, 1, 0];
@@ -345,11 +346,11 @@ const belt = (c1: P2, r1: number, c2: P2, r2: number, y0: number, y1: number): S
   const c = Math.sqrt(1 - s * s);
   const pt = (o: P2, r: number, a: number, b: number): P3 => [o[0] + r * (u[0] * a - u[1] * b), y0, o[1] + r * (u[1] * a + u[0] * b)];
   const edges = [
-    line(pt(c1, r1, s, c), pt(c2, r2, s, c)),
-    threePointArc(pt(c2, r2, s, c), pt(c2, r2, 1, 0), pt(c2, r2, s, -c)),
-    line(pt(c2, r2, s, -c), pt(c1, r1, s, -c)),
-    threePointArc(pt(c1, r1, s, -c), pt(c1, r1, -1, 0), pt(c1, r1, s, c)),
-  ].map(own);
+    own(line(pt(c1, r1, s, c), pt(c2, r2, s, c))),
+    own(threePointArc(pt(c2, r2, s, c), pt(c2, r2, 1, 0), pt(c2, r2, s, -c))),
+    own(line(pt(c2, r2, s, -c), pt(c1, r1, s, -c))),
+    own(threePointArc(pt(c1, r1, s, -c), pt(c1, r1, -1, 0), pt(c1, r1, s, c))),
+  ];
   const loop = own(unwrap(wire(edges)));
   const profile = own(unwrap(face(loop as never)));
   return own(unwrap(extrude(profile, [0, y1 - y0, 0]))) as Shape;
@@ -563,7 +564,7 @@ interface ArmParams {
   cutaway?: boolean; // open the base, shoulder, elbow and forearm to show the drives
 }
 
-function robotArm({ pose = [-35, 28, 12, 0, 50, 0], grip = 24, cutaway = true }: ArmParams = {}) {
+const robotArm = ({ pose = [-35, 28, 12, 0, 50, 0], grip = 24, cutaway = true }: ArmParams = {}) => freeing(() => {
   const parts = armParts(Math.min(52, Math.max(0, grip)), cutaway);
 
   // The kinematics API turns the DH table into a joint chain and solves the pose of every link.
@@ -589,9 +590,8 @@ function robotArm({ pose = [-35, 28, 12, 0, 50, 0], grip = 24, cutaway = true }:
       return [tone, compound(moved) as Shape];
     }),
   ) as Record<Tone, Shape>;
-  owned.splice(0).forEach((s) => s.delete());
   return { ...arm, flange: (posed.get('link6') as Pose).position };
-}
+});
 
 // Turn the open side toward the camera, for the first view and for the Iso view.
 const arm = robotArm();
@@ -611,9 +611,9 @@ export default [
   },
   {
     id: 'pocket-watch',
-    label: 'Pocket-Watch Movement',
+    label: 'Pocket Watch',
     description:
-      'A hand-wound pocket-watch movement of the 16.5 ligne class: 36.6 mm, 17 jewels, 18,000 vibrations per hour. Each tooth count is from a published teardown, so the gear ratios are true, and the time parameter turns each wheel by its ratio. The bridges, the escapement shapes and the winding parts are a display model.',
+      'An open-face pocket watch with a hand-wound movement of the 16.5 ligne class: 36.6 mm, 17 jewels, 18,000 vibrations per hour. Each tooth count is from a published teardown, so the gear ratios are true, and the three hands show the time that the train gives them. The time parameter runs the watch. The bridges, the escapement shapes, the winding parts, the dial and the case are a display model.',
     code: `import {
   box,
   chamfer,
@@ -632,40 +632,44 @@ export default [
   line,
   makeExternalGear,
   polygon,
+  revolve,
   rotate,
   threePointArc,
+  torus,
   translate,
   unwrap,
   wire,
 } from 'brepjs/quick';
 import { color } from 'brepjs/playground';
 
-// Hand-wound pocket-watch movement of the 16.5 ligne class: 36.6 mm, 17 jewels, 18,000 vibrations per hour.
-// Each tooth count is from a published teardown of this class, so each ratio is true. The arbor layout comes
-// from the centre distances of those gears. The bridges, the escapement shapes and the winding parts are a
-// display model. Units are millimetres. Z = 0 is the top of the main plate, and the dial side is below it.
+// Open-face pocket watch with a hand-wound movement of the 16.5 ligne class: 36.6 mm, 17 jewels, 18,000
+// vibrations per hour. Each tooth count is from a published teardown of this class, so each ratio is true, and
+// the three hands show the time that the train gives them. The arbor layout comes from the centre distances of
+// those gears. The bridges, the escapement shapes, the winding parts, the dial and the case are a display model.
+// Units are millimetres. Z = 0 is the top of the main plate, and the dial side is below it. 12 o'clock is at +X.
 const TAU = 2 * Math.PI;
 const R = 18.3; // 36.6 mm movement
 
 type P2 = [number, number];
 type P3 = [number, number, number];
 type Shape = ReturnType<typeof cylinder>;
-type Tone = 'plate' | 'bridge' | 'brass' | 'steel' | 'blue' | 'ruby';
+type Tone = 'plate' | 'bridge' | 'brass' | 'steel' | 'blue' | 'ruby' | 'dial' | 'ink' | 'case' | 'glass';
 type Mobile = 'barrel' | 'centre' | 'third' | 'fourth' | 'escape' | 'fork' | 'balance' | 'minute' | 'hour' | 'set1' | 'set2';
 interface Part {
   tone: Tone;
   shape: Shape;
-  lift: number; // level in the exploded view: -1 dial side, 0 plate, 1 wheels, 2 balance, 3 bridges, 4 top
+  lift: number; // level in the exploded view: -5 crystal, -4 hands, -3 dial, -1 dial side, 0 plate, 1 wheels, 2 balance, 3 bridges, 4 top, 6 case back
   on?: Mobile; // the mobile that the part turns with
 }
 const LIFT = 4; // millimetres between two levels of the exploded view
 
-// Kernel shapes live in WASM memory. Every shape goes through own(), and the caller frees them all at the end.
+// Kernel shapes live in WASM memory. Every shape goes through own(). freeing() runs a build and then frees them all.
 const owned: { delete(): void }[] = [];
 const own = <T extends { delete(): void }>(s: T): T => {
   owned.push(s);
   return s;
 };
+const freeing = <T,>(build: () => T): T => { try { return build(); } finally { owned.splice(0).forEach((s) => s.delete()); } }; // also when the build throws
 
 // ---- the gears: wheel teeth and module, pinion leaves. A pinion has the module of the wheel that drives it.
 const BARREL = { teeth: 88, module: 0.191 };
@@ -700,6 +704,9 @@ const AT_PALLET = polar(AT_ESCAPE, 3.66, TO_BALANCE);
 const COCK_FOOT = polar([0, 0], R - 2.2, (-38 * Math.PI) / 180);
 const STUD_DIR = Math.atan2(COCK_FOOT[1] - AT_BALANCE[1], COCK_FOOT[0] - AT_BALANCE[0]); // from the balance to the foot of its cock
 const HAIRSPRING = { r0: 0.75, r1: 4.4, turns: 11.5 };
+const DIAL = { radius: 17.6, face: -1.9, back: -1.5, numerals: 13.5, seconds: 4.1 };
+const START = { hours: 10, minutes: 8, seconds: 42 }; // the time on the dial at time = 0
+const CASE = { crown: 24.8 }; // where the stem ends and the crown starts
 const AT_MINUTE = polar(AT_CENTRE, centres(MOTION.module, MOTION.cannon, MOTION.minute), (-50 * Math.PI) / 180);
 const AT_SET2: P2 = [9.6, -2.6];
 const AT_SET1 = meet(AT_MINUTE, centres(MOTION.module, MOTION.minute, WINDING.setting), AT_SET2, MOTION.module * WINDING.setting, 1);
@@ -747,11 +754,11 @@ const wheel = (teeth: number, module: number, z: readonly [number, number], shif
     const am = (a0 + a1) / 2;
     const p = (r: number, a: number): P3 => [r * Math.cos(a), r * Math.sin(a), z[0] - 0.05];
     const edges = [
-      threePointArc(p(rim, a0), p(rim, am), p(rim, a1)),
-      line(p(rim, a1), p(hub, a1)),
-      threePointArc(p(hub, a1), p(hub, am), p(hub, a0)),
-      line(p(hub, a0), p(rim, a0)),
-    ].map(own);
+      own(threePointArc(p(rim, a0), p(rim, am), p(rim, a1))),
+      own(line(p(rim, a1), p(hub, a1))),
+      own(threePointArc(p(hub, a1), p(hub, am), p(hub, a0))),
+      own(line(p(hub, a0), p(rim, a0))),
+    ];
     return own(unwrap(extrude(own(unwrap(face(own(unwrap(wire(edges))) as never))), z[1] - z[0] + 0.1))) as Shape;
   });
   return minus(gear(teeth, module, z, shift, 0.6), windows);
@@ -769,11 +776,11 @@ const spiral = (r0: number, r1: number, turns: number, thick: number, z0: number
   const inner = side(-thick / 2);
   const outer = side(thick / 2).reverse();
   const edges = [
-    unwrap(interpolateCurve(inner)),
-    line(inner[n] as P3, outer[0] as P3),
-    unwrap(interpolateCurve(outer)),
-    line(outer[n] as P3, inner[0] as P3),
-  ].map(own);
+    own(unwrap(interpolateCurve(inner))),
+    own(line(inner[n] as P3, outer[0] as P3)),
+    own(unwrap(interpolateCurve(outer))),
+    own(line(outer[n] as P3, inner[0] as P3)),
+  ];
   return own(unwrap(extrude(own(unwrap(face(own(unwrap(wire(edges))) as never))), z1 - z0))) as Shape;
 };
 
@@ -828,7 +835,7 @@ function movementParts(time = 0): Part[] {
   const recess = [disc(4.9, p0 - 0.1, -0.7, AT_CENTRE), disc(4.7, p0 - 0.1, -0.7, AT_MINUTE), disc(2.3, p0 - 0.1, -0.7, AT_SET1), disc(2.3, p0 - 0.1, -0.7, AT_SET2)];
   const pivots = [...[AT_CENTRE, AT_THIRD, AT_FOURTH, AT_ESCAPE, AT_PALLET].map((c) => disc(0.55, -0.3, 0.1, c)), disc(0.6, -0.62, 0.1, AT_BALANCE)];
   const stemSlot = own(translate(own(box(R - 9.4, 3.7, 1.5)), [9.5, -1.85, -1.05])) as Shape;
-  add('plate', 0, minus(disc(R, p0, p1), [...recess, ...pivots, stemSlot, disc(1.0, p0 - 0.1, p1 + 0.1, AT_BARREL), disc(0.5, p0 - 0.1, p1 + 0.1, AT_CENTRE)]));
+  add('plate', 0, minus(disc(R, p0, p1), [...recess, ...pivots, stemSlot, disc(1.0, p0 - 0.1, p1 + 0.1, AT_BARREL), disc(0.5, p0 - 0.1, p1 + 0.1, AT_CENTRE), disc(0.2, p0 - 0.1, p1 + 0.1, AT_FOURTH)]));
 
   // ---- barrel: 88 teeth on the drum, the mainspring inside, the arbor up to the ratchet wheel
   const [b0, b1] = Z.barrelTeeth;
@@ -846,6 +853,7 @@ function movementParts(time = 0): Part[] {
   mobile('centre', wheel(CENTRE.teeth, CENTRE.module, Z.centreWheel, -0.35, 5, 1.1), gear(CENTRE.leaves, BARREL.module, [0.42, 1.05], 0.3), [-0.25, 3.0]);
   mobile('third', wheel(THIRD.teeth, THIRD.module, Z.thirdWheel, -0.4, 5, 0.8), gear(THIRD.leaves, CENTRE.module, [0.12, 0.55], 0.35), [-0.25, 3.0]);
   mobile('fourth', wheel(FOURTH.teeth, FOURTH.module, Z.fourthWheel, -0.3, 5, 0.7), gear(FOURTH.leaves, THIRD.module, [0.75, 1.12], 0.4), [-0.25, 3.0]);
+  turn('fourth', 'steel', 1, disc(0.1, -2.14, -0.25)); // the fourth arbor goes through the plate and the dial to the seconds hand
 
   // Escape wheel: 15 club teeth that lean in the direction of rotation. The tooth shape is a display shape.
   const [e0, e1] = Z.escapeWheel;
@@ -934,20 +942,15 @@ function movementParts(time = 0): Part[] {
   add('steel', 4, at(minus(gear(WINDING.crown, WINDING.module, [2.92, 3.2]), [disc(0.6, 2.8, 3.3)]), AT_CROWN, 0, crownA));
   const clickAt = polar(AT_BARREL, 8.75, (150 * Math.PI) / 180);
   add('steel', 4, at(prism([[-0.6, -0.5], [2.1, -0.25], [2.3, 0.35], [-0.6, 0.5]], g1, g1 + 0.25), clickAt, 0, (-65 * Math.PI) / 180));
-  const stem = fused([
-    own(cylinder(0.6, R - 6.9, { at: [8.5, 0, 0.9], axis: [1, 0, 0] })),
-    own(cylinder(1.95, 0.9, { at: [12.45, 0, 0.9], axis: [1, 0, 0] })),
-    own(cylinder(1.3, 1.3, { at: [9.5, 0, 0.9], axis: [1, 0, 0] })),
-  ]);
-  add('steel', 1, stem);
-  const crown = own(rotate(gear(30, 0.2, [0, 2.6], 0, 0), 90, { axis: [0, 1, 0] })) as Shape; // the gear teeth are the grip
-  add('brass', 1, own(translate(crown, [R + 1.6, 0, 0.9])) as Shape);
+  // The stem carries the winding pinion and the sliding pinion. Their tooth counts are not published.
+  const onStem = (g: Shape, x: number): Shape => own(translate(own(rotate(g, 90, { axis: [0, 1, 0] })), [x, 0, 0.9])) as Shape;
+  add('steel', 1, fused([own(cylinder(0.6, CASE.crown - 8.5, { at: [8.5, 0, 0.9], axis: [1, 0, 0] })), onStem(gear(16, 0.2, [0, 0.9], 0, 0), 12.45), onStem(gear(12, 0.19, [0, 1.3], 0, 0), 9.5)]));
 
   // ---- motion works on the dial side: 12 to 1 from the cannon pinion to the hour wheel
-  turn('centre', 'steel', -1, fused([gear(MOTION.cannon, MOTION.module, [-0.9, -0.72], 0.2), ring(0.5, 0.75, -2.6, -0.72)]));
+  turn('centre', 'steel', -1, fused([gear(MOTION.cannon, MOTION.module, [-0.9, -0.72], 0.2), ring(0.5, 0.75, -2.75, -0.72)]));
   turn('minute', 'brass', -1, gear(MOTION.minute, MOTION.module, [-0.9, -0.76], -0.2, 0.5));
   turn('minute', 'steel', -1, fused([gear(MOTION.minutePinion, MOTION.hourModule, [-1.2, -0.92], 0.35), disc(0.25, -1.2, -0.7)]));
-  turn('hour', 'brass', -1.5, minus(fused([gear(MOTION.hour, MOTION.hourModule, [-1.2, -1.0], -0.35), disc(1.15, -2.1, -1.0)]), [disc(0.8, -2.2, -0.9)]));
+  turn('hour', 'brass', -1.5, minus(fused([gear(MOTION.hour, MOTION.hourModule, [-1.2, -1.0], -0.35), disc(1.15, -2.35, -1.0)]), [disc(0.8, -2.45, -0.9)]));
   turn('set1', 'steel', -1, gear(WINDING.setting, MOTION.module, [-0.9, -0.76], 0.2));
   turn('set2', 'steel', -1, gear(WINDING.setting, MOTION.module, [-0.9, -0.76], -0.2));
 
@@ -959,6 +962,78 @@ function movementParts(time = 0): Part[] {
   ];
   add('blue', 4, ...heads.map(([c, z]) => screw(c, z)), ...[-3.85, -5.05].map((d) => screw(polar(AT_PALLET, d, across), 1.2, 0.5)), screw(AT_BARREL, 3.2, 0.95), screw(AT_CROWN, 3.2, 0.95), screw(clickAt, g1 + 0.25, 0.5));
 
+  // Gold settings round the four train jewels of the bridges, and the scale of the regulator on the cock.
+  add('brass', 3, ...[AT_CENTRE, AT_THIRD, AT_FOURTH, AT_ESCAPE].map((c) => at(ring(0.55, 0.85, g1, g1 + 0.04), c)));
+  add('ink', 3, ...[-3, -2, -1, 0, 1, 2, 3].map((i) => at(own(translate(own(box(i === 0 ? 0.55 : 0.35, 0.07, 0.02)), [4.75, -0.035, g1])) as Shape, AT_BALANCE, 0, armDir + 0.12 + i * 0.09)));
+  // Setting parts under the dial: the setting lever, the yoke and its spring (display shapes).
+  add('steel', -1, prism([[14.5, 1.2], [16.5, 2.2], [16.2, 4.2], [12.5, 3.2], [11.2, 5.0], [10.4, 4.4], [12.0, 2.0]], -1.49, -1.37));
+  add('steel', -1, prism([[10.2, -1.0], [13.8, -1.6], [14.6, -4.2], [13.4, -4.6], [12.6, -2.6], [9.8, -2.4], [8.2, -5.2], [7.4, -4.6], [9.0, -1.4]], -1.49, -1.37));
+  add('steel', -1, prism([[15.6, -5.6], [16.4, -5.2], [14.6, -0.6], [13.9, -0.9]], -1.49, -1.37));
+
+  // ---- dial: a white disc with a recess for the small seconds. The marks are thin solids on its face.
+  const { face: d0, back: d1 } = DIAL;
+  add('dial', -3, minus(disc(DIAL.radius, d0, d1), [disc(1.3, d0 - 0.1, d1 + 0.1), disc(0.25, d0 - 0.1, d1 + 0.1, AT_FOURTH), disc(DIAL.seconds, d0 - 0.1, d0 + 0.08, AT_FOURTH)]));
+  // A mark from a to b on a plane of the dial, as a flat bar.
+  const mark = (a: P2, b: P2, width: number, z = d0): Shape =>
+    at(own(translate(own(box(Math.hypot(b[0] - a[0], b[1] - a[1]), width, 0.03)), [0, -width / 2, z - 0.03])) as Shape, a, 0, Math.atan2(b[1] - a[1], b[0] - a[0]));
+  const toSeconds = Math.atan2(-AT_FOURTH[1], -AT_FOURTH[0]); // on the small dial, 60 is toward the centre of the watch
+  const marks: Shape[] = [
+    ...Array.from({ length: 60 }, (_, i) => mark(polar([0, 0], i % 5 === 0 ? 15.92 : 16.35, (i * TAU) / 60), polar([0, 0], 16.88, (i * TAU) / 60), i % 5 === 0 ? 0.24 : 0.1)),
+    ring(16.9, 16.99, d0 - 0.03, d0),
+    ring(15.81, 15.9, d0 - 0.03, d0),
+    ...Array.from({ length: 60 }, (_, i) => mark(polar(AT_FOURTH, i % 5 === 0 ? 3.1 : 3.5, toSeconds + (i * TAU) / 60), polar(AT_FOURTH, 3.79, toSeconds + (i * TAU) / 60), i % 5 === 0 ? 0.12 : 0.05, d0 + 0.08)),
+    at(ring(3.8, 3.86, d0 + 0.05, d0 + 0.08), AT_FOURTH),
+  ];
+  // Roman numerals with their feet toward the centre. A numeral is a row of strokes between two thin bars.
+  // The small seconds takes the place of VI.
+  const half = 1.45;
+  const GLYPH: Record<string, { strokes: [number, number, number, number, number][]; advance: number }> = {
+    I: { strokes: [[0.4, half, 0.4, -half, 0.42]], advance: 0.8 },
+    V: { strokes: [[0.1, half, 0.75, -half, 0.42], [1.4, half, 0.75, -half, 0.16]], advance: 1.5 },
+    X: { strokes: [[0.1, half, 1.4, -half, 0.42], [1.4, half, 0.1, -half, 0.16]], advance: 1.5 },
+  };
+  ['XII', 'I', 'II', 'III', 'IIII', 'V', '', 'VII', 'VIII', 'IX', 'X', 'XI'].forEach((numeral, hour) => {
+    if (numeral === '') return;
+    const angle = (hour * TAU) / 12;
+    const width = [...numeral].reduce((sum, c) => sum + (GLYPH[c] as (typeof GLYPH)[string]).advance, 0);
+    // u goes to the right of a reader at the dial side, v goes away from the centre.
+    const point = (u: number, v: number): P2 => polar(polar([0, 0], DIAL.numerals + v, angle), u, angle + TAU / 4);
+    let u = -width / 2;
+    const strokes: Shape[] = [];
+    for (const c of numeral) {
+      const glyph = GLYPH[c] as (typeof GLYPH)[string];
+      for (const [u0, v0, u1, v1, w] of glyph.strokes) strokes.push(mark(point(u + u0, v0), point(u + u1, v1), w));
+      u += glyph.advance;
+    }
+    for (const v of [half, -half]) strokes.push(mark(point(-width / 2 - 0.12, v), point(width / 2 + 0.12, v), 0.13));
+    marks.push(fused(strokes));
+  });
+  add('ink', -3, ...marks);
+
+  // ---- hands. Each hand sits on its mobile at the angle that shows the start time at time = 0.
+  const A0 = angles(0);
+  const clock = { fourth: START.seconds / 60, centre: (START.minutes + START.seconds / 60) / 60, hour: (START.hours + START.minutes / 60 + START.seconds / 3600) / 12 };
+  const hand = (on: 'fourth' | 'centre' | 'hour', outline: P2[], hub: number, hole: number, z0: number, z1: number): void => {
+    const zero = on === 'fourth' ? toSeconds : 0;
+    const both = [...outline, ...outline.map(([x, y]): P2 => [x, -y]).reverse()];
+    const shape = minus(fused([prism(both, z0, z1), disc(hub, z0, z1)]), [disc(hole, z0 - 0.1, z1 + 0.1)]);
+    turn(on, 'blue', -4, own(rotate(shape, ((zero + clock[on] * TAU - A0[on]) * 360) / TAU)) as Shape);
+  };
+  hand('hour', [[-2.0, 0.3], [0, 0.85], [6.8, 0.55], [7.7, 1.25], [10.4, 0.02]], 1.7, 1.15, -2.3, -2.18);
+  hand('centre', [[-2.4, 0.24], [0, 0.62], [11.5, 0.4], [15.6, 0.02]], 1.3, 0.75, -2.7, -2.58);
+  hand('fourth', [[-1.2, 0.1], [0, 0.26], [3.5, 0.02]], 0.32, 0.1, -2.1, -2.02);
+
+  // ---- case: a band with the pendant, a bezel with the crystal, a back, the crown and the bow (display shapes)
+  const lathe = (profile: P2[]): Shape => own(unwrap(revolve(own(unwrap(polygon(profile.map(([r, z]): P3 => [r, 0, z]))))))) as Shape;
+  const pendant = fused([own(cylinder(2.3, 3.6, { at: [21.0, 0, 0.9], axis: [1, 0, 0] })), own(cylinder(2.7, 0.5, { at: [24.1, 0, 0.9], axis: [1, 0, 0] }))]);
+  const band = fused([lathe([[18.45, -2.2], [20.3, -2.2], [21.3, -0.8], [21.5, 0.9], [21.3, 2.6], [20.3, 4.0], [18.45, 4.0]]), pendant]);
+  add('case', 0, minus(band, [own(cylinder(0.8, 9, { at: [17, 0, 0.9], axis: [1, 0, 0] }))]));
+  add('case', -5, lathe([[17.3, -2.2], [20.3, -2.2], [19.8, -3.1], [18.3, -3.6], [17.3, -3.6]]));
+  add('glass', -5, disc(17.3, -3.5, -2.95));
+  add('case', 6, fused([lathe([[0.03, 4.75], [14, 4.6], [18.45, 4.0], [20.3, 4.0], [19.9, 4.7], [16, 5.4], [8, 5.85], [0.03, 5.95]]), disc(0.06, 4.76, 5.94)]));
+  add('case', 0, own(translate(own(rotate(gear(26, 0.22, [0, 2.8], 0, 0), 90, { axis: [0, 1, 0] })), [CASE.crown, 0, 0.9])) as Shape); // the gear teeth are the grip of the crown
+  add('case', 0, minus(own(torus(5.86, 0.65, { at: [28.2, 0, 0.9] })), [own(cylinder(2.7, 6, { at: [20, 0, 0.9], axis: [1, 0, 0] }))]));
+
   return parts;
 }
 
@@ -967,34 +1042,35 @@ interface WatchParams {
   explode?: number; // 0 = assembled, 1 = the levels lift apart
 }
 
-function watch({ time = 0, explode = 0 }: WatchParams = {}) {
+const watch = ({ time = 0, explode = 0 }: WatchParams = {}) => freeing(() => {
   const parts = movementParts(time);
-  const tones: Tone[] = ['plate', 'bridge', 'brass', 'steel', 'blue', 'ruby'];
+  const tones: Tone[] = ['plate', 'bridge', 'brass', 'steel', 'blue', 'ruby', 'dial', 'ink', 'case', 'glass'];
   const built = Object.fromEntries(
     tones.map((tone) => [
       tone,
       compound(parts.filter((p) => p.tone === tone).map((p) => (explode > 0 ? (own(translate(p.shape, [0, 0, p.lift * explode * LIFT])) as Shape) : p.shape))) as Shape,
     ]),
   ) as Record<Tone, Shape>;
-  owned.splice(0).forEach((s) => s.delete());
   const fourthTurnsPerHour = (CENTRE.teeth / THIRD.leaves) * (THIRD.teeth / FOURTH.leaves);
   return {
     ...built,
+    solids: parts.length,
     jewels: parts.filter((p) => p.tone === 'ruby').length,
     beatsPerHour: fourthTurnsPerHour * (FOURTH.teeth / ESCAPE.leaves) * ESCAPE.teeth * 2,
     hoursPerBarrelTurn: BARREL.teeth / CENTRE.leaves,
   };
-}
+});
 
-// Show the bridge side. Try watch({ time: 1800 }) for the pose after half an hour, or watch({ explode: 1 }).
+// Show the dial side. Try watch({ time: 1800 }) for the pose after half an hour, or watch({ explode: 1 }).
 const movement = watch();
-// Turn the balance toward the camera, for the first view and for the Iso view.
+// Turn the dial up. The crystal (movement.glass) stays out of the view, because the viewer draws solid colours.
 const show = (s: Shape, css: string) => {
-  const turned = rotate(s, 90);
+  const turned = rotate(s, 180, { axis: [1, 0, 0] });
   s.delete();
   return color(turned, css);
 };
-console.log(movement.jewels, 'jewels,', movement.beatsPerHour, 'vibrations per hour, one barrel turn in', movement.hoursPerBarrelTurn.toFixed(2), 'h');
+movement.glass.delete();
+console.log(movement.solids, 'solids,', movement.jewels, 'jewels,', movement.beatsPerHour, 'vibrations per hour, one barrel turn in', movement.hoursPerBarrelTurn.toFixed(2), 'h');
 export default [
   show(movement.plate, '#d9d6cf'),
   show(movement.bridge, '#e9e6de'),
@@ -1002,6 +1078,865 @@ export default [
   show(movement.steel, '#a9b1ba'),
   show(movement.blue, '#2f4fa8'),
   show(movement.ruby, '#c2185b'),
+  show(movement.dial, '#f4f1e6'),
+  show(movement.ink, '#16181c'),
+  show(movement.case, '#cfd2d6'),
 ];`,
+  },
+  {
+    id: 'mars-rover',
+    label: 'Mars Rover',
+    description:
+      'A six-wheel planetary rover of the 1-tonne class with a rocker-bogie suspension, in cutaway. The wheel size, the corner wheel positions, the deck height, the ground clearance, the mast height and the arm length are published figures. The kernel measures the volume of each part, and the example turns the volumes into a mass budget of 899 kg and a centre of mass. The arm parameter moves the arm, and the centre of mass moves with it. The link lengths, the body layout and the equipment inside the body are a display model.',
+    code: `import {
+  box,
+  circle,
+  compound,
+  cone,
+  cutAll,
+  cylinder,
+  edgeFinder,
+  extrude,
+  face,
+  fillet,
+  fuseAll,
+  getSolids,
+  helix,
+  interpolateCurve,
+  line,
+  measureVolumeProps,
+  polygon,
+  rotate,
+  sweep,
+  threePointArc,
+  translate,
+  unwrap,
+  wire,
+} from 'brepjs/quick';
+import { color } from 'brepjs/playground';
+
+// Six-wheel planetary rover of the 1-tonne class with a rocker-bogie suspension, in cutaway. The wheel size, the
+// positions of the corner wheels, the deck height, the ground clearance, the mast height and the arm length are
+// published figures. The kernel measures the volume of each part, and a density or a published mass turns it
+// into a mass budget and a centre of mass. The link lengths, the body layout, the equipment
+// inside the body and all small parts are a display model. Units are millimetres and kilograms. X is forward,
+// Y is left, Z is up, and the origin is on the ground below the middle axle.
+const DEG = Math.PI / 180;
+
+type P2 = [number, number];
+type P3 = [number, number, number];
+type Shape = ReturnType<typeof cylinder>;
+type Tone = 'white' | 'dark' | 'titanium' | 'metal' | 'gold' | 'accent';
+type System = 'wheels' | 'suspension' | 'body' | 'equipment' | 'power' | 'arm' | 'mast' | 'antennas';
+type Link = 'body' | 'rockerL' | 'rockerR' | 'bogieL' | 'bogieR';
+interface Part {
+  system: System;
+  tone: Tone;
+  link: Link;
+  shape: Shape;
+  kg: number;
+  at: P3; // centre of mass
+  skin?: boolean; // the cutaway opens this part
+  joint?: 1 | 2 | 3; // the arm joint that the part turns with: 1 shoulder, 2 elbow, 3 wrist
+}
+
+// Kernel shapes live in WASM memory. Every shape goes through own(). freeing() runs a build and then frees them all.
+const owned: { delete(): void }[] = [];
+const own = <T extends { delete(): void }>(s: T): T => {
+  owned.push(s);
+  return s;
+};
+const freeing = <T,>(build: () => T): T => { try { return build(); } finally { owned.splice(0).forEach((s) => s.delete()); } }; // also when the build throws
+
+// ---- published figures
+const WHEEL = { radius: 250, width: 400, skin: 0.75, grousers: 24, grouserHeight: 7.5 };
+const AXLE = { front: 1150, rear: -1110, cornerTrack: 2125, middleTrack: 2430 }; // the corner axles are 2,260 mm apart
+const DECK = 1100; // top of the body
+const CLEARANCE = 660; // under the body
+const MAST_TOP = 2200;
+const ARM_LENGTH = 2200; // from the shoulder to the centre of the turret
+const TOTAL_KG = 899;
+const PUBLISHED_KG = { power: 45, arm: 70, turret: 30 };
+// kg per cubic millimetre. An instrument box is mostly electronics and air.
+const DENSITY = { aluminium: 2.7e-6, titanium: 4.43e-6, instrument: 0.8e-6, cable: 2.2e-6 };
+
+// ---- display layout
+const BODY = { x0: -720, x1: 850, half: 800 };
+const PIVOT: P2 = [250, 880]; // rocker pivot on the body, as [x, z]
+const BOGIE: P2 = [-480, 640]; // bogie pivot on the rocker
+const PIVOT_Y = 880;
+const BOGIE_Y = 940;
+// The arm has three vertical joints. Each one is a point and an angle in degrees, for a reach from 0 (the
+// arm folded across the front) to 1 (the arm straight out).
+const SHOULDER: P3 = [BODY.x1 + 160, 520, 900];
+const armJoints = (reach: number): [P2, number][] => [
+  [[SHOULDER[0], SHOULDER[1]], 90 * reach],
+  [[SHOULDER[0] + 65, SHOULDER[1] - 1000], -180 * reach],
+  [[SHOULDER[0] + 130, SHOULDER[1] - 200], 90 * reach],
+];
+const OPENING = { x0: -560, x1: 640, y0: 140, z0: 705 }; // the cutaway takes the deck and the left wall over this range
+
+const solidOf = (s: Shape, tools: Shape[]): Shape => own(unwrap(cutAll(s, tools))) as Shape;
+const fused = (parts: Shape[]): Shape => own(unwrap(fuseAll(parts))) as Shape;
+const group = (parts: Shape[]): Shape => own(compound(parts)) as Shape;
+const rounded = (s: Shape, r: number): Shape => own(unwrap(fillet(s, edgeFinder().inDirection('Z').findAll(s), r))) as Shape;
+const block = (x0: number, x1: number, y0: number, y1: number, z0: number, z1: number): Shape =>
+  own(translate(own(box(x1 - x0, y1 - y0, z1 - z0)), [x0, y0, z0])) as Shape;
+const along = (a: P3, b: P3, t: number, lift = 0): P3 => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t + lift];
+const rod = (a: P3, b: P3, r: number, bore = 0): Shape => {
+  const axis: P3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const len = Math.hypot(...axis);
+  const outer = own(cylinder(r, len, { at: a, axis }));
+  if (bore === 0) return outer;
+  const back: P3 = [a[0] - axis[0] / len, a[1] - axis[1] / len, a[2] - axis[2] / len];
+  return solidOf(outer, [own(cylinder(bore, len + 2, { at: back, axis }))]);
+};
+// A box-section beam from a to b. With a wall, the beam is hollow.
+const beam = (a: P3, b: P3, w: number, h: number, wall = 0): Shape => {
+  const d: P3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const len = Math.hypot(...d);
+  let s = own(translate(own(box(len, w, h)), [0, -w / 2, -h / 2])) as Shape;
+  if (wall > 0) s = solidOf(s, [own(translate(own(box(len + 2, w - 2 * wall, h - 2 * wall)), [-1, wall - w / 2, wall - h / 2])) as Shape]);
+  const pitched = own(rotate(s, -Math.atan2(d[2], Math.hypot(d[0], d[1])) / DEG, { axis: [0, 1, 0] }));
+  return own(translate(own(rotate(pitched, Math.atan2(d[1], d[0]) / DEG)), a)) as Shape;
+};
+// A ring of bolt heads about the line from a toward b.
+const bolts = (a: P3, b: P3, radius: number, count: number, r = 6): Shape => {
+  const d: P3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const len = Math.hypot(...d);
+  const n: P3 = [d[0] / len, d[1] / len, d[2] / len];
+  const flat = Math.hypot(n[0], n[1]);
+  const u: P3 = flat < 0.4 ? [1, 0, 0] : [-n[1] / flat, n[0] / flat, 0];
+  const v: P3 = [n[1] * u[2] - n[2] * u[1], n[2] * u[0] - n[0] * u[2], n[0] * u[1] - n[1] * u[0]];
+  return group(
+    Array.from({ length: count }, (_, i) => {
+      const t = (i * 2 * Math.PI) / count;
+      const at = [0, 1, 2].map((k) => (a[k] as number) + radius * (Math.cos(t) * (u[k] as number) + Math.sin(t) * (v[k] as number))) as P3;
+      return own(cylinder(r, len, { at, axis: n }));
+    }),
+  );
+};
+// A cable: a circle swept along a smooth curve through the points.
+const cable = (points: P3[], r: number): Shape => {
+  const [a, b] = points as [P3, P3];
+  const start = own(unwrap(wire([own(circle(r, { at: a, axis: [b[0] - a[0], b[1] - a[1], b[2] - a[2]] }))])));
+  const spine = own(unwrap(wire([own(unwrap(interpolateCurve(points)))])));
+  return own(unwrap(sweep(start as never, spine, { mode: 'simple' }))) as Shape;
+};
+const pathLength = (points: P3[]): number =>
+  points.slice(1).reduce((sum, p, i) => sum + Math.hypot(p[0] - (points[i] as P3)[0], p[1] - (points[i] as P3)[1], p[2] - (points[i] as P3)[2]), 0);
+
+// ---- one wheel, with its axis on Z and its inner side at +Z. All six wheels are copies of it.
+function wheelParts() {
+  const { radius: r, width: w, skin, grousers, grouserHeight } = WHEEL;
+  const ring = (r0: number, r1: number, z0: number, z1: number): Shape =>
+    solidOf(own(cylinder(r1, z1 - z0, { at: [0, 0, z0] })), [own(cylinder(r0, z1 - z0 + 2, { at: [0, 0, z0 - 1] }))]);
+  // A chevron grouser is two bars that meet on the centre line of the tread.
+  const skew = 9;
+  const half = w / 2 / Math.cos(skew * DEG);
+  const chevrons = Array.from({ length: grousers }, (_, i) =>
+    [1, -1].map((side) => {
+      const bar = own(translate(own(box(grouserHeight + 1, 6, half)), [r - 1, -3, side > 0 ? 0 : -half]));
+      return own(rotate(own(rotate(bar, -side * skew, { axis: [1, 0, 0] })), (i * 360) / grousers)) as Shape;
+    }),
+  ).flat();
+  const tyre = fused([
+    ring(r - skin, r, -w / 2, w / 2),
+    ring(r - 14, r, -w / 2, -w / 2 + 3),
+    ring(r - 14, r, w / 2 - 3, w / 2),
+    ring(r - 26, r, 60, 64),
+    ring(r - 10, r, -70, -67),
+    ...chevrons,
+  ]);
+  // Six flat spokes with a curve, from the hub to the stiffening ring inside the tread.
+  const at = (x: number, y: number): P3 => [x, y, 30];
+  const edges = [
+    own(threePointArc(at(66, -2), at(150, 34), at(226, -2))),
+    own(line(at(226, -2), at(226, 2))),
+    own(threePointArc(at(226, 2), at(150, 38), at(66, 2))),
+    own(line(at(66, 2), at(66, -2))),
+  ];
+  const spoke = own(unwrap(extrude(own(unwrap(face(own(unwrap(wire(edges))) as never))), 66))) as Shape;
+  const spokes = Array.from({ length: 6 }, (_, i) => own(rotate(spoke, i * 60)) as Shape);
+  // The drive actuator in the hub, with cooling ribs, and a cap with its bolts on the outer side.
+  const hub = fused([own(cylinder(70, 195, { at: [0, 0, 20] })), ...[70, 110, 150, 190].map((z) => own(cylinder(80, 8, { at: [0, 0, z] })))]);
+  const cap = own(cylinder(88, 30, { at: [0, 0, -10] }));
+  const capBolts = bolts([0, 0, -16], [0, 0, -10], 66, 8);
+  return { tyre, spokes, hub, cap, capBolts };
+}
+
+// ---- the suspension pose. Each side is a planar linkage: the bogie keeps the middle and the rear wheel on the
+// ground, and the rocker keeps the front wheel and the bogie pivot on their heights. The differential gives
+// the body the mean of the two rocker angles.
+const turn = (v: P2, a: number): P2 => [v[0] * Math.cos(a) - v[1] * Math.sin(a), v[0] * Math.sin(a) + v[1] * Math.cos(a)];
+const solveAngle = (v: P2, rise: number): number => Math.asin(rise / Math.hypot(v[0], v[1])) - Math.atan2(v[1], v[0]);
+function sidePose(frontGround: number) {
+  const r = WHEEL.radius;
+  const middle: P2 = [-BOGIE[0], r - BOGIE[1]];
+  const rear: P2 = [AXLE.rear - BOGIE[0], r - BOGIE[1]];
+  const bogie = solveAngle([middle[0] - rear[0], middle[1] - rear[1]], 0);
+  const bogieZ = r - turn(middle, bogie)[1];
+  const front: P2 = [AXLE.front - PIVOT[0], r - PIVOT[1]];
+  const arm: P2 = [BOGIE[0] - PIVOT[0], BOGIE[1] - PIVOT[1]];
+  const rocker = solveAngle([front[0] - arm[0], front[1] - arm[1]], frontGround + r - bogieZ);
+  const pivotZ = frontGround + r - turn(front, rocker)[1];
+  return { rocker, bogie, pivotZ, bogieAt: [PIVOT[0] + turn(arm, rocker)[0], bogieZ] as P2 };
+}
+// The pose of each link when the ground under the left front wheel is at the height lift.
+function suspension(lift: number) {
+  const left = sidePose(lift);
+  const right = sidePose(0);
+  return {
+    left,
+    right,
+    pitch: (left.rocker + right.rocker) / 2,
+    roll: Math.asin((left.pivotZ - right.pivotZ) / (2 * PIVOT_Y)),
+    rise: (left.pivotZ + right.pivotZ) / 2 - PIVOT[1],
+  };
+}
+
+// All parts of the rover on flat ground, each with its mass, for a reach of the arm.
+function roverParts(arm = 0): Part[] {
+  const parts: Part[] = [];
+  const weigh = (shape: Shape): { volume: number; at: P3 } => {
+    const props = unwrap(measureVolumeProps(shape));
+    return { volume: props.volume, at: [...props.centerOfMass] as P3 };
+  };
+  // Parts whose mass is their volume times the density of their material.
+  const add = (system: System, tone: Tone, link: Link, density: number, ...shapes: Shape[]): void => {
+    for (const shape of shapes) {
+      const { volume, at } = weigh(shape);
+      parts.push({ system, tone, link, shape, kg: volume * density, at });
+    }
+  };
+  // The same, for the parts that the cutaway opens.
+  const skin = (system: System, tone: Tone, density: number, ...shapes: Shape[]): void => {
+    for (const shape of shapes) {
+      const { volume, at } = weigh(shape);
+      parts.push({ system, tone, link: 'body', shape, kg: volume * density, at, skin: true });
+    }
+  };
+  // A group of parts with one known mass, which the parts share by volume.
+  const lump = (system: System, link: Link, kg: number, list: [Tone, Shape][]): void => {
+    const weighed = list.map(([tone, shape]) => ({ tone, shape, ...weigh(shape) }));
+    const total = weighed.reduce((sum, p) => sum + p.volume, 0);
+    for (const p of weighed) parts.push({ system, tone: p.tone, link, shape: p.shape, kg: (kg * p.volume) / total, at: p.at });
+  };
+  // A cable harness. Its mass is its length times its section, and its centre is the mean of its points.
+  const harness = (system: System, link: Link, r: number, points: P3[]): void => {
+    const at = [0, 1, 2].map((k) => points.reduce((sum, p) => sum + (p[k] as number), 0) / points.length) as P3;
+    parts.push({ system, tone: 'gold', link, shape: cable(points, r), kg: DENSITY.cable * Math.PI * r * r * pathLength(points), at });
+  };
+  // An actuator: a ribbed can from a to b, with a cap and a ring of bolts at b.
+  const actuator = (system: System, link: Link, a: P3, b: P3, r: number): void => {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+    const out = (d: number): P3 => along(a, b, 1 + d / len);
+    add(system, 'dark', link, DENSITY.aluminium, fused([rod(a, b, r), ...[0.25, 0.5, 0.75].map((t) => rod(along(a, b, t - 4 / len), along(a, b, t + 4 / len), r + 7))]));
+    add(system, 'metal', link, DENSITY.aluminium, rod(b, out(12), r + 6), bolts(out(12), out(17), r - 8, 8, 5));
+  };
+
+  // ---- wheels and suspension, one side at a time (side = 1 is the left)
+  const wheel = wheelParts();
+  const r = WHEEL.radius;
+  for (const side of [1, -1] as const) {
+    const rocker: Link = side > 0 ? 'rockerL' : 'rockerR';
+    const bogie: Link = side > 0 ? 'bogieL' : 'bogieR';
+    const corner = (side * AXLE.cornerTrack) / 2;
+    const middle = (side * AXLE.middleTrack) / 2;
+    const placeWheel = (link: Link, x: number, y: number): void => {
+      const put = (s: Shape): Shape => own(translate(own(rotate(s, side * 90, { axis: [1, 0, 0] })), [x, y, r])) as Shape;
+      add('wheels', 'dark', link, DENSITY.aluminium, put(wheel.tyre), put(wheel.hub));
+      add('wheels', 'titanium', link, DENSITY.titanium, ...wheel.spokes.map(put));
+      add('wheels', 'metal', link, DENSITY.aluminium, put(wheel.cap), put(wheel.capBolts));
+      // The bracket from the inner end of the hub up to the suspension.
+      const inner = y - side * 245;
+      add('suspension', 'titanium', link, DENSITY.titanium, beam([x, inner, r], [x, inner, 540], 70, 50, 3), rod([x, inner + side * 30, r], [x, inner - side * 30, r], 85));
+      add('suspension', 'metal', link, DENSITY.aluminium, bolts([x, inner - side * 30, r], [x, inner - side * 36, r], 68, 8, 5));
+    };
+    // A corner wheel hangs from a steering actuator above the tread.
+    const steered = (link: Link, x: number): void => {
+      placeWheel(link, x, corner);
+      const inner = corner - side * 245;
+      add('suspension', 'titanium', link, DENSITY.titanium, beam([x, inner - side * 25, 565], [x, corner, 565], 70, 50, 3));
+      actuator('suspension', link, [x, corner, 590], [x, corner, 730], 52);
+      add('suspension', 'dark', link, DENSITY.aluminium, rod([x, corner - side * 50, 690], [x, corner - side * 150, 690], 30));
+    };
+    steered(rocker, AXLE.front);
+    steered(bogie, AXLE.rear);
+    placeWheel(bogie, 0, middle);
+
+    const pivot: P3 = [PIVOT[0], side * PIVOT_Y, PIVOT[1]];
+    const bogiePivot: P3 = [BOGIE[0], side * BOGIE_Y, BOGIE[1]];
+    const frontEnd: P3 = [AXLE.front - 50, corner, 665];
+    const rearEnd: P3 = [AXLE.rear + 50, corner, 665];
+    const middleEnd: P3 = [0, middle - side * 245, 540];
+    add('suspension', 'titanium', rocker, DENSITY.titanium, rod(along(pivot, frontEnd, 0.075), frontEnd, 45, 42), rod(along(pivot, bogiePivot, 0.09), bogiePivot, 45, 42));
+    add('suspension', 'titanium', bogie, DENSITY.titanium, rod(along(bogiePivot, middleEnd, 0.12), middleEnd, 40, 37), rod(along(bogiePivot, rearEnd, 0.1), rearEnd, 40, 37));
+    // The pivot housings, with a cap and bolts on the outer side.
+    const knuckle = (link: Link, c: P3, radius: number, y0: number, y1: number): void => {
+      add('suspension', 'titanium', link, DENSITY.titanium, rod([c[0], c[1] + side * y0, c[2]], [c[0], c[1] + side * y1, c[2]], radius));
+      add('suspension', 'metal', link, DENSITY.aluminium, rod([c[0], c[1] + side * y1, c[2]], [c[0], c[1] + side * (y1 + 10), c[2]], radius - 12), bolts([c[0], c[1] + side * y1, c[2]], [c[0], c[1] + side * (y1 + 5), c[2]], radius - 6, 10, 4));
+    };
+    knuckle(rocker, pivot, 72, -55, 55);
+    knuckle(bogie, bogiePivot, 62, 50, 115);
+    // The harness to each wheel runs along the tubes.
+    harness('suspension', rocker, 9, [along(pivot, frontEnd, 0.06, 60), along(pivot, frontEnd, 0.5, 58), along(pivot, frontEnd, 0.93, 62), [AXLE.front - 20, corner - side * 30, 748]]);
+    harness('suspension', rocker, 9, [along(pivot, bogiePivot, 0.08, 60), along(pivot, bogiePivot, 0.5, 58), along(pivot, bogiePivot, 0.9, 62)]);
+    harness('suspension', bogie, 8, [along(bogiePivot, rearEnd, 0.1, 54), along(bogiePivot, rearEnd, 0.5, 52), along(bogiePivot, rearEnd, 0.92, 56), [AXLE.rear + 20, corner - side * 30, 748]]);
+    harness('suspension', bogie, 8, [along(bogiePivot, middleEnd, 0.1, 54), along(bogiePivot, middleEnd, 0.55, 52), along(bogiePivot, middleEnd, 0.95, 50), [0, middle - side * 245, 430]]);
+    // The body side: the axle of the rocker and the link up to the differential bar.
+    add('suspension', 'titanium', 'body', DENSITY.titanium, rod([PIVOT[0], side * BODY.half, PIVOT[1]], [PIVOT[0], side * (PIVOT_Y - 55), PIVOT[1]], 40));
+    add('suspension', 'titanium', 'body', DENSITY.titanium, rod([PIVOT[0] - 150, side * (BODY.half + 55), PIVOT[1] + 40], [PIVOT[0] - 150, side * (BODY.half + 55), DECK + 60], 14));
+    add('suspension', 'metal', 'body', DENSITY.aluminium, rod([PIVOT[0] - 150, side * (BODY.half + 40), DECK + 60], [PIVOT[0] - 150, side * (BODY.half + 70), DECK + 60], 24));
+  }
+  add('suspension', 'titanium', 'body', DENSITY.titanium, beam([PIVOT[0] - 150, -BODY.half - 60, DECK + 60], [PIVOT[0] - 150, BODY.half + 60, DECK + 60], 60, 36, 3));
+  add('suspension', 'dark', 'body', DENSITY.aluminium, own(cylinder(70, 44, { at: [PIVOT[0] - 150, 0, DECK] })));
+  add('suspension', 'metal', 'body', DENSITY.aluminium, own(cylinder(48, 12, { at: [PIVOT[0] - 150, 0, DECK + 78] })), bolts([PIVOT[0] - 150, 0, DECK + 90], [PIVOT[0] - 150, 0, DECK + 95], 34, 8, 5));
+
+  // ---- body: a thin aluminium box with sloped ends below, a deck plate, side panels and a rail round the deck
+  const { x0, x1, half } = BODY;
+  const wedge = (x: number, dir: 1 | -1, grow: number): Shape =>
+    own(unwrap(extrude(own(unwrap(polygon([[x, -half - 1, CLEARANCE - 1], [x - dir * (260 + grow), -half - 1, CLEARANCE - 1], [x, -half - 1, CLEARANCE + 150 + grow * 0.58]]))), [0, 2 * half + 2, 0]))) as Shape;
+  // The body shape, smaller by an inset on each side. The shell is the shape less its 3 mm inset.
+  const hull = (inset: number): Shape =>
+    solidOf(rounded(block(x0 + inset, x1 - inset, -half + inset, half - inset, CLEARANCE + inset, DECK - inset), 45 - inset), [wedge(x1 + 1, 1, 2 * inset), wedge(x0 - 1, -1, 2 * inset)]);
+  skin('body', 'white', DENSITY.aluminium, solidOf(hull(0), [hull(3)]));
+  skin('body', 'white', DENSITY.aluminium, rounded(block(x0 - 30, x1 + 30, -half - 30, half + 30, DECK, DECK + 6), 60));
+  for (const s of [-1, 1]) {
+    const [y0, y1] = s > 0 ? [half, half + 5] : [-half - 5, -half];
+    skin('body', 'white', DENSITY.aluminium, block(x0 + 140, PIVOT[0] - 260, y0, y1, 730, 1050), block(PIVOT[0] + 160, x1 - 150, y0, y1, 730, 1050));
+    skin('body', 'gold', DENSITY.instrument, block(x0 + 50, x0 + 120, y0, y1, 700, 1070));
+    skin('body', 'metal', DENSITY.aluminium, rod([x0 + 20, s * (half + 14), DECK + 22], [x1 - 20, s * (half + 14), DECK + 22], 7));
+    skin('body', 'metal', DENSITY.aluminium, group([-640, -280, 0, 380, 700].map((x) => rod([x, s * (half + 14), DECK + 6], [x, s * (half + 14), DECK + 22], 5))));
+  }
+  for (const x of [x0 - 14, x1 + 14]) add('body', 'metal', 'body', DENSITY.aluminium, rod([x, -half + 30, DECK + 22], [x, half - 30, DECK + 22], 7));
+
+  // ---- deck: instrument covers with inlets, a calibration target, lift fittings, markers and a cable tray
+  skin('body', 'white', DENSITY.instrument, rounded(block(150, 520, 190, 600, DECK + 6, DECK + 70), 30));
+  for (const [x, y] of [[240, 290], [240, 480], [430, 290]] as P2[]) {
+    skin('body', 'metal', DENSITY.aluminium, rod([x, y, DECK + 70], [x, y, DECK + 86], 42, 30));
+    skin('body', 'white', DENSITY.aluminium, rod([x + 62, y, DECK + 86], [x + 62, y, DECK + 92], 44));
+  }
+  add('body', 'white', 'body', DENSITY.instrument, rounded(block(-420, -120, -560, -240, DECK + 6, DECK + 46), 30), rounded(block(330, 560, -330, -80, DECK + 6, DECK + 36), 20), rounded(block(-660, -480, -160, 120, DECK + 6, DECK + 90), 20));
+  add('body', 'metal', 'body', DENSITY.aluminium, rod([-270, -400, DECK + 46], [-270, -400, DECK + 56], 74), rod([-270, -400, DECK + 56], [-270, -400, DECK + 96], 5));
+  add('body', 'accent', 'body', DENSITY.instrument, group([0, 1, 2, 3].map((i) => own(cylinder(15, 4, { at: [-270 + 46 * Math.cos(i * 90 * DEG + 0.8), -400 + 46 * Math.sin(i * 90 * DEG + 0.8), DECK + 56] })))));
+  add('body', 'metal', 'body', DENSITY.aluminium, ...([[-560, -620], [700, 60], [-600, 60]] as P2[]).map(([x, y]) => own(cone(46, 24, 60, { at: [x, y, DECK + 6] }))));
+  add('body', 'dark', 'body', DENSITY.instrument, group(([[-680, -700], [-200, -760], [300, -760], [760, -300], [760, 100], [-700, -300], [-100, -40], [600, -560]] as P2[]).map(([x, y]) => own(cylinder(15, 3, { at: [x, y, DECK + 6] })))));
+  add('body', 'titanium', 'body', DENSITY.titanium, rod([x0 + 40, -half + 70, DECK + 18], [x1 - 260, -half + 70, DECK + 18], 10), rod([x0 + 40, -half + 96, DECK + 18], [x1 - 260, -half + 96, DECK + 18], 10));
+  add('body', 'metal', 'body', DENSITY.aluminium, group([-600, -360, -120, 120, 360].map((x) => block(x - 12, x + 12, -half + 54, -half + 112, DECK + 6, DECK + 34))));
+  // Hazard cameras in pairs, at the front and at the rear.
+  for (const [x, dir] of [[x1, 1], [x0, -1]] as const)
+    for (const y of [-330, -230, 230, 330]) {
+      add('body', 'dark', 'body', DENSITY.instrument, block(Math.min(x, x + dir * 44), Math.max(x, x + dir * 44), y - 36, y + 36, 850, 920));
+      add('body', 'metal', 'body', DENSITY.aluminium, rod([x + dir * 44, y, 885], [x + dir * 56, y, 885], 22, 14));
+    }
+
+  // ---- power source at the rear: a finned cylinder with its published mass, between two heat exchanger plates
+  const fin = Array.from({ length: 8 }, (_, i) => own(rotate(own(translate(own(box(200, 5, 600)), [120, -2.5, 30])), i * 45 + 22.5)) as Shape);
+  const generator = fused([own(cylinder(130, 660)), own(cylinder(150, 24, { at: [0, 0, -12] })), own(cylinder(150, 24, { at: [0, 0, 648] })), ...fin]);
+  const lean = (s: Shape): Shape => own(translate(own(rotate(s, -65, { axis: [0, 1, 0] })), [x0 - 60, 0, 1010])) as Shape;
+  // A point of the leaned frame: x across the cylinder, y to the left, z along the cylinder.
+  const leanAt = (p: P3): P3 => [x0 - 60 + p[0] * Math.cos(65 * DEG) - p[2] * Math.sin(65 * DEG), p[1], 1010 + p[0] * Math.sin(65 * DEG) + p[2] * Math.cos(65 * DEG)];
+  lump('power', 'body', PUBLISHED_KG.power, [['white', lean(generator)], ['metal', lean(bolts([0, 0, 672], [0, 0, 678], 120, 12, 6))]]);
+  add('body', 'white', 'body', DENSITY.aluminium, ...[-1, 1].map((s) => lean(own(translate(own(box(520, 8, 620)), [-260, s * 400 - 4, 20])) as Shape)));
+  add('body', 'titanium', 'body', DENSITY.titanium, ...[-1, 1].flatMap((s) => [rod([x0, s * 150, 980], leanAt([0, s * 110, 120]), 16), rod([x0, s * 420, 1040], leanAt([0, s * 400, 200]), 12), rod([x0, s * 150, 800], leanAt([-100, s * 100, 60]), 14)]));
+  // Coolant tubes from the body to the heat exchanger plates.
+  for (const s of [-1, 1]) {
+    harness('body', 'body', 11, [[x0, s * 300, 1060], [x0 - 70, s * 330, 1085], leanAt([60, s * 386, 150]), leanAt([60, s * 386, 420])]);
+    harness('body', 'body', 11, [[x0, s * 340, 1020], [x0 - 60, s * 370, 1040], leanAt([-60, s * 386, 120]), leanAt([-60, s * 386, 400])]);
+  }
+
+  // ---- mast with the camera head. The top of the head is 2.2 m above the ground.
+  const [mx, my] = [700, -620];
+  add('mast', 'white', 'body', DENSITY.aluminium, rod([mx, my, DECK + 96], [mx, my, 1822], 45, 41), rod([mx, my, DECK + 6], [mx, my, DECK + 26], 95));
+  actuator('mast', 'body', [mx, my, DECK + 26], [mx, my, DECK + 96], 70);
+  actuator('mast', 'body', [mx, my + 80, 1880], [mx, my - 80, 1880], 58);
+  add('mast', 'white', 'body', DENSITY.aluminium, block(mx - 40, mx + 40, my - 114, my - 100, 1840, 1960), block(mx - 40, mx + 40, my + 100, my + 114, 1840, 1960));
+  add('mast', 'white', 'body', DENSITY.instrument, rounded(block(mx - 70, mx + 120, my - 250, my + 250, 1940, 2050), 24), rounded(block(mx - 150, mx + 110, my - 135, my + 135, 2050, MAST_TOP - 6), 30));
+  add('mast', 'dark', 'body', DENSITY.instrument, ...[-210, -123, 123, 210].map((dy) => rod([mx + 120, my + dy, 1995], [mx + 150, my + dy, 1995], Math.abs(dy) > 200 ? 26 : 34)), rod([mx + 110, my, 2120], [mx + 150, my, 2120], 60));
+  add('mast', 'metal', 'body', DENSITY.aluminium, rod([mx + 150, my, 2120], [mx + 156, my, 2120], 60, 46), group([-210, -123, 123, 210].map((dy) => rod([mx + 150, my + dy, 1995], [mx + 156, my + dy, 1995], Math.abs(dy) > 200 ? 26 : 34, Math.abs(dy) > 200 ? 16 : 22))));
+  add('mast', 'white', 'body', DENSITY.aluminium, block(mx - 160, mx + 170, my - 150, my + 150, MAST_TOP - 6, MAST_TOP));
+  // Two weather booms and the harness up the mast.
+  add('mast', 'titanium', 'body', DENSITY.titanium, rod([mx + 40, my, 1500], [mx + 360, my + 140, 1520], 13), rod([mx, my + 40, 1560], [mx - 140, my + 330, 1580], 13));
+  add('mast', 'metal', 'body', DENSITY.aluminium, rod([mx, my, 1480], [mx, my, 1600], 52, 45));
+  harness('mast', 'body', 8, [[mx - 62, my + 30, DECK + 110], [mx - 60, my + 34, 1400], [mx - 62, my + 30, 1700], [mx - 58, my + 40, 1800]]);
+
+  // ---- robot arm, folded across the front. Its links are 2.2 m long from the shoulder to the centre of the turret.
+  const shoulder = SHOULDER;
+  const elbow: P3 = [shoulder[0], shoulder[1] - 1000, shoulder[2]];
+  const wrist: P3 = [elbow[0] + 130, elbow[1] + 800, elbow[2] + 60];
+  const turret: P3 = [wrist[0] + (ARM_LENGTH - 1000 - 800 - 130), wrist[1], wrist[2]];
+  const turnsWith = (from: number, joint: 1 | 2 | 3): void => parts.slice(from).forEach((p) => (p.joint = joint));
+  const armFrom = parts.length;
+  add('arm', 'white', 'body', DENSITY.aluminium, rounded(block(x1, x1 + 82, shoulder[1] - 90, shoulder[1] + 90, 800, 1000), 20));
+  actuator('arm', 'body', [shoulder[0], shoulder[1], shoulder[2] - 100], [shoulder[0], shoulder[1], shoulder[2] + 100], 78);
+  const upperFrom = parts.length;
+  add('arm', 'titanium', 'body', DENSITY.titanium, rod(along(shoulder, elbow, 0.08), along(shoulder, elbow, 0.93), 55, 51));
+  actuator('arm', 'body', [elbow[0] + 65, elbow[1], elbow[2] - 100], [elbow[0] + 65, elbow[1], elbow[2] + 140], 72);
+  harness('arm', 'body', 9, [along(shoulder, elbow, 0.12, 66), along(shoulder, elbow, 0.4, 62), along(shoulder, elbow, 0.65, 62), along(shoulder, elbow, 0.9, 70)]);
+  turnsWith(upperFrom, 1);
+  const foreFrom = parts.length;
+  const fore: P3 = [wrist[0], elbow[1], wrist[2]];
+  add('arm', 'titanium', 'body', DENSITY.titanium, rod(along(fore, wrist, 0.09), along(fore, wrist, 0.92), 50, 46));
+  actuator('arm', 'body', [wrist[0], wrist[1], wrist[2] - 90], [wrist[0], wrist[1], wrist[2] + 90], 66);
+  harness('arm', 'body', 9, [along(fore, wrist, 0.1, 62), along(fore, wrist, 0.5, 58), along(fore, wrist, 0.9, 64)]);
+  turnsWith(foreFrom, 2);
+  const handFrom = parts.length;
+  actuator('arm', 'body', [wrist[0] + 66, wrist[1], wrist[2]], [turret[0] - 126, wrist[1], wrist[2]], 62);
+  // The published mass of the arm goes to its parts by their share of the mass by density.
+  const armParts = parts.slice(armFrom);
+  const byDensity = armParts.reduce((sum, p) => sum + p.kg, 0);
+  for (const p of armParts) p.kg *= PUBLISHED_KG.arm / byDensity;
+  // The turret: a drum with five tools around it, with its published mass.
+  const [tx, ty, tz] = turret;
+  const tool = (angle: number, shape: Shape): Shape => own(rotate(shape, angle, { axis: [1, 0, 0], at: turret })) as Shape;
+  lump('arm', 'body', PUBLISHED_KG.turret, [
+    ['metal', rod([tx - 108, ty, tz], [tx + 90, ty, tz], 150)],
+    ['dark', tool(0, fused([rod([tx - 90, ty, tz + 215], [tx + 170, ty, tz + 215], 64), own(cone(64, 22, 60, { at: [tx + 170, ty, tz + 215], axis: [1, 0, 0] }))]))],
+    ['metal', tool(0, group([rod([tx + 230, ty, tz + 215], [tx + 330, ty, tz + 215], 11), rod([tx + 150, ty - 84, tz + 215], [tx + 300, ty - 84, tz + 215], 9), rod([tx + 150, ty + 84, tz + 215], [tx + 300, ty + 84, tz + 215], 9)]))],
+    ['white', tool(72, rounded(block(tx - 80, tx + 120, ty - 85, ty + 85, tz + 150, tz + 290), 22))],
+    ['gold', tool(144, rod([tx + 110, ty, tz + 220], [tx + 150, ty, tz + 220], 62))],
+    ['metal', tool(144, rod([tx - 60, ty, tz + 220], [tx + 110, ty, tz + 220], 56))],
+    ['dark', tool(216, rod([tx - 70, ty, tz + 205], [tx + 130, ty, tz + 205], 50))],
+    ['metal', tool(216, rod([tx + 130, ty, tz + 205], [tx + 138, ty, tz + 205], 50, 34))],
+    ['white', tool(288, fused([rod([tx - 60, ty, tz + 215], [tx + 100, ty, tz + 215], 62), rod([tx + 100, ty, tz + 215], [tx + 116, ty, tz + 215], 74)]))],
+  ]);
+
+  turnsWith(handFrom, 3);
+  // The pose of the arm: a part turns with its own joint, then with each joint before it.
+  const joints = armJoints(Math.min(1, Math.max(0, arm)));
+  for (const p of parts) {
+    for (let j = p.joint ?? 0; j >= 1 && arm > 0; j--) {
+      const [about, angle] = joints[j - 1] as [P2, number];
+      p.shape = own(rotate(p.shape, angle, { at: [about[0], about[1], 0] })) as Shape;
+      const moved = turn([p.at[0] - about[0], p.at[1] - about[1]], angle * DEG);
+      p.at = [about[0] + moved[0], about[1] + moved[1], p.at[2]];
+    }
+  }
+
+  // ---- antennas: a hexagonal high-gain dish on a gimbal, a helix can at the right rear, a low-gain cone
+  const hexagon = own(unwrap(extrude(own(unwrap(polygon(Array.from({ length: 6 }, (_, i): P3 => [162 * Math.cos(i * 60 * DEG), 162 * Math.sin(i * 60 * DEG), 0])))), 30))) as Shape;
+  add('antennas', 'gold', 'body', DENSITY.instrument, own(translate(own(rotate(hexagon, 35, { axis: [0, 1, 0] })), [-640, 640, 1420])) as Shape);
+  add('antennas', 'white', 'body', DENSITY.aluminium, rod([-640, 640, DECK + 6], [-640, 640, 1350], 22, 19), rod([-640, 590, 1385], [-640, 690, 1385], 34), block(-668, -612, 690, 702, 1340, 1430), block(-668, -612, 578, 590, 1340, 1430));
+  add('antennas', 'white', 'body', DENSITY.aluminium, rod([-610, -650, DECK + 6], [-610, -650, 1260], 22, 19), own(cone(40, 22, 40, { at: [-610, -650, 1260] })));
+  add('antennas', 'white', 'body', DENSITY.instrument, rod([-610, -650, 1300], [-610, -650, 1560], 56));
+  const coil = own(unwrap(sweep(own(unwrap(wire([own(circle(5, { at: [62, 0, 0], axis: [0, 1, 0.13] }))]))) as never, own(helix(52, 250, 62)), { mode: 'simple' }))) as Shape;
+  add('antennas', 'gold', 'body', DENSITY.cable, own(translate(coil, [-610, -650, 1305])) as Shape);
+  add('antennas', 'white', 'body', DENSITY.aluminium, rod([-660, 420, DECK + 6], [-660, 420, 1230], 14), own(cone(34, 14, 90, { at: [-660, 420, 1230] })));
+
+  // ---- equipment inside the body: laboratory instruments under the inlets, batteries, avionics and a pump.
+  // It has the mass that the other parts leave, and the heavy boxes sit toward the rear to balance the arm.
+  const z0 = CLEARANCE + 36;
+  const top = DECK - 3; // the two laboratory instruments hang from the deck, under their inlets
+  for (const [x, y] of [[240, 290], [240, 480], [430, 290]] as P2[]) add('equipment', 'metal', 'body', DENSITY.aluminium, rod([x, y, top - 20], [x, y, top], 24, 20));
+  harness('equipment', 'body', 12, [[-360, 690, z0 + 60], [100, 730, z0 + 90], [640, 690, z0 + 60], [770, 300, z0 + 80], [760, -200, z0 + 60]]);
+  harness('equipment', 'body', 12, [[-360, 690, z0 + 120], [-660, 690, z0 + 150], [-690, 100, z0 + 260], [-680, -500, z0 + 150]]);
+  harness('equipment', 'body', 14, [[-530, 410, z0 + 260], [-420, 300, z0 + 340], [-200, 120, z0 + 260], [-160, -30, z0 + 200]]);
+  harness('equipment', 'body', 14, [[335, 385, top - 350], [330, 200, top - 380], [260, 0, z0 + 260], [200, -150, z0 + 150]]);
+  lump('equipment', 'body', TOTAL_KG - parts.reduce((sum, p) => sum + p.kg, 0), [
+    ['gold', rounded(block(170, 500, 200, 570, top - 300, top - 20), 24)],
+    ['metal', rod([335, 385, top - 350], [335, 385, top - 300], 120)],
+    ['white', rounded(block(-330, 40, 300, 660, top - 280, top - 20), 24)],
+    ['dark', rounded(block(-670, -390, 160, 660, z0 + 100, z0 + 340), 20)],
+    ['dark', rounded(block(-670, -390, -660, -160, z0 + 100, z0 + 340), 20)],
+    ['white', rounded(block(-340, 180, -690, -330, z0, z0 + 340), 24)],
+    ['white', rounded(block(420, 700, -660, -440, z0, z0 + 200), 24)],
+    ['metal', rounded(block(-340, 20, -270, 200, z0, z0 + 200), 20)],
+    ['metal', rod([200, -150, z0], [200, -150, z0 + 150], 85)],
+    ['metal', rod([600, 60, z0], [600, 60, z0 + 120], 70)],
+  ]);
+  return parts;
+}
+
+// The cutaway takes one block out of the skin parts. A part that is all inside the block goes away.
+function opened(parts: Part[]): Part[] {
+  const opening = block(OPENING.x0, OPENING.x1, OPENING.y0, BODY.half + 60, OPENING.z0, DECK + 120);
+  return parts.flatMap((p) => {
+    if (!p.skin) return [p];
+    const open = own(unwrap(cutAll(p.shape, [opening]))) as Shape;
+    return getSolids(open).length === 0 ? [] : [{ ...p, shape: open }];
+  });
+}
+
+interface RoverParams {
+  lift?: number; // height of the ground under the left front wheel, 0 to 500 mm
+  cutaway?: boolean; // open the deck and the left wall of the body
+  arm?: number; // 0 = the arm folded across the front, 1 = straight out to its full reach
+}
+
+const rover = ({ lift = 0, cutaway = true, arm = 0 }: RoverParams = {}) => freeing(() => {
+  const parts = roverParts(arm);
+  const mass = parts.reduce((sum, p) => sum + p.kg, 0);
+  const budget: Partial<Record<System, number>> = {};
+  for (const p of parts) budget[p.system] = (budget[p.system] ?? 0) + p.kg;
+
+  const shown = cutaway ? opened(parts) : parts;
+
+  // Move each link to its pose. A link turns about a line along Y, the body also rolls about a line along X.
+  const step = Math.min(500, Math.max(0, lift));
+  const pose = suspension(step);
+  // The same three moves work on a shape and on a point, so the centre of each part moves with its link.
+  type Moves<T> = { tilt: (v: T, angle: number, about: P2) => T; roll: (v: T, angle: number) => T; shift: (v: T, by: P3) => T };
+  const onShape: Moves<Shape> = {
+    tilt: (s, angle, about) => own(rotate(s, -angle / DEG, { axis: [0, 1, 0], at: [about[0], 0, about[1]] })) as Shape,
+    roll: (s, angle) => own(rotate(s, angle / DEG, { axis: [1, 0, 0], at: [0, 0, PIVOT[1]] })) as Shape,
+    shift: (s, by) => own(translate(s, by)) as Shape,
+  };
+  const onPoint: Moves<P3> = {
+    tilt: ([x, y, z], angle, about) => { const t = turn([x - about[0], z - about[1]], angle); return [about[0] + t[0], y, about[1] + t[1]]; },
+    roll: ([x, y, z], angle) => { const t = turn([y, z - PIVOT[1]], angle); return [x, t[0], PIVOT[1] + t[1]]; },
+    shift: ([x, y, z], by) => [x + by[0], y + by[1], z + by[2]],
+  };
+  const moved = <T,>(link: Link, v: T, m: Moves<T>): T => {
+    if (step === 0) return v;
+    if (link === 'body') return m.shift(m.roll(m.tilt(v, pose.pitch, PIVOT), pose.roll), [0, 0, pose.rise]);
+    const side = link.endsWith('L') ? pose.left : pose.right;
+    if (link.startsWith('rocker')) return m.shift(m.tilt(v, side.rocker, PIVOT), [0, 0, side.pivotZ - PIVOT[1]]);
+    return m.shift(m.tilt(v, side.bogie, BOGIE), [side.bogieAt[0] - BOGIE[0], 0, side.bogieAt[1] - BOGIE[1]]);
+  };
+  const centre = [0, 1, 2].map((k) => parts.reduce((sum, p) => sum + p.kg * (moved(p.link, p.at, onPoint)[k] as number), 0) / mass) as P3;
+  const tones: Tone[] = ['white', 'dark', 'titanium', 'metal', 'gold', 'accent'];
+  const built = Object.fromEntries(
+    tones.map((tone) => [tone, compound(shown.filter((p) => p.tone === tone).map((p) => moved(p.link, p.shape, onShape))) as Shape]),
+  ) as Record<Tone, Shape>;
+  // The ground is where the grousers touch it, a little below the tread circle.
+  const dip = WHEEL.grouserHeight;
+  const ground = compound([block(-1700, 1900, -1500, 1500, -40 - dip, -dip), ...(step > 0 ? [block(AXLE.front - 330, AXLE.front + 330, AXLE.cornerTrack / 2 - 260, AXLE.cornerTrack / 2 + 260, -dip, step - dip)] : [])]) as Shape;
+  return { ...built, ground, mass, centre, budget };
+});
+
+// Show the rover. Try rover({ arm: 1 }) to reach out with the arm, rover({ lift: 400 }) to put the left front
+// wheel on a step, or rover({ cutaway: false }).
+const model = rover();
+console.log(model.mass.toFixed(0), 'kg, centre of mass at', model.centre.map((v) => v.toFixed(0)).join(', '), 'mm');
+export default [
+  color(model.white, '#f2efe8'),
+  color(model.dark, '#2b2f36'),
+  color(model.titanium, '#9aa3ad'),
+  color(model.metal, '#c9ccd1'),
+  color(model.gold, '#c9a227'),
+  color(model.accent, '#d8572a'),
+  color(model.ground, '#b5653f'),
+];`,
+  },
+  {
+    id: 'server-chassis',
+    label: 'Server Chassis (1U)',
+    description:
+      'A 1U rack-mount server chassis for a 19-inch rack. Seven sheet-metal parts make the enclosure, and each one is a feature tree of bends and cutouts: the kernel folds it, unfolds it to a flat blank, and nests the blanks of four chassis on one stock sheet. The DXF button downloads that sheet. The rack dimensions, the fans, the drives, the board size and the power supply size are published figures. The layout, the vents and all small parts are a display model.',
+    code: `import { box, compound, cutAll, cylinder, polygon, revolve, rotate, translate, unwrap } from 'brepjs/quick';
+import { addPolygonCutout, author, hem, louver, miterCorner, nest, nestToDXF, relieveCorner, unfold } from 'brepjs-sheetmetal';
+import { color, present } from 'brepjs/playground';
+
+// 1U rack-mount server chassis for a 19-inch rack. Seven sheet-metal parts make the enclosure: each one is a feature
+// tree of bends and cutouts, so the kernel folds it, unfolds it to a flat blank, and nests the blanks on a stock
+// sheet for a DXF. The rack dimensions, the fans, the drives, the board size and the power supply size are
+// published figures. The layout, the vents and all small parts are a display model. Units are millimetres.
+// X is from the front to the rear, Y is across the rack, Z is up, and the origin is at the front left of the floor.
+type P2 = [number, number];
+type P3 = [number, number, number];
+type Shape = ReturnType<typeof box>;
+type Part = Extract<ReturnType<typeof author>, { ok: true }>['value'];
+type Flat = Extract<ReturnType<typeof unfold>, { ok: true }>['value'];
+type Tone = 'steel' | 'bezel' | 'dark' | 'board' | 'alloy' | 'gold' | 'accent';
+
+// Kernel shapes live in WASM memory. Every shape goes through own(). freeing() runs a build and then frees them all.
+const owned: { delete(): void }[] = [];
+const own = <T extends { delete(): void }>(s: T): T => {
+  owned.push(s);
+  return s;
+};
+const freeing = <T,>(build: () => T): T => { try { return build(); } finally { owned.splice(0).forEach((s) => s.delete()); } }; // also when the build throws
+
+// The 19-inch rack (EIA-310): one unit, the panel of one unit, and the mounting holes.
+const RACK = { unit: 44.45, panelHeight: 43.66, panelWidth: 482.6, holeSpan: 465.1, holes: [6.35, 38.1], slot: [10.3, 6.8] };
+// The sheet: zinc-coated steel of 1 mm, bent in air to an inside radius of 1 mm.
+const T = 1;
+const RULE = { innerRadius: 1, kFactor: 0.44 };
+const S = T + RULE.innerRadius; // a wall at 90 degrees stands this far outside the edge of its parent
+const BODY = { depth: 400, width: 433, wall: 38, lip: 8 }; // the flat floor of the tray; the tray is 437 wide and 42 high
+const TOP = BODY.wall + 2 * S; // the top of the wall lips, where the cover sits
+const FAN = { size: 40, depth: 28, holes: 32, bore: 37, at: [56.5, 136.5, 216.5, 296.5, 376.5], x: 151 };
+const DRIVE = { width: 69.85, length: 100.45, height: 15, rows: [6, 23], columns: [15.1, 89.05] }; // 2.5 inch
+const BOARD = { size: 170, x: 222, y: 254, top: 9.1 }; // Mini-ITX
+const SUPPLY = { length: 150, width: 81.5, height: 40.5, x: 250.5, y: 12 }; // Flex ATX
+
+// ---- sheet metal: each function is one part in its own frame, folded to the angle of the fold parameter
+const made = (r: ReturnType<typeof author>): Part => {
+  const p = unwrap(r);
+  if (p.solid) own(p.solid);
+  return p;
+};
+const rect = (x0: number, y0: number, x1: number, y1: number): P2[] => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+const ngon = (x: number, y: number, r: number, n: number, turn = 0): P2[] =>
+  Array.from({ length: n }, (_, i): P2 => [x + r * Math.cos(turn + (i * 2 * Math.PI) / n), y + r * Math.sin(turn + (i * 2 * Math.PI) / n)]);
+const slot = (x: number, y: number, length: number, width: number): P2[] => [...ngon(x + (length - width) / 2, y, width / 2, 12).slice(0, 4), ...ngon(x - (length - width) / 2, y, width / 2, 12).slice(3, 10), ...ngon(x + (length - width) / 2, y, width / 2, 12).slice(9)];
+const punch = (p: Part, region: string, ...loops: P2[][]): Part => loops.reduce((q, loop) => made(addPolygonCutout(q, region, loop)), p);
+const screwHole = (x: number, y: number): P2[] => ngon(x, y, 1.75, 8, Math.PI / 8);
+const hexes = (x: number, y: number, columns: number, rows: number, r: number): P2[][] =>
+  Array.from({ length: columns * rows }, (_, i) => ngon(x + (i % columns) * r * 1.9 + (Math.floor(i / columns) % 2) * r * 0.95, y + Math.floor(i / columns) * r * 1.65, r, 6, Math.PI / 6));
+
+// The tray: the floor, two side walls with a lip for the cover, and the rear wall with the openings for the ports.
+function tray(angle: number): Part {
+  const wall = { length: BODY.wall, angleDeg: angle, rule: RULE };
+  const lip = { length: BODY.lip, angleDeg: angle, rule: RULE, side: 'ymax' as const, offset: 10, width: BODY.depth - 10 };
+  let p = made(author({ thickness: T, base: { length: BODY.depth, width: BODY.width }, flanges: [
+    { id: 'left', side: 'ymin', ...wall }, { id: 'right', side: 'ymax', ...wall }, { id: 'rear', side: 'xmax', ...wall },
+    { id: 'lipLeft', parent: 'left', ...lip }, { id: 'lipRight', parent: 'right', ...lip, offset: 0 },
+  ] }));
+  p = made(miterCorner(p, 'left', 'rear', 0.5));
+  p = made(miterCorner(p, 'right', 'rear', 0.5));
+  // Floor: the four holes of the board.
+  p = punch(p, 'base', ...BOARD_HOLES.map(([x, y]) => screwHole(BOARD.x + x, BOARD.y + y)));
+  // Rear wall, seen from inside: power inlet, vents for the power supply, then the ports of the board.
+  const z = (h: number): number => h - S;
+  p = punch(p, 'rear', rect(22.1, z(11.25), 49.4, z(30.75)), ...hexes(62, z(11), 3, 3, 5), rect(270, z(10.5), 286, z(24)), rect(290, z(10.5), 306, z(24)), rect(312, z(10.5), 326, z(26.5)), rect(339.6, z(12), 359.4, z(23.2)), ...hexes(380, z(12), 3, 3, 4));
+  // Side walls: two louvers each, and the three holes of the rack ear.
+  for (const side of ['left', 'right']) {
+    const x = (d: number): number => (side === 'left' ? d : BODY.depth - d);
+    for (const d of [200, 300]) p = made(louver(p, { region: side, x: x(d), y: 20, length: 60, width: 7, height: 3 }));
+    p = punch(p, side, ...EAR_HOLES.map(([d, h]) => screwHole(x(d), z(side === 'left' ? h : TOP + T - h))));
+  }
+  // Lips: three holes each for the cover.
+  for (const d of COVER_SCREWS) p = punch(p, 'lipLeft', screwHole(d - 10, 4.5));
+  for (const d of COVER_SCREWS) p = punch(p, 'lipRight', screwHole(BODY.depth - d, 4.5));
+  return p;
+}
+const BOARD_HOLES: P2[] = [[159.84, 6.35], [136.98, 163.83], [4.9, 6.35], [4.9, 163.83]]; // the holes C, F, H and J of the ATX pattern
+const EAR_HOLES: P2[] = [[14, 12], [34, 31], [52, 12]]; // distance from the front, and height
+const COVER_SCREWS = [40, 200, 360];
+
+// The cover is made upside down: three flanges, and a closed hem on the front edge that removes the sharp edge.
+const COVER = { length: BODY.depth + S + 0.25, width: BODY.width + 2 * S + 0.5 - 2 * RULE.innerRadius, flange: 10, clear: 64 };
+function cover(angle: number): Part {
+  const flange = { length: COVER.flange, angleDeg: angle, rule: RULE };
+  let p = made(author({ thickness: T, base: { length: COVER.length, width: COVER.width }, flanges: [
+    { id: 'left', side: 'ymin', ...flange, offset: COVER.clear, width: COVER.length - COVER.clear },
+    { id: 'right', side: 'ymax', ...flange, offset: 0, width: COVER.length - COVER.clear },
+    { id: 'rear', side: 'xmax', ...flange },
+  ] }));
+  p = made(miterCorner(p, 'left', 'rear', 0.5));
+  p = made(miterCorner(p, 'right', 'rear', 0.5));
+  p = made(hem(p, { region: 'base', side: 'xmin', type: 'closed', length: 8, rule: RULE }));
+  const y = (side: number): number => (side ? COVER.width - 5.75 : 5.75);
+  p = punch(p, 'base', ...[0, 1].flatMap((side) => COVER_SCREWS.map((d) => screwHole(d + 1, y(side)))), ...hexes(250, 262, 6, 4, 6));
+  return p;
+}
+
+// The front panel: openings for four drives, a field of vents, the power button, two lights and two ports.
+const PANEL = { length: 430.4, height: 37.6, y: 1.3, z: 3 };
+function panel(angle: number): Part {
+  const flange = { length: 10, angleDeg: angle, rule: RULE };
+  let p = made(author({ thickness: T, base: { length: PANEL.length, width: PANEL.height }, flanges: [
+    { id: 'bottom', side: 'ymin', ...flange }, { id: 'left', side: 'xmin', ...flange }, { id: 'right', side: 'xmax', ...flange },
+  ] }));
+  p = made(relieveCorner(p, 'bottom', 'left'));
+  p = made(relieveCorner(p, 'bottom', 'right'));
+  const bays = DRIVE.columns.flatMap((y) => DRIVE.rows.map((z) => rect(y - PANEL.y - 0.8, z - PANEL.z - 0.5, y - PANEL.y + DRIVE.width + 0.8, z - PANEL.z + DRIVE.height + 0.5)));
+  return punch(p, 'base', ...bays, ...hexes(178, 8.5, 9, 3, 6.5), ngon(385, 19, 6, 12), ngon(403, 26, 1.6, 6), ngon(403, 12, 1.6, 6), rect(350, 23, 363, 28.6), rect(350, 9, 363, 14.6));
+}
+
+// A rack ear: the leg goes on the side wall, and the face has the two slots of one rack unit.
+function ear(angle: number): Part {
+  const reach = (RACK.panelWidth - (BODY.width + 2 * S)) / 2 - S;
+  let p = made(author({ thickness: T, base: { length: 60, width: RACK.panelHeight }, flanges: [{ id: 'face', side: 'xmin', length: reach, angleDeg: angle, rule: RULE }] }));
+  const out = (RACK.holeSpan - (BODY.width + 2 * S)) / 2 - S; // the slot centre, from the bend
+  const low = (RACK.unit - RACK.panelHeight) / 2;
+  p = punch(p, 'face', ...RACK.holes.map((h) => rotated(slot(0, 0, RACK.slot[0], RACK.slot[1]), RACK.panelHeight - (h - low), out)));
+  return punch(p, 'base', ...EAR_HOLES.map(([d, h]) => screwHole(d, h + 0.33)));
+}
+const rotated = (loop: P2[], x: number, y: number): P2[] => loop.map(([a, b]): P2 => [x - b, y + a]);
+
+// The fan wall: five openings with two screw holes each, and a stiffening flange on the top edge.
+const WALL = { length: 413, height: 38.6, y: 10, z: 1.2 };
+function fanWall(angle: number): Part {
+  let p = made(author({ thickness: T, base: { length: WALL.length, width: WALL.height }, flanges: [{ id: 'top', side: 'ymax', length: 12, angleDeg: angle, rule: RULE }] }));
+  const mid = 1.1 + FAN.size / 2 - WALL.z;
+  for (const y of FAN.at) {
+    const x = WALL.y + WALL.length - y; // the wall faces the front, so its own X runs from right to left
+    p = punch(p, 'base', ngon(x, mid, FAN.bore / 2, 24), ngon(x - FAN.holes / 2, mid - FAN.holes / 2, 1.85, 8, Math.PI / 8), ngon(x + FAN.holes / 2, mid + FAN.holes / 2, 1.85, 8, Math.PI / 8));
+  }
+  return p;
+}
+
+// The drive cage, made upside down: a roof, two walls with slots, and two feet.
+const CAGE = { length: 106, width: 150, wall: 35.6, x: 14, y: 12 };
+function cage(angle: number): Part {
+  const wall = { length: CAGE.wall, angleDeg: angle, rule: RULE };
+  const foot = { length: 10, angleDeg: angle, rule: RULE, side: 'ymax' as const };
+  let p = made(author({ thickness: T, base: { length: CAGE.length, width: CAGE.width }, flanges: [
+    { id: 'left', side: 'ymin', ...wall }, { id: 'right', side: 'ymax', ...wall }, { id: 'footLeft', parent: 'left', ...foot }, { id: 'footRight', parent: 'right', ...foot },
+  ] }));
+  for (const side of ['left', 'right']) p = punch(p, side, ...[14, 44, 74].map((x) => rect(x, 8, x + 18, 28)));
+  return punch(p, 'base', ...hexes(20, 40, 5, 4, 7));
+}
+
+// ---- how each sheet-metal part goes into the chassis
+const turn = (s: Shape, angle: number, axis: P3, at: P3 = [0, 0, 0]): Shape => own(rotate(s, angle, { axis, at })) as Shape;
+const move = (s: Shape, by: P3): Shape => own(translate(s, by)) as Shape;
+const upright = (s: Shape, facing: 1 | -1): Shape => turn(turn(s, 90, [1, 0, 0]), 90 * facing, [0, 0, 1]); // the plate stands across the chassis; its flanges point to the rear (1) or to the front (-1)
+const flipped = (s: Shape, width: number): Shape => turn(s, 180, [1, 0, 0], [0, width / 2, 0]);
+const MID: P3 = [0, BODY.width / 2, (TOP + T) / 2];
+const SHEET = {
+  tray: { make: tray, place: (s: Shape): Shape => s },
+  cover: { make: cover, place: (s: Shape): Shape => move(flipped(s, COVER.width), [-S + RULE.innerRadius, -S - 0.25 + RULE.innerRadius, TOP + T]) },
+  panel: { make: panel, place: (s: Shape): Shape => move(upright(s, 1), [0, PANEL.y, PANEL.z]) },
+  earLeft: { make: ear, place: (s: Shape): Shape => move(turn(s, 90, [1, 0, 0]), [0, -S, -0.33]) },
+  earRight: { make: ear, place: (s: Shape): Shape => turn(move(turn(s, 90, [1, 0, 0]), [0, -S, -0.33]), 180, [1, 0, 0], MID) },
+  fanWall: { make: fanWall, place: (s: Shape): Shape => move(upright(s, -1), [FAN.x, WALL.y + WALL.length, WALL.z]) },
+  cage: { make: cage, place: (s: Shape): Shape => move(flipped(s, CAGE.width), [CAGE.x, CAGE.y, T + 2 * S + CAGE.wall]) },
+};
+type Name = keyof typeof SHEET;
+const NAMES = Object.keys(SHEET) as Name[];
+
+// ---- the parts that are not sheet metal
+const block = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number): Shape => own(translate(own(box(x1 - x0, y1 - y0, z1 - z0)), [x0, y0, z0])) as Shape;
+const rod = (at: P3, r: number, length: number, axis: P3 = [0, 0, 1]): Shape => own(cylinder(r, length, { at, axis })) as Shape;
+const lathe = (profile: P2[]): Shape => own(unwrap(revolve(own(unwrap(polygon(profile.map(([r, z]): P3 => [r, 0, z]))))))) as Shape;
+function hardware(): [Tone, Shape][] {
+  const out: [Tone, Shape][] = [];
+  const add = (tone: Tone, ...shapes: Shape[]): void => shapes.forEach((s) => out.push([tone, s]));
+  // A pan-head screw with its head on the origin. The shank points down, or into the left wall, the right wall or the rear.
+  const screwShape = lathe([[0, 0], [0, 1.6], [2.1, 1.6], [2.7, 0.9], [2.7, 0], [1.4, 0], [1.4, -4.5], [0, -4.5]]);
+  const screw = (at: P3, into: 'down' | 'left' | 'right' | 'rear'): void =>
+    add('steel', move(into === 'down' ? screwShape : into === 'rear' ? turn(screwShape, -90, [0, 1, 0]) : turn(screwShape, into === 'left' ? 90 : -90, [1, 0, 0]), at));
+  for (const d of COVER_SCREWS) for (const y of [4.5, BODY.width - 4.5]) screw([d, y, TOP + T], 'down');
+  for (const [d, h] of EAR_HOLES) { screw([d, -S - T, h], 'left'); screw([d, BODY.width + S + T, TOP + T - h], 'right'); }
+
+  // Fans: a frame with a round bore and four screw holes, a hub with its label, and seven blades.
+  for (const y of FAN.at) {
+    const c: P3 = [FAN.x + 0.2, y, 1.1 + FAN.size / 2];
+    const corners = [-1, 1].flatMap((u) => [-1, 1].map((v) => rod([c[0], y + (u * FAN.holes) / 2, c[2] + (v * FAN.holes) / 2], 1.9, FAN.depth, [1, 0, 0])));
+    add('dark', own(unwrap(cutAll(block(c[0], y - 20, 1.1, c[0] + FAN.depth, y + 20, 41.1), [rod(c, FAN.bore / 2, FAN.depth, [1, 0, 0]), ...corners]))) as Shape);
+    add('dark', rod([c[0] + 2, y, c[2]], 9, FAN.depth - 4, [1, 0, 0]));
+    add('alloy', rod([c[0] + FAN.depth - 2, y, c[2]], 7, 0.4, [1, 0, 0]));
+    for (let i = 0; i < 7; i++) add('dark', turn(turn(block(c[0] + 8, y - 0.6, c[2] + 9.3, c[0] + 20, y + 0.6, c[2] + 17.2), 32, [0, 0, 1], [c[0] + 14, y, c[2] + 13]), (i * 360) / 7, [1, 0, 0], c));
+    screw([FAN.x - T, y + FAN.holes / 2, c[2] - FAN.holes / 2], 'rear');
+    screw([FAN.x - T, y - FAN.holes / 2, c[2] + FAN.holes / 2], 'rear');
+  }
+
+  // Drives in their carriers: the body, a handle that comes through the front panel, its latch and lights, and
+  // the connector. A board behind the cage joins the four connectors.
+  const back = CAGE.x + DRIVE.length;
+  for (const y of DRIVE.columns) for (const z of DRIVE.rows) {
+    add('alloy', block(CAGE.x, y, z, back, y + DRIVE.width, z + DRIVE.height));
+    add('dark', block(-1.5, y + 0.4, z + 0.4, CAGE.x, y + DRIVE.width - 0.4, z + DRIVE.height - 0.4), block(back, y + 8, z + 4, back + 6.5, y + 50, z + 9));
+    add('accent', block(-2.5, y + DRIVE.width - 16, z + 3.5, -1.5, y + DRIVE.width - 3, z + DRIVE.height - 3.5));
+    add('gold', rod([-1.9, y + 5, z + 5], 0.9, 0.4, [1, 0, 0]), rod([-1.9, y + 5, z + 10], 0.9, 0.4, [1, 0, 0]));
+  }
+  add('board', block(back + 6.5, CAGE.y + 2, 3, back + 8.1, CAGE.y + CAGE.width - 2, 38));
+  for (let i = 0; i < 6; i++) add('dark', own(cylinder(2.5, 6, { at: [back + 8.1, CAGE.y + 20 + i * 22, 30], axis: [1, 0, 0] })) as Shape);
+
+  // The power supply: its case, the label, the inlet with three pins at the rear wall, and the plug for the board.
+  const { x, y, length, width, height } = SUPPLY;
+  add('alloy', block(x, y, T + 0.2, x + length - 1, y + width, T + 0.2 + height));
+  add('dark', block(x + length - 1, y + 10.6, 11.75, x + length + 4, y + 36.9, 30.25), block(x + 30, y + 10, T + 0.2 + height, x + 90, y + 70, T + 0.5 + height), block(x - 9, y + 20, 8, x, y + 62, 22));
+  add('gold', ...[-7, 0, 7].map((d) => block(x + length + 4, y + 23.75 + d - 1, 19 + (d ? 0 : 3), x + length + 5.2, y + 23.75 + d + 1, 23 + (d ? 0 : 3))));
+
+  // The board, on four standoffs.
+  const b = BOARD, top = b.top;
+  const at = (dx: number, dy: number, dz = 0): P3 => [b.x + dx, b.y + dy, top + dz];
+  const chip = (tone: Tone, dx: number, dy: number, w: number, d: number, h: number, dz = 0): void => add(tone, block(b.x + dx, b.y + dy, top + dz, b.x + dx + w, b.y + dy + d, top + dz + h));
+  add('board', own(unwrap(cutAll(block(b.x, b.y, top - 1.6, b.x + b.size, b.y + b.size, top), BOARD_HOLES.map(([hx, hy]) => rod([b.x + hx, b.y + hy, top - 1.6], 1.6, 1.6))))) as Shape);
+  for (const [hx, hy] of BOARD_HOLES) {
+    add('gold', move(lathe([[1.5, 0], [3, 0], [3, top - 1.6 - T], [1.5, top - 1.6 - T]]), [b.x + hx, b.y + hy, T]));
+    screw(at(hx, hy), 'down');
+  }
+  // The processor socket and its heat sink: a base with four screws and 30 fins along the air flow.
+  chip('dark', 55, 50, 50, 50, 3);
+  const posts: P2[] = [37, 123].flatMap((dx) => [41, 109].map((dy): P2 => [dx, dy]));
+  add('alloy', own(unwrap(cutAll(block(b.x + 34, b.y + 35, top + 3, b.x + 126, b.y + 115, top + 7), posts.map(([dx, dy]) => rod(at(dx, dy, 3), 1.55, 4))))) as Shape);
+  for (let i = 0; i < 30; i++) chip('alloy', 40, 35.4 + i * 2.7, 80, 1, 23, 7);
+  for (const [dx, dy] of posts) screw(at(dx, dy, 7), 'down');
+  // Four memory modules: two rails and two latches for each socket, the module, and its eight chips.
+  for (let i = 0; i < 4; i++) {
+    const dy = 128 + i * 9;
+    chip('dark', 12, dy, 140, 1.6, 4); chip('dark', 12, dy + 3.4, 140, 1.6, 4);
+    chip('alloy', 8, dy, 4, 5, 9); chip('alloy', 152, dy, 4, 5, 9);
+    chip('board', 15.3, dy + 1.8, 133.35, 1.4, 31.25, 1);
+    for (let k = 0; k < 8; k++) chip('dark', 20 + k * 16, dy + 3.2, 11, 0.9, 9, 12);
+  }
+  // Power for the processor: six chokes and eight capacitors. Then the plugs, the ports, and the small parts.
+  for (let i = 0; i < 6; i++) chip('dark', 12, 38 + i * 12.5, 8, 8, 6.5);
+  for (let i = 0; i < 8; i++) add('alloy', own(cylinder(2.6, 7.5, { at: at(27, 40 + i * 9.6) })) as Shape);
+  chip('alloy', 0.5, 124, 7, 32, 12);
+  for (let i = 0; i < 4; i++) chip('dark', 9, 4 + i * 7.5, 13, 6, 7);
+  for (const dy of [50, 70, 90]) chip('dark', 1.5, dy, 2.6, 10, 8);
+  chip('alloy', 126, 10, 28, 24, 2);
+  for (let i = 0; i < 8; i++) chip('alloy', 126, 10.4 + i * 3.1, 28, 1.2, 8, 2);
+  chip('board', 132, 38, 22, 80, 1.2, 2.2); chip('dark', 134, 46, 18, 14, 1.3, 3.4); chip('dark', 134, 70, 18, 22, 1.3, 3.4); chip('gold', 138, 113, 10, 5, 2.2);
+  add('alloy', own(cylinder(6, 3.2, { at: at(162, 120.5) })) as Shape);
+  // Ports at the rear edge. Each one comes through its opening in the rear wall.
+  const rear = BODY.depth + S;
+  const port = (y0: number, y1: number, z0: number, z1: number, depth: number, tone: Tone): void => add(tone, block(rear + 1.5 - depth, y0 + 0.5, z0 + 0.5, rear + 1.5, y1 - 0.5, z1 - 0.5));
+  port(270, 286, 10.5, 24, 21, 'alloy'); port(290, 306, 10.5, 24, 21, 'alloy'); port(312, 326, 10.5, 26.5, 17, 'alloy'); port(339.6, 359.4, 12, 23.2, 16, 'accent');
+
+  // The front: the power button, two light pipes, and two ports.
+  add('accent', rod([-1.2, PANEL.y + 385, PANEL.z + 19], 5, 5, [1, 0, 0]));
+  add('gold', rod([-0.6, PANEL.y + 403, PANEL.z + 26], 1.2, 4, [1, 0, 0]), rod([-0.6, PANEL.y + 403, PANEL.z + 12], 1.2, 4, [1, 0, 0]));
+  for (const z of [23, 9]) add('alloy', block(-0.5, PANEL.y + 350.4, PANEL.z + z + 0.4, 14, PANEL.y + 362.6, PANEL.z + z + 5.2));
+  return out;
+}
+
+interface ChassisParams {
+  fold?: number; // 0 to 1: how far each bend is folded. Below 1 the example shows only the sheet-metal parts, side by side
+  lid?: number; // 0 to 1: slides the cover to the rear
+  sheet?: { width: number; height: number }; // the stock sheet for the nest
+  sets?: number; // how many chassis the nest cuts from the sheet
+}
+const TONES: Tone[] = ['steel', 'bezel', 'dark', 'board', 'alloy', 'gold', 'accent'];
+// One compound for each tone that has a part.
+const byTone = (shown: [Tone, Shape][]): Partial<Record<Tone, Shape>> =>
+  Object.fromEntries(TONES.filter((tone) => shown.some(([t]) => t === tone)).map((tone) => [tone, compound(shown.filter(([t]) => t === tone).map(([, s]) => s)) as Shape]));
+const toneOf = (name: Name): Tone => (name === 'panel' ? 'bezel' : 'steel');
+
+const chassis = ({ fold = 1, lid = 0, sheet = { width: 1250, height: 2500 }, sets = 4 }: ChassisParams = {}) => freeing(() => {
+  const angle = 90 * Math.min(1, Math.max(0.01, fold));
+  const parts = Object.fromEntries(NAMES.map((name) => [name, SHEET[name].make(angle)])) as Record<Name, Part>;
+  if (fold < 1) {
+    // Part folded, the parts lie side by side on the bench, each in the frame that it is made in.
+    let x = 0;
+    const bench = NAMES.map((name): [Tone, Shape] => { const at = x; x += parts[name].baseLength + 130; return [toneOf(name), move(parts[name].solid as Shape, [at, 0, 0])]; });
+    return { ...byTone(bench), solids: bench.length };
+  }
+
+  // The flat blanks: one for each part, with its bend lines and its cutouts. The nest puts them on the sheet.
+  const flats = NAMES.map((name): Flat => {
+    const flat = unwrap(unfold(parts[name]));
+    [flat.pattern.outline, ...flat.pattern.holes, ...flat.pattern.formCuts, ...flat.pattern.formMarkers, ...flat.pattern.formHinges, ...flat.pattern.bendLines.map((l) => l.line)].forEach((handle) => own(handle));
+    return flat;
+  });
+  const patterns = Array.from({ length: sets }, () => flats.map((f) => f.pattern)).flat();
+  const nested = unwrap(nest(patterns, { sheet, margin: 10, spacing: 6, allowRotation: true }));
+  if (nested.sheets.length !== 1 || nested.unplaced.length > 0) throw new Error('The blanks of ' + sets + ' chassis do not fit on one sheet. Use fewer sets or a larger sheet.');
+  const shown = NAMES.map((name): [Tone, Shape] => [toneOf(name), name === 'cover' ? move(SHEET.cover.place(parts.cover.solid as Shape), [330 * lid, 0, 8 * lid]) : SHEET[name].place(parts[name].solid as Shape)]);
+  shown.push(...hardware());
+  return {
+    ...byTone(shown),
+    solids: shown.length,
+    dxf: unwrap(nestToDXF(nested, patterns, 0)),
+    bends: flats.reduce((sum, f) => sum + f.report.bends.length, 0),
+    blanks: Object.fromEntries(NAMES.map((name, i) => [name, flats[i]?.report.totalFlatSize])) as Record<Name, [number, number]>,
+    sheets: nested.sheets.length,
+    used: nested.sheets[0]?.utilization ?? 0,
+  };
+});
+
+// Show the chassis with its cover open. Try chassis() for the closed chassis, or chassis({ fold: 0.4 }) to see
+// the parts part folded on the bench.
+const model = chassis({ lid: 1 });
+if ('dxf' in model) console.log(model.solids, 'solids,', model.bends, 'bends, tray blank', model.blanks.tray.map((v) => v.toFixed(1)).join(' x '), 'mm,', (model.used * 100).toFixed(0) + '% of the sheet used');
+const COLORS: Record<Tone, string> = { steel: '#c9ccd1', bezel: '#2b2f36', dark: '#30343b', board: '#2f6b4f', alloy: '#dcdad3', gold: '#c9a227', accent: '#d8572a' };
+// Turn the front toward the camera, for the first view and for the Iso view.
+const show = (s: Shape, css: string) => {
+  const turned = rotate(s, 180, { axis: [0, 0, 1], at: [BODY.depth / 2, BODY.width / 2, 0] });
+  s.delete();
+  return color(turned, css);
+};
+// The DXF button downloads the nested blanks of four chassis, with a layer for the outlines, the bends and the cutouts.
+export default present(
+  TONES.flatMap((tone) => (model[tone] ? [show(model[tone] as Shape, COLORS[tone])] : [])),
+  'dxf' in model ? { dxf: model.dxf } : {},
+);`,
   },
 ];

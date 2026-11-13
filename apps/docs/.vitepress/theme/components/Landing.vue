@@ -63,10 +63,24 @@ const REELS = [
   },
   {
     id: 'pocket-watch',
-    title: 'Pocket-watch movement',
-    fact: 'The tooth counts of a real calibre. 62 solids with 0 mm³ of interference.',
+    title: 'Pocket watch',
+    fact: 'The tooth counts of a real calibre drive the hands. 220 solids, 0 mm³ of interference.',
     video: '/media/watch-reel.mp4',
     poster: '/media/watch-reel-poster.webp',
+  },
+  {
+    id: 'mars-rover',
+    title: 'Mars rover',
+    fact: 'The kernel measures 513 solids and finds the centre of mass at 866 mm. The published figure is 894 mm.',
+    video: '/media/rover-reel.mp4',
+    poster: '/media/rover-reel-poster.webp',
+  },
+  {
+    id: 'server-chassis',
+    title: 'Server chassis',
+    fact: 'Seven sheet-metal parts with 18 bends. The kernel unfolds them and nests four sets on one sheet.',
+    video: '/media/chassis-reel.mp4',
+    poster: '/media/chassis-reel-poster.webp',
   },
 ];
 const reducedMotion = () =>
@@ -405,11 +419,12 @@ onBeforeUnmount(() => observer?.disconnect());
             <h2>Whole machines, one file each.</h2>
             <p class="lead">
               Each model is one TypeScript file that runs in your browser. The robot arm moves by a
-              published Denavit-Hartenberg table, and the watch has the tooth counts of a real
-              calibre. Each tile opens its file in the playground.
+              published Denavit-Hartenberg table. The watch has the tooth counts of a real calibre.
+              The kernel measures the mass and the centre of mass of the rover, and it unfolds the
+              sheet metal of the chassis for a DXF. Each tile opens its file in the playground.
             </p>
           </div>
-          <div class="reels">
+          <div class="reels" :class="{ odd: REELS.length % 2 === 1 }">
             <a
               v-for="r in REELS"
               :key="r.id"
@@ -1239,9 +1254,13 @@ pre.term {
 /* showcase */
 .reels {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
   margin-top: 36px;
+}
+/* With an odd count, the first tile takes a full row, so no row has an empty place. */
+.reels.odd .reel:first-child {
+  grid-column: 1 / -1;
 }
 .reel {
   display: flex;

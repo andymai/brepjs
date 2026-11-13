@@ -16,9 +16,11 @@ https://github.com/user-attachments/assets/66a9308e-b7bf-4407-8718-2949332c67fc
 **[▶ Run this engine in your browser](https://brepjs.dev/playground/examples/turbofan-engine)**
 
 <a href="https://brepjs.dev/playground/examples/robot-arm"><img src="https://raw.githubusercontent.com/andymai/brepjs/main/media/arm-reel-poster.webp" alt="A six-axis robot arm in cutaway. The solver gives six joint angles for a tool position." width="49%"></a>
-<a href="https://brepjs.dev/playground/examples/pocket-watch"><img src="https://raw.githubusercontent.com/andymai/brepjs/main/media/watch-reel-poster.webp" alt="The gear train of a pocket-watch movement, with the tooth count on each wheel." width="49%"></a>
+<a href="https://brepjs.dev/playground/examples/pocket-watch"><img src="https://raw.githubusercontent.com/andymai/brepjs/main/media/watch-reel-poster.webp" alt="A pocket watch with Roman numerals on a white dial. Its hands show 10:08." width="49%"></a>
+<a href="https://brepjs.dev/playground/examples/mars-rover"><img src="https://raw.githubusercontent.com/andymai/brepjs/main/media/rover-reel-poster.webp" alt="A six-wheel Mars rover in cutaway, with its camera mast up and its arm folded." width="49%"></a>
+<a href="https://brepjs.dev/playground/examples/server-chassis"><img src="https://raw.githubusercontent.com/andymai/brepjs/main/media/chassis-reel-poster.webp" alt="A 1U rack-mount server chassis. Its cover slides to the rear and shows the drive cage and the fans." width="49%"></a>
 
-The playground has two more models. A [six-axis robot arm](https://brepjs.dev/playground/examples/robot-arm) moves by a published Denavit-Hartenberg table, and a [pocket-watch movement](https://brepjs.dev/playground/examples/pocket-watch) has the tooth counts of a real calibre.
+The playground also has these models. A [six-axis robot arm](https://brepjs.dev/playground/examples/robot-arm) moves by a published Denavit-Hartenberg table, and a [pocket watch](https://brepjs.dev/playground/examples/pocket-watch) keeps time with the tooth counts of a real calibre. A [Mars rover](https://brepjs.dev/playground/examples/mars-rover) has a mass budget and a centre of mass that the kernel measures. A [server chassis](https://brepjs.dev/playground/examples/server-chassis) has sheet metal that unfolds to flat blanks and a DXF.
 
 </div>
 
