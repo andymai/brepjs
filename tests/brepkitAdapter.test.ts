@@ -1307,6 +1307,21 @@ describe('BrepkitAdapter', () => {
       // All output hashes are new → they're "generated"
       expect(result.evolution.deleted.size).toBe(2); // input hashes not in output
     });
+
+    it('cutWithHistory with no input face hashes meshes no face', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+      const a = adapter.makeBox(1, 1, 1);
+      const b = adapter.makeBox(1, 1, 1);
+
+      const result = adapter.cutWithHistory(a, b, [], 1000);
+
+      expect(result.shape).toBeDefined();
+      expect(mock.tessellateFace).not.toHaveBeenCalled();
+      expect(result.evolution.modified.size).toBe(0);
+      expect(result.evolution.generated.size).toBe(0);
+      expect(result.evolution.deleted.size).toBe(0);
+    });
   });
 
   describe('kernel registry', () => {

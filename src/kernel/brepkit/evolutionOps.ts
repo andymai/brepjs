@@ -207,6 +207,9 @@ function matchFacesGeometrically(
 
   const inputFaceIds = toArray(bk.getSolidFaces(orig.id));
   const hashCount = Math.min(inputFaceIds.length, inputFaceHashes.length);
+  // Every entry of the evolution is keyed by an input face. With none to key
+  // by, a signature for each output face is a mesh of it for nothing.
+  if (hashCount === 0) return;
 
   const inputSigs: FaceSignature[] = [];
   for (let i = 0; i < hashCount; i++) {
