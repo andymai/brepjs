@@ -3,7 +3,7 @@
 brepjs is kernel-agnostic. All geometry operations go through a `KernelAdapter` interface. Two adapters are provided:
 
 - **occt-wasm** (via `occt-wasm`), the default kernel: arena-based OCCT V8 compiled to WASM with a handle-based memory model
-- **brepkit WASM** (via `brepkit-wasm`), alternative kernel with growing coverage
+- **brepkit WASM** (via `brepkit-wasm`), alternative kernel in beta: [`tests/knownFailures/brepkit.json`](../tests/knownFailures/brepkit.json) lists the brepjs tests that still fail on it
 
 You can also register your own kernel at runtime.
 

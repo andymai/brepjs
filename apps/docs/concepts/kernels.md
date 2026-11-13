@@ -5,14 +5,14 @@ description: 'How brepjs swaps geometry kernels behind a single API. Pick OpenCa
 
 # Kernels and withKernel
 
-brepjs is not married to OpenCascade. The library sits behind a small abstraction (the `KernelAdapter` interface) that lets multiple WASM-based geometry kernels back the same API. Today there are two: OpenCascade (production) and brepkit (experimental Rust). This chapter explains how to pick one, how to swap, and what `withKernel(...)` does for advanced use cases.
+brepjs is not married to OpenCascade. The library sits behind a small abstraction (the `KernelAdapter` interface) that lets multiple WASM-based geometry kernels back the same API. Today there are two: OpenCascade (production) and brepkit (beta, written in Rust). This chapter explains how to pick one, how to swap, and what `withKernel(...)` does for advanced use cases.
 
 ## The two kernels
 
-| Kernel          | Status             | Backend               | Install        | Strengths                                                          |
-| --------------- | ------------------ | --------------------- | -------------- | ------------------------------------------------------------------ |
-| **OpenCascade** | Production         | C++ via Emscripten    | `occt-wasm`    | Mature, complete operation set, STEP/IGES, decades of CAD heritage |
-| **brepkit**     | Active development | Rust via wasm-bindgen | `brepkit-wasm` | Smaller, faster, simpler API surface, no JS heritage               |
+| Kernel          | Status     | Backend               | Install        | Strengths                                                          |
+| --------------- | ---------- | --------------------- | -------------- | ------------------------------------------------------------------ |
+| **OpenCascade** | Production | C++ via Emscripten    | `occt-wasm`    | Mature, complete operation set, STEP/IGES, decades of CAD heritage |
+| **brepkit**     | Beta       | Rust via wasm-bindgen | `brepkit-wasm` | Smaller, faster, simpler API surface, no JS heritage               |
 
 occt-wasm (OpenCascade compiled to WebAssembly) is the default kernel. brepkit is a drop-in alternative for environments where binary size or performance matters more than the long tail of operations OpenCascade supports.
 
