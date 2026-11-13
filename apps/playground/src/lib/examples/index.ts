@@ -14,6 +14,7 @@ import { MECHANICAL_EXAMPLES } from './mechanical';
 import { SHEET_METAL_EXAMPLES } from './sheetMetal';
 import { BIM_EXAMPLES } from './bim';
 import { FAMILIES_EXAMPLES } from './families';
+import { SHOWCASE_EXAMPLES } from './showcase';
 
 export interface ExampleCategory {
   id: string;
@@ -27,6 +28,7 @@ export const CATEGORIES: readonly ExampleCategory[] = [
   { id: 'sheet-metal', label: 'Sheet Metal', examples: SHEET_METAL_EXAMPLES },
   { id: 'bim', label: 'BIM', examples: BIM_EXAMPLES },
   { id: 'families', label: 'Families', examples: FAMILIES_EXAMPLES },
+  { id: 'showcase', label: 'Showcase', examples: SHOWCASE_EXAMPLES },
 ];
 
 export const EXAMPLES: readonly Example[] = CATEGORIES.flatMap((c) => c.examples);

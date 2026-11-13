@@ -2,7 +2,8 @@
 
 # brepjs
 
-Exact B-Rep CAD in TypeScript, built so AI agents can write parts and check them.
+A CAD kernel that you install from npm. You write TypeScript, and it gives you exact solids.
+Built so that AI agents can write parts and check them.
 
 [![npm](https://img.shields.io/npm/v/brepjs)](https://www.npmjs.com/package/brepjs)
 [![CI](https://github.com/andymai/brepjs/actions/workflows/ci.yml/badge.svg)](https://github.com/andymai/brepjs/actions/workflows/ci.yml)
@@ -10,20 +11,24 @@ Exact B-Rep CAD in TypeScript, built so AI agents can write parts and check them
 [![Commit activity](https://img.shields.io/github/commit-activity/m/andymai/brepjs?label=commits%2Fmonth)](https://github.com/andymai/brepjs/commits/main)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
-https://github.com/user-attachments/assets/a8dce262-2a86-4db2-8956-9d8ca8adcae4
+https://github.com/user-attachments/assets/66a9308e-b7bf-4407-8718-2949332c67fc
+
+**[▶ Run this engine in your browser](https://brepjs.dev/playground/examples/turbofan-engine)**
 
 </div>
 
-In this real session, a coding agent (Claude Code) reads the official Raspberry Pi 5 drawing, writes the case as a brepjs part, gets an error back from `brep verify`, fixes it, and adds a fan mount on request. The exported STEP opens in FreeCAD. [Watch the narrated version](https://youtu.be/n8Cbg345NRI).
+This jet engine is one TypeScript file: 237 lines of brepjs that build 1,897 solids. It is a 1:10 display model, not an engineered design. Boolean cuts open the casings, a change to one parameter rebuilds the engine in about half a second, and the result exports to STEP. A coding agent (Claude Code) wrote the file, and `brep verify` checked it.
 
-Parts are plain TypeScript files and the checker is a CLI, so it isn't tied to one agent:
+For a full agent session, [watch an agent design a Raspberry Pi 5 case](https://youtu.be/n8Cbg345NRI) from the official drawing.
+
+Parts are plain TypeScript files and the checker is a CLI, so it isn't tied to one agent. These two commands work in an empty folder:
 
 ```sh
-npm i -D brepjs brepjs-cad occt-wasm
-npx brep verify part.brep.ts
+npx -y -p brepjs-cad brep init bracket                    # writes a starter part
+npx -y -p brepjs-cad brep verify bracket/bracket.brep.ts  # builds it on a real kernel and reports
 ```
 
-MCP clients can use the `brep-mcp` server instead, and Claude Code users can install the authoring skills as a plugin: `/plugin marketplace add andymai/brepjs`, then `/plugin install brepjs@brepjs`.
+To use it in a project, run `npm i -D brepjs brepjs-cad occt-wasm`, then `npx brep verify part.brep.ts`. MCP clients and Claude Code have their own setup: see [Authoring CAD with AI](#authoring-cad-with-ai-brepjs-cad).
 
 An agent rebuilt the 46 parts in our example gallery from their descriptions, and all 46 passed verify. [How we measured it](https://brepjs.dev/agent/eval).
 
@@ -34,7 +39,8 @@ An agent rebuilt the 46 parts in our example gallery from their descriptions, an
 Shapes are exact mathematical boundaries (not triangle meshes), so booleans are precise, measurements are real, and you can export to STEP. TypeScript types prove the geometry is valid at compile time.
 
 ```typescript
-// Drill a hole, fillet the vertical edges, export to STEP
+// Drill a hole, fillet the vertical edges, write a STEP file
+import { writeFile } from 'node:fs/promises';
 import { box, cut, cylinder, fillet, edgeFinder, exportSTEP, unwrap } from 'brepjs/quick';
 
 const b = box(30, 20, 10);
@@ -45,7 +51,10 @@ const edges = edgeFinder().inDirection('Z').findAll(drilled);
 const part = unwrap(fillet(drilled, edges, 1.5));
 
 const step = unwrap(exportSTEP(part));
+await writeFile('part.step', await step.text()); // the standard exchange format for CAD tools
 ```
+
+To see a part while you write it, use the [playground](https://brepjs.dev/playground).
 
 ## Why?
 
