@@ -1,0 +1,32 @@
+apps/docs/.vitepress/theme/components/Landing.vue
+  s_d47ce2fcef68a6::t_1cdfe71e46c756 78-84,423-424
+  s_d47ce2fcef68a6::t_eaddf7d6e9094b 427,1261-1263
+  s_d47ce2fcef68a6::t_bbbb99e0a59bbb 1264
+README.md
+  s_d47ce2fcef68a6::t_cb09e7f6ea4636 21
+  s_d47ce2fcef68a6::t_eaddf7d6e9094b 23
+apps/playground/src/lib/examples/showcase.ts
+  s_d47ce2fcef68a6::t_2df8e733a189e0 1883,1912,1925
+  s_d47ce2fcef68a6::t_0627c309afa995 1652
+  s_d47ce2fcef68a6::t_08b04a0bc6cc47 1887-1891,1896-1901,1903,1905-1906,1913,1915,1917,1928-1929,1936,1939
+  s_d47ce2fcef68a6::t_e6f650810067f7 1926-1927
+  s_d47ce2fcef68a6::t_c4bc7776cd0b3f 1931-1935,1938
+  s_d47ce2fcef68a6::t_b6fad3affb274f 1622-1630,1632-1651,1653-1882,1884-1886,1892-1895,1902,1904,1907-1911,1914,1916,1918-1924,1937,1940-1941
+  s_d47ce2fcef68a6::t_3f00656da84285 1631,1930
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "af3897cc05c4b3370b2c2738feba3d088d7d65ef",
+  "prompts": {},
+  "sessions": {
+    "s_d47ce2fcef68a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87734ef0-a56f-4f3a-86f6-514f8ed13244",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
