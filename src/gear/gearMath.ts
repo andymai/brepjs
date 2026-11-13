@@ -36,12 +36,13 @@ export function cosineSpaceFlankSamples(
   alphaMax: number,
   theta0: number,
   count: number,
-  sign: 1 | -1
+  sign: 1 | -1,
+  alphaMin = 0
 ): Vec3[] {
   const pts: Vec3[] = [];
   for (let i = 0; i <= count; i++) {
     const t = 0.5 - 0.5 * Math.cos((i / count) * Math.PI);
-    pts.push(involutePoint(rb, t * alphaMax, theta0, sign));
+    pts.push(involutePoint(rb, alphaMin + t * (alphaMax - alphaMin), theta0, sign));
   }
   return pts;
 }

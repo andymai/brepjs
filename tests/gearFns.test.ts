@@ -4,6 +4,9 @@ import {
   isOk,
   isErr,
   isSolid,
+  isValid,
+  getVertices,
+  vertexPosition,
   measureArea,
   measureVolume,
   unwrap,
@@ -102,6 +105,22 @@ describe('makeExternalGear', () => {
   it('high-z gear has no diagnostics by default', () => {
     const r = unwrap(makeExternalGear({ teeth: 30, moduleSize: 2, thickness: 8 }));
     expect(r.diagnostics).toEqual([]);
+  });
+
+  // At a 20 degree pressure angle the base circle is inside the root circle from 42 teeth.
+  it.each([24, 41, 42, 53, 54, 60, 100])('a %i-tooth gear passes isValid', (teeth) => {
+    using solid = unwrap(makeExternalGear({ teeth, moduleSize: 1, thickness: 5 })).solid;
+    expect(isValid(solid)).toBe(true);
+  });
+
+  it.each([42, 60, 100])('no vertex of a %i-tooth gear is inside the root circle', (teeth) => {
+    const gear = unwrap(makeExternalGear({ teeth, moduleSize: 1, thickness: 5 }));
+    using solid = gear.solid;
+    const radii = getVertices(solid).map((v) => {
+      const [x, y] = vertexPosition(v);
+      return Math.hypot(x, y);
+    });
+    expect(Math.min(...radii)).toBeCloseTo(gear.rootDiameter / 2, 6);
   });
 
   it('rejects samples that is zero, negative, or non-integer', () => {
