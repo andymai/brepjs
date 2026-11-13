@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.27.0](https://github.com/andymai/brepjs/compare/brepjs-v20.26.0...brepjs-v20.27.0) (2026-11-13)
+
+
+### Features
+
+* **playground:** add an office building showcase with a steel takeoff and an IFC export ([#2668](https://github.com/andymai/brepjs/issues/2668)) ([d7ec8c4](https://github.com/andymai/brepjs/commit/d7ec8c4ac64412468eedba8760edcb531655bf4e))
+
 ## [20.26.0](https://github.com/andymai/brepjs/compare/brepjs-v20.25.0...brepjs-v20.26.0) (2026-11-13)
 
 
