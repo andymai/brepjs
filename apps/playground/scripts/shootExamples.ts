@@ -16,15 +16,12 @@
  *     at public/example-thumbs/<id>.turntable.webp — the gallery lazy-loads it
  *     on hover. This is `npm run turntables`. Requires img2webp or ffmpeg.
  *
- * All modes load each EXAMPLES entry into a running playground via a `?code=`
- * share URL (the format the Share button produces — see src/lib/urlCodec.ts) and
- * wait for the WASM engine + a render. A shape can pass the eval+mesh test yet
+ * All modes load each EXAMPLES entry into a running playground via its
+ * `/playground/examples/<id>` permalink and wait for the WASM engine + a render. A shape can pass the eval+mesh test yet
  * still render wrong (off-centre, floating, degenerate) — capturing it is how we
  * catch that. Exits non-zero if any requested example fails to load or render.
  */
 import puppeteer, { type Page } from 'puppeteer';
-import lzString from 'lz-string';
-const { compressToEncodedURIComponent } = lzString;
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -72,8 +69,10 @@ function looksLikeId(a: string): boolean {
   return EXAMPLES.some((e) => e.id === a);
 }
 
-function shareUrl(code: string): string {
-  return `${baseUrl}/playground/?code=${compressToEncodedURIComponent(code)}`;
+// The permalink of an example. A `?code=` share URL of a large example is longer than the dev
+// server accepts in a request line (it answers 431).
+function exampleUrl(id: string): string {
+  return `${baseUrl}/playground/examples/${id}`;
 }
 
 /** Click a viewer-toolbar button by its visible label (Iso, Fit, Grid, …). */
@@ -178,7 +177,20 @@ function encodeAnimatedWebp(frameFiles: string[], out: string): void {
   try {
     execFileSync(
       'img2webp',
-      ['-loop', '0', '-lossy', '-q', '76', '-m', '6', '-d', String(TT_FRAME_MS), ...frameFiles, '-o', out],
+      [
+        '-loop',
+        '0',
+        '-lossy',
+        '-q',
+        '76',
+        '-m',
+        '6',
+        '-d',
+        String(TT_FRAME_MS),
+        ...frameFiles,
+        '-o',
+        out,
+      ],
       { stdio: 'pipe' }
     );
     return;
@@ -262,7 +274,7 @@ let failures = 0;
 for (const ex of targets) {
   process.stdout.write(`${verb} ${ex.id} ... `);
   try {
-    await page.goto(shareUrl(ex.code), { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    await page.goto(exampleUrl(ex.id), { waitUntil: 'domcontentloaded', timeout: 30_000 });
     // Engine ready = LoadingOverlay (.absolute.inset-0.z-50) removed; matches
     // scripts/smoke.ts.
     await page.waitForFunction(() => !document.querySelector('.absolute.inset-0.z-50'), {
