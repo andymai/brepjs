@@ -1,0 +1,25 @@
+apps/playground/scripts/shootExamples.ts
+  s_d47ce2fcef68a6::t_f0f15b01f2e42b 19-20,72-75,180-193,277
+apps/playground/src/lib/examples/showcase.ts
+  s_d47ce2fcef68a6::t_f0f15b01f2e42b 614,616,635,638,645-649,656,661,706-708,837,855,944-946,949,952,964-1035,1046,1057,1064,1066,1068,1072-1073,1081-1083
+apps/docs/.vitepress/theme/components/Landing.vue
+  s_d47ce2fcef68a6::t_e9349f7fcbb5d0 66-67
+README.md
+  s_d47ce2fcef68a6::t_e9349f7fcbb5d0 19,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b779b38888c62ae5ae43eaa6dc5d900f824435b8",
+  "prompts": {},
+  "sessions": {
+    "s_d47ce2fcef68a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87734ef0-a56f-4f3a-86f6-514f8ed13244",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": null
+    }
+  }
+}
