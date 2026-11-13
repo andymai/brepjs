@@ -1,0 +1,19 @@
+apps/playground/src/components/playground/GenerationOverlay.tsx
+  s_31264c30950f92::t_3b4449dc961aba 1,4-22,50-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f1cc5c758e90d9a5037e33eea0a153cd6f92446c",
+  "prompts": {},
+  "sessions": {
+    "s_31264c30950f92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b5c1ef1-945c-4d94-ada2-9322bc793a5d",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
