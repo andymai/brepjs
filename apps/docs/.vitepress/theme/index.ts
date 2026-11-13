@@ -4,7 +4,7 @@ import { h } from 'vue';
 import Layout from './Layout.vue';
 import ContactForm from './components/ContactForm.vue';
 import MermaidDiagram from './components/MermaidDiagram.vue';
-import { guardRouter } from './outsideDocs';
+import { guardRouter } from './outsideDocs.js';
 import './custom.css';
 
 /**
