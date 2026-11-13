@@ -119,13 +119,14 @@
       "tests": ["importOBJ > imports disjoint closed bodies as a compound of solids"]
     },
     "tests/playgroundExamples.test.ts": {
-      "tracking": "andymai/brepkit#2372",
+      "tracking": "andymai/brepkit#2372, andymai/brepkit#2396",
       "tests": [
         "playground examples > evaluates and meshes: button-top-battery-cell",
         "playground examples > evaluates and meshes: fan-guard",
         "playground examples > evaluates and meshes: flanged-tee",
         "playground examples > evaluates and meshes: hobby-rc-servo",
-        "playground examples > evaluates and meshes: panel-fuse-holder"
+        "playground examples > evaluates and meshes: panel-fuse-holder",
+        "playground examples > evaluates and meshes: turbofan-engine"
       ]
     },
     "tests/sketchFns.test.ts": {
