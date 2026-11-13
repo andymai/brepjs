@@ -1,0 +1,23 @@
+apps/playground/src/hooks/useCodeExecution.ts
+  s_31264c30950f92::t_36123be3704d9d 98-106
+apps/playground/src/workers/workerProtocol.ts
+  s_31264c30950f92::t_36123be3704d9d 64-67
+apps/playground/src/workers/cad.worker.ts
+  s_31264c30950f92::t_36123be3704d9d 359-369,483-504,546-547
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "002d8a543921b609334045c048076e4dd1d07cef",
+  "prompts": {},
+  "sessions": {
+    "s_31264c30950f92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b5c1ef1-945c-4d94-ada2-9322bc793a5d",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
