@@ -1,0 +1,21 @@
+tests/helpers/kernelDivergences.ts
+  s_385aefe07faf61::t_3567bbebcd4827 327-333
+tests/playgroundExamples.test.ts
+  s_385aefe07faf61::t_89885844e8e208 21-22,24-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b6121d0b98718ca642b98df436627ca32404a32",
+  "prompts": {},
+  "sessions": {
+    "s_385aefe07faf61": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ba532a8-609c-4534-9316-9e8d54346633",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
