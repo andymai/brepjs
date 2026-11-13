@@ -1,14 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { applyMeshPartial, shownMeshes } from '../apps/playground/src/lib/meshStream.js';
-import type { MeshTransfer } from '../apps/playground/src/workers/workerProtocol.js';
 
-function mesh(vertexCount: number): MeshTransfer {
-  return {
-    position: new Float32Array(vertexCount * 3),
-    normal: new Float32Array(vertexCount * 3),
-    index: new Uint32Array(vertexCount),
-    edges: new Float32Array(0),
-  };
+interface TestMesh {
+  position: Float32Array;
+}
+
+function mesh(vertexCount: number): TestMesh {
+  return { position: new Float32Array(vertexCount * 3) };
 }
 
 describe('playground mesh stream', () => {
@@ -16,8 +14,6 @@ describe('playground mesh stream', () => {
     const a = mesh(3);
     const c = mesh(6);
     const slots = applyMeshPartial(null, {
-      type: 'eval-partial',
-      id: 'eval-1',
       stage: 'draft',
       meshes: [a, null, c],
     });
@@ -29,8 +25,6 @@ describe('playground mesh stream', () => {
     const draft = [mesh(3), mesh(3), mesh(3)];
     const final = mesh(30);
     const slots = applyMeshPartial(draft, {
-      type: 'eval-partial',
-      id: 'eval-1',
       stage: 'shape',
       index: 1,
       mesh: final,
@@ -42,8 +36,6 @@ describe('playground mesh stream', () => {
   it('drops the draft of a shape whose final mesh failed', () => {
     const draft = [mesh(3), mesh(3)];
     const slots = applyMeshPartial(draft, {
-      type: 'eval-partial',
-      id: 'eval-1',
       stage: 'shape',
       index: 0,
       mesh: null,
@@ -52,7 +44,7 @@ describe('playground mesh stream', () => {
   });
 
   it('ignores a shape message that has no stream or no slot', () => {
-    const shape = { type: 'eval-partial', id: 'eval-1', stage: 'shape', mesh: mesh(3) } as const;
+    const shape = { stage: 'shape', mesh: mesh(3) } as const;
     expect(applyMeshPartial(null, { ...shape, index: 0 })).toBeNull();
     expect(applyMeshPartial([mesh(3)], { ...shape, index: 4 })).toBeNull();
   });
@@ -60,8 +52,6 @@ describe('playground mesh stream', () => {
   it('starts again when a new draft arrives', () => {
     const next = mesh(9);
     const slots = applyMeshPartial([mesh(3), mesh(3)], {
-      type: 'eval-partial',
-      id: 'eval-2',
       stage: 'draft',
       meshes: [next],
     });

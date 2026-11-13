@@ -1,7 +1,7 @@
 import { useRef, useCallback, useEffect } from 'react';
 import type { BimTreeSummary } from 'brepjs-bim';
 import type { FlatPatternPolylines } from 'brepjs-sheetmetal';
-import type { FromWorker, ToWorker } from '../workers/workerProtocol';
+import type { FromWorker, MeshTransfer, ToWorker } from '../workers/workerProtocol';
 import { applyMeshPartial, shownMeshes, type MeshSlots } from '../lib/meshStream';
 import { usePlaygroundStore } from '../stores/playgroundStore';
 import { useEngineStore } from '../stores/engineStore';
@@ -37,7 +37,7 @@ export function useCodeExecution() {
   const latestFilesIdRef = useRef<string>('');
   const isRecoveringRef = useRef(false);
   // One slot for each shape of a run that streams its meshes (see `eval-partial`).
-  const streamSlotsRef = useRef<MeshSlots | null>(null);
+  const streamSlotsRef = useRef<MeshSlots<MeshTransfer> | null>(null);
   // Snapshot the code submitted under each eval id so eval-result records
   // what actually ran, not whatever the user has typed since.
   const codeByIdRef = useRef<Map<string, string>>(new Map());
