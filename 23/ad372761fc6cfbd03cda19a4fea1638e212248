@@ -1,0 +1,22 @@
+tests/knownFailures/brepkit.json
+  s_d47ce2fcef68a6::t_63e7ebe0f6adf6 129
+apps/playground/src/lib/examples/showcase.ts
+  s_d47ce2fcef68a6::t_e0f85850ec6c7e 251-609
+  s_d47ce2fcef68a6::t_1c57860ee94242 249-250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "23ad372761fc6cfbd03cda19a4fea1638e212248",
+  "prompts": {},
+  "sessions": {
+    "s_d47ce2fcef68a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87734ef0-a56f-4f3a-86f6-514f8ed13244",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
