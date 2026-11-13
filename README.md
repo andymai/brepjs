@@ -68,6 +68,8 @@ Neither had the type safety I wanted, so brepjs leans hard on it: branded types,
 npm install brepjs occt-wasm
 ```
 
+`brepjs` is the API. `occt-wasm` is the geometry kernel that does the math, and it is a separate package so that you can change the kernel. brepjs needs Node.js 24 or later, or a current browser.
+
 Starting fresh? `npm create brepjs my-project` scaffolds a TypeScript app with the kernel and the declarative family layer preconfigured.
 
 `brepjs/quick` handles WASM init automatically via top-level await (ESM only). Other options:
@@ -118,10 +120,10 @@ Imports flow downward only. Boundaries are enforced in CI.
 
 To set expectations, this project deliberately does not:
 
-- **Render or display geometry**: brepjs produces shape data; pass mesh output to Three.js, Babylon.js, or raw WebGL for rendering.
+- **Render or display geometry**: brepjs produces shape data; pass mesh output to Three.js, Babylon.js, or raw WebGL for rendering. The separate [`brepjs-viewer`](https://www.npmjs.com/package/brepjs-viewer) package is a React and Three.js renderer for that mesh output.
 - **Support organic or sculpting workflows**: brepjs models exact mechanical solids — parts and assemblies; freeform/organic sculpting and dense lattices are out of scope (that's field-based implicit/voxel territory).
-- **Output SVG or 2D files**: 2D drawing primitives exist solely as an intermediate step toward extruded 3D solids, not as a standalone 2D output format.
-- **Run server-side (SSR)**: WASM requires a browser or Node.js environment with WASM support; server-side rendering frameworks (Next.js, Nuxt, Remix) need a client-only import.
+- **Make 2D drawings**: 2D profiles are a step toward 3D solids. You can export a profile to DXF (`exportDXF`, `blueprintToDXF`) or to SVG path data (`toSVGPathD`), but brepjs has no dimensions, title blocks or sheets.
+- **Run in server-side rendering (SSR)**: the kernel is WASM and loads asynchronously, so frameworks such as Next.js, Nuxt and Remix need a client-only import. Node.js scripts and the `brep` CLI work.
 - **Provide a GUI**: brepjs is a pure programmatic API; there is no visual editor, viewport, or file picker.
 
 ## Status
@@ -159,7 +161,7 @@ export default () => box(40, 20, 10, { centered: true });
 ```
 
 ```bash
-npx -y -p brepjs-cad brep bracket.brep.ts --check --step bracket.step --json report.json
+npx -y -p brepjs-cad brep verify bracket.brep.ts --check --step bracket.step --json report.json
 ```
 
 The command exits non-zero unless the report is `ok` (valid **and** every declared dimension within tolerance), so it drops straight into CI or an agent loop. For MCP-capable agents the package also ships a stdio MCP server (`brep-mcp`) exposing the same build-and-verify step as a `run_program` tool. See the [**Authoring with AI**](https://brepjs.dev/agent/overview) guide for the full loop, CLI reference, the MCP server, examples, and the measurement eval.
