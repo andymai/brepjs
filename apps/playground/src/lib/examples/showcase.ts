@@ -1140,12 +1140,13 @@ interface Part {
   joint?: 1 | 2 | 3; // the arm joint that the part turns with: 1 shoulder, 2 elbow, 3 wrist
 }
 
-// Kernel shapes live in WASM memory. Every shape goes through own(), and the caller frees them all at the end.
+// Kernel shapes live in WASM memory. Every shape goes through own(). freeing() runs a build and then frees them all.
 const owned: { delete(): void }[] = [];
 const own = <T extends { delete(): void }>(s: T): T => {
   owned.push(s);
   return s;
 };
+const freeing = <T,>(build: () => T): T => { try { return build(); } finally { owned.splice(0).forEach((s) => s.delete()); } }; // also when the build throws
 
 // ---- published figures
 const WHEEL = { radius: 250, width: 400, skin: 0.75, grousers: 24, grouserHeight: 7.5 };
@@ -1563,7 +1564,7 @@ interface RoverParams {
   arm?: number; // 0 = the arm folded across the front, 1 = straight out to its full reach
 }
 
-function rover({ lift = 0, cutaway = true, arm = 0 }: RoverParams = {}) {
+const rover = ({ lift = 0, cutaway = true, arm = 0 }: RoverParams = {}) => freeing(() => {
   const parts = roverParts(arm);
   const mass = parts.reduce((sum, p) => sum + p.kg, 0);
   const budget: Partial<Record<System, number>> = {};
@@ -1601,9 +1602,8 @@ function rover({ lift = 0, cutaway = true, arm = 0 }: RoverParams = {}) {
   // The ground is where the grousers touch it, a little below the tread circle.
   const dip = WHEEL.grouserHeight;
   const ground = compound([block(-1700, 1900, -1500, 1500, -40 - dip, -dip), ...(step > 0 ? [block(AXLE.front - 330, AXLE.front + 330, AXLE.cornerTrack / 2 - 260, AXLE.cornerTrack / 2 + 260, -dip, step - dip)] : [])]) as Shape;
-  owned.splice(0).forEach((s) => s.delete());
   return { ...built, ground, mass, centre, budget };
-}
+});
 
 // Show the rover. Try rover({ arm: 1 }) to reach out with the arm, rover({ lift: 400 }) to put the left front
 // wheel on a step, or rover({ cutaway: false }).
