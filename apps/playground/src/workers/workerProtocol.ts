@@ -52,6 +52,8 @@ export type FromWorker =
       type: 'eval-result';
       id: string;
       meshes: MeshTransfer[];
+      // True when `eval-partial` messages carried the meshes; `meshes` is then empty.
+      streamed?: boolean;
       console: string[];
       timeMs: number;
       // Downloadable artifact kinds the example attached via present() (e.g. 'dxf').
@@ -61,6 +63,11 @@ export type FromWorker =
       // Serializable flat-pattern polylines attached via present({ overlay2d }), if any.
       overlay2d?: unknown;
     }
+  // A slow model streams its meshes. `draft` holds one slot for each shape: a
+  // final mesh for a shape that is done, a coarse mesh for the others, and null
+  // for a shape that failed. `shape` then replaces one slot with its final mesh.
+  | { type: 'eval-partial'; id: string; stage: 'draft'; meshes: (MeshTransfer | null)[] }
+  | { type: 'eval-partial'; id: string; stage: 'shape'; index: number; mesh: MeshTransfer | null }
   | { type: 'eval-error'; id: string; error: string; line?: number }
   | { type: 'eval-cancelled'; id: string }
   | { type: 'export-result'; id: string; stl: ArrayBuffer }

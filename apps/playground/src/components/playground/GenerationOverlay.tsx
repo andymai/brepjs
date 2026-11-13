@@ -30,7 +30,24 @@ function ElapsedSeconds({ startedAt }: { startedAt: number }) {
 export default function GenerationOverlay() {
   const isRunning = usePlaygroundStore((s) => s.isRunning);
   const runStartedAt = usePlaygroundStore((s) => s.runStartedAt);
+  const isRefining = usePlaygroundStore((s) => s.isRefining);
   if (!isRunning) return null;
+
+  // A draft of the model is on screen. Keep it clear of the scrim and the cube,
+  // and say that the detail is not final.
+  if (isRefining) {
+    return (
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-14 z-20 flex justify-center"
+        aria-hidden="true"
+      >
+        <span className="rounded-full border border-teal-primary/30 bg-gray-950/80 px-3 py-1 text-xs font-medium tracking-wide text-teal-primary/90">
+          <span className="animate-pulse">Refining detail…</span>
+          {runStartedAt !== null && <ElapsedSeconds startedAt={runStartedAt} />}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div

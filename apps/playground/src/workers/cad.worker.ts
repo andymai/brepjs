@@ -356,6 +356,169 @@ function extractUserLine(err: unknown, userBlobUrl: string): number | undefined 
   return undefined;
 }
 
+const FINE_MESH = { tolerance: 0.1, angularTolerance: 0.2 };
+// A draft mesh lets a slow model show in full before its final mesh is ready.
+// The tolerance follows the size of the first shape, so a small part is not
+// reduced to a few facets.
+const DRAFT_ANGULAR_TOLERANCE = 0.8;
+const DRAFT_TOLERANCE_RATIO = 0.002;
+// The draft pass costs time, and for a model of flat faces it is no faster than
+// the final mesh. It runs only after the first shape shows that a draft is this
+// many times faster, and only when the mesh work is slow enough to see.
+const DRAFT_MIN_SPEEDUP = 3;
+const DRAFT_AFTER_MS = 150;
+
+interface MeshOptions {
+  tolerance: number;
+  angularTolerance: number;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs shape handle
+function draftOptionsFor(shape: any): MeshOptions {
+  const b = brepjs.getBounds(shape);
+  const diagonal = Math.hypot(b.xMax - b.xMin, b.yMax - b.yMin, b.zMax - b.zMin);
+  return {
+    tolerance: Math.max(FINE_MESH.tolerance, diagonal * DRAFT_TOLERANCE_RATIO),
+    angularTolerance: DRAFT_ANGULAR_TOLERANCE,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs shape handle
+function meshShape(shape: any, options: MeshOptions, inspect: boolean): MeshTransfer {
+  const shapeMesh = brepjs.mesh(shape, options);
+  const edgeMesh = brepjs.meshEdges(shape, options);
+  const grouped = brepjs.toGroupedBufferGeometryData(shapeMesh);
+  const lineData = brepjs.toLineGeometryData(edgeMesh);
+
+  const mesh: MeshTransfer = {
+    position: grouped.position,
+    normal: grouped.normal,
+    index: grouped.index,
+    edges: lineData.position,
+  };
+
+  if (inspect) {
+    mesh.faceGroups = (grouped.groups as FaceGroup[]).map((g) => ({
+      start: g.start,
+      count: g.count,
+      faceId: g.faceId,
+    }));
+    mesh.edgeGroups = (edgeMesh.edgeGroups as EdgeGroup[]).map((g) => ({
+      start: g.start,
+      count: g.count,
+      edgeId: g.edgeId,
+    }));
+    mesh.faceInfos = collectFaceInfos(shape);
+    mesh.edgeInfos = collectEdgeInfos(shape);
+  }
+  return mesh;
+}
+
+function presentTransferables(slots: (MeshTransfer | null)[]): Transferable[] {
+  return transferablesFor(slots.filter((m): m is MeshTransfer => m !== null));
+}
+
+interface MeshedShapes {
+  // The meshes for `eval-result`. Empty when the run streamed them.
+  meshes: MeshTransfer[];
+  // Copies for the code cache, made before a mesh buffer leaves the worker.
+  cacheMeshes: MeshTransfer[];
+  streamed: boolean;
+}
+
+// Mesh every shape at full quality. For a slow model, switch to a stream part
+// of the way through: post one message with a draft mesh of each shape that is
+// not done, then post each final mesh as it completes. Returns null when the
+// run was cancelled.
+function meshShapes(
+  id: string,
+  shapes: unknown[],
+  colors: (string | null)[],
+  inspect: boolean,
+  consoleOutput: string[]
+): MeshedShapes | null {
+  const slots: (MeshTransfer | null)[] = shapes.map(() => null);
+  const cacheMeshes: MeshTransfer[] = [];
+  const reportError = (err: unknown) => {
+    consoleOutput.push(`[error] ${err instanceof Error ? err.message : String(err)}`);
+  };
+  const tint = (mesh: MeshTransfer, i: number): MeshTransfer => {
+    const c = colors[i];
+    if (c) mesh.color = c;
+    return mesh;
+  };
+
+  let draftOptions: MeshOptions | null = null;
+  let draftSpeedup = 0;
+  let streamed = false;
+  const meshStart = performance.now();
+
+  for (let i = 0; i < shapes.length; i++) {
+    if (cancelledIds.has(id)) return null;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs shape handle
+    let shape: any;
+    try {
+      shape = unwrapResultShape(shapes[i]);
+    } catch (err) {
+      reportError(err);
+      if (streamed) post({ type: 'eval-partial', id, stage: 'shape', index: i, mesh: null });
+      continue;
+    }
+
+    const wantsDraft =
+      !streamed &&
+      draftOptions !== null &&
+      draftSpeedup >= DRAFT_MIN_SPEEDUP &&
+      performance.now() - meshStart >= DRAFT_AFTER_MS;
+    if (wantsDraft && draftOptions !== null) {
+      const options = draftOptions;
+      for (let j = i; j < shapes.length; j++) {
+        try {
+          slots[j] = tint(meshShape(unwrapResultShape(shapes[j]), options, false), j);
+        } catch {
+          // The final pass reports the error for this shape.
+          slots[j] = null;
+        }
+      }
+      post(
+        { type: 'eval-partial', id, stage: 'draft', meshes: slots },
+        presentTransferables(slots)
+      );
+      streamed = true;
+    }
+
+    try {
+      let probeMs = 0;
+      if (i === 0 && shapes.length > 1) {
+        draftOptions = draftOptionsFor(shape);
+        const probeStart = performance.now();
+        meshShape(shape, draftOptions, false);
+        probeMs = performance.now() - probeStart;
+      }
+      const fineStart = performance.now();
+      const mesh = tint(meshShape(shape, FINE_MESH, inspect), i);
+      if (probeMs > 0) draftSpeedup = (performance.now() - fineStart) / probeMs;
+
+      cacheMeshes.push(cloneMeshTransfer(mesh));
+      slots[i] = mesh;
+      if (streamed) {
+        post(
+          { type: 'eval-partial', id, stage: 'shape', index: i, mesh },
+          transferablesFor([mesh])
+        );
+      }
+    } catch (err) {
+      reportError(err);
+      slots[i] = null;
+      if (streamed) post({ type: 'eval-partial', id, stage: 'shape', index: i, mesh: null });
+    }
+  }
+
+  const meshes = streamed ? [] : slots.filter((m): m is MeshTransfer => m !== null);
+  return { meshes, cacheMeshes, streamed };
+}
+
 function transferablesFor(meshes: MeshTransfer[]): Transferable[] {
   return meshes.flatMap((mesh) => [
     mesh.position.buffer,
@@ -467,55 +630,12 @@ async function handleEval(id: string, code: string) {
     // would be ambiguous across multiple bodies.
     const collectInspection = shapes.length === 1;
 
-    const meshes: MeshTransfer[] = [];
-
-    for (let i = 0; i < shapes.length; i++) {
-      if (cancelledIds.has(id)) {
-        post({ type: 'eval-cancelled', id });
-        return;
-      }
-
-      try {
-        const fnShape = unwrapResultShape(shapes[i]);
-
-        const shapeMesh = brepjs.mesh(fnShape, { tolerance: 0.1, angularTolerance: 0.2 });
-        const edgeMesh = brepjs.meshEdges(fnShape, { tolerance: 0.1, angularTolerance: 0.2 });
-
-        const grouped = brepjs.toGroupedBufferGeometryData(shapeMesh);
-        const lineData = brepjs.toLineGeometryData(edgeMesh);
-
-        const mesh: MeshTransfer = {
-          position: grouped.position,
-          normal: grouped.normal,
-          index: grouped.index,
-          edges: lineData.position,
-        };
-
-        if (collectInspection) {
-          mesh.faceGroups = (grouped.groups as FaceGroup[]).map((g) => ({
-            start: g.start,
-            count: g.count,
-            faceId: g.faceId,
-          }));
-          mesh.edgeGroups = (edgeMesh.edgeGroups as EdgeGroup[]).map((g) => ({
-            start: g.start,
-            count: g.count,
-            edgeId: g.edgeId,
-          }));
-          mesh.faceInfos = collectFaceInfos(fnShape);
-          mesh.edgeInfos = collectEdgeInfos(fnShape);
-        }
-
-        const c = colors[i];
-        if (c) mesh.color = c;
-
-        meshes.push(mesh);
-      } catch (meshErr) {
-        consoleOutput.push(
-          `[error] ${meshErr instanceof Error ? meshErr.message : String(meshErr)}`
-        );
-      }
+    const meshed = meshShapes(id, shapes, colors, collectInspection, consoleOutput);
+    if (meshed === null) {
+      post({ type: 'eval-cancelled', id });
+      return;
     }
+    const { meshes, streamed } = meshed;
 
     const timeMs = performance.now() - startTime;
 
@@ -529,7 +649,7 @@ async function handleEval(id: string, code: string) {
       if (firstKey) codeCache.delete(firstKey);
     }
     codeCache.set(code, {
-      meshes: meshes.map(cloneMeshTransfer),
+      meshes: meshed.cacheMeshes,
       console: [...consoleOutput],
       timeMs,
       artifacts: artifactKeys,
@@ -542,6 +662,7 @@ async function handleEval(id: string, code: string) {
         type: 'eval-result',
         id,
         meshes,
+        streamed,
         console: consoleOutput,
         timeMs,
         artifacts: artifactKeys,

@@ -86,6 +86,9 @@ function useBoundsComputation(meshes: MeshData[]) {
   return useMemo(() => computeBounds(meshes), [meshes]);
 }
 
+// Part of the model radius that the bounds can change by without a new camera fit.
+const FIT_TOLERANCE = 0.01;
+
 function fitCamera(
   bounds: { center: THREE.Vector3; radius: number },
   camera: THREE.Camera,
@@ -143,23 +146,33 @@ function fitCamera(
 function AutoFit({ meshes, projection }: { meshes: MeshData[]; projection: Projection }) {
   const { camera, controls } = useThree();
   const bounds = useBoundsComputation(meshes);
-  const prevBoundsKey = useRef('');
+  const fittedBounds = useRef<{ center: THREE.Vector3; radius: number } | null>(null);
   const fitRequest = useViewerStore((s) => s.fitRequest);
 
-  // Auto-fit on mesh change
+  // Auto-fit on mesh change. A draft mesh and its final mesh differ by a small
+  // part of the model size, so a change below FIT_TOLERANCE keeps the camera
+  // where the user put it.
   useEffect(() => {
     if (!bounds || !controls) return;
 
-    const key = `${bounds.center.x.toFixed(2)},${bounds.center.y.toFixed(2)},${bounds.center.z.toFixed(2)},${bounds.radius.toFixed(2)}`;
-    if (key === prevBoundsKey.current) return;
-    prevBoundsKey.current = key;
+    const last = fittedBounds.current;
+    if (last) {
+      const slack = last.radius * FIT_TOLERANCE;
+      const moved = bounds.center.distanceTo(last.center);
+      if (moved <= slack && Math.abs(bounds.radius - last.radius) <= slack) return;
+    }
+    fittedBounds.current = { center: bounds.center.clone(), radius: bounds.radius };
 
     fitCamera(bounds, camera, controls);
   }, [bounds, camera, controls]);
 
-  // Manual fit on button click
+  // Manual fit on button click. One click fits one time: a later change of the
+  // bounds (a streamed mesh, an edit) must not fit again for an old click.
+  const handledFitRequest = useRef(0);
   useEffect(() => {
-    if (fitRequest === 0 || !bounds || !controls) return;
+    if (fitRequest === handledFitRequest.current || !bounds || !controls) return;
+    handledFitRequest.current = fitRequest;
+    fittedBounds.current = { center: bounds.center.clone(), radius: bounds.radius };
     fitCamera(bounds, camera, controls);
   }, [fitRequest, bounds, camera, controls]);
 
