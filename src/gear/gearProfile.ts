@@ -16,6 +16,7 @@ import {
   cosineSpaceFlankSamples,
   gearGeometry,
   inv,
+  involutePoint,
 } from './gearMath.js';
 
 function buildToothPeriodEdges(
@@ -38,8 +39,19 @@ function buildToothPeriodEdges(
   // Right flank reversed so the edge chain runs base→tip→base→nextBase in geometric order.
   // Without this, the wire has a discontinuity that OCCT silently fixes via auto-reorientation
   // but brepkit doesn't, producing a face with reversed orientation.
-  const leftFlank = cosineSpaceFlankSamples(tm.rb, tm.alphaTip, thetaLeft, samples, 1);
-  const rightFlank = cosineSpaceFlankSamples(tm.rb, tm.alphaTip, thetaRight, samples, -1).reverse();
+  // An external gear with many teeth has its base circle inside its root circle. The flank
+  // then starts on the root circle: a flank from the base circle goes below the root, and
+  // the root arc between two such flanks crosses them.
+  const alphaRoot = !tm.isInternal && tm.rb < tm.rRoot ? Math.acos(tm.rb / tm.rRoot) : 0;
+  const leftFlank = cosineSpaceFlankSamples(tm.rb, tm.alphaTip, thetaLeft, samples, 1, alphaRoot);
+  const rightFlank = cosineSpaceFlankSamples(
+    tm.rb,
+    tm.alphaTip,
+    thetaRight,
+    samples,
+    -1,
+    alphaRoot
+  ).reverse();
   const leftBase = firstOrThrow(leftFlank);
   const leftTip = lastOrThrow(leftFlank);
   const rightTip = firstOrThrow(rightFlank);
@@ -85,7 +97,7 @@ function buildToothPeriodEdges(
   const rootMid: Vec3 = [tm.rRoot * Math.cos(midAngle), tm.rRoot * Math.sin(midAngle), 0];
   const nextLeftStart: Vec3 = needsRadialBridge
     ? [tm.rRoot * Math.cos(rootEndAngle), tm.rRoot * Math.sin(rootEndAngle), 0]
-    : [tm.rb * Math.cos(rootEndAngle), tm.rb * Math.sin(rootEndAngle), 0];
+    : involutePoint(tm.rb, alphaRoot, rootEndAngle, 1);
   push(makeThreePointArc(rootStart, rootMid, nextLeftStart));
 
   return ok(edges);
