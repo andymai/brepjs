@@ -311,12 +311,13 @@ interface Part {
   shape: Shape;
 }
 
-// Kernel shapes live in WASM memory. Every shape goes through own(), and the caller frees them all at the end.
+// Kernel shapes live in WASM memory. Every shape goes through own(). freeing() runs a build and then frees them all.
 const owned: { delete(): void }[] = [];
 const own = <T extends { delete(): void }>(s: T): T => {
   owned.push(s);
   return s;
 };
+const freeing = <T,>(build: () => T): T => { try { return build(); } finally { owned.splice(0).forEach((s) => s.delete()); } }; // also when the build throws
 
 const X: P3 = [1, 0, 0];
 const Y: P3 = [0, 1, 0];
@@ -563,7 +564,7 @@ interface ArmParams {
   cutaway?: boolean; // open the base, shoulder, elbow and forearm to show the drives
 }
 
-function robotArm({ pose = [-35, 28, 12, 0, 50, 0], grip = 24, cutaway = true }: ArmParams = {}) {
+const robotArm = ({ pose = [-35, 28, 12, 0, 50, 0], grip = 24, cutaway = true }: ArmParams = {}) => freeing(() => {
   const parts = armParts(Math.min(52, Math.max(0, grip)), cutaway);
 
   // The kinematics API turns the DH table into a joint chain and solves the pose of every link.
@@ -589,9 +590,8 @@ function robotArm({ pose = [-35, 28, 12, 0, 50, 0], grip = 24, cutaway = true }:
       return [tone, compound(moved) as Shape];
     }),
   ) as Record<Tone, Shape>;
-  owned.splice(0).forEach((s) => s.delete());
   return { ...arm, flange: (posed.get('link6') as Pose).position };
-}
+});
 
 // Turn the open side toward the camera, for the first view and for the Iso view.
 const arm = robotArm();
@@ -663,12 +663,13 @@ interface Part {
 }
 const LIFT = 4; // millimetres between two levels of the exploded view
 
-// Kernel shapes live in WASM memory. Every shape goes through own(), and the caller frees them all at the end.
+// Kernel shapes live in WASM memory. Every shape goes through own(). freeing() runs a build and then frees them all.
 const owned: { delete(): void }[] = [];
 const own = <T extends { delete(): void }>(s: T): T => {
   owned.push(s);
   return s;
 };
+const freeing = <T,>(build: () => T): T => { try { return build(); } finally { owned.splice(0).forEach((s) => s.delete()); } }; // also when the build throws
 
 // ---- the gears: wheel teeth and module, pinion leaves. A pinion has the module of the wheel that drives it.
 const BARREL = { teeth: 88, module: 0.191 };
@@ -1041,7 +1042,7 @@ interface WatchParams {
   explode?: number; // 0 = assembled, 1 = the levels lift apart
 }
 
-function watch({ time = 0, explode = 0 }: WatchParams = {}) {
+const watch = ({ time = 0, explode = 0 }: WatchParams = {}) => freeing(() => {
   const parts = movementParts(time);
   const tones: Tone[] = ['plate', 'bridge', 'brass', 'steel', 'blue', 'ruby', 'dial', 'ink', 'case', 'glass'];
   const built = Object.fromEntries(
@@ -1050,7 +1051,6 @@ function watch({ time = 0, explode = 0 }: WatchParams = {}) {
       compound(parts.filter((p) => p.tone === tone).map((p) => (explode > 0 ? (own(translate(p.shape, [0, 0, p.lift * explode * LIFT])) as Shape) : p.shape))) as Shape,
     ]),
   ) as Record<Tone, Shape>;
-  owned.splice(0).forEach((s) => s.delete());
   const fourthTurnsPerHour = (CENTRE.teeth / THIRD.leaves) * (THIRD.teeth / FOURTH.leaves);
   return {
     ...built,
@@ -1059,7 +1059,7 @@ function watch({ time = 0, explode = 0 }: WatchParams = {}) {
     beatsPerHour: fourthTurnsPerHour * (FOURTH.teeth / ESCAPE.leaves) * ESCAPE.teeth * 2,
     hoursPerBarrelTurn: BARREL.teeth / CENTRE.leaves,
   };
-}
+});
 
 // Show the dial side. Try watch({ time: 1800 }) for the pose after half an hour, or watch({ explode: 1 }).
 const movement = watch();
