@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.3](https://github.com/andymai/brepjs/compare/brepjs-sheetmetal-v0.4.2...brepjs-sheetmetal-v0.4.3) (2026-11-13)
+
+
+### Bug Fixes
+
+* **sheetmetal:** miterCorner trims the flange ends, not half of the part ([#2661](https://github.com/andymai/brepjs/issues/2661)) ([75f4a4a](https://github.com/andymai/brepjs/commit/75f4a4a1c5997564c7af3dee61590ac4199bf796))
+
 ## [0.4.2](https://github.com/andymai/brepjs/compare/brepjs-sheetmetal-v0.4.1...brepjs-sheetmetal-v0.4.2) (2026-10-27)
 
 
