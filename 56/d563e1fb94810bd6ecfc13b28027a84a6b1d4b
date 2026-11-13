@@ -1,0 +1,19 @@
+package-lock.json
+  s_31264c30950f92::t_c1f96dd90e90c5 2290-2292,9930-9932
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "56d563e1fb94810bd6ecfc13b28027a84a6b1d4b",
+  "prompts": {},
+  "sessions": {
+    "s_31264c30950f92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b5c1ef1-945c-4d94-ada2-9322bc793a5d",
+        "model": "unknown"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
