@@ -81,7 +81,10 @@ function playReel(e: Event) {
     .catch(() => {});
 }
 function stopReel(e: Event) {
-  const video = (e.currentTarget as HTMLElement).querySelector('video');
+  const tile = e.currentTarget as HTMLElement;
+  // The pointer can leave while the keyboard focus stays, and the focus can leave while the pointer stays.
+  if (tile.matches(':hover') || tile.matches(':focus-visible')) return;
+  const video = tile.querySelector('video');
   if (!video) return;
   video.pause();
   video.currentTime = 0;
