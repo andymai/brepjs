@@ -26,7 +26,7 @@ const FAMILIES_AMBIENT = resolve(__dirname, '../src/types/brepjs-families-ambien
 // Mirror the editor's compiler options (see src/lib/monacoSetup.ts). `lib` is
 // omitted so the default lib for the target is used, exactly as Monaco does.
 const OPTIONS: ts.CompilerOptions = {
-  target: ts.ScriptTarget.ES2022,
+  target: ts.ScriptTarget.ESNext,
   module: ts.ModuleKind.ESNext,
   moduleResolution: ts.ModuleResolutionKind.Bundler,
   strict: true,
