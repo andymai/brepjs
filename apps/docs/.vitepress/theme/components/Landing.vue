@@ -68,6 +68,13 @@ const REELS = [
     video: '/media/watch-reel.mp4',
     poster: '/media/watch-reel-poster.webp',
   },
+  {
+    id: 'mars-rover',
+    title: 'Mars rover',
+    fact: 'The kernel measures 513 solids and finds the centre of mass at 866 mm. The published figure is 894 mm.',
+    video: '/media/rover-reel.mp4',
+    poster: '/media/rover-reel-poster.webp',
+  },
 ];
 const reducedMotion = () =>
   typeof window !== 'undefined' &&
@@ -405,8 +412,9 @@ onBeforeUnmount(() => observer?.disconnect());
             <h2>Whole machines, one file each.</h2>
             <p class="lead">
               Each model is one TypeScript file that runs in your browser. The robot arm moves by a
-              published Denavit-Hartenberg table, and the watch has the tooth counts of a real
-              calibre. Each tile opens its file in the playground.
+              published Denavit-Hartenberg table. The watch has the tooth counts of a real calibre.
+              The kernel measures the mass and the centre of mass of the rover. Each tile opens its
+              file in the playground.
             </p>
           </div>
           <div class="reels">
@@ -1239,7 +1247,7 @@ pre.term {
 /* showcase */
 .reels {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
   margin-top: 36px;
 }

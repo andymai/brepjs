@@ -17,8 +17,9 @@ https://github.com/user-attachments/assets/66a9308e-b7bf-4407-8718-2949332c67fc
 
 <a href="https://brepjs.dev/playground/examples/robot-arm"><img src="https://raw.githubusercontent.com/andymai/brepjs/main/media/arm-reel-poster.webp" alt="A six-axis robot arm in cutaway. The solver gives six joint angles for a tool position." width="49%"></a>
 <a href="https://brepjs.dev/playground/examples/pocket-watch"><img src="https://raw.githubusercontent.com/andymai/brepjs/main/media/watch-reel-poster.webp" alt="A pocket watch with Roman numerals on a white dial. Its hands show 10:08." width="49%"></a>
+<a href="https://brepjs.dev/playground/examples/mars-rover"><img src="https://raw.githubusercontent.com/andymai/brepjs/main/media/rover-reel-poster.webp" alt="A six-wheel Mars rover in cutaway, with its camera mast up and its arm folded." width="49%"></a>
 
-Also in the playground: a [six-axis robot arm](https://brepjs.dev/playground/examples/robot-arm) that moves by a published Denavit-Hartenberg table, and a [pocket watch](https://brepjs.dev/playground/examples/pocket-watch) that keeps time with the tooth counts of a real calibre.
+Also in the playground: a [six-axis robot arm](https://brepjs.dev/playground/examples/robot-arm) that moves by a published Denavit-Hartenberg table, a [pocket watch](https://brepjs.dev/playground/examples/pocket-watch) that keeps time with the tooth counts of a real calibre, and a [Mars rover](https://brepjs.dev/playground/examples/mars-rover) with a mass budget and a centre of mass that the kernel measures.
 
 </div>
 
