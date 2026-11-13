@@ -37,7 +37,7 @@ export type FailuresByFile = Map<string, Set<string>>;
 // A file that fails outside any test (an import error, a throw in beforeAll)
 // has no failed test to name, so the list holds it under this key.
 export const FILE_LEVEL = '(file)';
-const TRACKING = /^[\w.-]+\/[\w.-]+#\d+$/;
+const TRACKING = /^[\w.-]+\/[\w.-]+#\d+(?:, [\w.-]+\/[\w.-]+#\d+)*$/;
 
 function testKey(a: AssertionResult): string {
   return [...a.ancestorTitles, a.title].join(' > ');

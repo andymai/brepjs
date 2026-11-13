@@ -80,6 +80,20 @@ describe('findProblems', () => {
     ]);
   });
 
+  it('accepts a file tracked by more than one issue', () => {
+    const tracked: KnownFailures = {
+      kernel: 'brepkit',
+      files: {
+        'tests/a.test.ts': {
+          tracking: 'andymai/brepkit#1, andymai/brepkit#2',
+          tests: ['suite > broken'],
+        },
+      },
+    };
+    const results = failuresByFile(report({ 'tests/a.test.ts': { broken: 'failed' } }), ROOT);
+    expect(findProblems(tracked, results)).toEqual([]);
+  });
+
   it('names a file that fails outside any test', () => {
     const results = failuresByFile(report({}, ['tests/c.test.ts']), ROOT);
     expect(results.get('tests/c.test.ts')).toEqual(new Set([FILE_LEVEL]));
