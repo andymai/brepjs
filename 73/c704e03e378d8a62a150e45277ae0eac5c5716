@@ -1,0 +1,27 @@
+apps/docs/.vitepress/theme/components/Landing.vue
+  s_d47ce2fcef68a6::t_aeed51c35ef3c4 71-77,415-417
+  s_d47ce2fcef68a6::t_dcb9311c4989f5 1250
+apps/playground/src/lib/examples/showcase.ts
+  s_d47ce2fcef68a6::t_252807854ed664 1086-1610
+  s_d47ce2fcef68a6::t_dce26c8e984ebd 1084-1085
+README.md
+  s_d47ce2fcef68a6::t_dcb9311c4989f5 20,22
+tests/knownFailures/brepkit.json
+  s_d47ce2fcef68a6::t_c2ea169b82de57 128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "73c704e03e378d8a62a150e45277ae0eac5c5716",
+  "prompts": {},
+  "sessions": {
+    "s_d47ce2fcef68a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87734ef0-a56f-4f3a-86f6-514f8ed13244",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
