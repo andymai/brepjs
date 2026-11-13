@@ -27,6 +27,9 @@ interface PlaygroundState {
   consoleOutput: string[];
   timeMs: number | null;
   isRunning: boolean;
+  // `performance.now()` at the start of the current run. Each submitted run
+  // sets it again, so a run that replaces another starts its own clock.
+  runStartedAt: number | null;
   // Downloadable artifact kinds the current model exposes via present() (e.g.
   // 'dxf'), used to show the matching toolbar download buttons.
   availableArtifacts: string[];
@@ -92,6 +95,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   consoleOutput: [],
   timeMs: null,
   isRunning: false,
+  runStartedAt: null,
   availableArtifacts: [],
   bimTree: null,
   flatPattern: null,
@@ -123,7 +127,8 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   setError: (error, line) => set({ error, errorLine: line ?? null }),
   setConsoleOutput: (consoleOutput) => set({ consoleOutput }),
   setTimeMs: (timeMs) => set({ timeMs }),
-  setIsRunning: (isRunning) => set({ isRunning }),
+  setIsRunning: (isRunning) =>
+    set({ isRunning, runStartedAt: isRunning ? performance.now() : null }),
   setConsoleCollapsed: (isConsoleCollapsed) => set({ isConsoleCollapsed }),
   setViewerCollapsed: (isViewerCollapsed) => set({ isViewerCollapsed }),
   setEditorCollapsed: (isEditorCollapsed) => set({ isEditorCollapsed }),
