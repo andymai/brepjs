@@ -1,7 +1,8 @@
 import { useRef, useCallback, useEffect } from 'react';
 import type { BimTreeSummary } from 'brepjs-bim';
 import type { FlatPatternPolylines } from 'brepjs-sheetmetal';
-import type { FromWorker, MeshTransfer, ToWorker } from '../workers/workerProtocol';
+import type { FromWorker, ToWorker } from '../workers/workerProtocol';
+import { applyMeshPartial, shownMeshes, type MeshSlots } from '../lib/meshStream';
 import { usePlaygroundStore } from '../stores/playgroundStore';
 import { useEngineStore } from '../stores/engineStore';
 import { useToastStore } from '../stores/toastStore';
@@ -36,7 +37,7 @@ export function useCodeExecution() {
   const latestFilesIdRef = useRef<string>('');
   const isRecoveringRef = useRef(false);
   // One slot for each shape of a run that streams its meshes (see `eval-partial`).
-  const streamSlotsRef = useRef<(MeshTransfer | null)[] | null>(null);
+  const streamSlotsRef = useRef<MeshSlots | null>(null);
   // Snapshot the code submitted under each eval id so eval-result records
   // what actually ran, not whatever the user has typed since.
   const codeByIdRef = useRef<Map<string, string>>(new Map());
@@ -102,14 +103,11 @@ export function useCodeExecution() {
         }
         case 'eval-partial': {
           if (msg.id !== latestIdRef.current) return;
-          if (msg.stage === 'draft') {
-            streamSlotsRef.current = [...msg.meshes];
-            store.setIsRefining(true);
-          } else if (streamSlotsRef.current) {
-            streamSlotsRef.current[msg.index] = msg.mesh;
-          }
-          const slots = streamSlotsRef.current ?? [];
-          store.setMeshes(slots.filter((m): m is MeshTransfer => m !== null));
+          const slots = applyMeshPartial(streamSlotsRef.current, msg);
+          if (slots === null) return;
+          streamSlotsRef.current = slots;
+          if (msg.stage === 'draft') store.setIsRefining(true);
+          store.setMeshes(shownMeshes(slots));
           break;
         }
         case 'eval-error':

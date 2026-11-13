@@ -166,9 +166,13 @@ function AutoFit({ meshes, projection }: { meshes: MeshData[]; projection: Proje
     fitCamera(bounds, camera, controls);
   }, [bounds, camera, controls]);
 
-  // Manual fit on button click
+  // Manual fit on button click. One click fits one time: a later change of the
+  // bounds (a streamed mesh, an edit) must not fit again for an old click.
+  const handledFitRequest = useRef(0);
   useEffect(() => {
-    if (fitRequest === 0 || !bounds || !controls) return;
+    if (fitRequest === handledFitRequest.current || !bounds || !controls) return;
+    handledFitRequest.current = fitRequest;
+    fittedBounds.current = { center: bounds.center.clone(), radius: bounds.radius };
     fitCamera(bounds, camera, controls);
   }, [fitRequest, bounds, camera, controls]);
 
