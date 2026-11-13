@@ -30,6 +30,9 @@ interface PlaygroundState {
   // `performance.now()` at the start of the current run. Each submitted run
   // sets it again, so a run that replaces another starts its own clock.
   runStartedAt: number | null;
+  // True while the viewer shows a draft that the worker still refines.
+  isRefining: boolean;
+  setIsRefining: (isRefining: boolean) => void;
   // Downloadable artifact kinds the current model exposes via present() (e.g.
   // 'dxf'), used to show the matching toolbar download buttons.
   availableArtifacts: string[];
@@ -96,6 +99,8 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   timeMs: null,
   isRunning: false,
   runStartedAt: null,
+  isRefining: false,
+  setIsRefining: (isRefining) => set({ isRefining }),
   availableArtifacts: [],
   bimTree: null,
   flatPattern: null,
@@ -128,7 +133,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   setConsoleOutput: (consoleOutput) => set({ consoleOutput }),
   setTimeMs: (timeMs) => set({ timeMs }),
   setIsRunning: (isRunning) =>
-    set({ isRunning, runStartedAt: isRunning ? performance.now() : null }),
+    set({ isRunning, isRefining: false, runStartedAt: isRunning ? performance.now() : null }),
   setConsoleCollapsed: (isConsoleCollapsed) => set({ isConsoleCollapsed }),
   setViewerCollapsed: (isViewerCollapsed) => set({ isViewerCollapsed }),
   setEditorCollapsed: (isEditorCollapsed) => set({ isEditorCollapsed }),

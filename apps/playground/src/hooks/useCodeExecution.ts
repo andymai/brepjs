@@ -1,7 +1,7 @@
 import { useRef, useCallback, useEffect } from 'react';
 import type { BimTreeSummary } from 'brepjs-bim';
 import type { FlatPatternPolylines } from 'brepjs-sheetmetal';
-import type { FromWorker, ToWorker } from '../workers/workerProtocol';
+import type { FromWorker, MeshTransfer, ToWorker } from '../workers/workerProtocol';
 import { usePlaygroundStore } from '../stores/playgroundStore';
 import { useEngineStore } from '../stores/engineStore';
 import { useToastStore } from '../stores/toastStore';
@@ -35,6 +35,8 @@ export function useCodeExecution() {
   const latestIfcIdRef = useRef<string>('');
   const latestFilesIdRef = useRef<string>('');
   const isRecoveringRef = useRef(false);
+  // One slot for each shape of a run that streams its meshes (see `eval-partial`).
+  const streamSlotsRef = useRef<(MeshTransfer | null)[] | null>(null);
   // Snapshot the code submitted under each eval id so eval-result records
   // what actually ran, not whatever the user has typed since.
   const codeByIdRef = useRef<Map<string, string>>(new Map());
@@ -46,6 +48,7 @@ export function useCodeExecution() {
   const submitEval = useCallback((code: string) => {
     const id = `eval-${++evalCounter}`;
     latestIdRef.current = id;
+    streamSlotsRef.current = null;
     codeByIdRef.current.set(id, code);
     const store = usePlaygroundStore.getState();
     store.setIsRunning(true);
@@ -77,7 +80,9 @@ export function useCodeExecution() {
           }
           const ranCode = codeByIdRef.current.get(msg.id) ?? store.code;
           codeByIdRef.current.delete(msg.id);
-          store.setMeshes(msg.meshes);
+          // A streamed run delivered its meshes in `eval-partial` messages.
+          if (!msg.streamed) store.setMeshes(msg.meshes);
+          streamSlotsRef.current = null;
           store.setAvailableArtifacts(msg.artifacts ?? []);
           // The worker forwards present({ bimTree }) verbatim; it's the
           // serializable BimModel.toTreeSummary() shape.
@@ -95,12 +100,29 @@ export function useCodeExecution() {
           }
           break;
         }
+        case 'eval-partial': {
+          if (msg.id !== latestIdRef.current) return;
+          if (msg.stage === 'draft') {
+            streamSlotsRef.current = [...msg.meshes];
+            store.setIsRefining(true);
+          } else if (streamSlotsRef.current) {
+            streamSlotsRef.current[msg.index] = msg.mesh;
+          }
+          const slots = streamSlotsRef.current ?? [];
+          store.setMeshes(slots.filter((m): m is MeshTransfer => m !== null));
+          break;
+        }
         case 'eval-error':
           if (msg.id !== latestIdRef.current) {
             codeByIdRef.current.delete(msg.id);
             return;
           }
           codeByIdRef.current.delete(msg.id);
+          // A failed run must not leave its draft under the error banner.
+          if (streamSlotsRef.current) {
+            streamSlotsRef.current = null;
+            store.setMeshes([]);
+          }
           store.setError(msg.error, msg.line);
           store.setIsRunning(false);
           // Drop the recovery flag so the next successful run doesn't show a
