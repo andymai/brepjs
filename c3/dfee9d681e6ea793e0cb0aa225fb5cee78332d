@@ -1,0 +1,41 @@
+README.md
+  s_3f0f1294d8b317::t_ad7c1984206946 219
+  s_3f0f1294d8b317::t_612618cbc949c1 166,168
+  s_3f0f1294d8b317::t_52716fd8aad261 237
+  s_3f0f1294d8b317::t_73b6e2ffa85fbc 149
+  s_3f0f1294d8b317::t_1b65302ac73da9 211
+  s_3f0f1294d8b317::t_9b4a3c6aa690b9 66,68-70
+  s_3f0f1294d8b317::t_e5c719ee3e77bd 144-148,151
+  s_3f0f1294d8b317::t_131f1f91c6b5fd 229
+  s_3f0f1294d8b317::t_fb7d820faf1b53 138-140
+  s_3f0f1294d8b317::t_b3fc7a2e48a29b 124
+  s_3f0f1294d8b317::t_be63989bf4740b 29
+  s_3f0f1294d8b317::t_8e636adbf36bce 181
+  s_3f0f1294d8b317::t_670165baf54616 44
+  s_3f0f1294d8b317::t_41c52045826c2b 98
+  s_3f0f1294d8b317::t_90cf1a3e751185 107-108
+  s_3f0f1294d8b317::t_4837426b9dea7e 36,38
+  s_3f0f1294d8b317::t_1a916b4bbb3b97 78,80,82
+  s_3f0f1294d8b317::t_83f4833d26ea27 5-6
+  s_3f0f1294d8b317::t_4c44037d427d5b 21
+  s_3f0f1294d8b317::t_cd5a5e8a4922be 100
+  s_3f0f1294d8b317::t_8a20153f7f30bf 113
+  s_3f0f1294d8b317::t_db08a4669b8254 128,130-134
+  s_3f0f1294d8b317::t_43ca670ff07802 185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3dfee9d681e6ea793e0cb0aa225fb5cee78332d",
+  "prompts": {},
+  "sessions": {
+    "s_3f0f1294d8b317": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a188bf6-7f7c-4f93-badd-64051f15d4c7",
+        "model": "unknown"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
