@@ -18,9 +18,11 @@ beforeAll(async () => {
 }, 60000);
 
 // A test timeout cannot stop a synchronous kernel call that never returns, so
-// an example that hangs on a kernel must be skipped before it starts.
+// an example that hangs on a kernel, or meshes for about as long as the test
+// limit, must be skipped before it starts.
 const hangs = (id: string): boolean =>
-  id === 'bench-vise' && shouldSkipSuite('playgroundExamples.benchVise');
+  (id === 'bench-vise' && shouldSkipSuite('playgroundExamples.benchVise')) ||
+  (id === 'turbofan-engine' && shouldSkipSuite('playgroundExamples.turbofanEngine'));
 
 describe('playground examples', () => {
   it('has a unique id and label for every entry', () => {
