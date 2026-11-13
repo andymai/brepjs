@@ -1,7 +1,8 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { getBounds, isErr, isValid, measureVolume, unwrap } from 'brepjs';
+import { DisposalScope, getBounds, isValid, measureVolume, unwrap } from 'brepjs';
 import { author, miterCorner } from '../src/api.js';
 import type { FlangeSide } from '../src/authorFns.js';
+import type { SheetMetalPart } from '../src/types.js';
 import { initKernel } from '../../../tests/setup.js';
 
 beforeAll(async () => {
@@ -13,6 +14,12 @@ const rule = { innerRadius: 2, kFactor: 0.44 };
 const LENGTH = 60;
 const WIDTH = 40;
 const flange = (id: string, side: FlangeSide) => ({ id, side, length: 25, angleDeg: 90, rule });
+
+/** The folded solid of a part, registered so that the scope frees it when the test ends. */
+function solidOf(scope: DisposalScope, part: SheetMetalPart) {
+  if (part.solid === undefined) throw new Error('the part has no folded solid');
+  return scope.register(part.solid);
+}
 
 describe('miterCorner: the 3D cut', () => {
   const corners: [FlangeSide, FlangeSide][] = [
@@ -28,23 +35,16 @@ describe('miterCorner: the 3D cut', () => {
       [b, a],
     ] as const) {
       it(`trims only the flange ends at the ${first}/${second} corner`, () => {
-        const authored = author({
-          thickness: T,
-          base: { length: LENGTH, width: WIDTH },
-          flanges: [flange('a', first), flange('b', second)],
-        });
-        expect(authored.ok).toBe(true);
-        if (isErr(authored)) return;
-        const before = authored.value.solid;
-        expect(before).toBeDefined();
-        if (before === undefined) return;
-
-        const mitered = miterCorner(authored.value, 'a', 'b', 2.5);
-        expect(mitered.ok).toBe(true);
-        if (isErr(mitered)) return;
-        const after = mitered.value.solid;
-        expect(after).toBeDefined();
-        if (after === undefined) return;
+        using scope = new DisposalScope();
+        const authored = unwrap(
+          author({
+            thickness: T,
+            base: { length: LENGTH, width: WIDTH },
+            flanges: [flange('a', first), flange('b', second)],
+          })
+        );
+        const before = solidOf(scope, authored);
+        const after = solidOf(scope, unwrap(miterCorner(authored, 'a', 'b', 2.5)));
 
         expect(isValid(after)).toBe(true);
         // The cut takes a small prism from the end of each flange, not a part of the base.
@@ -62,32 +62,26 @@ describe('miterCorner: the 3D cut', () => {
   }
 
   it('miters the four corners of a tray and keeps the tray', () => {
-    const authored = author({
-      thickness: T,
-      base: { length: LENGTH, width: WIDTH },
-      flanges: [flange('east', 'xmax'), flange('north', 'ymax'), flange('west', 'xmin'), flange('south', 'ymin')],
-    });
-    expect(authored.ok).toBe(true);
-    if (isErr(authored)) return;
-    const before = authored.value.solid;
-    expect(before).toBeDefined();
-    if (before === undefined) return;
+    using scope = new DisposalScope();
+    let part = unwrap(
+      author({
+        thickness: T,
+        base: { length: LENGTH, width: WIDTH },
+        flanges: [flange('east', 'xmax'), flange('north', 'ymax'), flange('west', 'xmin'), flange('south', 'ymin')],
+      })
+    );
+    const before = solidOf(scope, part);
 
-    let part = authored.value;
+    let after = before;
     for (const [a, b] of [
       ['east', 'north'],
       ['north', 'west'],
       ['west', 'south'],
       ['south', 'east'],
     ] as const) {
-      const mitered = miterCorner(part, a, b, 2.5);
-      expect(mitered.ok).toBe(true);
-      if (isErr(mitered)) return;
-      part = mitered.value;
+      part = unwrap(miterCorner(part, a, b, 2.5));
+      after = solidOf(scope, part);
     }
-    const after = part.solid;
-    expect(after).toBeDefined();
-    if (after === undefined) return;
     expect(isValid(after)).toBe(true);
     expect(unwrap(measureVolume(after))).toBeGreaterThan(0.95 * unwrap(measureVolume(before)));
   });
