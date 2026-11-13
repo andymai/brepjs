@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.24.0](https://github.com/andymai/brepjs/compare/brepjs-v20.23.1...brepjs-v20.24.0) (2026-11-13)
+
+
+### Features
+
+* **playground:** make the pocket-watch example a full watch with dial, hands and case ([#2656](https://github.com/andymai/brepjs/issues/2656)) ([0d255a2](https://github.com/andymai/brepjs/commit/0d255a23011cd8eb34382bf0924a9ec57c0850c8))
+
 ## [20.23.1](https://github.com/andymai/brepjs/compare/brepjs-v20.23.0...brepjs-v20.23.1) (2026-11-13)
 
 
