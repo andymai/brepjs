@@ -1939,4 +1939,208 @@ export default present(
   'dxf' in model ? { dxf: model.dxf } : {},
 );`,
   },
+  {
+    id: 'office-building',
+    label: 'Office Building',
+    description:
+      'A steel-framed office building of seven storeys as a BIM model. Each column, beam, slab, wall, stair, door and curtain wall is a typed element in a storey, so the kernel takes off the steel and the concrete, and the Files button saves the IFC file. The steel sections, the planning grid, the storey height, the slab depth, the stair and the facade module are published figures. The core layout, the foundations and the roof are a display model.',
+    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+import { compound, measureVolume, unwrap } from 'brepjs/quick';
+import { color, present } from 'brepjs/playground';
+
+// Steel-framed office building of seven storeys, as a BIM model: each column, beam, slab, wall, stair, door and
+// curtain wall is a typed element in a storey, so the kernel can take off its quantities and write an IFC file.
+// The steel sections, the planning grid, the storey height, the slab depth, the stair and the facade module are
+// published figures. The core layout, the foundations and the roof plant are a display model. Units are
+// millimetres. X is along the long side, Y is across, Z is up, and the origin is at one corner column.
+type P3 = [number, number, number];
+type Tone = 'steel' | 'slab' | 'core' | 'stair' | 'glass' | 'frame' | 'ground';
+type Made = ReturnType<BimModel['addSlab']>; // each add call gives the id of the new element, or an error
+type Id = Extract<Made, { ok: true }>['value'];
+type Body = Extract<ReturnType<typeof placedSolids>, { ok: true }>['value'][number];
+type Shape = ReturnType<typeof compound>;
+const X: P3 = [1, 0, 0], Y: P3 = [0, 1, 0], Z: P3 = [0, 0, 1];
+const back = ([x, y, z]: P3): P3 => [-x, -y, -z];
+
+// Rolled sections of the European tables: width, depth, flange and web. They are drawn without their root radii,
+// which makes each member about 4% lighter than its table mass, and quicker to build.
+const rolled = (overallWidth: number, overallDepth: number, flangeThickness: number, webThickness: number) =>
+  ({ kind: 'I_BEAM', overallWidth, overallDepth, flangeThickness, webThickness }) as const;
+const SECTION = { HE400B: rolled(300, 400, 24, 13.5), HE300B: rolled(300, 300, 19, 11), IPE500: rolled(200, 500, 16, 10.2), IPE300: rolled(150, 300, 10.7, 7.1) };
+const STEEL = 7850e-9; // kg in each mm3
+// The planning grid: six bays of 7.5 m by three bays of 9 m, and 4 m from floor to floor.
+const GRID = { x: 7500, y: 9000, bays: [6, 3], storey: 4000 };
+const SLAB = { depth: 140, edge: 580 }; // a composite slab on steel deck, and how far it goes past the grid
+// The facade module is 1.5 m. The short sides stand 750 mm outside the grid, and the long sides go past their ends.
+const FACADE = { module: 1500, out: 750, depth: 150, glass: 28, mullion: 50 };
+const LENGTH = GRID.x * GRID.bays[0], WIDTH = GRID.y * GRID.bays[1];
+// The concrete core is in one bay. It holds the stair and two lift shafts.
+const CORE = { bay: [3, 1], inset: 500, wall: 250, stairWidth: 2900 };
+const C0: [number, number] = [CORE.bay[0] * GRID.x + CORE.inset, CORE.bay[1] * GRID.y + CORE.inset];
+const C1: [number, number] = [(CORE.bay[0] + 1) * GRID.x - CORE.inset, (CORE.bay[1] + 1) * GRID.y - CORE.inset];
+const STAIR = { risers: 12, rise: GRID.storey / 24, going: 280, width: 1200, landing: 200 };
+
+interface BuildingParams {
+  storeys?: number; // the number of storeys above the ground
+  cutaway?: boolean; // leave the facade off two sides in the view. The model and the IFC file keep all four
+}
+
+// The model stays alive for the IFC file. The placed solids go into one compound for each tone and are then freed,
+// also when the build throws.
+function building({ storeys = 7, cutaway = true }: BuildingParams = {}) {
+  const model = new BimModel(), owned: Body[] = [];
+  try {
+    return assemble(model, owned, storeys, cutaway);
+  } catch (error) {
+    model[Symbol.dispose]();
+    throw error;
+  } finally {
+    owned.splice(0).forEach((s) => s.delete());
+  }
+}
+
+function assemble(model: BimModel, owned: Body[], storeys: number, cutaway: boolean) {
+  model.init({ name: 'Office building' });
+  const site = unwrap(model.addSite({ name: 'Site' }));
+  const block = unwrap(model.addBuilding({ name: 'Office block' }));
+  const project = model.getProject();
+  if (project) model.aggregate(project.localId, site);
+  model.aggregate(site, block);
+
+  // One storey for each floor, and one for the roof. An element is in the frame of its storey: z = 0 is the
+  // floor level. The slab and the beams of a level belong to the storey on top of them.
+  const levels = Array.from({ length: storeys + 1 }, (_, i) => {
+    const id = unwrap(model.addStorey({ name: i === storeys ? 'Roof' : i === 0 ? 'Ground floor' : 'Floor ' + i, elevation: i * GRID.storey }));
+    model.aggregate(block, id);
+    return id;
+  });
+  const placed: { id: Id; level: number; tone: Tone; hidden: boolean; panes: number }[] = [];
+  const put = (level: number, tone: Tone, made: Made, hidden = false, panes = 0): Id => {
+    if (!made.ok) throw made.error;
+    model.placeIn(made.value, levels[level] as Id);
+    placed.push({ id: made.value, level, tone, hidden, panes });
+    return made.value;
+  };
+  const steel = { materialName: 'Steel S355' }, concrete = { materialName: 'Concrete C32/40' };
+  const inCore = (i: number, j: number): boolean => i === CORE.bay[0] && j === CORE.bay[1];
+  const lines = { x: Array.from({ length: GRID.bays[0] + 1 }, (_, i) => i * GRID.x), y: Array.from({ length: GRID.bays[1] + 1 }, (_, j) => j * GRID.y) };
+
+  for (let level = 0; level <= storeys; level++) {
+    const top = level === storeys;
+    // The floor: on the ground a slab on grade with a pad under each column, above it a composite slab on beams.
+    if (level === 0) {
+      put(0, 'ground', model.addSlab({ length: LENGTH + 2 * SLAB.edge, width: WIDTH + 2 * SLAB.edge, thickness: 200, origin: [-SLAB.edge, -SLAB.edge, -200], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', ...concrete }));
+      const atCore = (x: number, y: number): boolean => Math.abs(x - (CORE.bay[0] + 0.5) * GRID.x) < GRID.x && Math.abs(y - (CORE.bay[1] + 0.5) * GRID.y) < GRID.y;
+      for (const x of lines.x) for (const y of lines.y) if (!atCore(x, y)) put(0, 'ground', model.addFooting({ length: 2500, width: 2500, thickness: 800, origin: [x - 1250, y - 1250, -1000], axisX: X, axisZ: Z, predefinedType: 'PAD_FOOTING', ...concrete }));
+      // One footing carries the core and the four columns at its corners.
+      put(0, 'ground', model.addFooting({ length: GRID.x + 2500, width: GRID.y + 2500, thickness: 1000, origin: [CORE.bay[0] * GRID.x - 1250, CORE.bay[1] * GRID.y - 1250, -1200], axisX: X, axisZ: Z, predefinedType: 'PAD_FOOTING', ...concrete }));
+    } else {
+      const slab = put(level, 'slab', model.addSlab({ length: LENGTH + 2 * SLAB.edge, width: WIDTH + 2 * SLAB.edge, thickness: SLAB.depth, origin: [-SLAB.edge, -SLAB.edge, -SLAB.depth], axisX: X, axisZ: Z, predefinedType: top ? 'ROOF' : 'FLOOR', ...concrete }));
+      unwrap(model.addSlabOpening({ slabLocalId: slab, offsetX: C0[0] + SLAB.edge - 20, offsetY: C0[1] + SLAB.edge - 20, sizeX: C1[0] - C0[0] + 40, sizeY: C1[1] - C0[1] + 40 }));
+      // Primary beams on each grid line across the building. They stop at the faces of the columns.
+      const { IPE500, IPE300 } = SECTION;
+      for (const x of lines.x) for (const y of lines.y.slice(0, -1))
+        put(level, 'steel', model.addBeam({ length: GRID.y - 400, profile: IPE500, origin: [x, y + 200, -SLAB.depth - 250], axisX: Y, axisZ: Z, ...steel }));
+      // Secondary beams at 3 m, along the building. On a grid line they stop at the columns, and between the grid
+      // lines they stop at the flanges of the primary beams. The two in the core bay are left out.
+      for (let k = 0; k <= GRID.bays[1] * 3; k++) for (let i = 0; i < GRID.bays[0]; i++) {
+        const onLine = k % 3 === 0, gap = onLine ? 150 : 100;
+        if (!onLine && inCore(i, Math.floor(k / 3))) continue;
+        put(level, 'steel', model.addBeam({ length: GRID.x - 2 * gap, profile: IPE300, origin: [i * GRID.x + gap, k * 3000, -SLAB.depth - 150], axisX: X, axisZ: Z, ...steel }));
+      }
+    }
+    if (top) {
+      // The roof: a parapet on each edge, and the top of the core for the lift machines.
+      const e = SLAB.edge, guard = { height: 1100, thickness: 150, axisZ: Z, ...concrete };
+      put(level, 'core', model.addWall({ ...guard, length: LENGTH + 2 * e, origin: [-e, -e, 0], axisX: X }));
+      put(level, 'core', model.addWall({ ...guard, length: LENGTH + 2 * e, origin: [LENGTH + e, WIDTH + e, 0], axisX: back(X) }));
+      put(level, 'core', model.addWall({ ...guard, length: WIDTH + 2 * e - 300, origin: [LENGTH + e, -e + 150, 0], axisX: Y }));
+      put(level, 'core', model.addWall({ ...guard, length: WIDTH + 2 * e - 300, origin: [-e, WIDTH + e - 150, 0], axisX: back(Y) }));
+      coreWalls(level, 2600, false);
+      put(level, 'slab', model.addSlab({ length: C1[0] - C0[0], width: C1[1] - C0[1], thickness: 200, origin: [C0[0], C0[1], 2600], axisX: X, axisZ: Z, predefinedType: 'ROOF', ...concrete }));
+      continue;
+    }
+
+    // Columns from the floor to the slab over it: the heavy section for the four storeys at the bottom.
+    const section = level < 4 ? SECTION.HE400B : SECTION.HE300B;
+    for (const x of lines.x) for (const y of lines.y)
+      put(level, 'steel', model.addColumn({ height: GRID.storey - SLAB.depth, profile: section, origin: [x, y, 0], axisX: X, axisZ: Z, ...steel }));
+    coreWalls(level, GRID.storey, true);
+
+    // The stair: two flights with a landing at the half level, and a landing at the floor.
+    const sx = C0[0] + CORE.wall, sy = C0[1] + CORE.wall, run = STAIR.risers * STAIR.going;
+    const first = sy + (C1[1] - C0[1] - 2 * CORE.wall - run) / 2;
+    const flight = { width: STAIR.width, riserHeight: STAIR.rise, treadLength: STAIR.going, numberOfRisers: STAIR.risers, axisZ: Z, ...concrete };
+    put(level, 'stair', model.addStair({ name: 'Stair', predefinedType: 'HALF_TURN_STAIR', flights: [
+      { ...flight, origin: [sx + 50 + STAIR.width, first, 0], axisX: Y },
+      { ...flight, origin: [sx + CORE.stairWidth - 50 - STAIR.width, first + run, GRID.storey / 2], axisX: back(Y) },
+    ], ...concrete }));
+    const landing = { length: CORE.stairWidth, thickness: STAIR.landing, axisX: X, axisZ: Z, predefinedType: 'LANDING', ...concrete } as const;
+    put(level, 'stair', model.addSlab({ ...landing, width: C1[1] - CORE.wall - first - run, origin: [sx, first + run, GRID.storey / 2 - STAIR.landing] }));
+    // Above the ground the core has its own floor: the landing of the stair and the lobby of the lifts.
+    if (level > 0) {
+      put(level, 'stair', model.addSlab({ ...landing, width: first - sy, origin: [sx, sy, -STAIR.landing] }));
+      put(level, 'stair', model.addSlab({ ...landing, length: C1[0] - CORE.wall - sx - CORE.stairWidth - CORE.wall, width: 2200, origin: [sx + CORE.stairWidth + CORE.wall, sy, -STAIR.landing] }));
+    }
+
+    // The facade: one curtain wall on each side, with a mullion at each module. A wall stops 25 mm short of the
+    // floor levels, so the transoms of two storeys meet and do not overlap.
+    const o = FACADE.out, far = o + FACADE.depth;
+    const glazing = { height: GRID.storey - 50, rows: 2, panelThickness: FACADE.glass, mullionWidth: FACADE.mullion, mullionDepth: FACADE.depth, axisZ: Z, materialName: 'Aluminium' };
+    const long = { ...glazing, width: LENGTH + 2 * o, columns: (LENGTH + 2 * o) / FACADE.module }, short = { ...glazing, width: WIDTH + 2 * o, columns: (WIDTH + 2 * o) / FACADE.module };
+    put(level, 'glass', model.addCurtainWall({ ...long, origin: [-o, -far, 25], axisX: X }), false, long.columns * 2);
+    put(level, 'glass', model.addCurtainWall({ ...short, origin: [LENGTH + o, -o, 25], axisX: Y }), cutaway, short.columns * 2);
+    put(level, 'glass', model.addCurtainWall({ ...long, origin: [LENGTH + o, WIDTH + far, 25], axisX: back(X) }), cutaway, long.columns * 2);
+    put(level, 'glass', model.addCurtainWall({ ...short, origin: [-o, WIDTH + o, 25], axisX: back(Y) }), false, short.columns * 2);
+  }
+
+  // The walls of the core for one storey: four outer walls and the wall between the stair and the lifts.
+  function coreWalls(level: number, height: number, doors: boolean): void {
+    const wall = { height, thickness: CORE.wall, axisZ: Z, ...concrete }, w = CORE.wall;
+    put(level, 'core', model.addWall({ ...wall, length: C1[0] - C0[0], origin: [C0[0], C0[1], 0], axisX: X }));
+    put(level, 'core', model.addWall({ ...wall, length: C1[0] - C0[0], origin: [C1[0], C1[1], 0], axisX: back(X) }));
+    put(level, 'core', model.addWall({ ...wall, length: C1[1] - C0[1] - 2 * w, origin: [C1[0], C0[1] + w, 0], axisX: Y }));
+    const west = put(level, 'core', model.addWall({ ...wall, length: C1[1] - C0[1] - 2 * w, origin: [C0[0], C1[1] - w, 0], axisX: back(Y) }));
+    const middle = put(level, 'core', model.addWall({ ...wall, length: C1[1] - C0[1] - 2 * w, origin: [C0[0] + w + CORE.stairWidth + w, C0[1] + w, 0], axisX: Y }));
+    if (!doors) return;
+    // A door from the floor to the stair, and one from the stair to the lift lobby.
+    const door = { width: 1000, height: 2100, offsetFromFloor: 0, materialName: 'Steel door' };
+    put(level, 'frame', model.addDoor({ ...door, wallLocalId: west, offsetAlongWall: C1[1] - C0[1] - 2 * w - 1500 }));
+    put(level, 'frame', model.addDoor({ ...door, wallLocalId: middle, offsetAlongWall: 500 }));
+  }
+
+  // The takeoff. The kernel measures the volume of each solid in its place, and a density gives the mass.
+  const elements = new Map(model.getAllElements().map((e) => [e.localId, e]));
+  const groups: Record<Tone, Body[]> = { steel: [], slab: [], core: [], stair: [], glass: [], frame: [], ground: [] };
+  let steelKg = 0, concreteM3 = 0, solids = 0;
+  for (const p of placed) {
+    const list = unwrap(placedSolids(elements.get(p.id) as never, { parentFrame: { origin: [0, 0, p.level * GRID.storey], axisX: X, axisZ: Z } }));
+    owned.push(...list);
+    solids += list.length;
+    if (p.tone === 'steel') steelKg += list.reduce((sum, s) => sum + unwrap(measureVolume(s)), 0) * STEEL;
+    else if (p.tone !== 'glass') concreteM3 += list.reduce((sum, s) => sum + unwrap(measureVolume(s)), 0) / 1e9;
+    if (p.hidden) continue;
+    // A curtain wall gives its glass panes first, then its mullions and transoms.
+    if (p.tone === 'glass') { groups.glass.push(...list.slice(0, p.panes)); groups.frame.push(...list.slice(p.panes)); }
+    else groups[p.tone].push(...list);
+  }
+  const shown = Object.fromEntries(TONES.filter((tone) => groups[tone].length > 0).map((tone) => [tone, compound(groups[tone])])) as Partial<Record<Tone, Shape>>;
+  const floor = storeys * (LENGTH + 2 * SLAB.edge) * (WIDTH + 2 * SLAB.edge) / 1e6; // m2 of floor on the steel frame
+  return { model, placed, shown, elements: placed.length, solids, steelKg, concreteM3, floor, steelPerFloor: steelKg / floor };
+}
+const COLORS: Record<Tone, string> = { steel: '#8a99ad', slab: '#cfcabb', core: '#b3ad9f', stair: '#d8d4c8', glass: '#9fc3d4', frame: '#3a3f47', ground: '#a8a294' };
+const TONES = Object.keys(COLORS) as Tone[];
+
+// Show the building with the facade off two sides. Try building({ storeys: 12 }), or building({ cutaway: false }).
+const office = building();
+console.log(office.elements, 'elements,', office.solids, 'solids,', (office.steelKg / 1000).toFixed(0), 't of steel,', office.steelPerFloor.toFixed(1), 'kg for each m2 of floor,', office.concreteM3.toFixed(0), 'm3 of concrete');
+// The IFC button saves the file of the whole building. The tree panel shows its storeys and elements.
+export default present(
+  TONES.flatMap((tone) => (office.shown[tone] ? [color(office.shown[tone] as Shape, COLORS[tone])] : [])),
+  {
+    bimTree: office.model.toTreeSummary(),
+    ifc: async () => unwrap(await toIfc(office.model, { applicationName: 'brepjs playground', applicationVersion: '1.0' })),
+  },
+);`,
+  },
 ];
