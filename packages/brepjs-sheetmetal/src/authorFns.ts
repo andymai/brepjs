@@ -775,15 +775,11 @@ function buildFlangeFlat(
   length: number,
   direction: 'up' | 'down'
 ): Solid {
-  // Unfolded the flat is coplanar with the base sheet; for an up bend it lies in
-  // Z∈[0,T] folding up (rotate −θ about +Y sends +X toward +Z); for a down bend it
-  // lies in Z∈[−T,0] folding down (rotate +θ sends +X toward −Z).
-  if (direction === 'up') {
-    const flat = box(length, width, thickness);
-    const positioned: Solid = translate(flat, [axisOrigin[0], axisOrigin[1], 0]);
-    return rotate(positioned, -thetaDeg, { at: axisOrigin, axis: [0, 1, 0] });
-  }
+  // Unfolded the flat is coplanar with the base sheet (Z∈[0,T]) for both directions:
+  // the bend axis sits at T+r (up) or −r (down), so the sheet is the radial band
+  // [r, r+T] of either axis. Rotate −θ about +Y sends +X toward +Z (up), +θ toward −Z.
   const flat = box(length, width, thickness);
-  const positioned: Solid = translate(flat, [axisOrigin[0], axisOrigin[1], -thickness]);
-  return rotate(positioned, thetaDeg, { at: axisOrigin, axis: [0, 1, 0] });
+  const positioned: Solid = translate(flat, [axisOrigin[0], axisOrigin[1], 0]);
+  const sign = direction === 'up' ? -1 : 1;
+  return rotate(positioned, sign * thetaDeg, { at: axisOrigin, axis: [0, 1, 0] });
 }
