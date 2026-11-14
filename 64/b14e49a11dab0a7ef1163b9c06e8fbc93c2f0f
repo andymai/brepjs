@@ -1,0 +1,20 @@
+packages/brepjs-sheetmetal/src/foreignUnfoldFns.ts
+  s_b6e98997548822::t_ad9e18400a164e 718,725,731-735
+  s_b6e98997548822::t_ce9eae7751e8bc 736-737
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "64b14e49a11dab0a7ef1163b9c06e8fbc93c2f0f",
+  "prompts": {},
+  "sessions": {
+    "s_b6e98997548822": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b26c959d-58c1-4095-9e3c-81b90119e59c",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
