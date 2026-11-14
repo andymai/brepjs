@@ -1,0 +1,21 @@
+apps/docs/.vitepress/theme/components/Landing.vue
+  s_d47ce2fcef68a6::t_7184173f1355f5 49-59,102-109,460-462,481
+  s_d47ce2fcef68a6::t_6ea7f5261e91e5 451-452
+  s_d47ce2fcef68a6::t_b16819c8dce5b2 110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a251e2e0b1d3b3880798abeaac11a3e988082922",
+  "prompts": {},
+  "sessions": {
+    "s_d47ce2fcef68a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87734ef0-a56f-4f3a-86f6-514f8ed13244",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
