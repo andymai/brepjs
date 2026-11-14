@@ -1,0 +1,44 @@
+packages/brepjs-mesh2solid/engine/src/tier1.rs
+  s_d47ce2fcef68a6::t_1a903ebaca8e87 14,91
+packages/brepjs-mesh2solid/engine/src/decimate.rs
+  s_d47ce2fcef68a6::t_208768926dfa03 118-119,502-503,505-507,510-513,521-525
+  s_d47ce2fcef68a6::t_b6b3aafc3e49ac 514,516-520,526
+  s_d47ce2fcef68a6::t_1ab961e975aa48 504,508-509,515
+  s_d47ce2fcef68a6::t_6b3210e6d180f8 5-6,295-309,390,398,462,473,496,533
+  s_d47ce2fcef68a6::t_79b2da084e1da4 527-528
+packages/brepjs-mesh2solid/engine/src/segment.rs
+  s_d47ce2fcef68a6::t_1a903ebaca8e87 436-471,803
+  s_d47ce2fcef68a6::t_b7c55dcc89908f 691-696,704-705,708-714,741-746,752-802
+  s_d47ce2fcef68a6::t_1fd38a36d01003 1832,2206-2263
+  s_d47ce2fcef68a6::t_6521accb12408a 229-265,280-283,310
+  s_d47ce2fcef68a6::t_98d2a9422ca7f1 679-683
+  s_d47ce2fcef68a6::t_8692a0a441c1eb 1833-1841,1843,1846-1853,1858-1864,1867-1875,1879-1880
+  s_d47ce2fcef68a6::t_b8439821958086 1842,1844-1845,1854-1857,1865-1866,1876-1878
+  s_d47ce2fcef68a6::t_d729a1665c781b 804
+packages/brepjs-mesh2solid/engine/src/pipeline.rs
+  s_d47ce2fcef68a6::t_208768926dfa03 1,158
+  s_d47ce2fcef68a6::t_6b3210e6d180f8 144-149
+packages/brepjs-mesh2solid/tests/corpus.ts
+  s_d47ce2fcef68a6::t_2d14012b5cf7b6 191-198,246-266
+  s_d47ce2fcef68a6::t_160ab6e3721774 267
+packages/brepjs-mesh2solid/tests/eval.test.ts
+  s_d47ce2fcef68a6::t_2d14012b5cf7b6 157-164,171-178,181,186,188,211-213
+packages/brepjs-mesh2solid/README.md
+  s_d47ce2fcef68a6::t_585ce6a3e4cdb6 51-53,115-117,119-121,123-125,142-143,210-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db6bce92def09577707115192e1bfa6a9e592b83",
+  "prompts": {},
+  "sessions": {
+    "s_d47ce2fcef68a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87734ef0-a56f-4f3a-86f6-514f8ed13244",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
