@@ -10,6 +10,7 @@ import {
   measureArea,
   measureVolume,
   unwrap,
+  intersect,
   makeExternalGear,
   makeInternalGear,
   makePlanetaryGear,
@@ -107,10 +108,26 @@ describe('makeExternalGear', () => {
     expect(r.diagnostics).toEqual([]);
   });
 
-  // At a 20 degree pressure angle the base circle is inside the root circle from 42 teeth.
-  it.each([24, 41, 42, 53, 54, 60, 100])('a %i-tooth gear passes isValid', (teeth) => {
-    using solid = unwrap(makeExternalGear({ teeth, moduleSize: 1, thickness: 5 })).solid;
-    expect(isValid(solid)).toBe(true);
+  // At a 20 degree pressure angle the base circle is inside the root circle from 42 teeth,
+  // and the θ0 angles of two adjacent flanks cross from 106 teeth.
+  it.each([24, 41, 42, 53, 54, 60, 100, 105, 106, 120, 200])(
+    'a %i-tooth gear passes isValid',
+    (teeth) => {
+      using solid = unwrap(makeExternalGear({ teeth, moduleSize: 1, thickness: 5 })).solid;
+      expect(isValid(solid)).toBe(true);
+    }
+  );
+
+  it('a 120-tooth gear has the volume of its pitch disc to 1%', () => {
+    using solid = unwrap(makeExternalGear({ teeth: 120, moduleSize: 1, thickness: 5 })).solid;
+    const pitchDisc = Math.PI * 60 * 60 * 5;
+    expect(Math.abs(unwrap(measureVolume(solid)) / pitchDisc - 1)).toBeLessThan(0.01);
+  });
+
+  it('rejects a tooth whose flanks cross inside the tip circle', () => {
+    const r = makeExternalGear({ teeth: 4, moduleSize: 1, thickness: 5, shift: 0.5 });
+    expect(isErr(r)).toBe(true);
+    if (isErr(r)) expect(r.error.code).toBe('GEAR_TOOTH_POINTED');
   });
 
   it.each([42, 60, 100])('no vertex of a %i-tooth gear is inside the root circle', (teeth) => {
@@ -157,6 +174,46 @@ describe('makeInternalGear (ring)', () => {
     const { solid, pitchDiameter } = unwrap(r);
     expect(isSolid(solid)).toBe(true);
     expect(pitchDiameter).toBeCloseTo(78); // 39·2
+  });
+
+  // The base circle is outside the tip circle up to 33 teeth, and inside it from 34.
+  it.each([12, 20, 24, 30, 33, 34, 40, 60, 100, 120, 200])(
+    'a %i-tooth ring passes isValid',
+    (teeth) => {
+      using solid = unwrap(makeInternalGear({ teeth, moduleSize: 1, thickness: 5 })).solid;
+      expect(isValid(solid)).toBe(true);
+    }
+  );
+
+  it.each([20, 30, 60, 120])(
+    'the tooth space of a %i-tooth ring is between its tip and root circles',
+    (teeth) => {
+      const wall = 2;
+      const ring = unwrap(
+        makeInternalGear({ teeth, moduleSize: 1, thickness: 5, ringWallThickness: wall })
+      );
+      using solid = ring.solid;
+      const rOuter = ring.pitchDiameter / 2 + wall;
+      const radii = getVertices(solid)
+        .map((v) => {
+          const [x, y] = vertexPosition(v);
+          return Math.hypot(x, y);
+        })
+        .filter((r) => r < rOuter - 1e-6);
+      expect(Math.min(...radii)).toBeCloseTo(ring.tipDiameter / 2, 6);
+      expect(Math.max(...radii)).toBeCloseTo(ring.rootDiameter / 2, 6);
+
+      // The hole is the outline of the mating gear: its area is the pitch disc to 1%.
+      const holeVolume = Math.PI * rOuter * rOuter * 5 - unwrap(measureVolume(solid));
+      const pitchDisc = Math.PI * (ring.pitchDiameter / 2) ** 2 * 5;
+      expect(Math.abs(holeVolume / pitchDisc - 1)).toBeLessThan(0.01);
+    }
+  );
+
+  it('rejects a tooth space whose flanks cross inside the root circle', () => {
+    const r = makeInternalGear({ teeth: 5, moduleSize: 1, thickness: 5 });
+    expect(isErr(r)).toBe(true);
+    if (isErr(r)) expect(r.error.code).toBe('GEAR_TOOTH_POINTED');
   });
 
   it('outer diameter = pitch diameter + 2·ringWallThickness', () => {
@@ -207,8 +264,35 @@ describe('makePlanetaryGear', () => {
     expect(a.centerDistance).toBeCloseTo(((20 + 16) * 3) / 2, 6);
   });
 
-  it('ring solid is intact after applyRingPhase rotation (even zr)', () => {
-    // zr = 20 + 2·16 = 52 (even) → applyRingPhase rotates by π/zr and deletes
+  // The ring phase follows the planet parity and the planet phase follows the sun mesh, so
+  // each parity pair of (zr, zp) is a separate case: odd/even, even/even, even/odd, odd/odd.
+  it.each([
+    { sunTeeth: 15, planetTeeth: 12, numPlanets: 3 },
+    { sunTeeth: 20, planetTeeth: 16, numPlanets: 4 },
+    { sunTeeth: 12, planetTeeth: 9, numPlanets: 3 },
+    { sunTeeth: 15, planetTeeth: 15, numPlanets: 3 },
+  ])(
+    'no planet cuts into the ring or the sun (zs=$sunTeeth, zp=$planetTeeth)',
+    (cfg) => {
+      const a = unwrap(makePlanetaryGear({ thickness: 2, ...cfg }));
+      using sun = a.sun;
+      using ring = a.ring;
+      expect(isValid(ring)).toBe(true);
+      for (const p of a.planets) {
+        using planet = p;
+        const planetVolume = unwrap(measureVolume(planet));
+        for (const other of [ring, sun]) {
+          using overlap = unwrap(intersect(planet, other));
+          // A 9-tooth planet has tip interference of 0.05% of its volume in a 30-tooth ring.
+          expect(unwrap(measureVolume(overlap)) / planetVolume).toBeLessThan(1e-3);
+        }
+      }
+    },
+    60000
+  );
+
+  it('ring solid is intact after applyRingPhase rotation (even zp)', () => {
+    // zp = 16 (even) → applyRingPhase rotates by π/zr and deletes
     // the original handle. Cover the rotate-and-delete branch with a real
     // assertion on the returned solid.
     const a = unwrap(

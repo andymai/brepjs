@@ -36,21 +36,27 @@ function buildToothPeriodEdges(
   const thetaLeft = center - tm.halfToothAngle - invPitch;
   const thetaRight = center + tm.halfToothAngle + invPitch;
 
+  // The profile is the outline of the tooth (external) or of the tooth space (ring). In both
+  // the flank runs from the inner circle to the outer circle: root→tip for an external gear,
+  // tip→root for a ring, whose teeth point inward.
+  const rInner = tm.isInternal ? tm.rTip : tm.rRoot;
+  const rOuter = tm.isInternal ? tm.rRoot : tm.rTip;
+
   // Right flank reversed so the edge chain runs base→tip→base→nextBase in geometric order.
   // Without this, the wire has a discontinuity that OCCT silently fixes via auto-reorientation
   // but brepkit doesn't, producing a face with reversed orientation.
-  // An external gear with many teeth has its base circle inside its root circle. The flank
-  // then starts on the root circle: a flank from the base circle goes below the root, and
-  // the root arc between two such flanks crosses them.
-  const alphaRoot = !tm.isInternal && tm.rb < tm.rRoot ? Math.acos(tm.rb / tm.rRoot) : 0;
-  const leftFlank = cosineSpaceFlankSamples(tm.rb, tm.alphaTip, thetaLeft, samples, 1, alphaRoot);
+  // A gear with many teeth has its base circle inside its inner circle. The flank then starts
+  // on the inner circle: a flank from the base circle goes below it, and the inner arc
+  // between two such flanks crosses them.
+  const alphaInner = tm.rb < rInner ? Math.acos(tm.rb / rInner) : 0;
+  const leftFlank = cosineSpaceFlankSamples(tm.rb, tm.alphaTip, thetaLeft, samples, 1, alphaInner);
   const rightFlank = cosineSpaceFlankSamples(
     tm.rb,
     tm.alphaTip,
     thetaRight,
     samples,
     -1,
-    alphaRoot
+    alphaInner
   ).reverse();
   const leftBase = firstOrThrow(leftFlank);
   const leftTip = lastOrThrow(leftFlank);
@@ -63,11 +69,11 @@ function buildToothPeriodEdges(
     edges.push(e);
   };
 
-  // Root below base (external) or above it (internal): involute can't reach root; bridge radially.
-  const needsRadialBridge = tm.isInternal ? tm.rb < tm.rRoot : tm.rb > tm.rRoot;
+  // Inner circle below the base circle: the involute can't reach it; bridge radially.
+  const needsRadialBridge = tm.rb > rInner;
   if (needsRadialBridge) {
-    const rootPt: Vec3 = [tm.rRoot * Math.cos(thetaLeft), tm.rRoot * Math.sin(thetaLeft), 0];
-    push(makeLine(rootPt, leftBase));
+    const innerPt: Vec3 = [rInner * Math.cos(thetaLeft), rInner * Math.sin(thetaLeft), 0];
+    push(makeLine(innerPt, leftBase));
   }
 
   const interpTol = tm.rPitch * 1e-5;
@@ -75,30 +81,34 @@ function buildToothPeriodEdges(
   if (isErr(leftEdge)) return leftEdge;
   push(leftEdge.value);
 
-  const tipMid: Vec3 = [tm.rTip * Math.cos(center), tm.rTip * Math.sin(center), 0];
-  push(makeThreePointArc(leftTip, tipMid, rightTip));
+  const outerMid: Vec3 = [rOuter * Math.cos(center), rOuter * Math.sin(center), 0];
+  push(makeThreePointArc(leftTip, outerMid, rightTip));
 
   const rightEdge = makeBSplineInterpolation(rightFlank, { tolerance: interpTol });
   if (isErr(rightEdge)) return rightEdge;
   push(rightEdge.value);
 
   if (needsRadialBridge) {
-    const rootPt: Vec3 = [tm.rRoot * Math.cos(thetaRight), tm.rRoot * Math.sin(thetaRight), 0];
-    push(makeLine(rightBase, rootPt));
+    const innerPt: Vec3 = [rInner * Math.cos(thetaRight), rInner * Math.sin(thetaRight), 0];
+    push(makeLine(rightBase, innerPt));
   }
 
-  const rootEndAngle = nextCenter - tm.halfToothAngle - invPitch;
-  let midAngle = 0.5 * (thetaRight + rootEndAngle);
-  if (rootEndAngle < thetaRight) midAngle += Math.PI; // CCW wrap on last tooth
+  const innerEndAngle = nextCenter - tm.halfToothAngle - invPitch;
+  // The inner arc runs CCW from the foot of this right flank to the foot of the next left
+  // flank. The feet are inv(alphaInner) inside the two θ0 angles, and the θ0 angles cross
+  // from about 106 teeth, so their order can't tell which way round the arc goes.
+  const arcStart = thetaRight - inv(alphaInner);
+  const arcEnd = center + tm.toothPitch - tm.halfToothAngle - invPitch + inv(alphaInner);
+  const midAngle = 0.5 * (arcStart + arcEnd);
 
-  const rootStart: Vec3 = needsRadialBridge
-    ? [tm.rRoot * Math.cos(thetaRight), tm.rRoot * Math.sin(thetaRight), 0]
+  const innerStart: Vec3 = needsRadialBridge
+    ? [rInner * Math.cos(thetaRight), rInner * Math.sin(thetaRight), 0]
     : rightBase;
-  const rootMid: Vec3 = [tm.rRoot * Math.cos(midAngle), tm.rRoot * Math.sin(midAngle), 0];
+  const innerMid: Vec3 = [rInner * Math.cos(midAngle), rInner * Math.sin(midAngle), 0];
   const nextLeftStart: Vec3 = needsRadialBridge
-    ? [tm.rRoot * Math.cos(rootEndAngle), tm.rRoot * Math.sin(rootEndAngle), 0]
-    : involutePoint(tm.rb, alphaRoot, rootEndAngle, 1);
-  push(makeThreePointArc(rootStart, rootMid, nextLeftStart));
+    ? [rInner * Math.cos(innerEndAngle), rInner * Math.sin(innerEndAngle), 0]
+    : involutePoint(tm.rb, alphaInner, innerEndAngle, 1);
+  push(makeThreePointArc(innerStart, innerMid, nextLeftStart));
 
   return ok(edges);
 }
@@ -156,6 +166,19 @@ function makeProfileWire(
     flankThinning,
     isInternal
   );
+
+  // The two flanks of a tooth (or of a ring's tooth space) converge toward the outer circle.
+  // When they meet inside it, the outer arc runs backward and the profile crosses itself.
+  const outerHalfAngle = tm.halfToothAngle + inv(tm.alphaPitch) - inv(tm.alphaTip);
+  if (outerHalfAngle <= 0)
+    return err(
+      validationError(
+        'GEAR_TOOTH_POINTED',
+        `${isInternal ? 'tooth space' : 'tooth'} flanks cross inside the ${isInternal ? 'root' : 'tip'} circle (teeth=${teeth}, shift=${shift}): use more teeth or a lower shift`,
+        undefined,
+        { teeth, shift, outerHalfAngle }
+      )
+    );
 
   // Register every per-tooth edge with a disposal scope so a mid-loop failure
   // doesn't leak orphaned WASM handles. assembleWire deep-copies into the wire,

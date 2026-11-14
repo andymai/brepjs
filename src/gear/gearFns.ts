@@ -32,7 +32,6 @@ import {
   DEFAULT_CLEARANCE,
   DEFAULT_PRESSURE_ANGLE_DEG,
   backlashHalf,
-  evenToothPhaseOffset,
   externalExternalContactRatio,
   externalInternalContactRatio,
   filletStressConcentrationFactor,
@@ -285,7 +284,7 @@ export function makePlanetaryGear(params: PlanetaryGearParams): Result<Planetary
   const metrics = computeMeshMetrics(cfg, sun, planet, ring);
   const planets = placePlanets(planet.solid, cfg);
   planet.solid.delete();
-  const ringPhased = applyRingPhase(ring.solid, cfg.zr);
+  const ringPhased = applyRingPhase(ring.solid, cfg.zr, cfg.planetTeeth);
   const diagnostics = collectDiagnostics(cfg, metrics);
 
   return ok({
@@ -534,8 +533,11 @@ function placePlanets(planetProto: ValidSolid, cfg: ResolvedPlanetary): ValidSol
   }
 }
 
-function applyRingPhase(ring: ValidSolid, zr: number): ValidSolid {
-  const phaseRad = evenToothPhaseOffset(zr);
+// The ring profile has a tooth space on +X. The planet at orbital angle 0 turns by
+// evenToothPhaseOffset(zp) to put a space on its sun side. With an even zp it then has a
+// space on its ring side too, and the ring needs a tooth there: half a ring pitch.
+function applyRingPhase(ring: ValidSolid, zr: number, zp: number): ValidSolid {
+  const phaseRad = zp % 2 === 0 ? Math.PI / zr : 0;
   if (phaseRad === 0) return ring;
   const rotated = rotate(ring, (phaseRad * 180) / Math.PI);
   ring.delete();
