@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.4](https://github.com/andymai/brepjs/compare/brepjs-sheetmetal-v0.4.3...brepjs-sheetmetal-v0.4.4) (2026-11-14)
+
+
+### Bug Fixes
+
+* **sheetmetal:** join the flat of a down flange to its bend ([#2679](https://github.com/andymai/brepjs/issues/2679)) ([f7df444](https://github.com/andymai/brepjs/commit/f7df4444c43432c3a9e725de920285b0183a9273))
+
 ## [0.4.3](https://github.com/andymai/brepjs/compare/brepjs-sheetmetal-v0.4.2...brepjs-sheetmetal-v0.4.3) (2026-11-13)
 
 
