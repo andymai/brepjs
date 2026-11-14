@@ -1,0 +1,22 @@
+packages/brepjs-mesh2solid/src/defeatureFns.ts
+  s_d47ce2fcef68a6::t_a487b77e628337 141,143-144
+packages/brepjs-mesh2solid/tests/defeatureFns.test.ts
+  s_d47ce2fcef68a6::t_a487b77e628337 1,46-56
+  s_d47ce2fcef68a6::t_f1a0b984dfc4fa 57-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "90058c6ebd979cdf5efa6cce17335a965fdb2afa",
+  "prompts": {},
+  "sessions": {
+    "s_d47ce2fcef68a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87734ef0-a56f-4f3a-86f6-514f8ed13244",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
