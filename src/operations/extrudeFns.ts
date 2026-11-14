@@ -7,9 +7,10 @@
 
 import { getKernel } from '@/kernel/index.js';
 import type { Vec3 } from '@/core/types.js';
-import { vecLength, vecNormalize } from '@/core/vecOps.js';
+import { vecDot, vecLength, vecNormalize } from '@/core/vecOps.js';
 import type {
   Dimension,
+  Face,
   OrientedFace,
   Shape3D,
   Shell,
@@ -29,12 +30,31 @@ import {
 import { type Result, ok, err } from '@/core/result.js';
 import { typeCastError, validationError, kernelError, BrepErrorCode } from '@/core/errors.js';
 import { recordExtrudeRoles } from '@/topology/shapeRef/extrudeRoleFns.js';
+import { getCachedSurfaceType } from '@/topology/topologyQueryFns.js';
 
 export type { ExtrusionProfile, SweepOptions } from './extrudeUtils.js';
 
 // ---------------------------------------------------------------------------
 // Basic extrusion
 // ---------------------------------------------------------------------------
+
+// The kernel sweeps a planar face along a vector in its own plane into a solid
+// that passes isValid and has no volume, and a boolean with that solid as the
+// tool empties the other operand. The cosine is between two unit vectors.
+const IN_PLANE_COSINE = 1e-9;
+
+function normalIfVectorInPlane(face: Face<Dimension>, vec: Vec3): Vec3 | null {
+  if (getCachedSurfaceType(face) !== 'plane') return null;
+  const kernel = getKernel();
+  const { uMin, uMax, vMin, vMax } = kernel.uvBounds(face.wrapped);
+  const normal = kernel.surfaceNormal(face.wrapped, 0.5 * (uMin + uMax), 0.5 * (vMin + vMax));
+  return Math.abs(vecDot(normal, vecNormalize(vec))) < IN_PLANE_COSINE ? normal : null;
+}
+
+function inPlaneMessage(label: string, vec: Vec3, normal: Vec3): string {
+  const fmt = (v: Vec3): string => `[${v.map((c) => Number(c.toFixed(6))).join(', ')}]`;
+  return `${label}: the extrusion vector ${fmt(vec)} is in the plane of the face (normal ${fmt(normal)}), so the solid would have no volume. A number height extrudes along Z; pass a vector with a component along the normal`;
+}
 
 /**
  * Extrude a face along a vector to produce a solid.
@@ -75,6 +95,12 @@ export function extrude(
       if (isShell(sheet)) return ok(sheet);
       disposeResultShape(sheet);
       return err(typeCastError('EXTRUDE_NOT_SHELL', 'Extruding a wire did not produce a shell'));
+    }
+    const normal = normalIfVectorInPlane(face, extrusionVec);
+    if (normal !== null) {
+      return err(
+        validationError('EXTRUDE_VECTOR_IN_PLANE', inPlaneMessage('extrude', extrusionVec, normal))
+      );
     }
     const shape = kernel.extrude(face.wrapped, [...dir], len);
     const downcastShape = kernel.downcast(shape, 'solid');
@@ -172,6 +198,15 @@ export function extrudeAll(entries: readonly ExtrudeAllEntry[]): Result<ValidSol
         validationError(
           'EXTRUDE_ALL_ZERO_VECTOR',
           `extrudeAll: entry ${i} has zero-length extrusion vector`
+        )
+      );
+    }
+    const normal = normalIfVectorInPlane(e.face, vec);
+    if (normal !== null) {
+      return err(
+        validationError(
+          'EXTRUDE_ALL_VECTOR_IN_PLANE',
+          inPlaneMessage(`extrudeAll: entry ${i}`, vec, normal)
         )
       );
     }
