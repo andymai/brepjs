@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.192.5](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.192.4...brepjs-cad-v0.192.5) (2026-11-14)
+
+
+### Bug Fixes
+
+* **operations:** return an error from extrude for a vector in the face plane ([#2681](https://github.com/andymai/brepjs/issues/2681)) ([a1ea328](https://github.com/andymai/brepjs/commit/a1ea328060d60507c82080285e16113f0e2c8457))
+
 ## [0.192.4](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.192.3...brepjs-cad-v0.192.4) (2026-11-09)
 
 
