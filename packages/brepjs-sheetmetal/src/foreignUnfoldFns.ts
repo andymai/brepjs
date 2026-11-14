@@ -715,17 +715,24 @@ function buildBendGraph(
  */
 function goesThroughFlat(bend: DetectedBend, flat: DetectedFlat): boolean {
   if (Math.abs(vecDot(bend.fit.axisDir, flat.normal)) <= 0.99) return false;
-  return flat.faces.every((ff) => bend.faces.some((bf) => sharedEdges(bf, ff).length > 0));
+  return flat.faces.every((ff) => bend.faces.some((bf) => facesShareEdge(bf, ff)));
 }
 
 /** True if any of the bend's faces shares an edge with either face of the flat. */
 function bendTouchesFlat(bend: DetectedBend, flat: DetectedFlat): boolean {
   for (const bf of bend.faces) {
     for (const ff of flat.faces) {
-      if (sharedEdges(bf, ff).length > 0) return true;
+      if (facesShareEdge(bf, ff)) return true;
     }
   }
   return false;
+}
+
+/** True if two faces share an edge. `sharedEdges` returns handles that the caller owns. */
+function facesShareEdge(a: Face, b: Face): boolean {
+  const edges = sharedEdges(a, b);
+  for (const edge of edges) edge.delete();
+  return edges.length > 0;
 }
 
 interface ForeignLayout {
