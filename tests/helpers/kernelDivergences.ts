@@ -324,13 +324,6 @@ export const divergences: DivergenceMap = {
       since: '4.6.20',
       tracking: 'andymai/brepkit#2372',
     },
-    'playgroundExamples.turbofanEngine': {
-      kind: 'skip',
-      reason:
-        'The turbofan-engine example builds in 0.1 s on brepkit, but its mesh takes about 70 s: the mesher makes many times the triangles the tolerance needs on spline blades. That is near the 90 s test limit, so the test passes or fails by the speed of the machine.',
-      since: '4.11.10',
-      tracking: 'andymai/brepkit#2420',
-    },
 
     // -----------------------------------------------------------------------
     // brepkitExtended.test.ts
