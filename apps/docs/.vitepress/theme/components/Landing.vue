@@ -102,7 +102,7 @@ const REELS: Reel[] = [
   {
     id: 'mesh-to-solid',
     title: 'Mesh to solid',
-    fact: 'An STL file of 3,052 triangles becomes a solid of 22 faces, and a program that builds it. Experimental.',
+    fact: 'An STL file of a brake disc has 24,810 triangles. It becomes a solid of 50 faces, and a program that builds it. Experimental.',
     video: '/media/mesh-reel.mp4',
     poster: '/media/mesh-reel-poster.webp',
     href: 'https://github.com/andymai/brepjs/tree/main/packages/brepjs-mesh2solid',
