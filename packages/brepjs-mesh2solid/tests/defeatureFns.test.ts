@@ -1,4 +1,4 @@
-import { box, chamfer, cone, cut, cylinder, fillet, unwrap } from 'brepjs';
+import { box, chamfer, cone, cut, cylinder, extrude, fillet, polygon, unwrap } from 'brepjs';
 import { describe, expect, it } from 'vitest';
 import { removableFaces } from '../src/defeatureFns.js';
 
@@ -41,6 +41,19 @@ describe('removableFaces', () => {
     for (const r of rs) {
       if (r.removal.kind === 'fillet') expect(r.removal.radius).toBeCloseTo(3, 9);
     }
+  });
+
+  it('leaves a hexagonal prism alone', () => {
+    // Each side is as wide as the setback it would have as a chamfer between its neighbours.
+    const r = 19 / Math.sqrt(3);
+    const corners = Array.from({ length: 6 }, (_, i): [number, number, number] => [
+      r * Math.cos((Math.PI * i) / 3),
+      r * Math.sin((Math.PI * i) / 3),
+      0,
+    ]);
+    using profile = unwrap(polygon(corners));
+    using prism = unwrap(extrude(profile, [0, 0, 8]));
+    expect(removableFaces(prism, 1e-6)).toEqual([]);
   });
 
   it('leaves a plain box alone', () => {
