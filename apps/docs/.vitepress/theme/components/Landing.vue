@@ -46,7 +46,17 @@ const typeCardHtml = [
 ].join('\n');
 
 // "Showcase": one tile for each reel. A tile plays its reel while the pointer or the focus is on it.
-const REELS = [
+interface Reel {
+  id: string;
+  title: string;
+  fact: string;
+  video: string;
+  poster: string;
+  // A tile without a playground example gives its own link and its own call to action.
+  href?: string;
+  cta?: string;
+}
+const REELS: Reel[] = [
   {
     id: 'turbofan-engine',
     title: 'Turbofan engine',
@@ -88,6 +98,15 @@ const REELS = [
     fact: '895 typed BIM elements in seven storeys. The kernel takes off 332 t of steel and writes the IFC file.',
     video: '/media/building-reel.mp4',
     poster: '/media/building-reel-poster.webp',
+  },
+  {
+    id: 'mesh-to-solid',
+    title: 'Mesh to solid',
+    fact: 'An STL file of 3,052 triangles becomes a solid of 22 faces, and a program that builds it. Experimental.',
+    video: '/media/mesh-reel.mp4',
+    poster: '/media/mesh-reel-poster.webp',
+    href: 'https://github.com/andymai/brepjs/tree/main/packages/brepjs-mesh2solid',
+    cta: 'Read about the package →',
   },
 ];
 const reducedMotion = () =>
@@ -429,7 +448,8 @@ onBeforeUnmount(() => observer?.disconnect());
               published Denavit-Hartenberg table. The watch has the tooth counts of a real calibre.
               The kernel measures the mass and the centre of mass of the rover, and it unfolds the
               sheet metal of the chassis for a DXF. The office building is a BIM model that exports
-              to IFC. Each tile opens its file in the playground.
+              to IFC. The last tile shows an experimental package that turns an STL file into a
+              solid and a program.
             </p>
           </div>
           <div class="reels" :class="{ odd: REELS.length % 2 === 1 }">
@@ -437,7 +457,9 @@ onBeforeUnmount(() => observer?.disconnect());
               v-for="r in REELS"
               :key="r.id"
               class="panel reel"
-              :href="`/playground/examples/${r.id}`"
+              :href="r.href ?? `/playground/examples/${r.id}`"
+              :target="r.href ? '_blank' : undefined"
+              :rel="r.href ? 'noopener' : undefined"
               @pointerenter="playReel"
               @pointerleave="stopReel"
               @focus="playReel"
@@ -456,7 +478,7 @@ onBeforeUnmount(() => observer?.disconnect());
               <span class="reel-cap">
                 <strong>{{ r.title }}</strong>
                 <span>{{ r.fact }}</span>
-                <em>Run it in the playground →</em>
+                <em>{{ r.cta ?? 'Run it in the playground →' }}</em>
               </span>
             </a>
           </div>
