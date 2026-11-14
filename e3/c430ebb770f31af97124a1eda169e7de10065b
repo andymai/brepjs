@@ -1,0 +1,22 @@
+packages/brepjs-sheetmetal/tests/multibend.test.ts
+  s_b6e98997548822::t_67a0c707028d0a 173-177
+packages/brepjs-sheetmetal/tests/cutout.test.ts
+  s_b6e98997548822::t_67a0c707028d0a 109,113
+  s_b6e98997548822::t_39557eb94197fe 114-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e3c430ebb770f31af97124a1eda169e7de10065b",
+  "prompts": {},
+  "sessions": {
+    "s_b6e98997548822": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b26c959d-58c1-4095-9e3c-81b90119e59c",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
