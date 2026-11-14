@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
-import { isValid, measureVolume, getEdges, getBounds, isErr } from 'brepjs';
+import { isValid, measureVolume, getEdges, getBounds, getSolids, isErr } from 'brepjs';
 import { author, unfold, report } from '../src/api.js';
 import type { BendRule } from '../src/types.js';
 
@@ -154,6 +154,27 @@ describe('down-bend', () => {
     if (isErr(unfolded)) return;
     expect(unfolded.value.pattern.bendLines[0]?.direction).toBe('down');
   });
+
+  // `isValid` accepts a compound of two bodies that touch on a line, so the body
+  // count is the oracle for a flat that is not on the bend.
+  it.each(['xmin', 'xmax', 'ymin', 'ymax'] as const)(
+    'joins a down flange on %s to the base as one body at each angle',
+    (side) => {
+      for (const angleDeg of [30, 90, 135, 180]) {
+        const part = author({
+          thickness: T,
+          base: { length: 40, width: 20 },
+          flanges: [
+            { id: 'd', length: 15, angleDeg, rule, side, direction: 'down' },
+            { id: 'e', length: 6, angleDeg: 90, rule, side: 'ymax', parent: 'd', direction: 'down' },
+          ],
+        });
+        expect(part.ok).toBe(true);
+        if (isErr(part) || part.value.solid === undefined) return;
+        expect(getSolids(part.value.solid)).toHaveLength(1);
+      }
+    }
+  );
 });
 
 describe('partial / offset flanges (two on one edge)', () => {
