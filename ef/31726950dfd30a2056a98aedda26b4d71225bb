@@ -1,0 +1,24 @@
+tests/gearFns.test.ts
+  s_b6e98997548822::t_d3a641f390486c 13,111-130,179-218,267-295
+src/gear/gearProfile.ts
+  s_b6e98997548822::t_96ffc5d5bc27b6 39-44,48-52,59,72-73,75-76,84-85,92-93,96-102,104-105,107,109-111,170-181
+  s_b6e98997548822::t_02690d2180c497 182
+src/gear/gearFns.ts
+  s_b6e98997548822::t_96ffc5d5bc27b6 287,536-540
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef31726950dfd30a2056a98aedda26b4d71225bb",
+  "prompts": {},
+  "sessions": {
+    "s_b6e98997548822": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b26c959d-58c1-4095-9e3c-81b90119e59c",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
