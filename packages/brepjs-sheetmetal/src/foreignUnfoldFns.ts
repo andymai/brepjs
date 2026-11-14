@@ -684,6 +684,14 @@ function buildBendGraph(
       if (bendTouchesFlat(bend, flat)) touching.push(fi);
     }
     if (touching.length < 2) {
+      // A bend axis lies in the plane of its flats. A cylinder with its axis along
+      // the normal of the one flat it touches goes through the sheet: a round hole,
+      // the end of an obround slot or a rounded corner of the outline.
+      const [only] = touching;
+      const through = only !== undefined ? flats[only] : undefined;
+      if (through !== undefined && Math.abs(vecDot(bend.fit.axisDir, through.normal)) > 0.99) {
+        continue;
+      }
       warnings.push({
         code: 'DETECTION_INCOMPLETE',
         message: `bend '${bend.id}' connects ${touching.length} flats (expected 2); ignored`,

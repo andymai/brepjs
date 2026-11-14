@@ -1,13 +1,23 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
-import { isOk, isErr, unwrap, measureVolume, getEdges, curveStartPoint } from 'brepjs';
+import {
+  isOk,
+  isErr,
+  unwrap,
+  measureVolume,
+  getEdges,
+  getFaces,
+  faceGeomType,
+  curveStartPoint,
+  DisposalScope,
+} from 'brepjs';
 import type { Wire } from 'brepjs';
 import { author } from '../src/api.js';
-import { addCutout, addHole, addSlot, addPolygonCutout } from '../src/cutoutFns.js';
+import { addCutout, addCutouts, addHole, addSlot, addPolygonCutout } from '../src/cutoutFns.js';
 import { unfold } from '../src/unfoldFns.js';
 import { fold, partToFlatInput } from '../src/foldFns.js';
 import { flatPatternToDXF } from '../src/dxfFns.js';
-import type { BendRule, SheetMetalPart } from '../src/types.js';
+import type { BendRule, CutoutSpec, SheetMetalPart } from '../src/types.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -27,6 +37,20 @@ function flangePart(): SheetMetalPart {
       flanges: [{ id: 'fy', length: 20, angleDeg: 90, rule, side: 'ymax' }],
     })
   );
+}
+
+/** Tie a part's solid to `scope`, so the test frees it. */
+function own(scope: DisposalScope, part: SheetMetalPart): SheetMetalPart {
+  if (part.solid !== undefined) scope.register(part.solid);
+  return part;
+}
+
+function facesOf(part: SheetMetalPart) {
+  return getFaces(part.solid ?? (() => { throw new Error('no solid'); })());
+}
+
+function faceCount(part: SheetMetalPart): number {
+  return facesOf(part).length;
 }
 
 function vol(part: SheetMetalPart): number {
@@ -159,6 +183,97 @@ describe('addPolygonCutout', () => {
     expect(isOk(tri)).toBe(true);
     if (!isOk(tri)) return;
     expect(v0 - vol(tri.value)).toBeCloseTo(0.5 * 10 * 8 * 1, 6);
+  });
+});
+
+describe('round cutouts keep true curves in the solid', () => {
+  function curvedAndPlanar(part: SheetMetalPart): { cylinders: number; planes: number } {
+    const types = facesOf(part).map((f) => faceGeomType(f));
+    return {
+      cylinders: types.filter((t) => t === 'CYLINDRE').length,
+      planes: types.filter((t) => t === 'PLANE').length,
+    };
+  }
+
+  it('a hole adds one cylindrical face and removes π·r²·thickness', () => {
+    using scope = new DisposalScope();
+    const base = own(scope, basePart());
+    const holed = own(scope, unwrap(addHole(base, 'base', 20, 20, 6)));
+    expect(curvedAndPlanar(holed)).toEqual({ cylinders: 1, planes: 6 });
+    expect(vol(base) - vol(holed)).toBeCloseTo(Math.PI * 9 * 1, 6);
+    // The developed loop stays a polyline, so the flat pattern and its DXF do not change.
+    expect(holed.cutouts?.[0]?.loop).toHaveLength(48);
+  });
+
+  it('an obround slot adds two cylindrical faces and two planar faces', () => {
+    using scope = new DisposalScope();
+    const base = own(scope, basePart());
+    const slotted = own(
+      scope,
+      unwrap(addSlot(base, 'base', { x: 20, y: 20, length: 12, width: 4, angleDeg: 30, round: true }))
+    );
+    expect(curvedAndPlanar(slotted)).toEqual({ cylinders: 2, planes: 8 });
+    expect(vol(base) - vol(slotted)).toBeCloseTo((8 * 4 + Math.PI * 4) * 1, 6);
+  });
+
+  it('an obround slot as wide as it is long is a circle', () => {
+    using scope = new DisposalScope();
+    const base = own(scope, basePart());
+    const slotted = own(scope, unwrap(addSlot(base, 'base', { x: 20, y: 20, length: 6, width: 6, round: true })));
+    expect(vol(base) - vol(slotted)).toBeCloseTo(Math.PI * 9 * 1, 6);
+  });
+});
+
+describe('addCutouts — many cutouts in one cut', () => {
+  // A hole, an obround slot and a polygon on the base, a slot on the flange, and a hole
+  // that overlaps the polygon.
+  const specs: CutoutSpec[] = [
+    { kind: 'hole', region: 'base', x: 8, y: 8, diameter: 5 },
+    { kind: 'slot', region: 'base', x: 28, y: 10, length: 12, width: 4, angleDeg: 30, round: true },
+    { kind: 'polygon', region: 'base', points: [[6, 24], [16, 24], [16, 32], [6, 32]] },
+    { kind: 'slot', region: 'fy', x: 20, y: 10, length: 10, width: 4 },
+    { kind: 'hole', region: 'base', x: 16, y: 28, diameter: 4 },
+  ];
+
+  it('gives the solid and the features of a chain of addCutout calls', () => {
+    using scope = new DisposalScope();
+    const start = own(scope, flangePart());
+    let chained = start;
+    for (const spec of specs) chained = own(scope, unwrap(addCutout(chained, spec)));
+    const batched = own(scope, unwrap(addCutouts(start, specs)));
+
+    expect(vol(batched)).toBeCloseTo(vol(chained), 6);
+    expect(faceCount(batched)).toBe(faceCount(chained));
+    expect(batched.cutouts).toEqual(chained.cutouts);
+    expect(unwrap(unfold(batched)).pattern.holes).toHaveLength(specs.length);
+  });
+
+  it('returns the part for an empty list', () => {
+    using scope = new DisposalScope();
+    const base = own(scope, basePart());
+    expect(unwrap(addCutouts(base, []))).toBe(base);
+  });
+
+  it('makes no cutout when one spec is outside its region', () => {
+    using scope = new DisposalScope();
+    const base = own(scope, basePart());
+    const bad = addCutouts(base, [
+      { kind: 'hole', region: 'base', x: 20, y: 20, diameter: 6 },
+      { kind: 'hole', region: 'base', x: 39, y: 20, diameter: 6 },
+    ]);
+    expect(isErr(bad)).toBe(true);
+    if (isErr(bad)) expect(bad.error.code).toBe('CUTOUT_OUT_OF_BOUNDS');
+  });
+
+  it('guards against a batch that severs the part', () => {
+    using scope = new DisposalScope();
+    const base = own(scope, basePart());
+    const sever = addCutouts(base, [
+      { kind: 'polygon', region: 'base', points: [[0, 18], [22, 18], [22, 22], [0, 22]] },
+      { kind: 'polygon', region: 'base', points: [[18, 18], [40, 18], [40, 22], [18, 22]] },
+    ]);
+    expect(isErr(sever)).toBe(true);
+    if (isErr(sever)) expect(sever.error.code).toBe('CUTOUT_SEVERED_SOLID');
   });
 });
 

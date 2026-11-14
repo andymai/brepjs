@@ -94,6 +94,12 @@ feature in that region's **local** frame: `(0, 0)` is the region's near corner, 
   profile is built in region-local coords, then placed via the region's world frame (origin/u/v/n), so a
   hole authored on a folded flange lands on the flange face, not the base plane. Rejects a feature outside
   the region (`CUTOUT_OUT_OF_BOUNDS`) and guards a valid, single-bodied result (`CUTOUT_SEVERED_SOLID`).
+- `addCutouts(part, specs)` punches a list of cutouts in **one** boolean cut. Each `addCutout` call is a cut
+  on the solid that the call before it made larger, so a chain of calls slows down as it goes. Use
+  `addCutouts` for a vent pattern or a row of holes: the result is the same part, with the features recorded
+  in `specs` order. A spec that fails validation fails the whole call.
+- A round hole is a true cylinder in the solid, and an obround slot has true arcs. Their developed loops are
+  polylines of 48 segments for a full circle.
 - `unfold` emits the matching developed loop at the cutout's flat-pattern location (mapped through the same
   region's developed frame) and drops `developedArea` by the cutout areas.
 

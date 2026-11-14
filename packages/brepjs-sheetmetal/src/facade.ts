@@ -25,6 +25,7 @@ import {
   autoReliefs,
   relieveCorner,
   addCutout,
+  addCutouts,
   addHole,
   addSlot,
   addPolygonCutout,
@@ -113,6 +114,11 @@ class SheetMetalPartHandle {
   /** Punch a cutout (hole / slot / polygon) through a named flat region. */
   cutout(spec: CutoutSpec): SheetMetalPartHandle {
     return new SheetMetalPartHandle(unwrapOrThrow(addCutout(this.part, spec)));
+  }
+
+  /** Punch many cutouts in one boolean cut. Use this for a pattern of cutouts. */
+  cutouts(specs: readonly CutoutSpec[]): SheetMetalPartHandle {
+    return new SheetMetalPartHandle(unwrapOrThrow(addCutouts(this.part, specs)));
   }
 
   /** Punch a circular hole of `diameter` centred at region-local `(x, y)`. */
@@ -305,6 +311,10 @@ class SheetMetalBuilder {
 
   cutout(spec: CutoutSpec): SheetMetalPartHandle {
     return this.build().cutout(spec);
+  }
+
+  cutouts(specs: readonly CutoutSpec[]): SheetMetalPartHandle {
+    return this.build().cutouts(specs);
   }
 
   hole(region: string, x: number, y: number, diameter: number): SheetMetalPartHandle {

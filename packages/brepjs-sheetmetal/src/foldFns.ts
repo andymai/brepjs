@@ -23,7 +23,7 @@ import type {
 } from './types.js';
 import { authorPart, type AuthorSpec, type FlangeSpec } from './authorFns.js';
 import { addBendRelief } from './reliefFns.js';
-import { addCutout } from './cutoutFns.js';
+import { addCutouts } from './cutoutFns.js';
 import { addTab } from './tabFns.js';
 import { addForm } from './formFns.js';
 import { featureTree, ROOT_FLAT_ID } from './featureTreeFns.js';
@@ -79,18 +79,16 @@ export function foldWithWarnings(input: FlatInput): Result<FoldResult> {
 
   // Re-apply recorded cutouts (in region-local coords) so a cutout'd part folds
   // back into the same solid + recorded feature, exactly as `addCutout` produces.
-  for (const spec of input.baseCutouts ?? []) {
-    const cutResult = addCutout(part, { ...spec, region: ROOT_FLAT_ID });
-    if (!cutResult.ok) return cutResult;
-    part = cutResult.value;
-  }
+  const cutoutSpecs: CutoutSpec[] = (input.baseCutouts ?? []).map((spec) => ({
+    ...spec,
+    region: ROOT_FLAT_ID,
+  }));
   for (const region of input.regions) {
-    for (const spec of region.cutouts ?? []) {
-      const cutResult = addCutout(part, { ...spec, region: region.id });
-      if (!cutResult.ok) return cutResult;
-      part = cutResult.value;
-    }
+    for (const spec of region.cutouts ?? []) cutoutSpecs.push({ ...spec, region: region.id });
   }
+  const cutResult = addCutouts(part, cutoutSpecs);
+  if (!cutResult.ok) return cutResult;
+  part = cutResult.value;
 
   // Re-apply recorded tabs (additive protrusions) and form features so a tab'd /
   // formed part folds back into the same solid + recorded features.

@@ -17,11 +17,13 @@ import {
   getSurfaceType,
   curveStartPoint,
   curveEndPoint,
+  DisposalScope,
 } from 'brepjs';
 import type { Solid, Face } from 'brepjs';
 import { authorPart } from '../src/authorFns.js';
 import { unfold } from '../src/unfoldFns.js';
 import { fitCylinder, unfoldForeignSolid } from '../src/foreignUnfoldFns.js';
+import { addCutouts } from '../src/cutoutFns.js';
 import { fromSolid } from '../src/facade.js';
 import type { AuthorSpec } from '../src/authorFns.js';
 
@@ -344,6 +346,39 @@ describe('unfoldForeignSolid — thickness detection', () => {
     expect(foreign.ok).toBe(true);
     if (!foreign.ok || !authored.ok) return;
     expect(foreign.value.pattern.developedArea).toBeCloseTo(authored.value.pattern.developedArea, 2);
+  });
+});
+
+describe('unfoldForeignSolid — cylinders through the sheet', () => {
+  it('reads a part with a round hole and an obround slot without a warning', () => {
+    using scope = new DisposalScope();
+    const plain = unwrap(
+      authorPart({
+        thickness: 1,
+        base: { length: 80, width: 50 },
+        flanges: [
+          { id: 'a', length: 20, angleDeg: 90, rule, side: 'xmax' },
+          { id: 'b', length: 20, angleDeg: 90, rule, side: 'ymax' },
+        ],
+      })
+    );
+    scope.register(plain.solid as Solid);
+    const cut = unwrap(
+      addCutouts(plain, [
+        { kind: 'hole', region: 'base', x: 20, y: 20, diameter: 6 },
+        { kind: 'hole', region: 'a', x: 25, y: 10, diameter: 5 },
+        { kind: 'slot', region: 'b', x: 40, y: 10, length: 12, width: 4, round: true },
+      ])
+    );
+    const solid = scope.register(cut.solid as Solid);
+
+    const foreign = unwrap(unfoldForeignSolid(solid, { kFactor: rule.kFactor }));
+    expect(foreign.warnings ?? []).toEqual([]);
+    expect(foreign.pattern.bendLines).toHaveLength(2);
+    // The foreign reader takes the area from the faces, which now carry true circles.
+    const removed = Math.PI * 9 + Math.PI * 6.25 + (8 * 4 + Math.PI * 4);
+    const whole = unwrap(unfoldForeignSolid(plain.solid as Solid, { kFactor: rule.kFactor }));
+    expect(whole.pattern.developedArea - foreign.pattern.developedArea).toBeCloseTo(removed, 3);
   });
 });
 

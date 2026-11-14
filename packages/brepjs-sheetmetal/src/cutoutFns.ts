@@ -2,6 +2,7 @@ import {
   type Result,
   type Vec3,
   type Solid,
+  type Edge,
   ok,
   err,
   validationError,
@@ -10,6 +11,10 @@ import {
   face,
   extrude,
   cut,
+  cutAll,
+  cylinder,
+  threePointArc,
+  DisposalScope,
   getSolids,
   isValid,
   isPlanarWire,
@@ -19,13 +24,16 @@ import {
 import type { CutoutSpec, CutoutFeature, SheetMetalPart } from './types.js';
 import { normalizeSolid } from './internal.js';
 import { worldFrames, type FlatFrame } from './authorFns.js';
-import { layoutTree, type Frame2 } from './unfoldFns.js';
-import { featureTree, ROOT_FLAT_ID, type FeatureTree } from './featureTreeFns.js';
+import { layoutTree, type Frame2, type TreeLayout } from './unfoldFns.js';
+import { featureTree, ROOT_FLAT_ID } from './featureTreeFns.js';
 
 const EPS = 1e-6;
 /** A hair of over-cut so the tool pokes through both faces cleanly. */
 const HAIR = 0.05;
-/** Polyline segments approximating a circular boundary (hole / obround end cap). */
+/**
+ * Polyline segments approximating a circular boundary (hole / obround end cap) in
+ * the developed loop. The 3D cut tool keeps the true circle and arcs.
+ */
 const CIRCLE_SEGMENTS = 48;
 
 type Pt2 = [number, number];
@@ -39,62 +47,87 @@ type Pt2 = [number, number];
  * mapped through the region's developed {@link Frame2} and recorded as a
  * {@link CutoutFeature}, so {@link unfold} emits the matching loop in the flat
  * pattern and {@link fold} can replay it. Guards a valid, single-bodied solid.
+ *
+ * Each call is one boolean cut on a solid that the cut before it made larger. For
+ * a pattern of cutouts, {@link addCutouts} makes one cut for all of them.
  */
 export function addCutout(part: SheetMetalPart, spec: CutoutSpec): Result<SheetMetalPart> {
-  if (part.solid === undefined) {
-    return err(validationError('NO_SOLID', 'addCutout: part has no folded solid to cut'));
-  }
+  return punch(part, [spec], 'addCutout');
+}
 
-  const regionId = resolveRegionId(spec.region);
-  // Walk the feature tree once and thread it into both the world-frame and
-  // developed-frame lookups (each would otherwise re-walk it independently).
+/**
+ * Punch many cutouts in one boolean cut. The result is the same part that a chain
+ * of {@link addCutout} calls gives, with the features recorded in `specs` order,
+ * but the cost does not grow with the square of the count. A spec that fails
+ * validation fails the whole call, and no cutout is made.
+ */
+export function addCutouts(part: SheetMetalPart, specs: readonly CutoutSpec[]): Result<SheetMetalPart> {
+  return punch(part, specs, 'addCutouts');
+}
+
+function punch(part: SheetMetalPart, specs: readonly CutoutSpec[], label: string): Result<SheetMetalPart> {
+  if (part.solid === undefined) {
+    return err(validationError('NO_SOLID', `${label}: part has no folded solid to cut`));
+  }
+  if (specs.length === 0) return ok(part);
+
+  // Walk the feature tree once and thread it into the world-frame and
+  // developed-frame lookups of every cutout.
   const treeResult = featureTree(part);
   if (!treeResult.ok) return treeResult;
   const tree = treeResult.value;
   const framesResult = worldFrames(part, tree);
   if (!framesResult.ok) return framesResult;
-  const worldFrame = framesResult.value.get(regionId);
-  if (worldFrame === undefined) {
-    return err(validationError('UNKNOWN_REGION', `addCutout: region '${spec.region}' not found`));
+  const layout = layoutTree(part, tree, part.baseLength, part.width);
+  if (!layout.ok) return layout;
+
+  using scope = new DisposalScope();
+  const tools: Solid[] = [];
+  const features: CutoutFeature[] = [];
+  for (const spec of specs) {
+    const regionId = resolveRegionId(spec.region);
+    const worldFrame = framesResult.value.get(regionId);
+    if (worldFrame === undefined) {
+      return err(validationError('UNKNOWN_REGION', `${label}: region '${spec.region}' not found`));
+    }
+
+    const localResult = localLoop(spec);
+    if (!localResult.ok) return localResult;
+    const local = localResult.value;
+
+    const oob = checkInBounds(local, regionExtent(part, regionId, worldFrame));
+    if (oob !== undefined) {
+      return err(validationError('CUTOUT_OUT_OF_BOUNDS', oob));
+    }
+
+    const dev = developedFrame(layout.value, regionId);
+    if (!dev.ok) return dev;
+
+    const toolResult = buildTool(spec, local, worldFrame, part.thickness, scope);
+    if (!toolResult.ok) return toolResult;
+    tools.push(scope.register(toolResult.value));
+
+    const loop = local.map((p) => mapToFrame2(p, dev.value));
+    features.push({ spec, region: regionId, loop, area: polygonArea(loop) });
   }
 
-  const localResult = localLoop(spec);
-  if (!localResult.ok) return localResult;
-  const local = localResult.value;
-
-  const bounds = regionExtent(part, regionId, worldFrame);
-  const oob = checkInBounds(local, bounds);
-  if (oob !== undefined) {
-    return err(validationError('CUTOUT_OUT_OF_BOUNDS', oob));
-  }
-
-  const dev = developedFrame(part, regionId, tree);
-  if (!dev.ok) return dev;
-
-  const toolResult = buildTool(local, worldFrame, part.thickness);
-  if (!toolResult.ok) return toolResult;
-
-  const cutResult = cut(part.solid, toolResult.value);
+  const [only] = tools;
+  const cutResult =
+    tools.length === 1 && only !== undefined ? cut(part.solid, only) : cutAll(part.solid, tools);
   if (!cutResult.ok) return cutResult;
   const solid = normalizeSolid(cutResult.value);
   if (!isValid(solid) || getSolids(solid).length > 1) {
+    const [first] = specs;
+    const what =
+      specs.length === 1 && first !== undefined
+        ? `${first.kind} on region '${first.region}' severs`
+        : `the ${specs.length} cutouts sever`;
     return err(
-      validationError(
-        'CUTOUT_SEVERED_SOLID',
-        `addCutout: ${spec.kind} on region '${spec.region}' severs the part into multiple bodies`
-      )
+      validationError('CUTOUT_SEVERED_SOLID', `${label}: ${what} the part into multiple bodies`)
     );
   }
 
-  const loop = local.map((p) => mapToFrame2(p, dev.value));
-  const feature: CutoutFeature = {
-    spec,
-    region: regionId,
-    loop,
-    area: polygonArea(loop),
-  };
-
-  return ok({ ...part, solid, cutouts: [...(part.cutouts ?? []), feature] });
+  return ok({ ...part, solid, cutouts: [...(part.cutouts ?? []), ...features] });
 }
 
 /** Punch a circular hole of `diameter` centred at region-local `(x, y)`. */
@@ -151,7 +184,9 @@ export function regionFrames(
   if (world === undefined) {
     return err(validationError('UNKNOWN_REGION', `region '${region}' not found`));
   }
-  const dev = developedFrame(part, regionId, tree);
+  const layout = layoutTree(part, tree, part.baseLength, part.width);
+  if (!layout.ok) return layout;
+  const dev = developedFrame(layout.value, regionId);
   if (!dev.ok) return dev;
   return ok({ regionId, world, dev: dev.value });
 }
@@ -252,43 +287,80 @@ function checkInBounds(local: Pt2[], ext: Extent): string | undefined {
 }
 
 /**
- * Build the 3D cut tool: the local loop placed onto the region's bottom surface
- * (`origin + x·u + y·v − HAIR·n`), turned into a face, and extruded through the
- * sheet by `thickness + 2·HAIR` along +n. Using the world frame's `u`/`v`/`n` is
- * what lands the cut on the correct folded face.
+ * Build the 3D cut tool on the region's bottom surface, a hair below it
+ * (`origin + x·u + y·v − HAIR·n`), through the sheet by `thickness + 2·HAIR` along
+ * +n. Using the world frame's `u`/`v`/`n` is what lands the cut on the correct
+ * folded face. A hole is a true cylinder and an obround slot has true arcs, so a
+ * round cutout adds one or two curved faces to the solid, not one planar face for
+ * each segment of its developed loop. Intermediate shapes go to `scope`.
  */
-function buildTool(local: Pt2[], f: FlatFrame, thickness: number): Result<Solid> {
+function buildTool(
+  spec: CutoutSpec,
+  local: Pt2[],
+  f: FlatFrame,
+  thickness: number,
+  scope: DisposalScope
+): Result<Solid> {
   const base = vecAdd(f.origin, vecScale(f.n, -HAIR));
-  const worldPts: Vec3[] = local.map(([x, y]) =>
-    vecAdd(vecAdd(base, vecScale(f.u, x)), vecScale(f.v, y))
-  );
-  const edges = [];
-  for (let i = 0; i < worldPts.length; i += 1) {
-    const a = worldPts[i];
-    const b = worldPts[(i + 1) % worldPts.length];
-    if (a === undefined || b === undefined) {
-      return err(validationError('CUTOUT_TOOL_FAILED', 'failed to index cutout loop points'));
-    }
-    edges.push(line(a, b));
+  const toWorld = ([x, y]: Pt2): Vec3 => vecAdd(vecAdd(base, vecScale(f.u, x)), vecScale(f.v, y));
+  const depth = thickness + 2 * HAIR;
+
+  if (spec.kind === 'hole') {
+    return ok(cylinder(spec.diameter / 2, depth, { at: toWorld([spec.x, spec.y]), axis: f.n }));
   }
+
+  const edges =
+    spec.kind === 'slot' && spec.round === true
+      ? obroundEdges(spec, toWorld)
+      : polylineEdges(local, toWorld);
+  for (const e of edges) scope.register(e);
   const wire = wireLoop(edges);
   if (!wire.ok) return wire;
+  scope.register(wire.value);
   if (!isPlanarWire(wire.value)) {
     return err(validationError('CUTOUT_TOOL_FAILED', 'cutout profile wire is not planar'));
   }
   const profile = face(wire.value);
   if (!profile.ok) return profile;
-  const depth = thickness + 2 * HAIR;
+  scope.register(profile.value);
   return extrude(profile.value, [f.n[0] * depth, f.n[1] * depth, f.n[2] * depth]);
 }
 
-/** Developed-plane {@link Frame2} of a region (base or flange) via the unfold layout. */
-function developedFrame(part: SheetMetalPart, regionId: string, tree?: FeatureTree): Result<Frame2> {
-  const treeResult = tree !== undefined ? ok(tree) : featureTree(part);
-  if (!treeResult.ok) return treeResult;
-  const layout = layoutTree(part, treeResult.value, part.baseLength, part.width);
-  if (!layout.ok) return layout;
-  const placed = layout.value.flats.find((p) => p.id === regionId);
+function polylineEdges(local: Pt2[], toWorld: (p: Pt2) => Vec3): Edge[] {
+  const pts = local.map(toWorld);
+  return pts.map((a, i) => line(a, pts[(i + 1) % pts.length] ?? a));
+}
+
+/**
+ * Edges of an obround slot: two straight sides joined by two semicircles of radius
+ * `width/2`. A slot as wide as it is long has no straight side, so it is two
+ * semicircles (a circle).
+ */
+function obroundEdges(
+  spec: Extract<CutoutSpec, { kind: 'slot' }>,
+  toWorld: (p: Pt2) => Vec3
+): Edge[] {
+  const hw = spec.width / 2;
+  const straight = Math.max(spec.length / 2 - hw, 0);
+  const rad = ((spec.angleDeg ?? 0) * Math.PI) / 180;
+  const c = Math.cos(rad);
+  const s = Math.sin(rad);
+  const at = (x: number, y: number): Vec3 => toWorld([spec.x + x * c - y * s, spec.y + x * s + y * c]);
+
+  const rightBottom = at(straight, -hw);
+  const rightTop = at(straight, hw);
+  const leftTop = at(-straight, hw);
+  const leftBottom = at(-straight, -hw);
+  const edges: Edge[] = [threePointArc(rightBottom, at(straight + hw, 0), rightTop)];
+  if (straight > EPS) edges.push(line(rightTop, leftTop));
+  edges.push(threePointArc(leftTop, at(-straight - hw, 0), leftBottom));
+  if (straight > EPS) edges.push(line(leftBottom, rightBottom));
+  return edges;
+}
+
+/** Developed-plane {@link Frame2} of a region (base or flange) in the unfold layout. */
+function developedFrame(layout: TreeLayout, regionId: string): Result<Frame2> {
+  const placed = layout.flats.find((p) => p.id === regionId);
   if (placed === undefined) {
     return err(validationError('UNKNOWN_REGION', `developedFrame: region '${regionId}' missing from layout`));
   }

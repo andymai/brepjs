@@ -28,6 +28,7 @@ import {
 } from './reliefFns.js';
 import {
   addCutout as addCutoutFn,
+  addCutouts as addCutoutsFn,
   addHole as addHoleFn,
   addSlot as addSlotFn,
   addPolygonCutout as addPolygonCutoutFn,
@@ -146,6 +147,14 @@ export function relieveCorner(
 /** Punch a cutout (hole / slot / polygon) through a named flat region's thickness. */
 export function addCutout(part: SheetMetalPart, spec: CutoutSpec): Result<SheetMetalPart> {
   return addCutoutFn(part, spec);
+}
+
+/** Punch many cutouts in one boolean cut. Use this for a pattern of cutouts. */
+export function addCutouts(
+  part: SheetMetalPart,
+  specs: readonly CutoutSpec[]
+): Result<SheetMetalPart> {
+  return addCutoutsFn(part, specs);
 }
 
 /** Punch a circular hole of `diameter` centred at region-local `(x, y)`. */
