@@ -596,6 +596,109 @@ fn fit_union(pts: &[V3], nrm: &[V3], params: &Params) -> Option<Surface> {
     })
 }
 
+/// Unexplained measured points each side of an adjacent merge must contribute.
+const MIN_MERGE_EVIDENCE: usize = 10;
+
+/// On a scan one face can come back as several regions that do not touch: the
+/// wall of a disc between the scallops cut into it, a top face split by a
+/// boss. Each small region's own fit is tilted by noise, so `merge_equivalent`
+/// leaves them apart, and the arrangement would then get nearly coincident
+/// patches. Join every pair of regions of one kind, in one body, whose
+/// measured points one surface fits. A cone or torus region joins a plane,
+/// cylinder or sphere the same way: a narrow strip of a cylinder fits a
+/// shallow cone as well within noise. Returns how many merges were made.
+pub fn merge_same_surface(
+    mesh: &Mesh,
+    seg: &mut Segmentation,
+    params: &Params,
+    tri_body: &[u32],
+    measured: &mut RegionPoints,
+) -> usize {
+    let mut merges = 0;
+    loop {
+        let homes = region_bodies(&seg.regions, tri_body);
+        let n = seg.regions.len();
+        let mut found = None;
+        'pairs: for i in 0..n {
+            for j in i + 1..n {
+                let (si, sj) = (seg.regions[i].surface, seg.regions[j].surface);
+                let (ti, tj) = (trusted(si.kind()), trusted(sj.kind()));
+                if !(ti || tj) || (ti && tj && si.kind() != sj.kind()) {
+                    continue;
+                }
+                if let (Surface::Plane { n: a, .. }, Surface::Plane { n: b, .. }) = (si, sj) {
+                    if dot(a, b) <= 0.0 {
+                        continue;
+                    }
+                }
+                if !homes[i].iter().any(|b| homes[j].binary_search(b).is_ok()) {
+                    continue;
+                }
+                // The trusted side's surface carries the union; of two, the larger's.
+                let i_carries = if ti && tj {
+                    measured.pts[i].len() >= measured.pts[j].len()
+                } else {
+                    ti
+                };
+                let (big, small) = if i_carries { (i, j) } else { (j, i) };
+                if measured.pts[small].len() < MIN_MERGE_EVIDENCE
+                    || !fits(
+                        &seg.regions[big].surface,
+                        &measured.pts[small],
+                        2.0 * params.tol,
+                        true,
+                    )
+                {
+                    continue;
+                }
+                let union: Vec<V3> = measured.pts[big]
+                    .iter()
+                    .chain(&measured.pts[small])
+                    .copied()
+                    .collect();
+                let stride = union.len().div_ceil(MAX_REFIT_SAMPLES).max(1);
+                let sample: Vec<V3> = union.iter().step_by(stride).copied().collect();
+                let s = match seg.regions[big].surface {
+                    plane @ Surface::Plane { .. } => crate::fit::plane(&union)
+                        .map(|p| orient_like(p, plane))
+                        .unwrap_or(plane),
+                    curved => refine(curved, &sample),
+                };
+                if fits(&s, &measured.pts[big], params.tol, true)
+                    && fits(&s, &measured.pts[small], params.tol, true)
+                {
+                    found = Some((i, j, s));
+                    break 'pairs;
+                }
+            }
+        }
+        let Some((i, j, s)) = found else {
+            break;
+        };
+        let mut union = seg.regions[i].tris.clone();
+        union.extend_from_slice(&seg.regions[j].tris);
+        let (pts, _) = samples(mesh, &union);
+        seg.regions[i] = Region {
+            surface: s,
+            max_residual: max_residual(&s, &pts),
+            tris: union,
+        };
+        seg.regions.remove(j);
+        let (pj, nj) = (measured.pts.remove(j), measured.nrm.remove(j));
+        measured.pts[i].extend(pj);
+        measured.nrm[i].extend(nj);
+        for r in seg.region_of.iter_mut() {
+            if *r == j as u32 {
+                *r = i as u32;
+            } else if *r != u32::MAX && *r > j as u32 {
+                *r -= 1;
+            }
+        }
+        merges += 1;
+    }
+    merges
+}
+
 /// Measured points per region, with their normals: on a scan, the input's own
 /// vertices rather than the decimated mesh's (see `merge_adjacent`).
 pub struct RegionPoints {
@@ -691,11 +794,27 @@ pub fn merge_adjacent(
                 .filter(|(p, _)| !explained(**p))
                 .map(|(p, n)| (*p, *n))
                 .unzip();
-            if pts.len() < 20 {
+            // The union's surface is fitted to these points only, and the merged
+            // region takes every triangle of both. A side whose points the other
+            // surfaces all explain gives the fit no evidence: its triangles
+            // would join a surface they do not lie on.
+            let own = |r: usize| measured.pts[r].iter().filter(|p| !explained(**p)).count();
+            if pts.len() < 20 || own(i).min(own(j)) < MIN_MERGE_EVIDENCE {
                 rejected.insert(key);
                 continue;
             }
-            match fit_union(&pts, &nrm, params) {
+            // A robust fit lets one point in twenty miss, so a small face beside
+            // a large one (the flat end of a long shank) would vanish into it
+            // as that twentieth: the surface must fit each side on its own.
+            let fits_side = |s: &Surface, r: usize| {
+                let side: Vec<V3> = measured.pts[r]
+                    .iter()
+                    .copied()
+                    .filter(|p| !explained(*p))
+                    .collect();
+                fits(s, &side, params.tol, true)
+            };
+            match fit_union(&pts, &nrm, params).filter(|s| fits_side(s, i) && fits_side(s, j)) {
                 Some(s) => {
                     let mut union = seg.regions[i].tris.clone();
                     union.extend_from_slice(&seg.regions[j].tris);
@@ -1865,5 +1984,197 @@ mod tests {
         assert_eq!(seg.regions.len(), 2);
         assert_eq!(seg.regions[1].surface, cylinder);
         assert_eq!(seg.regions[1].tris.len(), (total - floor) as usize);
+    }
+
+    /// Which arc column (0..12) of `floor_and_fillet`'s strip a triangle is in.
+    fn column(t: u32, floor: u32) -> u32 {
+        ((t - floor) % 24) / 2
+    }
+
+    const FILLET: Surface = Surface::Cylinder {
+        o: [0.0, 0.0, 0.0],
+        a: [0.0, 0.0, 1.0],
+        r: 3.0,
+    };
+
+    /// Two parts of the strip with a gap between them, the second fitted as `other`.
+    fn split_strip(other: Surface) -> (Mesh, Segmentation, usize) {
+        let (mesh, floor) = floor_and_fillet();
+        let total = mesh.triangles.len() as u32;
+        let part = |keep: &dyn Fn(u32) -> bool| -> Vec<u32> {
+            (floor..total).filter(|&t| keep(column(t, floor))).collect()
+        };
+        let (a, b) = (part(&|c| c < 4), part(&|c| c >= 8));
+        let both = a.len() + b.len();
+        let seg = regions_from(
+            &mesh,
+            vec![(FLOOR, (0..floor).collect()), (FILLET, a), (other, b)],
+        );
+        (mesh, seg, both)
+    }
+
+    #[test]
+    fn faces_of_one_surface_that_do_not_touch_merge() {
+        // The second part's own fit is a little off, as noise leaves it.
+        let (mesh, mut seg, both) = split_strip(Surface::Cylinder {
+            o: [0.005, -0.005, 0.0],
+            a: [0.0, 0.0, 1.0],
+            r: 3.01,
+        });
+        let mut measured = measured_of(&mesh, &seg);
+        let tri_body = vec![0; mesh.triangles.len()];
+        let merges = merge_same_surface(&mesh, &mut seg, &scan_params(), &tri_body, &mut measured);
+        assert_eq!(merges, 1);
+        assert_eq!(seg.regions.len(), 2);
+        assert_eq!(seg.regions[0].surface, FLOOR);
+        let Surface::Cylinder { r, .. } = seg.regions[1].surface else {
+            panic!("the parts became {:?}", seg.regions[1].surface);
+        };
+        assert!((r - 3.0).abs() < 1e-6, "radius {r}");
+        assert_eq!(seg.regions[1].tris.len(), both);
+        assert_eq!(measured.pts.len(), 2);
+    }
+
+    #[test]
+    fn a_shallow_cone_strip_joins_the_cylinder_it_lies_on() {
+        // Over 20 mm this cone is within 0.02 mm of the cylinder.
+        let (mesh, mut seg, both) = split_strip(Surface::Cone {
+            apex: [0.0, 0.0, 3.0 / 0.001f64.tan()],
+            a: [0.0, 0.0, -1.0],
+            half_angle: 0.001,
+        });
+        let mut measured = measured_of(&mesh, &seg);
+        let tri_body = vec![0; mesh.triangles.len()];
+        let merges = merge_same_surface(&mesh, &mut seg, &scan_params(), &tri_body, &mut measured);
+        assert_eq!(merges, 1);
+        assert_eq!(seg.regions[1].surface.kind(), Kind::Cylinder);
+        assert_eq!(seg.regions[1].tris.len(), both);
+    }
+
+    #[test]
+    fn coaxial_cylinders_of_different_radius_stay_apart() {
+        let (mesh, mut seg, _) = split_strip(Surface::Cylinder {
+            o: [0.0, 0.0, 0.0],
+            a: [0.0, 0.0, 1.0],
+            r: 3.5,
+        });
+        // The second part's points lie on its own cylinder.
+        let mut measured = measured_of(&mesh, &seg);
+        for p in &mut measured.pts[2] {
+            let k = 3.5 / 3.0;
+            *p = [k * p[0], k * p[1], p[2]];
+        }
+        let tri_body = vec![0; mesh.triangles.len()];
+        let merges = merge_same_surface(&mesh, &mut seg, &scan_params(), &tri_body, &mut measured);
+        assert_eq!(merges, 0);
+        assert_eq!(seg.regions.len(), 3);
+    }
+
+    /// A tube about Z with a flat ring across its top: wall rings every
+    /// `step` mm up to `h`, then two rings of the cap. Returns the mesh, its
+    /// first cap triangle, and the measured points of [wall, cap] regions
+    /// split at that triangle.
+    fn capped_tube(h: f64, step: f64, segments: usize) -> (Mesh, u32) {
+        let n = (h / step).round() as usize;
+        let mut rings: Vec<(f64, f64)> = (0..=n).map(|i| (6.0, i as f64 * step)).collect();
+        rings.push((4.0, h));
+        rings.push((2.0, h));
+        let mesh = revolved(&rings, segments);
+        (mesh, (n * segments * 2) as u32)
+    }
+
+    /// Each region's vertices: radial normals on a wall, +Z on the cap at `h`.
+    fn tube_points(mesh: &Mesh, seg: &Segmentation) -> RegionPoints {
+        let mut out = RegionPoints {
+            pts: Vec::new(),
+            nrm: Vec::new(),
+        };
+        for r in &seg.regions {
+            let flat = r.surface.kind() == Kind::Plane;
+            let pts: Vec<V3> = unique_vertices(mesh, &r.tris)
+                .into_iter()
+                .map(|v| mesh.positions[v as usize])
+                .collect();
+            let nrm = pts
+                .iter()
+                .map(|p| {
+                    if flat {
+                        [0.0, 0.0, 1.0]
+                    } else {
+                        normalize([p[0] - 20.0, p[1] - 15.0, 0.0]).unwrap()
+                    }
+                })
+                .collect();
+            out.pts.push(pts);
+            out.nrm.push(nrm);
+        }
+        out
+    }
+
+    const TUBE: Surface = Surface::Cylinder {
+        o: [20.0, 15.0, 0.0],
+        a: [0.0, 0.0, 1.0],
+        r: 6.0,
+    };
+
+    #[test]
+    fn a_small_face_does_not_vanish_into_the_large_one_beside_it() {
+        // The cap holds under 2% of the points, fewer than a robust fit lets miss.
+        let (mesh, cap) = capped_tube(100.0, 0.5, 48);
+        let total = mesh.triangles.len() as u32;
+        let top = Surface::Plane {
+            n: [0.0, 0.0, 1.0],
+            d: 100.0,
+        };
+        let mut seg = regions_from(
+            &mesh,
+            vec![(TUBE, (0..cap).collect()), (top, (cap..total).collect())],
+        );
+        let mut measured = tube_points(&mesh, &seg);
+        let topo = Topology::build(&mesh);
+        let tri_body = vec![0; mesh.triangles.len()];
+        let merges = merge_adjacent(
+            &mesh,
+            &topo,
+            &mut seg,
+            &scan_params(),
+            &tri_body,
+            &mut measured,
+        );
+        assert_eq!(merges, 0);
+        assert_eq!(seg.regions.len(), 2);
+    }
+
+    #[test]
+    fn a_face_another_region_explains_does_not_join_its_neighbour() {
+        // A narrow patch of the wall and the rest of it, apart, both under the cap.
+        let (mesh, cap) = capped_tube(20.0, 1.0, 48);
+        let total = mesh.triangles.len() as u32;
+        let seg_of = |t: u32| (t / 2) % 48;
+        let patch: Vec<u32> = (0..cap).filter(|&t| seg_of(t) < 2).collect();
+        let rest: Vec<u32> = (0..cap)
+            .filter(|&t| (12..42).contains(&seg_of(t)))
+            .collect();
+        let top = Surface::Plane {
+            n: [0.0, 0.0, 1.0],
+            d: 20.0,
+        };
+        let mut seg = regions_from(
+            &mesh,
+            vec![(top, (cap..total).collect()), (TUBE, patch), (TUBE, rest)],
+        );
+        let mut measured = tube_points(&mesh, &seg);
+        let topo = Topology::build(&mesh);
+        let tri_body = vec![0; mesh.triangles.len()];
+        let merges = merge_adjacent(
+            &mesh,
+            &topo,
+            &mut seg,
+            &scan_params(),
+            &tri_body,
+            &mut measured,
+        );
+        assert_eq!(merges, 0);
+        assert_eq!(seg.regions.len(), 3);
     }
 }

@@ -16,6 +16,7 @@ import {
   meshVolume,
   noisy,
   organicSTL,
+  SCAN_CORPUS,
   scanLike,
   stlOf,
 } from './corpus.js';
@@ -151,18 +152,24 @@ describe('tier 2 eval: feature programs', () => {
 describe('scan eval: noisy, decimated meshes', () => {
   const sigma = 0.02;
   // The calls each scan's feature program should contain.
-  const cases: { name: string; code: string[] }[] = [
+  // `volume` is the largest relative volume error: the drawn dimensions come
+  // back exactly, except where a profile's arcs meet at points that are not round.
+  const cases: { name: string; code: readonly string[]; seed?: number; volume?: number }[] = [
     { name: 'box', code: ['box(40, 30, 10)'] },
     { name: 'plate with hole', code: ['box(40, 30, 6)', 'cylinder(5, 6, { at: [20, 15, 0] })'] },
     { name: 'sphere', code: ['sphere(15)'] },
     { name: 'filleted box', code: ['box(30, 20, 15)', 'fillet(slab1, 3)'] },
+    // The same part under different noise must not come back at a different tier.
+    ...SCAN_CORPUS.flatMap((c) =>
+      [1, 7].map((seed) => ({ name: c.name, code: c.code, seed, volume: 1e-3 }))
+    ),
   ];
-  for (const { name, code } of cases) {
-    it(`${name} (σ=${sigma} mm)`, async () => {
-      const c = CAD_CORPUS.find((k) => k.name === name);
+  for (const { name, code, seed = 7, volume = 1e-9 } of cases) {
+    it(`${name} (σ=${sigma} mm, seed ${seed})`, async () => {
+      const c = [...CAD_CORPUS, ...SCAN_CORPUS].find((k) => k.name === name);
       if (c === undefined) throw new Error(`no corpus case ${name}`);
       using src = c.build();
-      const stl = scanLike(src, { targetTriangles: 60_000, sigma, seed: 7 });
+      const stl = scanLike(src, { targetTriangles: 60_000, sigma, seed });
       const t0 = performance.now();
       const res = unwrap(await meshToSolid(stl, { maxTriangles: 20_000 }));
       const ms = performance.now() - t0;
@@ -192,7 +199,7 @@ describe('scan eval: noisy, decimated meshes', () => {
       // Snapping recovers the drawn dimensions through the noise.
       expect(r.tierReached, summary).toBe(2);
       for (const call of code) expect(res.code ?? '', summary).toContain(call);
-      expect(volumeError, summary).toBeLessThan(1e-9);
+      expect(volumeError, summary).toBeLessThan(volume);
     });
   }
 });

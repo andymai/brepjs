@@ -114,14 +114,26 @@ points past it:
   points no other surface explains (a fillet split into strips), and small regions whose points their
   neighbours explain are dropped. Up to 3% of the area may fit no surface (decimated triangles that
   bridge a crease).
+- Regions that lie on one surface but do not touch (the wall of a disc between the scallops cut into
+  it) merge when one surface fits the points of both. A strip that fits a shallow cone or a torus
+  joins the plane, cylinder, or sphere it lies on the same way.
+- Two neighbouring regions merge only when the shared surface fits the points of each on its own, so
+  the flat end of a long shaft does not vanish into the shaft as the few points a robust fit lets miss.
 - Tangency is read off the fitted surfaces rather than the noisy boundary between their regions.
-  Directions within 0.01 rad of a world axis snap onto it, turning about the region they fit.
+  Directions within 0.01 rad of a world axis snap onto it, turning about the region they fit, and
+  directions within 0.01 rad of square to a world axis are made square to it (the sides of a hexagonal
+  prism are then exactly parallel to its axis).
+- A piece of the arrangement is kept when the mesh covers more than half of its area within three
+  tolerances. The flat disc across a drilled hole is near the mesh only along its rim, so it is not
+  a face.
 - A part with fillets is built sharp from its other surfaces and then filleted by the kernel with the
   fitted radii (radii within the tolerance of each other share their mean), since along a scanned
   fillet both the face and the blend lie within noise of the mesh.
 
 A scanned box, a plate with a drilled hole, a sphere, and a filleted box come back at tier 2 with
-their drawn dimensions.
+their drawn dimensions. So do a knob with six scallops and a bore, and a brake disc with a hat and
+five bolt holes, under two different noise seeds each; the arcs of the knob's profile meet at points
+that are not round, so its volume is within 0.1% of the drawn part's.
 
 ## What tier 2 does
 
@@ -188,7 +200,8 @@ one part in a million. The tier 2 cases import each generated program, run it, a
 calls a person would write (`box(30, 20, 15)`, `fillet(slab1, 3)`) and the source solid's volume to
 within one part in a billion. The scan cases sample each solid evenly by area, as a scanner does, add
 Gaussian noise, run at the default tier, and require the same calls and volume from the scanned box,
-plate, sphere, and filleted box. The organic cases (a blob, a peanut, and a bumpy ring, sampled
+plate, sphere, and filleted box, and the same calls from the knob and the brake disc under two noise
+seeds each. The organic cases (a blob, a peanut, and a bumpy ring, sampled
 from formulas, clean and with scan noise) require a valid tier 1 solid of B-spline faces, at most 64
 of them, and the smooth shape's volume; on the clean meshes it must land at least four times closer
 to it than the mesh's own facets do.

@@ -182,6 +182,61 @@ function writeBinarySTL(pos: Float64Array, tris: Uint32Array): Uint8Array {
   return new Uint8Array(out.buffer);
 }
 
+/** A part the scan eval takes through noise: more faces than the CAD corpus parts it shares. */
+export interface ScanCase {
+  readonly name: string;
+  readonly build: () => ValidSolid;
+  /** Calls the tier 2 program should contain, as written. */
+  readonly code: readonly string[];
+}
+
+export const SCAN_CORPUS: readonly ScanCase[] = [
+  {
+    // The wall of the grip is six patches that do not touch, and the bore
+    // opens onto a face: its flat disc must not come back as a face.
+    name: 'lobed knob',
+    build: () =>
+      owned((keep) => {
+        let grip: ValidSolid = keep(cylinder(25, 14));
+        for (let i = 0; i < 6; i++) {
+          const a = (Math.PI * i) / 3;
+          const scallop = keep(cylinder(9, 16, { at: [30 * Math.cos(a), 30 * Math.sin(a), -1] }));
+          grip = keep(unwrap(cut(grip, scallop)));
+        }
+        const boss = keep(cylinder(11, 10, { at: [0, 0, -10] }));
+        const bore = keep(cylinder(4, 30, { at: [0, 0, -12] }));
+        return unwrap(cut(keep(unwrap(fuse(grip, boss))), bore));
+      }),
+    code: [
+      'cylinder(11, 10, { at: [0, 0, -10] })',
+      'cylinder(4, 14)',
+      'extrude(profile1, [0, 0, 14])',
+    ],
+  },
+  {
+    // A brake disc: a ring, a hat open from below, a centre bore and five bolt holes.
+    name: 'disc with a hat',
+    build: () =>
+      owned((keep) => {
+        const outside = keep(unwrap(fuse(keep(cylinder(140, 12)), keep(cylinder(77, 46.5)))));
+        const inside = keep(cylinder(70, 40, { at: [0, 0, -1] }));
+        let disc: ValidSolid = keep(unwrap(cut(outside, inside)));
+        disc = keep(unwrap(cut(disc, keep(cylinder(32.5, 9.5, { at: [0, 0, 38] })))));
+        for (let i = 0; i < 5; i++) {
+          const a = (2 * Math.PI * i) / 5 + Math.PI / 2;
+          const hole = keep(cylinder(7.5, 9.5, { at: [56 * Math.cos(a), 56 * Math.sin(a), 38] }));
+          disc = i < 4 ? keep(unwrap(cut(disc, hole))) : unwrap(cut(disc, hole));
+        }
+        return disc;
+      }),
+    code: [
+      'cylinder(140, 12)',
+      'cylinder(77, 27, { at: [0, 0, 12] })',
+      'cylinder(7.5, 7.5, { at: [0, 56, 39] })',
+    ],
+  },
+];
+
 /** Deterministic standard normal samples (xorshift + Box-Muller). */
 function gaussian(seed: number): () => number {
   let s = seed >>> 0 || 1;

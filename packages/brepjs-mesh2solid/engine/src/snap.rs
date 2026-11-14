@@ -576,7 +576,10 @@ fn align_to_world(
     }
 }
 
-/// A unit direction within a microradian of a world axis, as that axis.
+/// A unit direction within `within` of a world axis, as that axis. One within
+/// `within` of square to a world axis (the side of a hexagonal prism drawn
+/// along z) is made square to it: a wall a fraction of a milliradian off its
+/// extrusion direction is no longer a wall of that extrusion.
 fn to_world(d: V3, within: f64) -> V3 {
     let i = (0..3)
         .max_by(|&x, &y| d[x].abs().total_cmp(&d[y].abs()))
@@ -586,12 +589,16 @@ fn to_world(d: V3, within: f64) -> V3 {
         .map(|k| d[k] * d[k])
         .sum::<f64>()
         .sqrt();
-    if off > within {
+    if off <= within {
+        let mut out = [0.0; 3];
+        out[i] = d[i].signum();
+        return out;
+    }
+    if d.iter().all(|x| *x == 0.0 || x.abs() > within) {
         return d;
     }
-    let mut out = [0.0; 3];
-    out[i] = d[i].signum();
-    out
+    let out = d.map(|x| if x.abs() <= within { 0.0 } else { x });
+    crate::math::normalize(out).unwrap_or(d)
 }
 
 /// Parts are drawn on world axes; fitted directions come back a few
@@ -956,6 +963,19 @@ mod tests {
         assert_eq!(to_world([1e-8, 0.0, 1.0], 1e-6), [0.0, 0.0, 1.0]);
         assert_eq!(to_world([0.0, -1.0, 2e-7], 1e-6), [0.0, -1.0, 0.0]);
         assert_eq!(to_world([0.6, 0.8, 0.0], 1e-6), [0.6, 0.8, 0.0]);
+    }
+
+    #[test]
+    fn a_direction_nearly_square_to_a_world_axis_is_made_square() {
+        // The side of a hexagonal prism along Z, fitted 0.6 mrad out of square.
+        let side = crate::math::normalize([0.866, 0.5, 6e-4]).unwrap();
+        let d = to_world(side, 1e-2);
+        assert_eq!(d[2], 0.0);
+        assert!((dot(d, d) - 1.0).abs() < 1e-12);
+        assert!((d[0] / d[1] - 0.866 / 0.5).abs() < 1e-12);
+        // Past the limit the direction stays as fitted.
+        let steep = crate::math::normalize([0.866, 0.5, 0.05]).unwrap();
+        assert_eq!(to_world(steep, 1e-2), steep);
     }
 
     #[test]
