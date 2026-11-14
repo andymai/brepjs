@@ -1278,7 +1278,7 @@ model.init({ name: 'Foundations', projectId: 'foundations-demo' });
 const project = model.getProject();
 const siteId = unwrap(model.addSite({ name: 'Site' }));
 const buildingId = unwrap(model.addBuilding({ name: 'Block A' }));
-const storeyId = unwrap(model.addStorey({ name: 'Substructure', elevation: -1200 }));
+const storeyId = unwrap(model.addStorey({ name: 'Substructure', elevation: 0 }));
 if (project) model.aggregate(project.localId, siteId);
 model.aggregate(siteId, buildingId);
 model.aggregate(buildingId, storeyId);
