@@ -1,0 +1,39 @@
+src/operations/api.ts
+  s_b6e98997548822::t_9b913cee5b66d1 28-29
+apps/docs/reference/errors.md
+  s_b6e98997548822::t_9b913cee5b66d1 146-151
+src/operations/extrudeFns.ts
+  s_b6e98997548822::t_b843d67e62377b 46,99-100,102,204-205,209
+  s_b6e98997548822::t_a965df34f955d6 10,13,33,41-45,47-58,101,103,206-208,211
+  s_b6e98997548822::t_da1cabc0efb0d6 104,210,212
+apps/docs/tasks/lofts-sweeps.md
+  s_b6e98997548822::t_9b913cee5b66d1 301
+tests/extrudeFns.test.ts
+  s_b6e98997548822::t_ef1ca14dad8b72 93-102,112-118
+  s_b6e98997548822::t_2dcdf19147f5d2 11-12,90-92,103-111,119-124
+tests/batchExtractors.test.ts
+  s_b6e98997548822::t_1f02d16493b58d 13,15
+  s_b6e98997548822::t_5d4b525e5bcf88 113,117-120
+packages/brepjs-cad/tests/report.test.ts
+  s_b6e98997548822::t_7d8a4ff34eab81 65
+.size-limit.json
+  s_b6e98997548822::t_3a54c176ee7cdd 2
+packages/brepjs-cad/src/verify/report.ts
+  s_b6e98997548822::t_ede2681fc4b06d 218-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "51a12110472f6ebf05b6bbcc69f9f304b0dbb281",
+  "prompts": {},
+  "sessions": {
+    "s_b6e98997548822": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b26c959d-58c1-4095-9e3c-81b90119e59c",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
