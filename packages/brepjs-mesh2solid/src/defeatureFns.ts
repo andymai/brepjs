@@ -138,8 +138,10 @@ function chamferStrip(
       if (ahead <= 0 || Math.abs(di - dj) > Math.max(tol, 1e-6)) continue;
       // A main face between two chamfers also looks like a strip; a real
       // chamfer's setback is narrower than the faces on either side of it.
+      // On a regular hexagon the two are equal, so rounding must not decide.
       const d = (di + dj) / 2;
-      if (widthAcross(ni, sharp.d) <= d || widthAcross(nj, sharp.d) <= d) continue;
+      const least = d + Math.max(tol, 1e-6);
+      if (widthAcross(ni, sharp.d) <= least || widthAcross(nj, sharp.d) <= least) continue;
       return { distance: d, long: [ei, ej] };
     }
   }
