@@ -106,10 +106,15 @@ describe('addPolygonCutout on a flange that folds down', () => {
         flanges: [{ id: 'f', length: 10, angleDeg: 90, side: 'ymin', direction, rule: { innerRadius: 1, kFactor: 0.44 } }],
       })
     );
+    using authored = part.solid;
     const cutout = addPolygonCutout(part, 'f', [[40, 3], [50, 3], [50, 7], [40, 7]]);
     expect(isOk(cutout)).toBe(true);
     if (!isOk(cutout)) return;
-    expect(vol(part) - vol(cutout.value)).toBeCloseTo(10 * 4 * 1, 6);
+    using windowed = cutout.value.solid;
+    expect(authored).toBeDefined();
+    expect(windowed).toBeDefined();
+    if (authored === undefined || windowed === undefined) return;
+    expect(unwrap(measureVolume(authored)) - unwrap(measureVolume(windowed))).toBeCloseTo(10 * 4 * 1, 6);
   });
 });
 

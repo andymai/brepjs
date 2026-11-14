@@ -170,8 +170,11 @@ describe('down-bend', () => {
           ],
         });
         expect(part.ok).toBe(true);
-        if (isErr(part) || part.value.solid === undefined) return;
-        expect(getSolids(part.value.solid)).toHaveLength(1);
+        if (isErr(part)) return;
+        using solid = part.value.solid;
+        expect(solid).toBeDefined();
+        if (solid === undefined) return;
+        expect(getSolids(solid)).toHaveLength(1);
       }
     }
   );
