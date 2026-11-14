@@ -226,6 +226,43 @@ pub const APEX_REACH: f64 = 10.0;
 /// area are faces; smaller ones are noise fragments or slivers bridging a crease.
 const MAJOR_AREA: f64 = 0.002;
 
+/// Sectors about a surface's axis that a region must reach to go all the way round it.
+const WRAP_SECTORS: usize = 16;
+
+/// Does the region go all the way round its cylinder or cone? Noise leaves
+/// fragments on a face and slivers along a crease, but not a closed band
+/// about an axis: a drilled hole is a face however small its wall is beside
+/// the part (36 holes of 6 mm through a 280 mm brake disc are 0.13% of its
+/// area each).
+fn wraps_its_axis(mesh: &Mesh, r: &Region) -> bool {
+    let (o, a) = match r.surface {
+        Surface::Cylinder { o, a, .. } => (o, a),
+        Surface::Cone { apex, a, .. } => (apex, a),
+        _ => return false,
+    };
+    if r.tris.len() < 2 * WRAP_SECTORS {
+        return false;
+    }
+    let helper = if a[0].abs() < 0.9 {
+        [1.0, 0.0, 0.0]
+    } else {
+        [0.0, 1.0, 0.0]
+    };
+    let Some(u) = normalize(crate::math::cross(helper, a)) else {
+        return false;
+    };
+    let v = crate::math::cross(a, u);
+    let mut seen = [false; WRAP_SECTORS];
+    for &t in &r.tris {
+        let [p, q, w] = mesh.tri(t as usize);
+        let c = crate::math::sub(scale(add(add(p, q), w), 1.0 / 3.0), o);
+        let angle = dot(c, v).atan2(dot(c, u)) + std::f64::consts::PI;
+        let k = (angle / std::f64::consts::TAU * WRAP_SECTORS as f64) as usize;
+        seen[k.min(WRAP_SECTORS - 1)] = true;
+    }
+    seen.iter().all(|&s| s)
+}
+
 /// The mesh bodies each region's triangles lie in, sorted. Merging can join
 /// faces of separate bodies that share one surface, so there may be several.
 pub fn region_bodies(regions: &[Region], tri_body: &[u32]) -> Vec<Vec<u32>> {
@@ -240,10 +277,10 @@ pub fn region_bodies(regions: &[Region], tri_body: &[u32]) -> Vec<Vec<u32>> {
         .collect()
 }
 
-/// Keep the major regions of a scan (see `MAJOR_AREA`) and hand every other
-/// triangle to the major surface in its own body that accepts it with its
-/// centroid closest; what none accepts stays unfit. Returns how many regions
-/// were folded in.
+/// Keep the major regions of a scan (see `MAJOR_AREA`), and each smaller one
+/// that goes all the way round its axis, and hand every other triangle to the
+/// kept surface in its own body that accepts it with its centroid closest;
+/// what none accepts stays unfit. Returns how many regions were folded in.
 pub fn consolidate(
     mesh: &Mesh,
     seg: &mut Segmentation,
@@ -270,7 +307,7 @@ pub fn consolidate(
             by_body.chunk_by(|x, y| x.0 == y.0).any(|run| {
                 let a: f64 = run.iter().map(|x| x.1).sum();
                 a >= MAJOR_AREA * body_area[run[0].0 as usize]
-            })
+            }) || wraps_its_axis(mesh, r)
         })
         .collect();
     let folded = major.iter().filter(|&&m| !m).count();
@@ -394,6 +431,42 @@ pub fn reassign(mesh: &Mesh, seg: &mut Segmentation, params: &Params, tri_body: 
         r.max_residual = max_residual(&r.surface, &pts);
     }
     moved
+}
+
+/// How far (in tolerances) a triangle's centroid may sit from its region's
+/// surface on a scan: the reach `dissolve_redundant` hands triangles over within.
+const MISFIT_REACH: f64 = 3.0;
+
+/// Merging and dissolving move whole regions by what their measured points
+/// lie on. The chords decimation leaves across a crease come along, though
+/// they lie on neither face: a triangle from the bottom of a plate to halfway
+/// up its side. Release every triangle whose centroid is farther than
+/// `MISFIT_REACH` tolerances from its region's surface, so a region's extent
+/// and the mesh's sag are those of the face. Returns how many were released.
+pub fn release_misfits(mesh: &Mesh, seg: &mut Segmentation, params: &Params) -> usize {
+    let reach = MISFIT_REACH * params.tol;
+    let mut released = 0;
+    for t in 0..seg.region_of.len() {
+        let r = seg.region_of[t];
+        if r == u32::MAX {
+            continue;
+        }
+        let [a, b, c] = mesh.tri(t);
+        let centroid = scale(add(add(a, b), c), 1.0 / 3.0);
+        if seg.regions[r as usize].surface.distance(centroid) > reach {
+            seg.region_of[t] = u32::MAX;
+            released += 1;
+        }
+    }
+    if released > 0 {
+        rebuild_members(seg);
+        for r in &mut seg.regions {
+            let (pts, _) = samples(mesh, &r.tris);
+            r.max_residual = max_residual(&r.surface, &pts);
+        }
+        seg.unfit_triangles = seg.region_of.iter().filter(|&&r| r == u32::MAX).count();
+    }
+    released
 }
 
 /// Rebuild each region's triangle list from `region_of`, dropping regions
@@ -603,10 +676,11 @@ const MIN_MERGE_EVIDENCE: usize = 10;
 /// wall of a disc between the scallops cut into it, a top face split by a
 /// boss. Each small region's own fit is tilted by noise, so `merge_equivalent`
 /// leaves them apart, and the arrangement would then get nearly coincident
-/// patches. Join every pair of regions of one kind, in one body, whose
-/// measured points one surface fits. A cone or torus region joins a plane,
-/// cylinder or sphere the same way: a narrow strip of a cylinder fits a
-/// shallow cone as well within noise. Returns how many merges were made.
+/// patches. Join every pair of regions in one body whose measured points one
+/// plane, cylinder or sphere fits. Of two kinds the simpler carries the union:
+/// within noise a narrow strip of a cylinder fits a shallow cone as well, and
+/// part of a flat face a cylinder of large radius. Returns how many merges
+/// were made.
 pub fn merge_same_surface(
     mesh: &Mesh,
     seg: &mut Segmentation,
@@ -614,6 +688,12 @@ pub fn merge_same_surface(
     tri_body: &[u32],
     measured: &mut RegionPoints,
 ) -> usize {
+    // Stable ids survive the index shifts of merging, so a pair once found not
+    // to share a surface is not tried again until one side changes.
+    let mut ids: Vec<usize> = (0..seg.regions.len()).collect();
+    let mut next_id = ids.len();
+    let mut rejected: std::collections::BTreeSet<(usize, usize)> =
+        std::collections::BTreeSet::new();
     let mut merges = 0;
     loop {
         let homes = region_bodies(&seg.regions, tri_body);
@@ -621,54 +701,18 @@ pub fn merge_same_surface(
         let mut found = None;
         'pairs: for i in 0..n {
             for j in i + 1..n {
-                let (si, sj) = (seg.regions[i].surface, seg.regions[j].surface);
-                let (ti, tj) = (trusted(si.kind()), trusted(sj.kind()));
-                if !(ti || tj) || (ti && tj && si.kind() != sj.kind()) {
+                let key = (ids[i], ids[j]);
+                if rejected.contains(&key) {
                     continue;
                 }
-                if let (Surface::Plane { n: a, .. }, Surface::Plane { n: b, .. }) = (si, sj) {
-                    if dot(a, b) <= 0.0 {
-                        continue;
+                match shared_surface(seg, measured, &homes, params, i, j) {
+                    Some(s) => {
+                        found = Some((i, j, s));
+                        break 'pairs;
                     }
-                }
-                if !homes[i].iter().any(|b| homes[j].binary_search(b).is_ok()) {
-                    continue;
-                }
-                // The trusted side's surface carries the union; of two, the larger's.
-                let i_carries = if ti && tj {
-                    measured.pts[i].len() >= measured.pts[j].len()
-                } else {
-                    ti
-                };
-                let (big, small) = if i_carries { (i, j) } else { (j, i) };
-                if measured.pts[small].len() < MIN_MERGE_EVIDENCE
-                    || !fits(
-                        &seg.regions[big].surface,
-                        &measured.pts[small],
-                        2.0 * params.tol,
-                        true,
-                    )
-                {
-                    continue;
-                }
-                let union: Vec<V3> = measured.pts[big]
-                    .iter()
-                    .chain(&measured.pts[small])
-                    .copied()
-                    .collect();
-                let stride = union.len().div_ceil(MAX_REFIT_SAMPLES).max(1);
-                let sample: Vec<V3> = union.iter().step_by(stride).copied().collect();
-                let s = match seg.regions[big].surface {
-                    plane @ Surface::Plane { .. } => crate::fit::plane(&union)
-                        .map(|p| orient_like(p, plane))
-                        .unwrap_or(plane),
-                    curved => refine(curved, &sample),
-                };
-                if fits(&s, &measured.pts[big], params.tol, true)
-                    && fits(&s, &measured.pts[small], params.tol, true)
-                {
-                    found = Some((i, j, s));
-                    break 'pairs;
+                    None => {
+                        rejected.insert(key);
+                    }
                 }
             }
         }
@@ -694,9 +738,68 @@ pub fn merge_same_surface(
                 *r -= 1;
             }
         }
+        // The merged region is new to every other one.
+        let (gone_i, gone_j) = (ids[i], ids[j]);
+        rejected.retain(|&(a, b)| ![a, b].iter().any(|k| *k == gone_i || *k == gone_j));
+        ids.remove(j);
+        ids[i] = next_id;
+        next_id += 1;
         merges += 1;
     }
     merges
+}
+
+/// The surface that fits the measured points of regions `i` and `j`, when
+/// they are in one body and one plane, cylinder or sphere fits both.
+fn shared_surface(
+    seg: &Segmentation,
+    measured: &RegionPoints,
+    homes: &[Vec<u32>],
+    params: &Params,
+    i: usize,
+    j: usize,
+) -> Option<Surface> {
+    let (si, sj) = (seg.regions[i].surface, seg.regions[j].surface);
+    // The simpler kind's surface carries the union; of one kind, the larger's.
+    let i_carries = match si.kind().cmp(&sj.kind()) {
+        std::cmp::Ordering::Less => true,
+        std::cmp::Ordering::Greater => false,
+        std::cmp::Ordering::Equal => measured.pts[i].len() >= measured.pts[j].len(),
+    };
+    let (big, small) = if i_carries { (i, j) } else { (j, i) };
+    let carrier = seg.regions[big].surface;
+    if !trusted(carrier.kind()) {
+        return None;
+    }
+    if let (Surface::Plane { n: a, .. }, Surface::Plane { n: b, .. }) = (si, sj) {
+        if dot(a, b) <= 0.0 {
+            return None;
+        }
+    }
+    if !homes[i].iter().any(|b| homes[j].binary_search(b).is_ok()) {
+        return None;
+    }
+    if measured.pts[small].len() < MIN_MERGE_EVIDENCE
+        || !fits(&carrier, &measured.pts[small], 2.0 * params.tol, true)
+    {
+        return None;
+    }
+    let union: Vec<V3> = measured.pts[big]
+        .iter()
+        .chain(&measured.pts[small])
+        .copied()
+        .collect();
+    let stride = union.len().div_ceil(MAX_REFIT_SAMPLES).max(1);
+    let sample: Vec<V3> = union.iter().step_by(stride).copied().collect();
+    let s = match carrier {
+        plane @ Surface::Plane { .. } => crate::fit::plane(&union)
+            .map(|p| orient_like(p, plane))
+            .unwrap_or(plane),
+        curved => refine(curved, &sample),
+    };
+    (fits(&s, &measured.pts[big], params.tol, true)
+        && fits(&s, &measured.pts[small], params.tol, true))
+    .then_some(s)
 }
 
 /// Measured points per region, with their normals: on a scan, the input's own
@@ -1727,6 +1830,55 @@ mod tests {
     }
 
     #[test]
+    fn a_small_hole_is_kept_and_a_small_patch_is_not() {
+        // A 400 mm sheet, the whole wall of a 6 mm hole, and a quarter of another.
+        let mut mesh = grid(20);
+        for p in &mut mesh.positions {
+            *p = [40.0 * p[0], 40.0 * p[1], 0.0];
+        }
+        let sheet = mesh.triangles.len() as u32;
+        let rings: Vec<(f64, f64)> = (0..=12).map(|i| (3.0, f64::from(i))).collect();
+        let tube = revolved(&rings, 16);
+        let mut add_tube = |dx: f64, keep: &dyn Fn(u32) -> bool| -> Vec<u32> {
+            let base = mesh.positions.len() as u32;
+            mesh.positions
+                .extend(tube.positions.iter().map(|p| [p[0] + dx, p[1], p[2]]));
+            let first = mesh.triangles.len() as u32;
+            for (t, tri) in tube.triangles.iter().enumerate() {
+                if keep((t as u32 / 2) % 16) {
+                    mesh.triangles.push(tri.map(|v| v + base));
+                }
+            }
+            (first..mesh.triangles.len() as u32).collect()
+        };
+        let whole = add_tube(0.0, &|_| true);
+        let quarter = add_tube(100.0, &|segment| segment < 4);
+        let wall = |x: f64| Surface::Cylinder {
+            o: [x, 15.0, 0.0],
+            a: [0.0, 0.0, 1.0],
+            r: 3.0,
+        };
+        let mut seg = regions_from(
+            &mesh,
+            vec![
+                (FLAT, (0..sheet).collect()),
+                (wall(20.0), whole.clone()),
+                (wall(120.0), quarter.clone()),
+            ],
+        );
+        let tris = mesh.triangles.len();
+        let total: f64 = (0..tris).map(|t| mesh.area(t)).sum();
+        let hole: f64 = whole.iter().map(|&t| mesh.area(t as usize)).sum();
+        assert!(hole < MAJOR_AREA * total, "the hole must be a minor region");
+        let folded = consolidate(&mesh, &mut seg, &scan_params(), &vec![0; tris]);
+        assert_eq!(folded, 1);
+        assert_eq!(seg.regions.len(), 2);
+        assert_eq!(seg.regions[1].surface, wall(20.0));
+        assert_eq!(seg.regions[1].tris.len(), whole.len());
+        assert!(quarter.iter().all(|&t| seg.region_of[t as usize] != 1));
+    }
+
+    #[test]
     fn a_small_body_keeps_its_faces() {
         // A 0.2 mm square plate beside a 10 mm one: 0.04% of the mesh area, but
         // all of its own body. Its triangles also lie on the big plate's plane
@@ -2049,6 +2201,64 @@ mod tests {
         assert_eq!(merges, 1);
         assert_eq!(seg.regions[1].surface.kind(), Kind::Cylinder);
         assert_eq!(seg.regions[1].tris.len(), both);
+    }
+
+    #[test]
+    fn part_of_a_flat_face_fitted_as_a_wide_cylinder_joins_the_plane() {
+        // Half of a 10 mm sheet, fitted to a cylinder of 2 m radius that noise allows.
+        let mesh = grid(10);
+        let tris = mesh.triangles.len() as u32;
+        let wide = Surface::Cylinder {
+            o: [0.0, 0.0, -2000.0],
+            a: [0.0, 1.0, 0.0],
+            r: 2000.0,
+        };
+        let mut seg = regions_from(
+            &mesh,
+            vec![
+                (FLAT, (0..tris / 2).collect()),
+                (wide, (tris / 2..tris).collect()),
+            ],
+        );
+        let pts = |r: &Region| -> Vec<V3> {
+            unique_vertices(&mesh, &r.tris)
+                .into_iter()
+                .map(|v| mesh.positions[v as usize])
+                .collect()
+        };
+        let mut measured = RegionPoints {
+            pts: seg.regions.iter().map(pts).collect(),
+            nrm: Vec::new(),
+        };
+        measured.nrm = measured
+            .pts
+            .iter()
+            .map(|p| vec![[0.0, 0.0, 1.0]; p.len()])
+            .collect();
+        let tri_body = vec![0; mesh.triangles.len()];
+        let merges = merge_same_surface(&mesh, &mut seg, &scan_params(), &tri_body, &mut measured);
+        assert_eq!(merges, 1);
+        assert_eq!(seg.regions.len(), 1);
+        assert_eq!(seg.regions[0].surface.kind(), Kind::Plane);
+        assert_eq!(seg.regions[0].tris.len(), tris as usize);
+    }
+
+    #[test]
+    fn a_chord_across_a_crease_is_released_from_the_face_it_came_with() {
+        // A sheet, and one triangle from it to a point 4 mm above it.
+        let mut mesh = grid(10);
+        let sheet = mesh.triangles.len() as u32;
+        let apex = mesh.positions.len() as u32;
+        mesh.positions.push([10.0, 5.0, 4.0]);
+        mesh.triangles.push([10, 21, apex]);
+        let mut seg = regions_from(&mesh, vec![(FLAT, (0..=sheet).collect())]);
+        assert_eq!(release_misfits(&mesh, &mut seg, &scan_params()), 1);
+        assert_eq!(seg.region_of[sheet as usize], u32::MAX);
+        assert_eq!(seg.unfit_triangles, 1);
+        assert_eq!(seg.regions[0].tris.len(), sheet as usize);
+        assert!(seg.regions[0].max_residual < 1e-12);
+        // Nothing more to release.
+        assert_eq!(release_misfits(&mesh, &mut seg, &scan_params()), 0);
     }
 
     #[test]

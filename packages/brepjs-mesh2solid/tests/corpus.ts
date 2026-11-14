@@ -188,6 +188,14 @@ export interface ScanCase {
   readonly build: () => ValidSolid;
   /** Calls the tier 2 program should contain, as written. */
   readonly code: readonly string[];
+  /** Noise seeds to run (default 1 and 7). */
+  readonly seeds?: readonly number[];
+  /** Largest relative volume error (default 1e-3). */
+  readonly volume?: number;
+  /** `scanLike`'s target triangle count (default 60,000). */
+  readonly target?: number;
+  /** `maxTriangles`, or null for the default budget (default 20,000). */
+  readonly budget?: number | null;
 }
 
 export const SCAN_CORPUS: readonly ScanCase[] = [
@@ -234,6 +242,28 @@ export const SCAN_CORPUS: readonly ScanCase[] = [
       'cylinder(77, 27, { at: [0, 0, 12] })',
       'cylinder(7.5, 7.5, { at: [0, 56, 39] })',
     ],
+  },
+  {
+    // Each hole's wall is under 0.2% of the plate's area, and the plate's
+    // sides are thin beside its faces: a scan of 140,000 triangles that noise
+    // keeps above a small budget.
+    name: 'drilled plate',
+    build: () =>
+      owned((keep) => {
+        let plate: ValidSolid = keep(box(200, 150, 8));
+        const at = [30, 80, 130, 180].flatMap((x) => [30, 75, 120].map((y) => [x, y] as const));
+        at.forEach(([x, y], i) => {
+          const hole = keep(cylinder(2.5, 12, { at: [x, y, -2] }));
+          const next = unwrap(cut(plate, hole));
+          plate = i < at.length - 1 ? keep(next) : next;
+        });
+        return plate;
+      }),
+    code: ['box(200, 150, 8)', 'cylinder(2.5, 8, { at: [30, 30, 0] })'],
+    seeds: [7],
+    volume: 1e-9,
+    target: 8_000,
+    budget: null,
   },
 ];
 

@@ -154,24 +154,38 @@ describe('scan eval: noisy, decimated meshes', () => {
   // The calls each scan's feature program should contain.
   // `volume` is the largest relative volume error: the drawn dimensions come
   // back exactly, except where a profile's arcs meet at points that are not round.
-  const cases: { name: string; code: readonly string[]; seed?: number; volume?: number }[] = [
+  const cases: {
+    name: string;
+    code: readonly string[];
+    seed?: number;
+    volume?: number;
+    target?: number | undefined;
+    budget?: number | null | undefined;
+  }[] = [
     { name: 'box', code: ['box(40, 30, 10)'] },
     { name: 'plate with hole', code: ['box(40, 30, 6)', 'cylinder(5, 6, { at: [20, 15, 0] })'] },
     { name: 'sphere', code: ['sphere(15)'] },
     { name: 'filleted box', code: ['box(30, 20, 15)', 'fillet(slab1, 3)'] },
     // The same part under different noise must not come back at a different tier.
     ...SCAN_CORPUS.flatMap((c) =>
-      [1, 7].map((seed) => ({ name: c.name, code: c.code, seed, volume: 1e-3 }))
+      (c.seeds ?? [1, 7]).map((seed) => ({
+        name: c.name,
+        code: c.code,
+        seed,
+        volume: c.volume ?? 1e-3,
+        target: c.target,
+        budget: c.budget,
+      }))
     ),
   ];
-  for (const { name, code, seed = 7, volume = 1e-9 } of cases) {
+  for (const { name, code, seed = 7, volume = 1e-9, target = 60_000, budget = 20_000 } of cases) {
     it(`${name} (σ=${sigma} mm, seed ${seed})`, async () => {
       const c = [...CAD_CORPUS, ...SCAN_CORPUS].find((k) => k.name === name);
       if (c === undefined) throw new Error(`no corpus case ${name}`);
       using src = c.build();
-      const stl = scanLike(src, { targetTriangles: 60_000, sigma, seed });
+      const stl = scanLike(src, { targetTriangles: target, sigma, seed });
       const t0 = performance.now();
-      const res = unwrap(await meshToSolid(stl, { maxTriangles: 20_000 }));
+      const res = unwrap(await meshToSolid(stl, budget === null ? {} : { maxTriangles: budget }));
       const ms = performance.now() - t0;
       using shape = res.shape;
       const r = res.report;
@@ -194,7 +208,9 @@ describe('scan eval: noisy, decimated meshes', () => {
       expect(isValid(shape), summary).toBe(true);
       expect(r.estimate.kind, summary).toBe('scan');
       expect(r.decimation.applied, summary).toBe(true);
-      if (r.decimation.applied) expect(r.decimation.after, summary).toBeLessThanOrEqual(20_000);
+      if (r.decimation.applied && budget !== null) {
+        expect(r.decimation.after, summary).toBeLessThanOrEqual(budget);
+      }
       expect(r.deviation.p95, summary).toBeLessThan(4 * sigma);
       // Snapping recovers the drawn dimensions through the noise.
       expect(r.tierReached, summary).toBe(2);

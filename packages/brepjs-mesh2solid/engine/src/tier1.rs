@@ -11,7 +11,7 @@ use crate::mesh::{Mesh, Topology};
 use crate::pipeline::{run_tier0, Options, Tier0, MAX_DEVIATION_SAMPLES};
 use crate::segment::{
     absorb, consolidate, dissolve_redundant, merge_adjacent, merge_same_surface, reassign,
-    refit_from, segment, unfit_area, Params, RegionPoints, Segmentation,
+    refit_from, release_misfits, segment, unfit_area, Params, RegionPoints, Segmentation,
 };
 use crate::snap::{dissolve_kinks, snap, SnapReport};
 
@@ -88,6 +88,7 @@ pub fn run_tier1(bytes: &[u8], opts: &Options) -> Result<Tier1, String> {
             }
         }
         reassign(&t0.mesh, &mut seg, &params, &tri_body);
+        release_misfits(&t0.mesh, &mut seg, &params);
         let measured = measured_points(&t0, &normals, &bvh, &seg, Some(2.0 * tol));
         refit_from(&t0.mesh, &mut seg, &measured.pts, &params);
     } else {

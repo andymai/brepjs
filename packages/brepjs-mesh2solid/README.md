@@ -48,7 +48,9 @@ if (info.ok) {
 3. **Measures** the mesh: CAD tessellation or scan, coordinate quantization, measurement noise, and
    tessellation chord error. The merge tolerance comes from these unless you pass one.
 4. **Decimates** scans (and any mesh over `maxTriangles`) with quadric-error edge collapse, within the
-   tolerance.
+   tolerance. A mesh still over `maxTriangles` is decimated further; a scan only to twice the
+   tolerance, where it may stay above the budget (noise keeps a flat face's triangles near a
+   millimetre, and collapses past that drag large faces across the thin walls beside them).
 5. **Merges coplanar triangles** into planar regions, snaps shared vertices onto the planes so each
    region is planar to machine precision, and drops vertices that only interrupt a straight edge.
 6. **Builds** shells and solids in the kernel, subtracts cavities, and asks the kernel to unify each
@@ -110,13 +112,17 @@ points past it:
   goes to the region of its nearest decimated triangle. Decimation leaves a flat face a few large
   triangles and flattens the start of each fillet, so fits to the decimated vertices are biased.
 - Regions covering less than 0.2% of the area are noise fragments, and each of their triangles goes to
-  the face that accepts it. Neighbouring regions merge while one plane, cylinder, or sphere fits the
+  the face that accepts it. A cylinder or cone that goes all the way round its axis is a face however
+  small: each of 36 holes of 6 mm through a 280 mm brake disc is 0.13% of its area. Neighbouring
+  regions merge while one plane, cylinder, or sphere fits the
   points no other surface explains (a fillet split into strips), and small regions whose points their
-  neighbours explain are dropped. Up to 3% of the area may fit no surface (decimated triangles that
-  bridge a crease).
+  neighbours explain are dropped. A triangle farther than three tolerances from the surface of the
+  region it came along with is released. Up to 3% of the area may fit no surface (decimated triangles
+  that bridge a crease).
 - Regions that lie on one surface but do not touch (the wall of a disc between the scallops cut into
-  it) merge when one surface fits the points of both. A strip that fits a shallow cone or a torus
-  joins the plane, cylinder, or sphere it lies on the same way.
+  it) merge when one plane, cylinder, or sphere fits the points of both. Of two kinds the simpler one
+  carries the union: a strip of a cylinder that fits a shallow cone joins the cylinder, and part of a
+  flat face that fits a wide cylinder joins the plane.
 - Two neighbouring regions merge only when the shared surface fits the points of each on its own, so
   the flat end of a long shaft does not vanish into the shaft as the few points a robust fit lets miss.
 - Tangency is read off the fitted surfaces rather than the noisy boundary between their regions.
@@ -133,7 +139,8 @@ points past it:
 A scanned box, a plate with a drilled hole, a sphere, and a filleted box come back at tier 2 with
 their drawn dimensions. So do a knob with six scallops and a bore, and a brake disc with a hat and
 five bolt holes, under two different noise seeds each; the arcs of the knob's profile meet at points
-that are not round, so its volume is within 0.1% of the drawn part's.
+that are not round, so its volume is within 0.1% of the drawn part's. A plate of 200 by 150 by 8 mm
+with twelve 5 mm holes comes back with its drawn dimensions and volume.
 
 ## What tier 2 does
 
@@ -200,8 +207,8 @@ one part in a million. The tier 2 cases import each generated program, run it, a
 calls a person would write (`box(30, 20, 15)`, `fillet(slab1, 3)`) and the source solid's volume to
 within one part in a billion. The scan cases sample each solid evenly by area, as a scanner does, add
 Gaussian noise, run at the default tier, and require the same calls and volume from the scanned box,
-plate, sphere, and filleted box, and the same calls from the knob and the brake disc under two noise
-seeds each. The organic cases (a blob, a peanut, and a bumpy ring, sampled
+plate, sphere, filleted box, and drilled plate, and the same calls from the knob and the brake disc
+under two noise seeds each. The organic cases (a blob, a peanut, and a bumpy ring, sampled
 from formulas, clean and with scan noise) require a valid tier 1 solid of B-spline faces, at most 64
 of them, and the smooth shape's volume; on the clean meshes it must land at least four times closer
 to it than the mesh's own facets do.
