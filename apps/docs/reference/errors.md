@@ -143,6 +143,12 @@ A polygon needs at least 3 points.
 
 **Fix**: Pass a non-zero height or vector.
 
+### `EXTRUDE_VECTOR_IN_PLANE`
+
+`extrude` got a vector that lies in the plane of the face, so the solid would have no volume. A number height extrudes along Z, which is in the plane of a profile drawn on XZ or YZ. `EXTRUDE_ALL_VECTOR_IN_PLANE` is the same mistake in `extrudeAll`.
+
+**Fix**: Pass a vector with a component along the face normal, such as `[0, 20, 0]` for a profile on the XZ plane.
+
 ### `FACE_BUILD_FAILED`
 
 The kernel couldn't build a face from the given wire; the wire may not be planar. `FACE_NOT_PLANAR` means a face was built but isn't planar.

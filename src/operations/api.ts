@@ -25,7 +25,8 @@ export type { SweepOptions } from './extrudeFns.js';
  * Extrude a face to produce a solid, or an open wire to produce a shell.
  *
  * @param face   - The face to extrude, or an open wire.
- * @param height - A number for Z-direction extrusion, or a Vec3 direction vector.
+ * @param height - A number for Z-direction extrusion, or a Vec3 direction vector. A number
+ *   is not a distance along the face normal: a face whose plane contains Z needs a vector.
  * @returns `Result` containing the extruded solid (a shell for a wire), or an error if
  *   validation or operation fails.
  */

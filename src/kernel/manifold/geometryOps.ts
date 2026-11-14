@@ -41,6 +41,19 @@ interface RawMesh {
   readonly numProp?: number;
 }
 
+// A profile face lies in the plane of its frame, and its outline is CCW about
+// xAxis × yAxis. That is the normal the OCCT replay of the face reports.
+function profileFaceNormal(face: KernelShape): Vec3 | null {
+  const node = asManifoldShape(face)?.node as
+    { op?: string; params?: { xAxis?: Vec3; yAxis?: Vec3 } } | undefined;
+  if (node?.op !== 'profileFace') return null;
+  const [ax, ay, az] = node.params?.xAxis ?? [1, 0, 0];
+  const [bx, by, bz] = node.params?.yAxis ?? [0, 1, 0];
+  const n: Vec3 = [ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx];
+  const len = Math.hypot(n[0], n[1], n[2]);
+  return len > 0 ? [n[0] / len, n[1] / len, n[2] / len] : null;
+}
+
 function meshOf(shape: KernelShape): RawMesh {
   return unwrap(shape).getMesh() as RawMesh;
 }
@@ -191,7 +204,9 @@ export function makeGeometryOps(_module: ManifoldModule): KernelCurveOps & Kerne
         : viaOcct(face, (s, occt) => occt.uvBounds(s)),
     outerWire: (face) => viaOcct(face, (s, occt) => occt.outerWire(s)),
     surfaceNormal: (face, u, v) =>
-      isNativeFace(face) ? face.normal : viaOcct(face, (s, occt) => occt.surfaceNormal(s, u, v)),
+      isNativeFace(face)
+        ? face.normal
+        : (profileFaceNormal(face) ?? viaOcct(face, (s, occt) => occt.surfaceNormal(s, u, v))),
     pointOnSurface: (face, u, v) => viaOcct(face, (s, occt) => occt.pointOnSurface(s, u, v)),
     uvFromPoint: (face, point) => viaOcct(face, (s, occt) => occt.uvFromPoint(s, point)),
     projectPointOnFace: (face, point) =>

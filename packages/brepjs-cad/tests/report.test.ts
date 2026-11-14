@@ -62,6 +62,7 @@ describe('hints', () => {
       'FILLET_NOT_3D',
       'STEP_EXPORT_CRASHED',
       'LOFT_FAILED',
+      'EXTRUDE_VECTOR_IN_PLANE',
       'BOOLEAN_HAS_ERRORS',
       VALIDITY_FAILURE_CODE,
     ];

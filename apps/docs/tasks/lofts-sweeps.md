@@ -298,6 +298,7 @@ A profile, two `lineTo`s, a revolve. Simpler than building two cones and fusing.
 | Failure                                    | Cause                                                                                       |
 | ------------------------------------------ | ------------------------------------------------------------------------------------------- |
 | `EXTRUDE_ZERO_VECTOR`                      | The extrusion height or vector has zero length                                              |
+| `EXTRUDE_VECTOR_IN_PLANE`                  | The vector lies in the plane of the face (a number height extrudes along Z)                 |
 | `EXTRUDE_FAILED` / `REVOLVE_FAILED`        | The kernel couldn't build the solid from the face                                           |
 | `SWEEP_NOT_3D`                             | No solid came out: path has self-intersections, sharp corners, or non-tangent meeting edges |
 | `LOFT_FAILED`                              | Profiles have very different topologies (e.g. one closed, one open)                         |

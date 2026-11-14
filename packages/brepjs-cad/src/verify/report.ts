@@ -215,6 +215,11 @@ const HINT_TABLE: Record<string, { fix: string; nextStep: string }> = {
     fix: 'Pass a non-zero thickness to `.extrude(h)` — a height of 0 is a zero-length vector, no solid.',
     nextStep: 'Set a positive extrusion height (units: mm) and re-verify.',
   },
+  EXTRUDE_VECTOR_IN_PLANE: {
+    fix: 'The extrusion vector lies in the plane of the face, so the solid would have no volume. `extrude(face, h)` with a number moves the face along Z; a profile on the XZ or YZ plane needs a vector.',
+    nextStep:
+      'Pass a vector with a component along the face normal (e.g. `[0, h, 0]` for an XZ profile) and re-verify.',
+  },
   DEGENERATE_EDGE: {
     fix: 'A polygon/wire has coincident consecutive points (a zero-length edge). Dedupe the point list before building — common in computed tooth/gear loops where a land and a groove point land on the same coordinate.',
     nextStep:

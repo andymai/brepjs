@@ -10,7 +10,9 @@ import {
   resetPerformanceStats,
   extrude,
   fuse,
+  getBounds,
   isSolid,
+  measureVolume,
 } from '@/index.js';
 import type { Wire } from '@/index.js';
 import { initOCCT } from './setup.js';
@@ -99,7 +101,7 @@ describe('Batch extractors', () => {
     });
 
     it('supports Vec3 direction', () => {
-      const face = unwrap(
+      using face = unwrap(
         polygon([
           [0, 0, 0],
           [10, 0, 0],
@@ -108,11 +110,15 @@ describe('Batch extractors', () => {
         ])
       );
 
-      const results = unwrap(extrudeAll([{ face, height: [5, 0, 0] }]));
+      const results = unwrap(extrudeAll([{ face, height: [5, 0, 5] }]));
 
       expect(results).toHaveLength(1);
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked
-      expect(isSolid(results[0]!)).toBe(true);
+      using sheared = results[0];
+      expect(sheared).toBeDefined();
+      if (sheared === undefined) return;
+      expect(isSolid(sheared)).toBe(true);
+      expect(unwrap(measureVolume(sheared))).toBeCloseTo(100 * 5, 6);
+      expect(getBounds(sheared).xMax).toBeCloseTo(15, 6);
     });
 
     it('returns empty array for empty input', () => {
