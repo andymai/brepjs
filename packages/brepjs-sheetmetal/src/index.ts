@@ -48,7 +48,7 @@ export type { MiterPlane } from './miterFns.js';
 
 export { addBendRelief, autoBendReliefs, cornerRelief } from './reliefFns.js';
 
-export { addCutout, addHole, addSlot, addPolygonCutout } from './cutoutFns.js';
+export { addCutout, addCutouts, addHole, addSlot, addPolygonCutout } from './cutoutFns.js';
 
 export { addTab, tabAndSlot } from './tabFns.js';
 export type { SlotPlacement } from './tabFns.js';

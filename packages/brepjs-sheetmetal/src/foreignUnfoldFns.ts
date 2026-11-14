@@ -684,6 +684,9 @@ function buildBendGraph(
       if (bendTouchesFlat(bend, flat)) touching.push(fi);
     }
     if (touching.length < 2) {
+      const [only] = touching;
+      const flat = only !== undefined ? flats[only] : undefined;
+      if (flat !== undefined && goesThroughFlat(bend, flat)) continue;
       warnings.push({
         code: 'DETECTION_INCOMPLETE',
         message: `bend '${bend.id}' connects ${touching.length} flats (expected 2); ignored`,
@@ -703,14 +706,33 @@ function buildBendGraph(
   return { edges };
 }
 
+/**
+ * True for a cylinder that goes through the sheet: a round hole, the end of an
+ * obround slot or a rounded corner of the outline. A bend axis lies in the plane
+ * of its flats; this axis is along the flat normal, and the cylinder meets both
+ * faces of the panel. A boss or a blind recess meets one face only, so it keeps
+ * its warning.
+ */
+function goesThroughFlat(bend: DetectedBend, flat: DetectedFlat): boolean {
+  if (Math.abs(vecDot(bend.fit.axisDir, flat.normal)) <= 0.99) return false;
+  return flat.faces.every((ff) => bend.faces.some((bf) => facesShareEdge(bf, ff)));
+}
+
 /** True if any of the bend's faces shares an edge with either face of the flat. */
 function bendTouchesFlat(bend: DetectedBend, flat: DetectedFlat): boolean {
   for (const bf of bend.faces) {
     for (const ff of flat.faces) {
-      if (sharedEdges(bf, ff).length > 0) return true;
+      if (facesShareEdge(bf, ff)) return true;
     }
   }
   return false;
+}
+
+/** True if two faces share an edge. `sharedEdges` returns handles that the caller owns. */
+function facesShareEdge(a: Face, b: Face): boolean {
+  const edges = sharedEdges(a, b);
+  for (const edge of edges) edge.delete();
+  return edges.length > 0;
 }
 
 interface ForeignLayout {
