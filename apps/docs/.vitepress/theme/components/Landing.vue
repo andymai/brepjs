@@ -102,7 +102,7 @@ const REELS: Reel[] = [
   {
     id: 'mesh-to-solid',
     title: 'Mesh to solid',
-    fact: 'An STL file of a brake disc has 24,810 triangles. It becomes a solid of 50 faces, and a program that builds it. Experimental.',
+    fact: 'A simulated 3D scan of a brake disc has 915,378 noisy triangles. It becomes a solid of 50 faces, and a program that builds it. Experimental.',
     video: '/media/mesh-reel.mp4',
     poster: '/media/mesh-reel-poster.webp',
     href: 'https://github.com/andymai/brepjs/tree/main/packages/brepjs-mesh2solid',
@@ -448,8 +448,8 @@ onBeforeUnmount(() => observer?.disconnect());
               published Denavit-Hartenberg table. The watch has the tooth counts of a real calibre.
               The kernel measures the mass and the centre of mass of the rover, and it unfolds the
               sheet metal of the chassis for a DXF. The office building is a BIM model that exports
-              to IFC. The last tile shows an experimental package that turns an STL file into a
-              solid and a program.
+              to IFC. The last tile shows an experimental package that turns a 3D scan into a solid
+              and a program.
             </p>
           </div>
           <div class="reels" :class="{ odd: REELS.length % 2 === 1 }">
