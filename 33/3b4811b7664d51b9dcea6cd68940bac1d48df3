@@ -1,0 +1,41 @@
+packages/brepjs-sheetmetal/src/cutoutFns.ts
+  s_b6e98997548822::t_d836d8af6102dc 5,14-17,27-28,33-36,50-52,55-68,70,72,74-75,81-82,84-92,94-96,98-101,103-104,106-116,120-124,126,130,187-189,290-295,297-303,305-309,311-316,319,325,329-363
+packages/brepjs-sheetmetal/src/foreignUnfoldFns.ts
+  s_b6e98997548822::t_d836d8af6102dc 687-694
+packages/brepjs-sheetmetal/tests/foreignUnfold.test.ts
+  s_b6e98997548822::t_273e5d0a12ecf3 20
+  s_b6e98997548822::t_731c4f9cd45912 26,352-381
+  s_b6e98997548822::t_34113479f6d474 382-384
+packages/brepjs-sheetmetal/src/foldFns.ts
+  s_b6e98997548822::t_d836d8af6102dc 26,82-85,87,89-91
+packages/brepjs-sheetmetal/src/facade.ts
+  s_b6e98997548822::t_d836d8af6102dc 28,119-123,316-318
+  s_b6e98997548822::t_46e23d58fa93ed 319
+packages/brepjs-sheetmetal/tests/cutout.test.ts
+  s_b6e98997548822::t_d40053d6aa3bf4 3-11,13,16,20,189-190,192-198,202-208,215-219,223-238,241,244-245,247-251,254-257,260-268,271-278
+  s_b6e98997548822::t_a89dfdb75db69a 12,42-55,191,199-201,209-214,220-222,239-240,242-243,246,252-253,258-259,269-270
+  s_b6e98997548822::t_7f145adb189559 279
+packages/brepjs-sheetmetal/README.md
+  s_b6e98997548822::t_74b3cb10a57917 97-102
+packages/brepjs-sheetmetal/src/api.ts
+  s_b6e98997548822::t_d836d8af6102dc 31,152-157
+  s_b6e98997548822::t_e29b36e56490a0 158-159
+packages/brepjs-sheetmetal/src/index.ts
+  s_b6e98997548822::t_d836d8af6102dc 51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "333b4811b7664d51b9dcea6cd68940bac1d48df3",
+  "prompts": {},
+  "sessions": {
+    "s_b6e98997548822": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b26c959d-58c1-4095-9e3c-81b90119e59c",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
