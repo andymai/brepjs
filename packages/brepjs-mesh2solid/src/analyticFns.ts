@@ -202,8 +202,18 @@ function patch(
   }
 }
 
-/** Points on `face`: centroids of a coarse triangulation, projected onto the face. */
-function samplePoints(face: Face, coarse: number): Vec3[] {
+/** Sample points on a face, each with the area it stands for. */
+interface Samples {
+  readonly pts: Vec3[];
+  readonly weights: number[];
+}
+
+/**
+ * Points on `face`: centroids of a coarse triangulation, projected onto the
+ * face, weighted by their triangle's area. The mesher puts small triangles
+ * along a curved boundary, so unweighted centroids crowd the rim of a disc.
+ */
+function samplePoints(face: Face, coarse: number): Samples {
   const m = mesh(face, {
     tolerance: coarse,
     angularTolerance: 0.5,
@@ -211,20 +221,23 @@ function samplePoints(face: Face, coarse: number): Vec3[] {
     cache: false,
   });
   const k = getKernel();
-  const out: Vec3[] = [];
+  const pts: Vec3[] = [];
+  const weights: number[] = [];
   for (let t = 0; t < m.triangles.length; t += 3) {
-    let x = 0;
-    let y = 0;
-    let z = 0;
-    for (let j = 0; j < 3; j++) {
+    const corner = (j: number): Vec3 => {
       const v = 3 * (m.triangles[t + j] ?? 0);
-      x += (m.vertices[v] ?? 0) / 3;
-      y += (m.vertices[v + 1] ?? 0) / 3;
-      z += (m.vertices[v + 2] ?? 0) / 3;
-    }
-    out.push(k.projectPointOnFace(face.wrapped, [x, y, z]));
+      return [m.vertices[v] ?? 0, m.vertices[v + 1] ?? 0, m.vertices[v + 2] ?? 0];
+    };
+    const [a, b, c] = [corner(0), corner(1), corner(2)];
+    const area = len(cross(sub(b, a), sub(c, a))) / 2;
+    if (!(area > 0)) continue;
+    const [x, y, z] = scale(add(add(a, b), c), 1 / 3);
+    pts.push(k.projectPointOnFace(face.wrapped, [x, y, z]));
+    weights.push(area);
   }
-  return out.length > 0 ? out : gridSamples(face);
+  if (pts.length > 0) return { pts, weights };
+  const grid = gridSamples(face);
+  return { pts: grid, weights: grid.map(() => 1) };
 }
 
 const GRID = 8;
@@ -421,10 +434,10 @@ export function buildAnalytic(seg: Segmentation, opts: AnalyticOptions): Analyti
     const pieces = getFaces(fused.value);
     const coarse = Math.max(diag / 40, opts.coverage);
     const samples = pieces.map((p) => samplePoints(p, coarse));
-    const flat = new Float64Array(samples.reduce((n, s) => n + s.length * 3, 0));
+    const flat = new Float64Array(samples.reduce((n, s) => n + s.pts.length * 3, 0));
     let k = 0;
     for (const s of samples) {
-      for (const p of s) {
+      for (const p of s.pts) {
         flat.set(p, k);
         k += 3;
       }
@@ -435,19 +448,24 @@ export function buildAnalytic(seg: Segmentation, opts: AnalyticOptions): Analyti
     let kept = 0;
     let cursor = 0;
     for (let i = 0; i < pieces.length; i++) {
-      const pts = samples[i] ?? [];
+      const pts = samples[i]?.pts ?? [];
+      const weights = samples[i]?.weights ?? [];
       const own = nearestSurface(seg.surfaces, pts, skip);
       const start = cursor;
+      // Shares of the piece's area: on the mesh, and on a surface left out of the arrangement.
       let hits = 0;
       let neutral = 0;
+      let total = 0;
       for (let j = 0; j < pts.length; j++, cursor++) {
         const sid = near[2 * cursor] ?? -1;
         const d = near[2 * cursor + 1] ?? Infinity;
-        if (skip.has(sid)) neutral++;
-        else if (sid === own && d <= opts.coverage) hits++;
+        const w = weights[j] ?? 0;
+        total += w;
+        if (skip.has(sid)) neutral += w;
+        else if (sid === own && d <= opts.coverage) hits += w;
       }
       const piece = pieces[i];
-      const judged = pts.length - neutral;
+      const judged = total - neutral;
       if (piece === undefined || hits === 0 || hits / judged <= 0.5) continue;
       const body = majority(bodyOf, start, pts.length);
       const g = groups.get(body) ?? { faces: [], own: [] };

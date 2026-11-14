@@ -2,7 +2,8 @@
 //!
 //! Every collapse whose area-weighted mean squared distance to the original
 //! planes stays under `max_error²` is taken; past that, collapses continue only
-//! while the mesh is above its triangle budget. Open-boundary edges carry
+//! while the mesh is above its triangle budget, and only up to `past` times
+//! `max_error`. Open-boundary edges carry
 //! penalty planes so outlines hold; vertices on non-manifold edges never move.
 
 use std::cmp::Ordering;
@@ -114,8 +115,8 @@ pub struct DecimateReport {
     /// sqrt of the largest accepted collapse cost (RMS distance to merged planes).
     pub max_error: f64,
     pub over_budget_collapses: usize,
-    /// False when topology guards blocked every remaining collapse before the
-    /// mesh got down to the triangle budget.
+    /// False when topology guards, or the limit on collapses past the
+    /// tolerance, stopped the mesh above the triangle budget.
     pub budget_reached: bool,
 }
 
@@ -291,7 +292,21 @@ impl State<'_> {
     }
 }
 
-pub fn decimate(mesh: &mut Mesh, target_triangles: usize, max_error: f64) -> DecimateReport {
+/// How far past its tolerance a scan may be decimated to reach its budget.
+/// The cost is a mean over all the area a vertex stands for, so on a noisy
+/// scan the cheapest collapses past the tolerance are the ones that drag the
+/// corner of a large flat face across a thin wall beside it: a plate of
+/// 200 by 150 by 8 mm at a million triangles lost 13% of its area to such
+/// chords, and still stopped above its budget, where noise keeps a flat
+/// face's triangles near a millimetre.
+pub const SCAN_PAST_TOLERANCE: f64 = 2.0;
+
+pub fn decimate(
+    mesh: &mut Mesh,
+    target_triangles: usize,
+    max_error: f64,
+    past: f64,
+) -> DecimateReport {
     let before = mesh.triangles.len();
     let mut report = DecimateReport {
         triangles_before: before,
@@ -372,6 +387,7 @@ pub fn decimate(mesh: &mut Mesh, target_triangles: usize, max_error: f64) -> Dec
         }
     }
     let threshold = max_error * max_error;
+    let limit = past * past * threshold;
     let mut alive_count = before;
     while let Some(c) = heap.pop() {
         let (ui, vi) = (c.u as usize, c.v as usize);
@@ -379,7 +395,7 @@ pub fn decimate(mesh: &mut Mesh, target_triangles: usize, max_error: f64) -> Dec
             continue;
         }
         let over_budget = alive_count > target_triangles;
-        if c.cost > threshold && !over_budget {
+        if c.cost > threshold && (!over_budget || c.cost > limit) {
             break;
         }
         let (keep, gone) = if st.locked[ui] {
@@ -443,7 +459,7 @@ mod tests {
     #[test]
     fn flat_grid_collapses_but_keeps_outline() {
         let mut m = grid_plane(10);
-        let r = decimate(&mut m, usize::MAX, 1e-9);
+        let r = decimate(&mut m, usize::MAX, 1e-9, f64::INFINITY);
         assert!(r.triangles_after < 50, "after {}", r.triangles_after);
         let area: f64 = (0..m.triangles.len()).map(|t| m.area(t)).sum();
         assert!((area - 100.0).abs() < 1e-6, "area {area}");
@@ -454,7 +470,7 @@ mod tests {
     #[test]
     fn cube_survives_lossless_pass() {
         let mut m = cube(1.0);
-        decimate(&mut m, usize::MAX, 1e-9);
+        decimate(&mut m, usize::MAX, 1e-9, f64::INFINITY);
         assert_eq!(m.triangles.len(), 12);
         let all: Vec<u32> = (0..m.triangles.len() as u32).collect();
         assert!((m.signed_volume_of(&all) - 1.0).abs() < 1e-12);
@@ -477,17 +493,44 @@ mod tests {
         m.positions.extend(other.positions);
         m.triangles
             .extend(other.triangles.iter().map(|t| t.map(|v| v + base)));
-        decimate(&mut m, 4, 0.0);
+        decimate(&mut m, 4, 0.0, f64::INFINITY);
         let all: Vec<u32> = (0..m.triangles.len() as u32).collect();
         assert_eq!(m.triangles.len(), 8);
         assert!((m.signed_volume_of(&all) - 2.0 / 6.0).abs() < 1e-12);
     }
 
     #[test]
+    fn a_budget_does_not_take_a_mesh_far_past_its_tolerance() {
+        // A sheet with bumps of up to 0.2 mm in no pattern: few collapse within 0.01 mm.
+        let bumpy = || {
+            let mut m = grid_plane(20);
+            for (i, p) in m.positions.iter_mut().enumerate() {
+                let hash = (i as u32).wrapping_mul(2_654_435_761) >> 24;
+                p[2] = 0.2 * f64::from(hash) / 255.0;
+            }
+            m
+        };
+        let mut forced = bumpy();
+        let past_all = decimate(&mut forced, 100, 0.01, f64::INFINITY);
+        assert!(past_all.over_budget_collapses > 0);
+        assert!(
+            past_all.max_error > 0.02,
+            "largest error {}",
+            past_all.max_error
+        );
+
+        let mut bounded = bumpy();
+        let r = decimate(&mut bounded, 100, 0.01, 2.0);
+        assert!(!r.budget_reached);
+        assert!(r.max_error <= 0.02, "largest error {}", r.max_error);
+        assert!(r.triangles_after > past_all.triangles_after);
+    }
+
+    #[test]
     fn sphere_budget_reached_and_closed() {
         let mut m = sphere(10.0, 40, 80);
         let target = 800;
-        let r = decimate(&mut m, target, 0.0);
+        let r = decimate(&mut m, target, 0.0, f64::INFINITY);
         assert!(
             r.triangles_after <= target + 2,
             "after {}",

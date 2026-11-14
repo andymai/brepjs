@@ -290,19 +290,32 @@ const SCAN_UNFIT_AREA = 0.03;
  */
 const SCAN_CLOSED_PATCHES = 16;
 
+/** Fit tolerances an arrangement piece may sit from a CAD mesh and still be covered by it. */
+const CAD_COVERAGE = 10;
+/**
+ * The same for a scan, whose tolerance is three noise sigmas: decimation moves
+ * the mesh by up to one tolerance and noise by about one more. Wider, and the
+ * flat disc across a drilled hole counts as covered by the hole's own wall.
+ */
+const SCAN_COVERAGE = 3;
+
 /** How close exact surfaces must come to the mesh, scaled to the mesh's own sag. */
 function gatesFor(session: Tier1Session, engineReport: EngineReport): Gates {
   // Exact surfaces sit up to the mesh's sag away from it; our own
   // triangulation of the result adds its chord on the forward side.
-  const sag = session.sag;
   const tol = session.tolerance;
+  const scan = engineReport.estimate.kind === 'scan';
   const { bboxMin, bboxMax } = engineReport.input;
   const diag = Math.hypot(...bboxMax.map((v, i) => v - (bboxMin[i] ?? 0)));
+  // A scan's facets are chords of its own triangles, cut again by decimation
+  // within the tolerance. One region triangle far from its surface (a chord
+  // across a crease) must not widen the gates for every piece.
+  const sag = scan ? Math.min(session.sag, 8 * engineReport.estimate.chordError) : session.sag;
   // The mesher rejects a deflection near float precision; planar results are exact at any.
   const triangulation = Math.max(sag / 2, 2 * tol, 1e-6 * diag);
   return {
     tolerance: tol,
-    coverage: 1.25 * sag + 10 * tol,
+    coverage: 1.25 * sag + (scan ? SCAN_COVERAGE : CAD_COVERAGE) * tol,
     maxDeviation: 1.25 * Math.max(sag, triangulation) + 20 * tol,
     triangulation,
     maxUnfitArea: engineReport.estimate.kind === 'scan' ? SCAN_UNFIT_AREA : 0,

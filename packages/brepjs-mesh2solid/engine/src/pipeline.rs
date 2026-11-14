@@ -1,4 +1,4 @@
-use crate::decimate::{decimate, DecimateReport};
+use crate::decimate::{decimate, DecimateReport, SCAN_PAST_TOLERANCE};
 use crate::deviation::{measure, DeviationStats};
 use crate::estimate::{estimate, Estimate, MeshKind};
 use crate::ingest::{self, Format, Unit};
@@ -141,7 +141,12 @@ pub fn run_tier0(bytes: &[u8], opts: &Options) -> Result<Tier0, String> {
 
     let needs_decimation = mesh.triangles.len() > opts.max_triangles || est.kind == MeshKind::Scan;
     let decimation = if needs_decimation {
-        let r = decimate(&mut mesh, opts.max_triangles, tolerance);
+        let past = if est.kind == MeshKind::Scan {
+            SCAN_PAST_TOLERANCE
+        } else {
+            f64::INFINITY
+        };
+        let r = decimate(&mut mesh, opts.max_triangles, tolerance, past);
         if r.over_budget_collapses > 0 {
             warnings.push(format!(
                 "decimated past the tolerance to fit {} triangles (largest error {:.4} mm)",
@@ -150,7 +155,7 @@ pub fn run_tier0(bytes: &[u8], opts: &Options) -> Result<Tier0, String> {
         }
         if !r.budget_reached {
             warnings.push(format!(
-                "decimation stopped at {} triangles, above the {} budget, to keep the surface valid",
+                "decimation stopped at {} triangles, above the {} budget, to keep the surface",
                 r.triangles_after, opts.max_triangles
             ));
         }
