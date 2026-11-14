@@ -1,0 +1,19 @@
+benchmarks/results/latest.md
+  s_3f0f1294d8b317::t_62f03e3c70e3dc 3-4,16-26,30-40,44-51,55-62,66-73,77-81,85-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "537aff180ac2e7f1829321df4e0f2379eeb244a2",
+  "prompts": {},
+  "sessions": {
+    "s_3f0f1294d8b317": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a188bf6-7f7c-4f93-badd-64051f15d4c7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
