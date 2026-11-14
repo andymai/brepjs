@@ -49,10 +49,6 @@ function facesOf(part: SheetMetalPart) {
   return getFaces(part.solid ?? (() => { throw new Error('no solid'); })());
 }
 
-function faceCount(part: SheetMetalPart): number {
-  return facesOf(part).length;
-}
-
 function vol(part: SheetMetalPart): number {
   return unwrap(measureVolume(part.solid ?? (() => { throw new Error('no solid'); })()));
 }
@@ -242,8 +238,9 @@ describe('addCutouts — many cutouts in one cut', () => {
     for (const spec of specs) chained = own(scope, unwrap(addCutout(chained, spec)));
     const batched = own(scope, unwrap(addCutouts(start, specs)));
 
+    // The face count is not compared: a kernel can split faces in a different way
+    // for one n-way cut and for a chain of cuts.
     expect(vol(batched)).toBeCloseTo(vol(chained), 6);
-    expect(faceCount(batched)).toBe(faceCount(chained));
     expect(batched.cutouts).toEqual(chained.cutouts);
     expect(unwrap(unfold(batched)).pattern.holes).toHaveLength(specs.length);
   });
@@ -283,6 +280,24 @@ describe('cutout validation', () => {
     const oob = addHole(base, 'base', 39, 39, 6);
     expect(isErr(oob)).toBe(true);
     if (isErr(oob)) expect(oob.error.code).toBe('CUTOUT_OUT_OF_BOUNDS');
+  });
+
+  it('rejects an obround slot whose true arc crosses the region edge', () => {
+    // The vertices of the developed polyline stay inside (lowest y ≈ 0.0027), but
+    // the arc that the tool cuts reaches y ≈ −0.0016.
+    using scope = new DisposalScope();
+    const base = own(scope, basePart());
+    const oob = addSlot(base, 'base', { x: 20, y: 2.26, length: 12, width: 4, angleDeg: 3.75, round: true });
+    expect(isErr(oob)).toBe(true);
+    if (isErr(oob)) expect(oob.error.code).toBe('CUTOUT_OUT_OF_BOUNDS');
+  });
+
+  it('accepts a hole that touches the region edge', () => {
+    using scope = new DisposalScope();
+    const base = own(scope, basePart());
+    const flush = addHole(base, 'base', 20, 37, 6);
+    expect(isOk(flush)).toBe(true);
+    if (isOk(flush)) own(scope, flush.value);
   });
 
   it('rejects an unknown region', () => {

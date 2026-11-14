@@ -382,6 +382,21 @@ describe('unfoldForeignSolid — cylinders through the sheet', () => {
   });
 });
 
+describe('unfoldForeignSolid — a cylinder that does not go through the sheet', () => {
+  it('keeps the warning for a boss on one face of a plate', () => {
+    using scope = new DisposalScope();
+    const plate = scope.register(box(40, 30, 1));
+    const boss = scope.register(cylinder(1, 1, { at: [20, 15, 1], axis: [0, 0, 1] }));
+    const solid = scope.register(unwrap(fuse(plate, boss)));
+
+    const foreign = unfoldForeignSolid(solid, { kFactor: 0.5 });
+    expect(foreign.ok).toBe(true);
+    if (!foreign.ok) return;
+    const codes = (foreign.value.warnings ?? []).map((w) => w.code);
+    expect(codes).toContain('DETECTION_INCOMPLETE');
+  });
+});
+
 describe('unfoldForeignSolid — bend-direction detection', () => {
   it('detects a down-fold flange as direction "down"', () => {
     const part = authorPart({

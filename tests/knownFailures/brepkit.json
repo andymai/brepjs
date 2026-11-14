@@ -91,6 +91,7 @@
         "unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid) > single 90° bend (one flat + one flange)",
         "unfoldForeignSolid — bend-direction detection > detects a down-fold flange as direction \"down\"",
         "unfoldForeignSolid — bend-direction detection > detects an up-fold flange as direction \"up\"",
+        "unfoldForeignSolid — cylinders through the sheet > reads a part with a round hole and an obround slot without a warning",
         "unfoldForeignSolid — honest scope (no silently-wrong answer) > warns instead of throwing when a bend axis crosses its flats (a flanged cup)",
         "unfoldForeignSolid — rounded corners on parallel walls > keeps same-axis corner rounds on opposite walls from pairing into a bend",
         "unfoldForeignSolid — thickness detection > detects the sheet thickness and reproduces a thicker part"

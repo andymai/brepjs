@@ -95,7 +95,7 @@ function punch(part: SheetMetalPart, specs: readonly CutoutSpec[], label: string
     if (!localResult.ok) return localResult;
     const local = localResult.value;
 
-    const oob = checkInBounds(local, regionExtent(part, regionId, worldFrame));
+    const oob = checkInBounds(outlineBounds(spec, local), regionExtent(part, regionId, worldFrame));
     if (oob !== undefined) {
       return err(validationError('CUTOUT_OUT_OF_BOUNDS', oob));
     }
@@ -276,12 +276,40 @@ function regionExtent(part: SheetMetalPart, regionId: string, worldFrame: FlatFr
   return { uMax: worldFrame.uLen, vMax: worldFrame.vLen };
 }
 
-/** First out-of-bounds message, or undefined if the whole loop lies inside the region. */
-function checkInBounds(local: Pt2[], ext: Extent): string | undefined {
-  for (const [x, y] of local) {
-    if (x < -EPS || x > ext.uMax + EPS || y < -EPS || y > ext.vMax + EPS) {
-      return `cutout point (${x.toFixed(3)}, ${y.toFixed(3)}) lies outside region extent [0,${ext.uMax}]×[0,${ext.vMax}]`;
-    }
+interface Bounds2 {
+  xMin: number;
+  xMax: number;
+  yMin: number;
+  yMax: number;
+}
+
+/**
+ * Local-frame bounding box of the outline that the 3D tool cuts. A hole and the
+ * ends of an obround slot are true circles, which reach past the vertices of
+ * their developed polyline, so their boxes come from the circle centres.
+ */
+function outlineBounds(spec: CutoutSpec, local: Pt2[]): Bounds2 {
+  if (spec.kind === 'hole') {
+    const r = spec.diameter / 2;
+    return { xMin: spec.x - r, xMax: spec.x + r, yMin: spec.y - r, yMax: spec.y + r };
+  }
+  if (spec.kind === 'slot' && spec.round === true) {
+    const hw = spec.width / 2;
+    const straight = Math.max(spec.length / 2 - hw, 0);
+    const rad = ((spec.angleDeg ?? 0) * Math.PI) / 180;
+    const dx = Math.abs(straight * Math.cos(rad)) + hw;
+    const dy = Math.abs(straight * Math.sin(rad)) + hw;
+    return { xMin: spec.x - dx, xMax: spec.x + dx, yMin: spec.y - dy, yMax: spec.y + dy };
+  }
+  const xs = local.map((p) => p[0]);
+  const ys = local.map((p) => p[1]);
+  return { xMin: Math.min(...xs), xMax: Math.max(...xs), yMin: Math.min(...ys), yMax: Math.max(...ys) };
+}
+
+/** Out-of-bounds message, or undefined if the whole outline lies inside the region. */
+function checkInBounds(b: Bounds2, ext: Extent): string | undefined {
+  if (b.xMin < -EPS || b.xMax > ext.uMax + EPS || b.yMin < -EPS || b.yMax > ext.vMax + EPS) {
+    return `cutout extent [${b.xMin.toFixed(3)}, ${b.xMax.toFixed(3)}]×[${b.yMin.toFixed(3)}, ${b.yMax.toFixed(3)}] lies outside region extent [0,${ext.uMax}]×[0,${ext.vMax}]`;
   }
   return undefined;
 }

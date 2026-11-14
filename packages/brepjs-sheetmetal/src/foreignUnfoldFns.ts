@@ -684,14 +684,9 @@ function buildBendGraph(
       if (bendTouchesFlat(bend, flat)) touching.push(fi);
     }
     if (touching.length < 2) {
-      // A bend axis lies in the plane of its flats. A cylinder with its axis along
-      // the normal of the one flat it touches goes through the sheet: a round hole,
-      // the end of an obround slot or a rounded corner of the outline.
       const [only] = touching;
-      const through = only !== undefined ? flats[only] : undefined;
-      if (through !== undefined && Math.abs(vecDot(bend.fit.axisDir, through.normal)) > 0.99) {
-        continue;
-      }
+      const flat = only !== undefined ? flats[only] : undefined;
+      if (flat !== undefined && goesThroughFlat(bend, flat)) continue;
       warnings.push({
         code: 'DETECTION_INCOMPLETE',
         message: `bend '${bend.id}' connects ${touching.length} flats (expected 2); ignored`,
@@ -709,6 +704,18 @@ function buildBendGraph(
     edges.push({ bend, flats: [touching[0] as number, touching[1] as number] });
   }
   return { edges };
+}
+
+/**
+ * True for a cylinder that goes through the sheet: a round hole, the end of an
+ * obround slot or a rounded corner of the outline. A bend axis lies in the plane
+ * of its flats; this axis is along the flat normal, and the cylinder meets both
+ * faces of the panel. A boss or a blind recess meets one face only, so it keeps
+ * its warning.
+ */
+function goesThroughFlat(bend: DetectedBend, flat: DetectedFlat): boolean {
+  if (Math.abs(vecDot(bend.fit.axisDir, flat.normal)) <= 0.99) return false;
+  return flat.faces.every((ff) => bend.faces.some((bf) => sharedEdges(bf, ff).length > 0));
 }
 
 /** True if any of the bend's faces shares an edge with either face of the flat. */
