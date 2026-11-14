@@ -8,6 +8,8 @@ import {
   line,
   castShape,
   extrude,
+  extrudeAll,
+  polygon,
   revolve,
   sweep,
   complexExtrude,
@@ -84,6 +86,41 @@ describe('extrudeFns', () => {
       const f = sketchRectangle(10, 10).face();
       const result = extrude(f, [0, 0, 0]);
       expect(isErr(result)).toBe(true);
+    });
+
+    it('returns an error for a vector in the plane of the face', () => {
+      // A triangle in the plane y = 0, which contains the Z axis.
+      const triangle = unwrap(
+        polygon([
+          [0, 0, 0],
+          [10, 0, 0],
+          [0, 0, 10],
+        ])
+      );
+      const heights: (number | [number, number, number])[] = [20, [0, 0, 20], [3, 0, -4]];
+      for (const height of heights) {
+        const result = extrude(triangle, height);
+        expect(isErr(result)).toBe(true);
+        if (isErr(result)) expect(result.error.code).toBe('EXTRUDE_VECTOR_IN_PLANE');
+      }
+      const all = extrudeAll([{ face: triangle, height: 20 }]);
+      expect(isErr(all)).toBe(true);
+      if (isErr(all)) expect(all.error.code).toBe('EXTRUDE_ALL_VECTOR_IN_PLANE');
+    });
+
+    it('extrudes a face along a vector that is almost in its plane', () => {
+      const triangle = unwrap(
+        polygon([
+          [0, 0, 0],
+          [10, 0, 0],
+          [0, 0, 10],
+        ])
+      );
+      // 50 mm² swept 0.02 mm along the normal.
+      const sliver = unwrap(extrude(triangle, [0, 0.02, 20]));
+      expect(unwrap(measureVolume(sliver))).toBeCloseTo(1, 6);
+      const across = unwrap(extrude(triangle, [0, 20, 0]));
+      expect(unwrap(measureVolume(across))).toBeCloseTo(1000, 6);
     });
   });
 
