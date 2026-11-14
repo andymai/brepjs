@@ -1,0 +1,23 @@
+tests/batchExtractors.test.ts
+  s_b6e98997548822::t_266d2b0569678a 104,116-118
+tests/extrudeFns.test.ts
+  s_b6e98997548822::t_b2a3ef6ef1d47b 93,112,120,122
+tests/manifoldProfileFace.test.ts
+  s_b6e98997548822::t_b2a3ef6ef1d47b 37,41,57,63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5f571e5a6a0afdd3f67e018dffa12645ac089b85",
+  "prompts": {},
+  "sessions": {
+    "s_b6e98997548822": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b26c959d-58c1-4095-9e3c-81b90119e59c",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
