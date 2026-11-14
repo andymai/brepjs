@@ -34,11 +34,11 @@ describe('manifold profile faces', () => {
   it('reports the same normal as the OCCT face of the same outline', () => {
     if (!haveManifold) return;
     const expected = withKernel('occt-wasm', () => {
-      const face = unwrap(polygon(TRIANGLE));
+      using face = unwrap(polygon(TRIANGLE));
       return getKernel().surfaceNormal(face.wrapped, 0, 0);
     });
     withKernel('manifold', () => {
-      const face = unwrap(polygon(TRIANGLE));
+      using face = unwrap(polygon(TRIANGLE));
       expect(getKernel().surfaceType(face.wrapped)).toBe('plane');
       const normal = getKernel().surfaceNormal(face.wrapped, 0, 0);
       for (let i = 0; i < 3; i++) expect(normal[i]).toBeCloseTo(expected[i] ?? NaN, 9);
@@ -54,13 +54,13 @@ describe('manifold profile faces', () => {
     ]);
     try {
       withKernel('manifold', () => {
-        const face = unwrap(polygon(TRIANGLE));
+        using face = unwrap(polygon(TRIANGLE));
         const flat = extrude(face, 20);
         expect(isErr(flat)).toBe(true);
         if (isErr(flat)) expect(flat.error.code).toBe('EXTRUDE_VECTOR_IN_PLANE');
 
         // 50 mm² swept 5 mm along the unit normal [0.8, -0.6, 0].
-        const prism = unwrap(extrude(face, [4, -3, 0]));
+        using prism = unwrap(extrude(face, [4, -3, 0]));
         expect(unwrap(measureVolume(prism))).toBeCloseTo(250, 6);
       });
       for (const spy of spies) expect(spy).not.toHaveBeenCalled();

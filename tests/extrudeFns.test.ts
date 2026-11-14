@@ -90,7 +90,7 @@ describe('extrudeFns', () => {
 
     it('returns an error for a vector in the plane of the face', () => {
       // A triangle in the plane y = 0, which contains the Z axis.
-      const triangle = unwrap(
+      using triangle = unwrap(
         polygon([
           [0, 0, 0],
           [10, 0, 0],
@@ -109,7 +109,7 @@ describe('extrudeFns', () => {
     });
 
     it('extrudes a face along a vector that is almost in its plane', () => {
-      const triangle = unwrap(
+      using triangle = unwrap(
         polygon([
           [0, 0, 0],
           [10, 0, 0],
@@ -117,9 +117,9 @@ describe('extrudeFns', () => {
         ])
       );
       // 50 mm² swept 0.02 mm along the normal.
-      const sliver = unwrap(extrude(triangle, [0, 0.02, 20]));
+      using sliver = unwrap(extrude(triangle, [0, 0.02, 20]));
       expect(unwrap(measureVolume(sliver))).toBeCloseTo(1, 6);
-      const across = unwrap(extrude(triangle, [0, 20, 0]));
+      using across = unwrap(extrude(triangle, [0, 20, 0]));
       expect(unwrap(measureVolume(across))).toBeCloseTo(1000, 6);
     });
   });
