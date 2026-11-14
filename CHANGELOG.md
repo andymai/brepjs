@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.27.1](https://github.com/andymai/brepjs/compare/brepjs-v20.27.0...brepjs-v20.27.1) (2026-11-14)
+
+
+### Bug Fixes
+
+* **gear:** build the ring gear profile from its tip circle to its root circle ([#2683](https://github.com/andymai/brepjs/issues/2683)) ([1b11a31](https://github.com/andymai/brepjs/commit/1b11a3100ae36b434f785ef999e80f11523c80c1))
+
 ## [20.27.0](https://github.com/andymai/brepjs/compare/brepjs-v20.26.0...brepjs-v20.27.0) (2026-11-13)
 
 
