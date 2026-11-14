@@ -45,9 +45,9 @@ const IN_PLANE_COSINE = 1e-9;
 
 function normalIfVectorInPlane(face: Face<Dimension>, vec: Vec3): Vec3 | null {
   if (getCachedSurfaceType(face) !== 'plane') return null;
-  const kernel = getKernel();
-  const { uMin, uMax, vMin, vMax } = kernel.uvBounds(face.wrapped);
-  const normal = kernel.surfaceNormal(face.wrapped, 0.5 * (uMin + uMax), 0.5 * (vMin + vMax));
+  // A plane has one normal, so the uv point is arbitrary. (0, 0) needs no uvBounds query,
+  // which the manifold kernel can answer only through an OCCT replay of the face.
+  const normal = getKernel().surfaceNormal(face.wrapped, 0, 0);
   return Math.abs(vecDot(normal, vecNormalize(vec))) < IN_PLANE_COSINE ? normal : null;
 }
 
