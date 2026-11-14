@@ -1,0 +1,24 @@
+src/operations/extrudeFns.ts
+  s_b6e98997548822::t_3a5539b083462e 48-50
+tests/manifoldProfileFace.test.ts
+  s_b6e98997548822::t_3a5539b083462e 1-71
+src/kernel/manifold/geometryOps.ts
+  s_b6e98997548822::t_17ea69251bed85 44-47,49-56,207-209
+  s_b6e98997548822::t_745b5a646de607 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c5327af39cc443bfbd9ca972d914a3c186d7ceaa",
+  "prompts": {},
+  "sessions": {
+    "s_b6e98997548822": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b26c959d-58c1-4095-9e3c-81b90119e59c",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
