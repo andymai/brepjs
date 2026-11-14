@@ -1,0 +1,23 @@
+packages/brepjs-sheetmetal/tests/cutout.test.ts
+  s_b6e98997548822::t_e96a3140154250 100-115
+packages/brepjs-sheetmetal/src/authorFns.ts
+  s_b6e98997548822::t_7fa8308c7b3fb2 778-780,782-784
+packages/brepjs-sheetmetal/tests/multibend.test.ts
+  s_b6e98997548822::t_e96a3140154250 3,157-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "37fdf6cdd5f95643b9ec7561eaa368f35ea8dd57",
+  "prompts": {},
+  "sessions": {
+    "s_b6e98997548822": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b26c959d-58c1-4095-9e3c-81b90119e59c",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
