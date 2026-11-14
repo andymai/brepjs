@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.27.2](https://github.com/andymai/brepjs/compare/brepjs-v20.27.1...brepjs-v20.27.2) (2026-11-14)
+
+
+### Bug Fixes
+
+* **operations:** return an error from extrude for a vector in the face plane ([#2681](https://github.com/andymai/brepjs/issues/2681)) ([a1ea328](https://github.com/andymai/brepjs/commit/a1ea328060d60507c82080285e16113f0e2c8457))
+
 ## [20.27.1](https://github.com/andymai/brepjs/compare/brepjs-v20.27.0...brepjs-v20.27.1) (2026-11-14)
 
 
