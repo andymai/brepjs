@@ -1,0 +1,30 @@
+packages/brepjs-sheetmetal/src/foreignUnfoldFns.ts
+  s_b6e98997548822::t_70e41d739d4ab1 688-689,709-718
+  s_b6e98997548822::t_fa91b102c97eef 719-720
+packages/brepjs-sheetmetal/tests/cutout.test.ts
+  s_b6e98997548822::t_70e41d739d4ab1 241-242,285-301
+  s_b6e98997548822::t_690d4c6df69821 302
+tests/knownFailures/brepkit.json
+  s_b6e98997548822::t_39b38064188412 94
+packages/brepjs-sheetmetal/src/cutoutFns.ts
+  s_b6e98997548822::t_70e41d739d4ab1 98,279-312
+packages/brepjs-sheetmetal/tests/foreignUnfold.test.ts
+  s_b6e98997548822::t_70e41d739d4ab1 385-391,393-399
+  s_b6e98997548822::t_9f0b7585df610e 392
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a84ab2dab929e67980b68bfd8680c59a6e5623b7",
+  "prompts": {},
+  "sessions": {
+    "s_b6e98997548822": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b26c959d-58c1-4095-9e3c-81b90119e59c",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
