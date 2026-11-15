@@ -166,11 +166,16 @@ describe('compoundSketchLoft', () => {
     const inner2 = sketchCircle(2, { plane: 'XY', origin: 10 });
     const compound2 = new CompoundSketch([outer2, inner2]);
 
-    using solid = compoundSketchLoft(compound1, compound2, { ruled: true });
-    expect(isValid(solid)).toBe(true);
-    // The prism less the round hole through it.
-    expect(unwrap(measureVolume(solid))).toBeCloseTo(1000 - 40 * Math.PI, 3);
-    expect(getShells(solid)).toHaveLength(1);
+    try {
+      using solid = compoundSketchLoft(compound1, compound2, { ruled: true });
+      expect(isValid(solid)).toBe(true);
+      // The prism less the round hole through it.
+      expect(unwrap(measureVolume(solid))).toBeCloseTo(1000 - 40 * Math.PI, 3);
+      expect(getShells(solid)).toHaveLength(1);
+    } finally {
+      compound1.delete();
+      compound2.delete();
+    }
   });
 
   it('lofts a frustum with a tapered square hole', () => {
@@ -180,12 +185,17 @@ describe('compoundSketchLoft', () => {
       sketchRectangle(4, 4, { plane: 'XY', origin: 10 }),
     ]);
 
-    using solid = compoundSketchLoft(low, high, { ruled: true });
-    expect(isValid(solid)).toBe(true);
-    // The outer frustum (20 to 12) less the inner one (8 to 4), 10 high.
-    const frustum = (a: number, b: number): number => (10 / 3) * (a * a + b * b + a * b);
-    expect(unwrap(measureVolume(solid))).toBeCloseTo(frustum(20, 12) - frustum(8, 4), 3);
-    expect(getShells(solid)).toHaveLength(1);
+    try {
+      using solid = compoundSketchLoft(low, high, { ruled: true });
+      expect(isValid(solid)).toBe(true);
+      // The outer frustum (20 to 12) less the inner one (8 to 4), 10 high.
+      const frustum = (a: number, b: number): number => (10 / 3) * (a * a + b * b + a * b);
+      expect(unwrap(measureVolume(solid))).toBeCloseTo(frustum(20, 12) - frustum(8, 4), 3);
+      expect(getShells(solid)).toHaveLength(1);
+    } finally {
+      low.delete();
+      high.delete();
+    }
   });
 });
 
