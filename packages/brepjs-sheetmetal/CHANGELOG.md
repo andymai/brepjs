@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/andymai/brepjs/compare/brepjs-sheetmetal-v0.4.4...brepjs-sheetmetal-v0.5.0) (2026-11-14)
+
+
+### Features
+
+* **sheetmetal:** punch many cutouts in one cut, with true round holes ([#2684](https://github.com/andymai/brepjs/issues/2684)) ([9b685b5](https://github.com/andymai/brepjs/commit/9b685b59fc3580bc87e4753b3dc0b3398042bb8e))
+
 ## [0.4.4](https://github.com/andymai/brepjs/compare/brepjs-sheetmetal-v0.4.3...brepjs-sheetmetal-v0.4.4) (2026-11-14)
 
 

@@ -575,7 +575,7 @@ export function loftAdvanced(
       opts['endPoint'] = [pos[0], pos[1], pos[2]];
     }
     const id = bk.loftWithOptions(faceIds, JSON.stringify(opts));
-    return solidHandle(id);
+    return options?.solid === false ? shellHandle(id) : solidHandle(id);
   } catch (e: unknown) {
     console.warn('brepkit: loftWithOptions failed, falling back to smooth/basic loft:', e);
   }

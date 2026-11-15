@@ -2032,6 +2032,94 @@ describe('BrepkitAdapter', () => {
     });
   });
 
+  // A loft to its sides alone returns a shell, which the adapter labelled a
+  // solid, and a weld of a holed face to its hole's walls needs a kernel that
+  // faces those walls into the hole (brepkit#2370).
+  describe('a loft to its sides, welded to faces with holes', () => {
+    /**
+     * A mock kernel whose weld of the probe's plate reads `plateVolume`: 8 as
+     * brepkit-wasm 4.11.19 gives, with the hole left out, and 10 as the
+     * builds before it give, with the hole added.
+     */
+    function weldKernel(plateVolume: number, wiresPerFace: number) {
+      let next = 500;
+      return Object.assign(createMockBrepKernel(), {
+        checkpoint: vi.fn(() => 7),
+        restore: vi.fn((_checkpoint: number) => {}),
+        discardCheckpoint: vi.fn((_checkpoint: number) => {}),
+        makePolygon: vi.fn((_coords: number[]) => next++),
+        makePolygonWire: vi.fn((_coords: number[]) => next++),
+        makePlanarFaceFromWire: vi.fn((_wire: number) => next++),
+        getFaceWires: vi.fn((_face: number) => new Uint32Array(wiresPerFace)),
+        weldShellsAndFaces: vi.fn((_faces: Uint32Array | number[], _tolerance: number) => 50),
+        getSolidShells: vi.fn((_solid: number) => new Uint32Array([60])),
+        volume: vi.fn((_solid: number, _deflection: number) => plateVolume),
+      });
+    }
+    const sewBox = (adapter: BrepkitAdapter) =>
+      adapter.sew(adapter.iterShapes(adapter.makeBox(1, 1, 1), 'face'));
+
+    it('labels the sides of a loft a shell, and a closed loft a solid', () => {
+      const mock = Object.assign(createMockBrepKernel(), {
+        loftWithOptions: vi.fn((_faces: number[], _json: string) => 77),
+      });
+      const adapter = new BrepkitAdapter(mock);
+      const profiles = [0, 1].map(() =>
+        adapter.makeFace(adapter.makeWire([adapter.makeLineEdge([0, 0, 0], [1, 0, 0])]))
+      );
+
+      const sides = adapter.loftAdvanced(profiles, { solid: false, ruled: true }) as BrepkitHandle;
+      const closed = adapter.loftAdvanced(profiles, { ruled: true }) as BrepkitHandle;
+
+      expect([sides.type, sides.id]).toEqual(['shell', 77]);
+      expect([closed.type, closed.id]).toEqual(['solid', 77]);
+    });
+
+    it('welds holed faces on a brepkit-wasm that faces a hole wall in, probing once', () => {
+      const mock = weldKernel(8, 2);
+      const adapter = new BrepkitAdapter(mock);
+
+      for (let i = 0; i < 2; i++) {
+        const shell = sewBox(adapter) as BrepkitHandle;
+        expect([shell.type, shell.id]).toEqual(['shell', 60]);
+      }
+      // One probe, then the two welds.
+      expect(mock.weldShellsAndFaces).toHaveBeenCalledTimes(3);
+      expect(mock.restore).toHaveBeenCalledExactlyOnceWith(7);
+      expect(mock.discardCheckpoint).toHaveBeenCalledExactlyOnceWith(7);
+    });
+
+    it('refuses them on a brepkit-wasm that adds the hole, probing once', () => {
+      const mock = weldKernel(10, 2);
+      const adapter = new BrepkitAdapter(mock);
+
+      for (let i = 0; i < 2; i++) {
+        let caught: unknown;
+        try {
+          sewBox(adapter);
+        } catch (e) {
+          caught = e;
+        }
+        expect(isUnsupportedKernelOperationError(caught)).toBe(true);
+      }
+      // The probe alone: no weld of the caller's faces went to the kernel.
+      expect(mock.weldShellsAndFaces).toHaveBeenCalledOnce();
+      expect(mock.restore).toHaveBeenCalledExactlyOnceWith(7);
+      expect(mock.discardCheckpoint).toHaveBeenCalledExactlyOnceWith(7);
+    });
+
+    it('welds faces with no hole on any brepkit-wasm, with no probe', () => {
+      const mock = weldKernel(10, 1);
+      const adapter = new BrepkitAdapter(mock);
+
+      const shell = sewBox(adapter) as BrepkitHandle;
+
+      expect([shell.type, shell.id]).toEqual(['shell', 60]);
+      expect(mock.weldShellsAndFaces).toHaveBeenCalledOnce();
+      expect(mock.checkpoint).not.toHaveBeenCalled();
+    });
+  });
+
   describe('blend, match and fair surfaces', () => {
     function surfaceKernel() {
       let next = 700;

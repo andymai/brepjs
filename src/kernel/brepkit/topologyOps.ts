@@ -6,6 +6,7 @@
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape, ShapeType, ShapeOrientation } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import {
   type BrepkitHandle,
   isBrepkitHandle,
@@ -297,8 +298,63 @@ function faceIdsForSew(bk: BrepkitKernel, shape: KernelShape): number[] {
   return [];
 }
 
+const holeWeldProbes = new WeakMap<BrepkitKernel, boolean>();
+
+/**
+ * brepkit-wasm before 4.11.19 welds the walls of a hole so that they face away
+ * from the hole when the face holds the hole the same way round as its
+ * outline, and the solid then adds the hole's volume. The peer range still
+ * admits those builds. The probe welds a 3 x 3 x 1 plate with a 1 x 1 hole and
+ * reads its volume: 8 with the hole left out, 10 with it added. It runs once
+ * per kernel, inside a checkpoint it restores and discards.
+ */
+function weldsHolesFacingIn(bk: BrepkitKernel): boolean {
+  const known = holeWeldProbes.get(bk);
+  if (known !== undefined) return known;
+  let facingIn: boolean;
+  const mark = bk.checkpoint();
+  try {
+    const corners = (lo: number, hi: number): Array<[number, number]> => [
+      [lo, lo],
+      [hi, lo],
+      [hi, hi],
+      [lo, hi],
+    ];
+    const outline = corners(0, 3);
+    const hole = corners(1, 2);
+    const ring = (pts: Array<[number, number]>, z: number): number =>
+      bk.makePolygonWire(pts.flatMap(([x, y]) => [x, y, z]));
+    const faces: number[] = [];
+    for (const z of [0, 1]) {
+      const cap = bk.makePlanarFaceFromWire(ring(outline, z));
+      faces.push(bk.addHolesToFace(cap, [ring(hole, z)]));
+    }
+    for (const pts of [outline, hole]) {
+      pts.forEach(([x0, y0], i) => {
+        const [x1, y1] = pts[(i + 1) % pts.length] as [number, number];
+        faces.push(bk.makePolygon([x0, y0, 0, x1, y1, 0, x1, y1, 1, x0, y0, 1]));
+      });
+    }
+    facingIn = Math.abs(bk.volume(bk.weldShellsAndFaces(faces, 1e-7), 0.1) - 8) < 1e-6;
+  } catch {
+    facingIn = false;
+  } finally {
+    bk.restore(mark);
+    bk.discardCheckpoint(mark);
+  }
+  holeWeldProbes.set(bk, facingIn);
+  return facingIn;
+}
+
 export function sew(bk: BrepkitKernel, shapes: KernelShape[], tolerance?: number): KernelShape {
   const faceIds = shapes.flatMap((s) => faceIdsForSew(bk, s));
+  const holed =
+    typeof bk.getFaceWires === 'function' && faceIds.some((id) => bk.getFaceWires(id).length > 1);
+  if (holed && !weldsHolesFacingIn(bk)) {
+    throw new UnsupportedKernelOperationError(
+      'brepkit: welding a face with a hole to the walls of the hole needs brepkit-wasm 4.11.19 or later'
+    );
+  }
   const tol = tolerance ?? 1e-7;
   let solidId: number;
   try {
