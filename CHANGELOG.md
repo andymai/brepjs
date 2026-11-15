@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.27.3](https://github.com/andymai/brepjs/compare/brepjs-v20.27.2...brepjs-v20.27.3) (2026-11-15)
+
+
+### Bug Fixes
+
+* **brepkit:** loft between compound sketches with a hole ([#2690](https://github.com/andymai/brepjs/issues/2690)) ([154d4e5](https://github.com/andymai/brepjs/commit/154d4e5c80eef222a188d991a7c642eeff8109fd))
+
 ## [20.27.2](https://github.com/andymai/brepjs/compare/brepjs-v20.27.1...brepjs-v20.27.2) (2026-11-14)
 
 
