@@ -122,10 +122,10 @@ async function frameModel(page: Page): Promise<Box> {
   await new Promise((r) => setTimeout(r, 800)); // let the camera settle
 
   // Hide floating chrome so only the model shows: the onboarding hint and
-  // toasts (both role="status"), any role="alert", and the viewer toolbar
-  // (the only absolutely-positioned top-3 cluster).
+  // toasts (both role="status"), any role="alert", the viewer toolbar (the
+  // absolutely-positioned top-3 cluster) and the flat-pattern panel (bottom-3).
   await page.evaluate(() => {
-    const sel = '[role="status"], [role="alert"], .absolute.top-3';
+    const sel = '[role="status"], [role="alert"], .absolute.top-3, .absolute.bottom-3';
     for (const el of document.querySelectorAll(sel)) {
       (el as HTMLElement).style.display = 'none';
     }
