@@ -142,7 +142,11 @@ function beamModel({ section = 'IPE 300', span = 2000, slab = 0.5 }: BeamParams 
       const drills = Array.from({ length: rows }, (_, i) => own(cylinder(FIN.hole / 2, 60, { at: [-30, at(i)[1], at(i)[2]], axis: X })));
       holes.push(...drills);
       part('plate', 'Fin plate', one(unwrap(cutAll(blank, drills))), 'Steel S275');
-      for (let i = 0; i < rows; i++) part('bolt', 'Bolt M20 8.8', translate(bolt, at(boltAt.push(at(i)) - 1)), 'Steel 8.8');
+      for (let i = 0; i < rows; i++) {
+        const position = at(i);
+        boltAt.push(position);
+        part('bolt', 'Bolt M20 8.8', translate(bolt, position), 'Steel 8.8');
+      }
     }
     // Headed studs on the centre line of the top flange. They tie the slab to the beam.
     const stud = own(one(unwrap(fuseAll([own(cylinder(STUD.d / 2, STUD.height - STUD.headT)), own(cylinder(STUD.head / 2, STUD.headT, { at: [0, 0, STUD.height - STUD.headT] }))]))));

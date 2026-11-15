@@ -5827,7 +5827,7 @@ function fuseHolder({ cutaway = 180, release = 0, panel = 2 }: FuseHolderParams 
 
   // Mass of the three catalogue items, from the kernel volumes of the whole parts.
   const grams = {
-    socket: (volume(socket) + sum(neckTeeth) * (360 / (360 - Math.min(cutaway, 359))) + whole(...boreSpan)) * DENSITY.plastic + sum([ring, strip, rivet, tab, button]) * DENSITY.brass + volume(spring) * DENSITY.steel,
+    socket: (volume(socket) + whole(...neckSpan) * ((360 - 2 * flatEdge) / 360) + whole(...boreSpan)) * DENSITY.plastic + sum([ring, strip, rivet, tab, button]) * DENSITY.brass + volume(spring) * DENSITY.steel,
     cap: (volume(cap) + whole(...capSpan)) * DENSITY.plastic + volume(sleeve) * DENSITY.brass,
     nut: (volume(nut) + whole(...nutSpan)) * DENSITY.plastic,
   };
