@@ -84,6 +84,7 @@
       "tests": [
         "playground examples > evaluates and meshes: axial-fan",
         "playground examples > evaluates and meshes: ball-bearing",
+        "playground examples > evaluates and meshes: bim-switchback-stair",
         "playground examples > evaluates and meshes: conical-pour-funnel",
         "playground examples > evaluates and meshes: cube-truss-frame",
         "playground examples > evaluates and meshes: fan-guard",
