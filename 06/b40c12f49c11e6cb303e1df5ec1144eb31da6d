@@ -1,0 +1,33 @@
+package-lock.json
+  s_709d857a0f83c4::t_e93a40f394e721 47,7622-7624
+package.json
+  s_709d857a0f83c4::t_71394592bf2a7c 279
+src/kernel/brepkit/brepkitWasmTypes.ts
+  s_709d857a0f83c4::t_37a174b00bcceb 5,853-870,1006,1009,1012
+src/kernel/brepkit/sweepOps.ts
+  s_709d857a0f83c4::t_07798ff673d959 578
+src/kernel/brepkit/topologyOps.ts
+  s_709d857a0f83c4::t_95d5a1c9780cf0 9,301-348,351-357
+tests/brepkitAdapter.test.ts
+  s_709d857a0f83c4::t_900edf9e2babef 2035-2122
+tests/knownFailures/brepkit.json
+  s_709d857a0f83c4::t_ec8d7156ed2b21 86
+tests/sketchFns.test.ts
+  s_709d857a0f83c4::t_c7d5f7d3e07850 15,169-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "06b40c12f49c11e6cb303e1df5ec1144eb31da6d",
+  "prompts": {},
+  "sessions": {
+    "s_709d857a0f83c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6cca9812-d77a-4dae-96f4-26562694b205",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
