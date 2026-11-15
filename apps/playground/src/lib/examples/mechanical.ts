@@ -618,8 +618,9 @@ function guard({ rings = 5, lift = 0.5, fan = true }: GuardParams = {}) {
   // Rings: evenly spaced circles of wire.
   const rMin = INSIDE / 2 + rr;
   const rMax = OUTSIDE / 2 - rr;
-  const step = (rMax - rMin) / (rings - 1);
-  const ringSet = Array.from({ length: rings }, (_, i) => own(torus(rMin + i * step, rr, { at: [0, 0, zRing] })));
+  const count = Math.max(2, Math.round(rings)); // one ring has no spacing
+  const step = (rMax - rMin) / (count - 1);
+  const ringSet = Array.from({ length: count }, (_, i) => own(torus(rMin + i * step, rr, { at: [0, 0, zRing] })));
 
   // Rib: one wire from an eye toward the centre, around a bend, and out to the next eye.
   // It runs under the rings and steps down to the mounting face near each eye.
@@ -1652,7 +1653,11 @@ function stepper({ cutaway = 90, length = 38, steps = 0 }: StepperParams = {}) {
   const open = (s: Shape, tool = wedge): Shape => (cutaway > 0 ? (unwrap(cut(s, tool)) as Shape) : (unwrap(clone(s)) as Shape));
   const span = 19; // half angle that one coil covers
   const off = (a: number): number => Math.abs(((a + 180) % 360) - 180);
-  const shown = coils.filter((_, k) => cutaway <= 0 || off(coilAngles[k]!) + span > cutaway / 2).map((s, k) => (off(coilAngles[k]!) - span < cutaway / 2 ? own(open(s)) : s));
+  const shown = coils.flatMap((s, k) => {
+    const angle = off(coilAngles[k]!);
+    if (cutaway > 0 && angle + span <= cutaway / 2) return [];
+    return [angle - span < cutaway / 2 ? own(open(s)) : s];
+  });
 
   return {
     caps: compound([own(open(frontCap, wide)), own(open(rearCap))]) as Shape, stack: open(stack), coils: compound(shown) as Shape,
