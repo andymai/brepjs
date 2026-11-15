@@ -6701,7 +6701,7 @@ import { color } from 'brepjs/playground';
 // The gear, the rack section, the guide and the bearings are catalogue sizes. The frame and the motor are a display model.
 interface DriveParams {
   angle?: number; // pinion angle in degrees. The rack moves by the pitch radius times this angle.
-  rackTeeth?: number; // teeth of the cut length of rack, 28 to 36. The catalogue rack has 80.
+  rackTeeth?: number; // teeth of the cut length of rack, an even count from 28 to 36. The catalogue rack has 80.
 }
 
 type P2 = [number, number];
@@ -6780,7 +6780,7 @@ const rackBar = (teeth: number): { bar: Shape; holes: number[] } => {
 };
 
 function drive({ angle = 35, rackTeeth = 32 }: DriveParams = {}) {
-  const teeth = Math.round(Math.min(Math.max(rackTeeth, 28), 36));
+  const teeth = 2 * Math.round(Math.min(Math.max(rackTeeth, 28), 36) / 2); // even, so a gap is at the middle of the rack
   const half = (teeth * PITCH) / 2;
   const limit = (half - 47) / R; // radians of pinion angle to the end of the travel
   const theta = Math.min(Math.max((angle * Math.PI) / 180, -limit), limit);
