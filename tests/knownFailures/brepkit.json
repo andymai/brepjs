@@ -120,7 +120,7 @@
       "tests": ["importOBJ > imports disjoint closed bodies as a compound of solids"]
     },
     "tests/playgroundExamples.test.ts": {
-      "tracking": "andymai/brepkit#2372, andymai/brepkit#2396",
+      "tracking": "andymai/brepkit#2372, andymai/brepkit#2396, andymai/brepkit#2502",
       "tests": [
         "playground examples > evaluates and meshes: axial-fan",
         "playground examples > evaluates and meshes: ball-bearing",
