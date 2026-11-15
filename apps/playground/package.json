@@ -25,7 +25,7 @@
     "@react-three/drei": "10.7.9",
     "@react-three/fiber": "9.8.2",
     "@vercel/analytics": "2.0.1",
-    "@vercel/speed-insights": "2.0.0",
+    "@vercel/speed-insights": "2.1.0",
     "brepjs": "*",
     "brepjs-bim": "*",
     "brepjs-families": "*",
@@ -34,23 +34,23 @@
     "lz-string": "1.5.0",
     "monaco-editor": "0.57.0",
     "occt-wasm": "*",
-    "posthog-js": "1.444.0",
+    "posthog-js": "1.447.3",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "react-resizable-panels": "4.16.1",
+    "react-resizable-panels": "4.19.1",
     "sucrase": "3.35.1",
     "three": "0.187.0",
     "web-ifc": "0.0.78",
-    "zustand": "5.0.16"
+    "zustand": "5.1.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.3.3",
+    "@tailwindcss/vite": "4.3.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@types/three": "0.187.0",
-    "@vitejs/plugin-react": "6.1.2",
+    "@vitejs/plugin-react": "6.2.1",
     "puppeteer": "25.16.0",
-    "tailwindcss": "4.3.3",
+    "tailwindcss": "4.3.5",
     "tsx": "4.23.15",
     "typescript": "6.0.3"
   }

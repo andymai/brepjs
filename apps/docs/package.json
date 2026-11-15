@@ -10,16 +10,16 @@
   },
   "dependencies": {
     "@vercel/analytics": "2.0.1",
-    "@vercel/speed-insights": "2.0.0",
-    "posthog-js": "1.444.0",
+    "@vercel/speed-insights": "2.1.0",
+    "posthog-js": "1.447.3",
     "three": "0.187.0",
     "three-stdlib": "2.36.1"
   },
   "devDependencies": {
     "@types/three": "0.187.0",
     "lz-string": "1.5.0",
-    "mermaid": "12.2.0",
+    "mermaid": "12.3.0",
     "vitepress": "1.6.4",
-    "vue": "3.5.44"
+    "vue": "3.5.45"
   }
 }

@@ -60,7 +60,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",
     "brepjs": ">=18.122.0",
-    "commander": "^15.0.0",
+    "commander": "15.1.0",
     "occt-wasm": "^3.0.0 || ^4.0.0 || ^5.0.0",
     "typescript": "^6.0.3"
   },
@@ -69,10 +69,10 @@
     "rhino3dm": "8.35.0"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "1.3.0",
-    "@langfuse/client": "6.1.0",
-    "@langfuse/otel": "6.1.0",
-    "@langfuse/tracing": "6.1.0",
+    "@anthropic-ai/sdk": "1.6.0",
+    "@langfuse/client": "6.1.1",
+    "@langfuse/otel": "6.1.1",
+    "@langfuse/tracing": "6.1.1",
     "@opentelemetry/sdk-node": "0.223.0",
     "@react-three/drei": "10.7.9",
     "@react-three/fiber": "9.8.2",
@@ -80,7 +80,7 @@
     "@types/react": "^19.2.15",
     "@types/react-dom": "19.3.0",
     "@types/three": "0.187.0",
-    "@vitejs/plugin-react": "6.1.2",
+    "@vitejs/plugin-react": "6.2.1",
     "brepjs-viewer": "*",
     "eslint": "^10.4.0",
     "jsdom": "30.1.3",
