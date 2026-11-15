@@ -11,9 +11,9 @@ export const BIM_EXAMPLES: readonly Example[] = [
     id: 'bim-steel-beam',
     label: 'Steel Floor Beam',
     description:
-      'A steel floor beam as a BIM model: an IfcBeam with a rolled I profile between two column stubs, with fin plates, bolts, shear studs and a strip of the slab with its mesh. The sections, the fin plate, the bolts, the studs and the mesh are published figures, and the kernel measures the mass of the beam for each metre against the section table. The span, the column stubs and the slab strip are a display model.',
+      'A steel floor beam as a BIM model: an IfcBeam with a rolled I profile between two column stubs, with fin plates, bolts, shear studs and a strip of the slab with its mesh. The sections, the fin plate, the bolts, the studs and the mesh are published figures, and the kernel measures the mass of the beam for each metre against the section table. The view shows each M20 bolt as a screw with a helical thread in its nut, and the IFC file keeps it as a plain proxy. The span, the column stubs and the slab strip are a display model.',
     code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
-import { box, clone, compound, cutAll, cylinder, extrude, fuseAll, getSolids, measureVolume, polygon, translate, unwrap } from 'brepjs/quick';
+import { box, clone, compound, cutAll, cylinder, extrude, fuseAll, getSolids, line, loft, measureVolume, polygon, rotate, translate, unwrap, wire } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
 // Steel floor beam as a BIM model: an IfcBeam with a rolled I profile between two column stubs, with its fin
@@ -38,13 +38,14 @@ const HE200B = { h: 200, b: 200, tw: 9, tf: 15, r: 18 };
 const STEEL = 7850e-9; // kg in each mm3
 // Standard fin plate: a 10 mm plate, M20 bolts in 22 mm holes at 70 mm centres, 10 mm between beam and column.
 const FIN = { plate: 10, width: 100, hole: 22, pitch: 70, end: 40, edge: 50, gap: 10, top: 50 };
-const M20 = { d: 20, flats: 30, head: 12.5, nut: 18, washer: 37, washerT: 3 };
+const M20 = { d: 20, minor: 17.294, pitch: 2.5, flats: 30, head: 12.5, nut: 18, washer: 37, washerHole: 21, washerT: 3 }; // metric coarse thread, right hand
 const STUD = { d: 19, height: 100, head: 32, headT: 10 }; // 100 mm high after it is welded to the flange
 const MESH = { wire: 6, pitch: 200 }; // fabric A142: 6 mm wires at 200 mm centres, both ways
 
 // ---- display model
 const STUB = { below: 320, above: 320 }; // the columns go on: the model shows a piece of each
 const STRIP = { width: 800, depth: 150, studPitch: 190, cover: 30 };
+const PLAY = 0.1; // radial play between the thread of a bolt and of its nut
 const COLORS = { beam: '#12b5b0', column: '#c3c9d1', plate: '#ff5a1f', bolt: '#f5f2ea', stud: '#d3a956', mesh: '#a8623f', slab: '#cfcabb' };
 type Tone = keyof typeof COLORS;
 type P3 = [number, number, number];
@@ -109,6 +110,29 @@ function beamModel({ section = 'IPE 300', span = 2000, slab = 0.5 }: BeamParams 
       own(cylinder(M20.d / 2, shank, { at: [-shank, 0, 0], axis: X })),
       own(cylinder(M20.washer / 2, w, { at: [-grip - w, 0, 0], axis: X })), hex(M20.flats, -grip - w - M20.nut, M20.nut),
     ]))));
+    // The view draws each bolt as a real screw: a core with one helical tooth, and a nut with the mating tooth, half a
+    // pitch out of phase. The proxy in the IFC file keeps the plain solid above. A tooth is a smooth loft about Z, turned to X.
+    const tooth = (core: number, tip: number, from: number, to: number, ref: number): Body => {
+      const root = tip > core ? core / 0.998 : core * 0.998, half = 0.42 * M20.pitch; // a hair clear of the core or the bore
+      const start = from + half, span = to - from - 2 * half, pieces = Math.ceil(span / (4 * M20.pitch));
+      const n = Math.round(span / pieces / M20.pitch * 24); // 24 loft sections in each turn
+      const section = (z: number) => {
+        const a = 2 * Math.PI * (z - ref) / M20.pitch;
+        const pts = [[root, -half], [tip, 0], [root, half]].map(([r, dz]): P3 => [r! * Math.cos(a), r! * Math.sin(a), z + dz!]);
+        return own(unwrap(wire(pts.map((q, i) => own(line(q, pts[(i + 1) % 3]!))))));
+      };
+      // A row of lofts of 4 turns or less, end to end on one helix: a long loft is slow to mesh.
+      const lofts = Array.from({ length: pieces }, (_, k) => own(unwrap(loft(Array.from({ length: n + 1 }, (_, j) => section(start + span * (k + j / n) / pieces)), { ruled: false }))));
+      return own(rotate(own(compound(lofts)), 90, { axis: Y })) as Body;
+    };
+    const bore = M20.d / 2 + PLAY, nutX = -grip - w - M20.nut;
+    const drilled = (body: Body, r: number, x: number, depth: number): Body => own(unwrap(cutAll(body, [own(cylinder(r, depth + 2, { at: [x - 1, 0, 0], axis: X }))]))) as Body;
+    const washer = (x: number): Body => drilled(own(cylinder(M20.washer / 2, w, { at: [x, 0, 0], axis: X })), M20.washerHole / 2, x, w);
+    const screw = own(compound([
+      washer(0), hex(M20.flats, w, M20.head), own(cylinder(M20.minor / 2, shank + w, { at: [-shank, 0, 0], axis: X })), tooth(M20.minor / 2, M20.d / 2, -shank, w, 0),
+      washer(-grip - w), drilled(hex(M20.flats, nutX, M20.nut), bore, nutX, M20.nut), tooth(bore, M20.minor / 2 + PLAY, nutX, nutX + M20.nut, M20.pitch / 2),
+    ]));
+    const boltAt: P3[] = [];
     // A fin plate on each column, on the +X side of the web. Its depth is 0.6 of the beam depth or more.
     const rows = Math.ceil((0.6 * s.h - 2 * FIN.end) / FIN.pitch) + 1, depth = (rows - 1) * FIN.pitch + 2 * FIN.end;
     const holes: Body[] = [];
@@ -118,7 +142,11 @@ function beamModel({ section = 'IPE 300', span = 2000, slab = 0.5 }: BeamParams 
       const drills = Array.from({ length: rows }, (_, i) => own(cylinder(FIN.hole / 2, 60, { at: [-30, at(i)[1], at(i)[2]], axis: X })));
       holes.push(...drills);
       part('plate', 'Fin plate', one(unwrap(cutAll(blank, drills))), 'Steel S275');
-      for (let i = 0; i < rows; i++) part('bolt', 'Bolt M20 8.8', translate(bolt, at(i)), 'Steel 8.8');
+      for (let i = 0; i < rows; i++) {
+        const position = at(i);
+        boltAt.push(position);
+        part('bolt', 'Bolt M20 8.8', translate(bolt, position), 'Steel 8.8');
+      }
     }
     // Headed studs on the centre line of the top flange. They tie the slab to the beam.
     const stud = own(one(unwrap(fuseAll([own(cylinder(STUD.d / 2, STUD.height - STUD.headT)), own(cylinder(STUD.head / 2, STUD.headT, { at: [0, 0, STUD.height - STUD.headT] }))]))));
@@ -131,7 +159,8 @@ function beamModel({ section = 'IPE 300', span = 2000, slab = 0.5 }: BeamParams 
     const mesh = part('mesh', 'Fabric A142', one(unwrap(fuseAll(wires))), 'Steel B500');
 
     // The view. placedSolids() gives each element in its place, as the IFC file has it. The view then drills the
-    // web for the bolts and cuts the slab back along the beam, to show the studs and the mesh in it.
+    // web for the bolts, cuts the slab back along the beam to show the studs and the mesh in it, and puts the
+    // screw with its helical thread in the place of each bolt proxy.
     const share = Math.min(Math.max(slab, 0), 1), behind = -STUD.head / 2 - 4;
     const raw = (share - 0.5) * STRIP.width, edge = share < 1 && Math.abs(raw) < -behind ? behind : raw; // not through a stud
     const cutSlab = share > 0 && share < 1;
@@ -150,8 +179,9 @@ function beamModel({ section = 'IPE 300', span = 2000, slab = 0.5 }: BeamParams 
         if (share > 0) groups.slab.push(cutSlab ? own(unwrap(cutAll(placed[0]!, open))) : placed[0]!);
       } else if (el.localId === mesh) {
         if (share < 1) groups.mesh.push(cutSlab ? own(unwrap(cutAll(placed[0]!, kept))) : placed[0]!);
-      } else if (tone !== 'stud' || edge < 0) groups[tone].push(...placed);
+      } else if (tone !== 'bolt' && (tone !== 'stud' || edge < 0)) groups[tone].push(...placed);
     }
+    groups.bolt = boltAt.map((at) => own(translate(screw, at)) as Body);
     const shown = (Object.keys(COLORS) as Tone[]).filter((tone) => groups[tone].length > 0).map((tone) => color(compound(groups[tone]), COLORS[tone]));
     return { model, shown, kg, table: s.kg, section, rows };
   } catch (error) {
@@ -548,9 +578,9 @@ export default present(scene.shown, {
     id: 'bim-steel-frame',
     label: 'Braced Steel Frame',
     description:
-      'A braced steel frame of two storeys as a BIM model: columns on a grid, a beam grid at each floor, tube bracing with gusset plates, a slab on each level and a base under each column, all grouped as one IfcElementAssembly. The sections, the grid, the storey height, the slab depth and the column base are published figures, and the kernel measures the mass of the steel against the section tables. The layout of the bracing, the gussets and the footings are a display model.',
+      'A braced steel frame of two storeys as a BIM model: columns on a grid, a beam grid at each floor, tube bracing with gusset plates, a slab on each level and a base under each column, all grouped as one IfcElementAssembly. The sections, the grid, the storey height, the slab depth and the column base are published figures, and the kernel measures the mass of the steel against the section tables. The view shows each M24 holding down bolt as a screw with a helical thread in its nut, and the IFC file keeps it as a plain proxy. The layout of the bracing, the gussets and the footings are a display model.',
     code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
-import { box, clone, compound, cutAll, cylinder, extrude, fuseAll, getSolids, measureVolume, polygon, translate, unwrap } from 'brepjs/quick';
+import { box, clone, compound, cutAll, cylinder, extrude, fuseAll, getSolids, line, loft, measureVolume, polygon, translate, unwrap, wire } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
 // Braced steel frame as a BIM model: columns on a grid, a beam grid at each floor, tube bracing, a slab on each
@@ -573,13 +603,14 @@ const STEEL = 7850e-9; // kg in each mm3
 const GRID = { x: 6000, y: 9000, storey: 3600 }; // a usual grid of 6 m by 9 m
 const SLAB = 150; // composite slab
 // Column base: a plate 100 mm larger than the column all round, four M24 bolts, 25 to 50 mm of grout.
-const BASE = { plate: 450, thickness: 25, grout: 30, bolt: 24, nut: 21.5, flats: 36, washer: 44, washerT: 4 };
+const BASE = { plate: 450, thickness: 25, grout: 30, bolt: 24, minor: 20.752, pitch: 3, nut: 21.5, flats: 36, washer: 44, washerHole: 25, washerT: 4 }; // M24: metric coarse thread, right hand
 
 // ---- display model
 const SECONDARY = 3000; // spacing of the floor beams
 const EDGE = 200; // the slab goes past the grid lines
 const GUSSET = { plate: 15, reach: 520, half: 110 };
 const FOOTING = { size: 1500, depth: 600 };
+const ANCHOR = { embed: 300, hole: 30, play: 0.15 }; // a holding down bolt in the footing, its hole in the plate, the play of its nut
 const COLORS = { column: '#c3c9d1', beam: '#12b5b0', brace: '#ff5a1f', plate: '#8a99ad', bolt: '#d3a956', slab: '#cfcabb', base: '#a8a294' };
 type Tone = keyof typeof COLORS;
 type P3 = [number, number, number];
@@ -640,14 +671,15 @@ function frame({ storeys = 2, bays = 2, deck = 0.5 }: FrameParams = {}) {
 
     const kit = { model, put, own, levels, nx, tops };
     bracing(kit);
-    bases(kit, lines, rows);
+    const anchor = bases(kit, lines, rows);
 
     // One assembly holds the frame: the IFC file groups all the parts under it.
     const assembly = unwrap(model.addElementAssembly({ name: 'Frame', predefinedType: 'BRACED_FRAME' }));
     for (const id of tones.keys()) model.aggregate(assembly, id);
 
     // The view and the takeoff. placedSolids() gives each element in its place. The kernel measures each steel
-    // member, and a density gives its mass. The view cuts the slabs back to show the beams.
+    // member, and a density gives its mass. The view cuts the slabs back to show the beams. It also shows each holding
+    // down bolt whole, in its holes, in the place of the proxy that the IFC file keeps.
     const groups: Record<Tone, Body[]> = { column: [], beam: [], brace: [], plate: [], bolt: [], slab: [], base: [] };
     const share = Math.min(Math.max(deck, 0), 1), length = nx * GRID.x + 2 * EDGE;
     const open = own(box(length, GRID.y + 2 * EDGE + 2, 2 * height, { at: [-EDGE + share * length + length / 2, GRID.y / 2, height] }));
@@ -660,8 +692,12 @@ function frame({ storeys = 2, bays = 2, deck = 0.5 }: FrameParams = {}) {
       if (slabs.includes(el.localId)) {
         if (share <= 0) continue;
         groups.slab.push(...(share < 1 ? placed.map((body) => own(unwrap(cutAll(body, [open])))) : placed));
-      } else groups[tone].push(...placed);
+      } else if (tone !== 'bolt') {
+        const drills = anchor.holes.get(el.localId);
+        groups[tone].push(...(drills ? placed.map((body) => own(unwrap(cutAll(body, drills)))) : placed));
+      }
     }
+    groups.bolt = anchor.screws.map((at) => own(translate(anchor.screw, at)) as Body);
     const shown = (Object.keys(COLORS) as Tone[]).filter((tone) => groups[tone].length > 0).map((tone) => color(compound(groups[tone]), COLORS[tone]));
     return { model, shown, kg, tableKg, members: [...tones.values()].filter((tone) => tone === 'column' || tone === 'beam' || tone === 'brace').length };
   } catch (error) {
@@ -710,19 +746,45 @@ function bracing({ model, put, own, levels, nx, tops }: Kit): void {
 }
 
 // A base under each column: a pad footing, a bed of grout, a base plate and four holding down bolts.
-function bases({ model, put, own }: Kit, lines: number[], rows: number[]): void {
+function bases({ model, put, own }: Kit, lines: number[], rows: number[]) {
   const one = (shape: Parameters<typeof getSolids>[0]): Body => unwrap(clone(getSolids(own(shape))[0]!)) as Body;
   const hex = own(unwrap(polygon(Array.from({ length: 6 }, (_, i): P3 => [BASE.flats / Math.sqrt(3) * Math.cos(i * Math.PI / 3), BASE.flats / Math.sqrt(3) * Math.sin(i * Math.PI / 3), BASE.washerT]))));
   // The part of a bolt over the plate: washer, nut and the end of the thread.
   const bolt = own(one(unwrap(fuseAll([own(cylinder(BASE.washer / 2, BASE.washerT)), own(unwrap(extrude(hex, BASE.nut))), own(cylinder(BASE.bolt / 2, BASE.washerT + BASE.nut + 20))]))));
   const p = BASE.plate, under = -BASE.thickness - BASE.grout, hold = p / 2 - 55;
+  // The view shows the whole bolt as a real screw: a plain shank from the footing up through the grout and the plate,
+  // then a core with one helical tooth, a washer, and a nut with the mating tooth, half a pitch out of phase.
+  const tooth = (core: number, tip: number, from: number, to: number, ref: number): Body => {
+    const root = tip > core ? core / 0.998 : core * 0.998, half = 0.42 * BASE.pitch; // a hair clear of the core or the bore
+    const start = from + half, span = to - from - 2 * half, pieces = Math.ceil(span / (4 * BASE.pitch));
+    const n = Math.round(span / pieces / BASE.pitch * 24); // 24 loft sections in each turn
+    const section = (z: number) => {
+      const a = 2 * Math.PI * (z - ref) / BASE.pitch;
+      const pts = [[root, -half], [tip, 0], [root, half]].map(([r, dz]): P3 => [r! * Math.cos(a), r! * Math.sin(a), z + dz!]);
+      return own(unwrap(wire(pts.map((q, i) => own(line(q, pts[(i + 1) % 3]!))))));
+    };
+    // A row of lofts of 4 turns or less, end to end on one helix: a long loft is slow to mesh.
+    const lofts = Array.from({ length: pieces }, (_, k) => own(unwrap(loft(Array.from({ length: n + 1 }, (_, j) => section(start + span * (k + j / n) / pieces)), { ruled: false }))));
+    return own(compound(lofts)) as Body;
+  };
+  const drilled = (body: Body, r: number, z: number, depth: number): Body => own(unwrap(cutAll(body, [own(cylinder(r, depth + 2, { at: [0, 0, z - 1] }))]))) as Body;
+  const low = under - ANCHOR.embed, top = BASE.washerT + BASE.nut + 20, bore = BASE.bolt / 2 + ANCHOR.play;
+  const screw = own(compound([
+    own(cylinder(BASE.bolt / 2, -low, { at: [0, 0, low] })), own(cylinder(BASE.minor / 2, top)), tooth(BASE.minor / 2, BASE.bolt / 2, 0, top, 0),
+    drilled(own(cylinder(BASE.washer / 2, BASE.washerT)), BASE.washerHole / 2, 0, BASE.washerT),
+    drilled(own(unwrap(extrude(hex, BASE.nut))) as Body, bore, BASE.washerT, BASE.nut), tooth(bore, BASE.minor / 2 + ANCHOR.play, BASE.washerT, BASE.washerT + BASE.nut, BASE.pitch / 2),
+  ])) as Body;
+  const screws: P3[] = [], holes = new Map<Id, Body[]>(); // where the bolts are, and the holes that the view drills for them
   for (const x of lines) for (const y of rows) {
-    put('base', model.addFooting({ length: FOOTING.size, width: FOOTING.size, thickness: FOOTING.depth, origin: [x - FOOTING.size / 2, y - FOOTING.size / 2, under - FOOTING.depth], axisX: X, axisZ: Z, predefinedType: 'PAD_FOOTING', materialName: 'Concrete C30/37' }));
-    put('base', model.addProxy({ name: 'Grout', solid: box(p + 60, p + 60, BASE.grout, { at: [x, y, under + BASE.grout / 2] }), materialName: 'Grout' }));
-    put('plate', model.addProxy({ name: 'Base plate', solid: box(p, p, BASE.thickness, { at: [x, y, -BASE.thickness / 2] }), materialName: 'Steel S355' }));
-    for (const dx of [-hold, hold]) for (const dy of [-hold, hold])
-      put('bolt', model.addProxy({ name: 'Holding down bolt M24', solid: translate(bolt, [x + dx, y + dy, 0]), materialName: 'Steel 8.8' }));
+    const spots = [-hold, hold].flatMap((dx) => [-hold, hold].map((dy): P3 => [x + dx, y + dy, 0]));
+    const drill = (r: number, z0: number, z1: number): Body[] => spots.map(([sx, sy]) => own(cylinder(r, z1 - z0, { at: [sx, sy, z0] })));
+    screws.push(...spots);
+    holes.set(put('base', model.addFooting({ length: FOOTING.size, width: FOOTING.size, thickness: FOOTING.depth, origin: [x - FOOTING.size / 2, y - FOOTING.size / 2, under - FOOTING.depth], axisX: X, axisZ: Z, predefinedType: 'PAD_FOOTING', materialName: 'Concrete C30/37' })), drill(BASE.bolt / 2, low, under + 1));
+    holes.set(put('base', model.addProxy({ name: 'Grout', solid: box(p + 60, p + 60, BASE.grout, { at: [x, y, under + BASE.grout / 2] }), materialName: 'Grout' })), drill(BASE.bolt / 2 + 0.2, under - 1, -BASE.thickness + 1));
+    holes.set(put('plate', model.addProxy({ name: 'Base plate', solid: box(p, p, BASE.thickness, { at: [x, y, -BASE.thickness / 2] }), materialName: 'Steel S355' })), drill(ANCHOR.hole / 2, -BASE.thickness - 1, 1));
+    for (const at of spots) put('bolt', model.addProxy({ name: 'Holding down bolt M24', solid: translate(bolt, at), materialName: 'Steel 8.8' }));
   }
+  return { screw, screws, holes };
 }
 
 // Try frame({ storeys: 3 }), frame({ bays: 3 }) or frame({ deck: 0 }).
@@ -1467,9 +1529,9 @@ export default present(
     id: 'bim-profile-gallery',
     label: 'Profile Gallery',
     description:
-      'Eight structural sections as real IfcColumn stubs on bolted base plates: I, L, T, U, Z, C, rectangular hollow and circular hollow. Beams and columns share one profile vocabulary, and each named kind exports as its own parametric IFC profile def, so the section stays editable data downstream. The IPE 300, the angle, the UPE 200 and the two hollow sections have their published dimensions, and the kernel measures the mass of each metre to set against the steel table. The tee, the zed, the lipped channel, the base plates and the trestles are a display model.',
+      'Eight structural sections as real IfcColumn stubs on bolted base plates: I, L, T, U, Z, C, rectangular hollow and circular hollow. Beams and columns share one profile vocabulary, and each named kind exports as its own parametric IFC profile def, so the section stays editable data downstream. The IPE 300, the angle, the UPE 200 and the two hollow sections have their published dimensions, and the kernel measures the mass of each metre to set against the steel table. The view shows each M20 holding-down bolt as a screw with a helical thread in its nut, and the IFC file keeps plain proxies. The tee, the zed, the lipped channel, the base plates and the trestles are a display model.',
     code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
-import { box, compound, cylinder, getBounds, measureVolume, translate, unwrap } from 'brepjs/quick';
+import { box, compound, cutAll, cylinder, extrude, getBounds, line, loft, measureVolume, polygon, translate, unwrap, wire } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
 // Profile gallery: eight structural sections of the steel tables, as column stubs on bolted base plates.
@@ -1497,6 +1559,7 @@ const L150 = { leg: 150, t: 12, r: 16, kg: 27.3 };
 const UPE200 = { h: 200, b: 80, tw: 6, tf: 11, kg: 22.8 };
 const RHS200 = { h: 200, b: 100, t: 8, outer: 12, inner: 8, kg: 35.1 };
 const CHS168 = { d: 168.3, t: 8, kg: 31.6 };
+const M20 = { d: 20, minor: 17.294, pitch: 2.5, flats: 30 }; // the holding-down bolts: metric coarse thread, right hand
 
 // ---- display model: the tee, the zed and the lipped channel have typical sizes, with no table mass
 // THE LESSON. One entry for each profile kind. roll turns a section about its length to lay it on a flat side.
@@ -1513,6 +1576,7 @@ const catalogue = (radii: boolean): { name: string; tone: Tone; kg?: number; rol
 const GAP = 110; // between two members
 const ROW = 800; // from one row of stubs to the next
 const PLATE = { thick: 20, margin: 70, bolt: 10 }; // a base plate with four holding-down bolts
+const ANCHOR = { embed: 120, hole: 22, play: 0.15 }; // a bolt in the footing, its hole in the plate, the play of its nut
 const TRESTLE = { height: 400, bearer: 100, leg: 80, stop: 150 };
 
 function stock({ as = 'columns', length = 320, radii = true }: StockParams = {}) {
@@ -1568,11 +1632,37 @@ function stock({ as = 'columns', length = 320, radii = true }: StockParams = {})
   });
 
   // The scenery. For the columns: a base plate with four holding-down bolts under each stub, on a strip footing.
+  // The IFC file keeps each nut and bolt end as a plain proxy. The view shows the whole bolt as a real screw: a plain
+  // shank from the footing up through the plate, a core with one helical tooth, and a hex nut with the mating tooth.
+  const keep = (s: unknown): Body => { owned.push(s as Body); return s as Body; };
+  const tooth = (core: number, tip: number, from: number, to: number, ref: number): Body => {
+    const root = tip > core ? core / 0.998 : core * 0.998, half = 0.42 * M20.pitch; // a hair clear of the core or the bore
+    const start = from + half, span = to - from - 2 * half, pieces = Math.ceil(span / (4 * M20.pitch));
+    const n = Math.round(span / pieces / M20.pitch * 24); // 24 loft sections in each turn
+    const section = (z: number) => {
+      const a = 2 * Math.PI * (z - ref) / M20.pitch;
+      const pts = [[root, -half], [tip, 0], [root, half]].map(([r, dz]): P3 => [r! * Math.cos(a), r! * Math.sin(a), z + dz!]);
+      return keep(unwrap(wire(pts.map((q, i) => keep(line(q, pts[(i + 1) % 3]!)) as never))));
+    };
+    // A row of lofts of 4 turns or less, end to end on one helix: a long loft is slow to mesh.
+    const lofts = Array.from({ length: pieces }, (_, k) => keep(unwrap(loft(Array.from({ length: n + 1 }, (_, j) => section(start + span * (k + j / n) / pieces)) as never, { ruled: false }))));
+    return keep(compound(lofts));
+  };
+  const nutTop = PLATE.thick + 16, top = nutTop + 24, bore = M20.d / 2 + ANCHOR.play, hexR = M20.flats / Math.sqrt(3);
+  const hex = keep(unwrap(polygon(Array.from({ length: 6 }, (_, i): P3 => [hexR * Math.cos((i * Math.PI) / 3), hexR * Math.sin((i * Math.PI) / 3), PLATE.thick]))));
+  const screw = lying ? undefined : keep(compound([
+    keep(cylinder(M20.d / 2, ANCHOR.embed + PLATE.thick, { at: [0, 0, -ANCHOR.embed] })), keep(cylinder(M20.minor / 2, top - PLATE.thick, { at: [0, 0, PLATE.thick] })), tooth(M20.minor / 2, M20.d / 2, PLATE.thick, top, 0),
+    keep(unwrap(cutAll(keep(unwrap(extrude(hex as never, 16))), [keep(cylinder(bore, 18, { at: [0, 0, PLATE.thick - 1] }))]))), tooth(bore, M20.minor / 2 + ANCHOR.play, PLATE.thick, nutTop, M20.pitch / 2),
+  ]));
+  const screws: P3[] = [], drills = new Map<Id, Body[]>(), inFooting: Body[][] = [[], []]; // the holes that the view drills
   if (!lying) for (const { plate: p } of members) {
     const unit = box(p.deep, p.wide, PLATE.thick);
     owned.push(unit);
-    put('primer', model.addProxy({ name: 'Base plate', solid: translate(unit, [p.x, p.y, 0]), ...steel }));
-    for (const x of [p.x + 32, p.x + p.deep - 32]) for (const y of [p.y + 32, p.y + p.wide - 32]) {
+    const spots = [p.x + 32, p.x + p.deep - 32].flatMap((x) => [p.y + 32, p.y + p.wide - 32].map((y): P3 => [x, y, 0]));
+    screws.push(...spots);
+    drills.set(put('primer', model.addProxy({ name: 'Base plate', solid: translate(unit, [p.x, p.y, 0]), ...steel })), spots.map(([x, y]) => keep(cylinder(ANCHOR.hole / 2, PLATE.thick + 2, { at: [x, y, -1] }))));
+    inFooting[p.x + p.deep / 2 > 0 ? 0 : 1]!.push(...spots.map(([x, y]) => keep(cylinder(M20.d / 2, ANCHOR.embed + 1, { at: [x, y, -ANCHOR.embed] }))));
+    for (const [x, y] of spots) {
       put('bolt', model.addProxy({ name: 'Nut', solid: cylinder(1.7 * PLATE.bolt, 16, { at: [x, y, PLATE.thick] }), ...steel }));
       put('bolt', model.addProxy({ name: 'Holding-down bolt', solid: cylinder(PLATE.bolt, 24, { at: [x, y, PLATE.thick + 16] }), ...steel }));
     }
@@ -1589,7 +1679,7 @@ function stock({ as = 'columns', length = 320, radii = true }: StockParams = {})
     for (const y of [-over + 30, width + over - 30]) put('primer', model.addColumn({ height: t.stop, profile: shs(50, 4), origin: [x, y, t.height], axisX: X, axisZ: Z, ...steel }));
   }
   if (lying) put('floor', model.addSlab({ length: length + 500, width: width + 2 * over + 500, thickness: 150, origin: [-250, -over - 250, -150], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Concrete' }));
-  else for (const cx of [ROW / 2, -ROW / 2]) put('floor', model.addFooting({ length: width + 400, width: deepest + 200, thickness: 200, origin: [cx + deepest / 2 + 100, -200, -200], axisX: Y, axisZ: Z, predefinedType: 'STRIP_FOOTING', materialName: 'Concrete' }));
+  else [ROW / 2, -ROW / 2].forEach((cx, row) => drills.set(put('floor', model.addFooting({ length: width + 400, width: deepest + 200, thickness: 200, origin: [cx + deepest / 2 + 100, -200, -200], axisX: Y, axisZ: Z, predefinedType: 'STRIP_FOOTING', materialName: 'Concrete' })), inFooting[row]!));
 
   // The kernel measures each member. Volume and density give the mass for each metre, to set against the table.
   const elements = new Map(model.getAllElements().map((el) => [el.localId, el]));
@@ -1603,7 +1693,12 @@ function stock({ as = 'columns', length = 320, radii = true }: StockParams = {})
     return m.name + ' ' + kg.toFixed(1) + (m.kg === undefined ? '' : ' (' + m.kg + ')');
   });
   const groups = new Map<Tone, Body[]>();
-  for (const p of placed) groups.set(p.tone, [...(groups.get(p.tone) ?? []), ...solidsOf(p.id)]);
+  for (const p of placed) {
+    if (p.tone === 'bolt') continue; // the screws below go in the place of these proxies
+    const tools = drills.get(p.id), list = solidsOf(p.id);
+    groups.set(p.tone, [...(groups.get(p.tone) ?? []), ...(tools ? list.map((body) => keep(unwrap(cutAll(body, tools)))) : list)]);
+  }
+  if (screw) groups.set('bolt', screws.map((at) => keep(translate(screw, at))));
   const shown = [...groups].map(([tone, list]) => ({ tone, shape: compound(list) }));
   owned.splice(0).forEach((s) => s.delete());
   return { model, shown, report };

@@ -10,14 +10,14 @@ export const SHEET_METAL_EXAMPLES: readonly Example[] = [
     id: 'sheet-metal-bracket',
     label: 'Mitered Motor Bracket',
     description:
-      'A mounting bracket for a NEMA 17 stepper motor, folded from one blank of 14 gauge steel: a face and two ribs fold up from the base, and each rib meets the face in a mitered corner. The gauge, the motor face, its hole pattern and its shaft are published figures. The kernel unfolds the bracket to the flat blank, with the bend allowance, and measures the mass. The motor, the pulley and the screws are a display model. The DXF button downloads the flat blank.',
-    code: `import { box, clone, compound, cutAll, cylinder, extrude, measureVolume, polygon, revolve, rotate, translate, unwrap } from 'brepjs/quick';
+      'A mounting bracket for a NEMA 17 stepper motor, folded from one blank of 14 gauge steel: a face and two ribs fold up from the base, and each rib meets the face in a mitered corner. The gauge, the motor face, its hole pattern, its shaft and the screw threads are published figures. The M3 screws turn into the tapped holes of the motor and the M5 screws into nuts, with true helical threads. The kernel unfolds the bracket to the flat blank, with the bend allowance, and measures the mass. The motor and the pulley are a display model. The DXF button downloads the flat blank.',
+    code: `import { box, clone, compound, cutAll, cylinder, extrude, line, loft, measureVolume, polygon, revolve, rotate, translate, unwrap, wire } from 'brepjs/quick';
 import { addPolygonCutout, author, flatPatternToPolylines, miterCorner, toDXF, unfold } from 'brepjs-sheetmetal';
 import { color, present } from 'brepjs/playground';
 
 // Mounting bracket for a NEMA 17 stepper motor, folded from one blank of 14 gauge steel.
 // The face and two ribs fold up from the base. Each rib meets the face in a mitered corner, with a gap for the weld.
-// The gauge, the motor face, its hole pattern and its shaft are published figures. The rest is a display model.
+// The gauge, the motor face, its hole pattern, its shaft and the screws are published figures. The rest is a display model.
 interface BracketParams {
   fold?: number; // 0 to 1: how far each bend is folded. Below 1 the example shows only the sheet, before the miter cuts
   rib?: number; // height of the ribs in millimetres. Try 30
@@ -39,7 +39,9 @@ const freeing = <T,>(build: () => T): T => { try { return build(); } finally { o
 // ---- published figures
 const T = 1.897; // 14 gauge steel sheet, 0.0747 inch
 const STEEL = 7.85e-3; // grams per cubic millimetre
-const MOTOR = { face: 42.3, holes: 31, screw: 3, shaft: 5 }; // NEMA 17: four M3 holes on a square of 31 mm
+const MOTOR = { face: 42.3, holes: 31, screw: 3, shaft: 5, tapped: 4.5 }; // NEMA 17: four tapped M3 holes on a square of 31 mm
+const M3 = { d: 3, minor: 2.459, pitch: 0.5, head: 5.5, k: 3, socket: 2.5, length: 6 }; // socket head cap screw, metric coarse thread, right hand
+const M5 = { d: 5, minor: 4.134, pitch: 0.8, head: 8.5, k: 5, socket: 4, length: 8, nutFlats: 8, nutHeight: 4.7 }; // cap screw and hex nut
 
 // ---- display model
 const RULE = { innerRadius: 2, kFactor: 0.44 }; // air bend
@@ -51,6 +53,7 @@ const PILOT = { diameter: 22, height: 2 }; // the boss on the motor that centres
 const BODY = { front: 9, stack: 20, rear: 11, shaft: 24 }; // a motor of 40 mm
 const MITER = 1; // gap setting of the miter cut
 const SLOTS = [14, 42]; // Y of the two slots in the base
+const PLAY = 0.08; // radial play between a screw thread and its mating thread
 
 const made = (r: ReturnType<typeof author>): Part => {
   const p = unwrap(r);
@@ -89,6 +92,38 @@ const rod = (r: number, x0: number, x1: number, y: number, z: number): Shape => 
 const turned = (profile: P2[], y: number, z: number): Shape =>
   own(translate(own(unwrap(revolve(own(unwrap(polygon(profile.map(([x, r]): P3 => [x, r, 0])))), { axis: [1, 0, 0] }))), [0, y, z])) as Shape;
 
+// One helical thread tooth about +Z, from z = from to z = to. Its crest passes the +X side at z = ref.
+// The tooth is a row of smooth lofts of 4 turns or less, end to end on one helix: a long loft is slow to mesh.
+// tip > core is the thread of a screw on a core of that radius. tip < core is the thread in a bore.
+const SECTIONS = 12; // loft sections in each turn
+const SLACK = 0.998; // keeps the tooth a hair clear of its core or its bore
+const helixTooth = (core: number, tip: number, pitch: number, from: number, to: number, ref: number): Shape => {
+  const root = tip > core ? core / SLACK : core * SLACK;
+  const crest = tip > core ? tip : tip / SLACK;
+  const half = 0.42 * pitch;
+  const start = from + half, span = to - from - 2 * half, pieces = Math.ceil(span / (4 * pitch));
+  const n = Math.max(2, Math.round((span / pieces / pitch) * SECTIONS)); // sections in each piece
+  const section = (z: number) => {
+    const a = (2 * Math.PI * (z - ref)) / pitch;
+    const pts = [[root, -half], [crest, 0], [root, half]].map(([r, dz]): P3 => [r! * Math.cos(a), r! * Math.sin(a), z + dz!]);
+    return own(unwrap(wire(pts.map((q, i) => own(line(q, pts[(i + 1) % 3]!))))));
+  };
+  const lofts = Array.from({ length: pieces }, (_, k) => own(unwrap(loft(Array.from({ length: n + 1 }, (_, j) => section(start + (span * (k + j / n)) / pieces)), { ruled: false }))));
+  return own(compound(lofts)) as Shape;
+};
+// The thread of a screw between two heights, and the mating thread of a nut or a tapped hole, half a pitch out of phase.
+type Thread = { d: number; minor: number; pitch: number };
+const screwTooth = (m: Thread, z0: number, z1: number): Shape => helixTooth(m.minor / 2, m.d / 2, m.pitch, z0, z1, 0);
+const nutTooth = (m: Thread, z0: number, z1: number): Shape => helixTooth(m.d / 2 + PLAY, m.minor / 2 + PLAY, m.pitch, z0, z1, m.pitch / 2);
+const hexPrism = (flats: number, z0: number, height: number): Shape =>
+  own(unwrap(extrude(own(unwrap(polygon(Array.from({ length: 6 }, (_, i): P3 => [(flats / Math.sqrt(3)) * Math.cos((i * Math.PI) / 3), (flats / Math.sqrt(3)) * Math.sin((i * Math.PI) / 3), z0])))), [0, 0, height]))) as Shape;
+// A socket head cap screw along -Z, with the seat of its head at z = 0 and thread on its full length.
+const capScrew = (m: typeof M3): Shape => {
+  const profile: P3[] = [[0, 0, m.k], [m.head / 2, 0, m.k], [m.head / 2, 0, 0], [m.minor / 2, 0, 0], [m.minor / 2, 0, -m.length], [0, 0, -m.length]];
+  const body = own(unwrap(cutAll(own(unwrap(revolve(own(unwrap(polygon(profile)))))) as Shape, [hexPrism(m.socket, m.k * 0.4, m.k)]))) as Shape;
+  return own(compound([body, screwTooth(m, -m.length, 0)])) as Shape;
+};
+
 // The motor is behind the face. Its pilot sits in the bore, and four screws go through the face into it.
 function hardware() {
   const mid = BASE.width / 2, f = MOTOR.face / 2, h = MOTOR.holes / 2, x = -S;
@@ -99,7 +134,7 @@ function hardware() {
     return own(unwrap(extrude(own(unwrap(polygon(pts.map(([y, z]): P3 => [x0, mid + y, AXIS + z])))), [x1 - x0, 0, 0]))) as Shape;
   };
   const x1 = x - BODY.front, x2 = x1 - BODY.stack, x3 = x2 - BODY.rear;
-  const front = own(unwrap(cutAll(frame(x1, x, 4.5), spots.map(([u, v]) => rod(MOTOR.screw / 2, x - 4.5, x, mid + u, AXIS + v))))) as Shape;
+  const front = own(unwrap(cutAll(frame(x1, x, 4.5), spots.map(([u, v]) => rod(M3.d / 2 + PLAY, x - MOTOR.tapped, x, mid + u, AXIS + v))))) as Shape;
   const alloy = [front, frame(x3, x2, 4.5), turned([[x, 0], [x, PILOT.diameter / 2], [x + PILOT.height, PILOT.diameter / 2], [x + PILOT.height, 0]], mid, AXIS)];
   const dark = [frame(x2, x1, 3), block(x3, mid - 8, AXIS + f, x3 + 10, mid + 8, AXIS + f + 5.5)];
   // The shaft, with a flat for the set screws of the pulley.
@@ -108,16 +143,22 @@ function hardware() {
   const p0 = x + 9.5;
   const pulleyBlank = turned([[p0, 0], [p0, 8], [p0 + 7.5, 8], [p0 + 7.5, 6.5], [p0 + 8.5, 6.5], [p0 + 8.5, 6], [p0 + 15, 6], [p0 + 15, 6.5], [p0 + 16, 6.5], [p0 + 16, 0]], mid, AXIS);
   const pulley = own(unwrap(cutAll(pulleyBlank, [rod(MOTOR.shaft / 2, p0 - 1, p0 + 17, mid, AXIS), rod(1.5, 0, 9, 0, 0)]))) as Shape;
-  // Socket head screws: four M3 into the motor, and two M5 with washers in the slots of the base.
-  const cap = (d: number, k: number, length: number): P2[] => [[0, 0], [0, d * 0.75], [k, d * 0.75], [k, d * 0.42], [k * 0.4, d * 0.42], [k * 0.4, 0]].map(([a, r]): P2 => [k - a!, r!]).concat([[0, d / 2], [-length, d / 2], [-length, 0]]);
-  const m3 = turned(cap(3, 3, T + 4.5).reverse(), 0, 0);
-  const m5 = own(rotate(turned(cap(5, 5, T + 1).reverse(), 0, 0), -90, { axis: [0, 1, 0] })) as Shape;
+  // Socket head screws with helical threads: four M3 x 6 into the tapped holes of the motor, and two M5 x 8 with a washer
+  // and a nut in the slots of the base. Each mating thread is made in the frame of its screw, so the two stay in mesh.
+  const alongX = (s: Shape): Shape => own(rotate(s, 90, { axis: [0, 1, 0] })) as Shape; // the head toward +X
+  const m3 = alongX(capScrew(M3));
+  const m3Hole = alongX(nutTooth(M3, -T - MOTOR.tapped, -T));
+  const m5 = capScrew(M5);
+  const nutTop = -1 - T; // under the washer and the sheet
+  const nutBody = own(unwrap(cutAll(hexPrism(M5.nutFlats, nutTop - M5.nutHeight, M5.nutHeight), [own(cylinder(M5.d / 2 + PLAY, M5.nutHeight + 2, { at: [0, 0, nutTop - M5.nutHeight - 1] }))]))) as Shape;
+  const nut = own(compound([nutBody, nutTooth(M5, nutTop - M5.nutHeight, nutTop)])) as Shape;
   const washer = own(unwrap(revolve(own(unwrap(polygon([[2.65, 0, 0], [5, 0, 0], [5, 0, 1], [2.65, 0, 1]])))))) as Shape;
   const steel = [
     shaft, pulley,
     ...spots.map(([u, v]) => own(translate(m3, [x + T, mid + u, AXIS + v])) as Shape),
-    ...SLOTS.flatMap((y) => [own(translate(washer, [44, y, T])) as Shape, own(translate(m5, [44, y, T + 1])) as Shape]),
+    ...SLOTS.flatMap((y) => [washer, m5, nut].map((s, i) => own(translate(s, [44, y, i === 0 ? T : T + 1])) as Shape)),
   ];
+  alloy.push(...spots.map(([u, v]) => own(translate(m3Hole, [x + T, mid + u, AXIS + v])) as Shape));
   return { alloy: compound(alloy) as Shape, dark: compound(dark) as Shape, steel: compound(steel) as Shape };
 }
 
@@ -153,14 +194,14 @@ export default present(
     id: 'sheet-metal-u-channel',
     label: 'Slotted Strut Channel',
     description:
-      'A slotted strut channel, folded from one strip with six bends, as a trapeze hanger: two threaded rods carry it and two U-bolts hold a pipe each. The 41 mm section, the 2.5 mm gauge, the 14 x 28 mm slots at 50 mm and the mass for each metre are published figures. The kernel unfolds the section to the flat strip and measures the mass. The lips, the pipes and the hardware are a display model. The DXF button downloads the flat strip.',
-    code: `import { box, circle, clone, compound, cut, cylinder, extrude, face, measureVolume, polygon, revolve, rotate, translate, unwrap, wire } from 'brepjs/quick';
+      'A slotted strut channel, folded from one strip with six bends, as a trapeze hanger: two threaded rods carry it and two U-bolts hold a pipe each. The 41 mm section, the 2.5 mm gauge, the 14 x 28 mm slots at 50 mm, the mass for each metre and the M10 and M8 threads are published figures. The rods and the legs of the U-bolts have true helical threads, and each nut has the mating thread. The kernel unfolds the section to the flat strip and measures the mass. The lips, the pipes and the hardware are a display model. The DXF button downloads the flat strip.',
+    code: `import { box, circle, clone, compound, cut, cylinder, extrude, face, line, loft, measureVolume, polygon, revolve, rotate, translate, unwrap, wire } from 'brepjs/quick';
 import { addPolygonCutout, author, flatPatternToPolylines, toDXF, unfold } from 'brepjs-sheetmetal';
 import { color, present } from 'brepjs/playground';
 
 // Slotted strut channel, 41 x 41 mm, as a trapeze hanger: two threaded rods carry it, and two U-bolts hold a pipe each.
 // One strip of steel makes the section: a back, two walls, and two lips that turn in and down. That is six bends.
-// The section size, the gauge, the slots and the mass are published figures. The lips, the pipes and the hardware are a display model.
+// The section size, the gauge, the slots, the mass and the threads are published figures. The lips, the pipes and the hardware are a display model.
 interface ChannelParams {
   fold?: number; // 0 to 1: how far each bend is folded. Below 1 the example shows only the strip
   length?: number; // millimetres, a multiple of the slot pitch
@@ -185,6 +226,8 @@ const T = 2.5; // sheet thickness
 const SLOT = { width: 14, length: 28, pitch: 50 };
 const CATALOGUE = { plain: 2.61, slotted: 2.4 }; // kilograms per metre
 const STEEL = 7.85e-6; // kilograms per cubic millimetre
+const M10 = { d: 10, minor: 8.376, pitch: 1.5 }; // metric coarse thread, right hand: the rods
+const M8 = { d: 8, minor: 6.647, pitch: 1.25 }; // the U-bolts
 
 // ---- display model
 const RULE = { innerRadius: 1.25, kFactor: 0.44 }; // a tight roll-formed corner
@@ -193,7 +236,8 @@ const OPENING = 22; // between the lips
 const RETURN = 9.5; // how far each lip turns down
 const ROD = { radius: 5, height: 120, nut: 16, nutHeight: 8.4 }; // M10 threaded rod
 const PIPE = { radius: 21.2, wall: 3.2, length: 200 };
-const UBOLT = { radius: 4, nut: 13, nutHeight: 6.5 }; // M8
+const UBOLT = { radius: 4, nut: 13, nutHeight: 6.5, thread: 26 }; // M8, with this length of thread on each leg
+const PLAY = 0.08; // radial play between a thread and its nut
 
 const made = (r: ReturnType<typeof author>): Part => {
   const p = unwrap(r);
@@ -214,6 +258,30 @@ const hexNut = (across: number, height: number, bore: number): Shape => {
   const hex = own(unwrap(extrude(own(unwrap(polygon(Array.from({ length: 6 }, (_, i): P3 => [r * Math.cos((i * Math.PI) / 3), r * Math.sin((i * Math.PI) / 3), 0])))), height)));
   return own(unwrap(cut(hex, own(cylinder(bore, height)))) as Shape);
 };
+
+// One helical thread tooth about +Z, with its crest from z = from to z = to. Its crest passes the +X side at z = ref.
+// The tooth is a row of smooth lofts of 4 turns or less, end to end on one helix: a long loft is slow to mesh.
+// tip > core is the thread of a screw on a core of that radius. tip < core is the thread in a bore.
+const SECTIONS = 12; // loft sections in each turn
+const SLACK = 0.998; // keeps the tooth a hair clear of its core or its bore
+const helixTooth = (core: number, tip: number, pitch: number, from: number, to: number, ref: number): Shape => {
+  const root = tip > core ? core / SLACK : core * SLACK;
+  const crest = tip > core ? tip : tip / SLACK;
+  const half = 0.42 * pitch;
+  const start = from, span = to - from, pieces = Math.ceil(span / (4 * pitch));
+  const n = Math.max(2, Math.round((span / pieces / pitch) * SECTIONS)); // sections in each piece
+  const section = (z: number) => {
+    const a = (2 * Math.PI * (z - ref)) / pitch;
+    const pts = [[root, -half], [crest, 0], [root, half]].map(([r, dz]): P3 => [r! * Math.cos(a), r! * Math.sin(a), z + dz!]);
+    return own(unwrap(wire(pts.map((q, i) => own(line(q, pts[(i + 1) % 3]!))))));
+  };
+  const lofts = Array.from({ length: pieces }, (_, k) => own(unwrap(loft(Array.from({ length: n + 1 }, (_, j) => section(start + (span * (k + j / n)) / pieces)), { ruled: false }))));
+  return own(compound(lofts)) as Shape;
+};
+// The thread of a screw between two heights, and the mating thread of a nut or a tapped hole, half a pitch out of phase.
+type Thread = { d: number; minor: number; pitch: number };
+const screwTooth = (m: Thread, z0: number, z1: number): Shape => helixTooth(m.minor / 2, m.d / 2, m.pitch, z0 + m.pitch / 2, z1 - m.pitch / 2, 0);
+const nutTooth = (m: Thread, z0: number, z1: number): Shape => helixTooth(m.d / 2 + PLAY, m.minor / 2 + PLAY, m.pitch, z0 + m.pitch / 2, z1 - m.pitch / 2, m.pitch / 2);
 
 // The strip: the back with its slots, two walls, two lips and two returns.
 function strip(length: number, angle: number): Part {
@@ -251,25 +319,32 @@ function channel({ fold = 1, length = 400 }: ChannelParams = {}) {
   const inside = SIZE - T; // the under side of the back
   // Two threaded rods through the end slots. A washer and a nut on each side of the back clamp the channel.
   const washer = (outer: number, inner: number): Shape => lathe([[inner, 0], [outer, 0], [outer, 2], [inner, 2]]);
-  const rodNut = hexNut(ROD.nut, ROD.nutHeight, ROD.radius), rodWasher = washer(11, ROD.radius);
+  // Each rod has one helical tooth on its full length, 80 turns. The nuts have the mating tooth.
+  const rodNut = hexNut(ROD.nut, ROD.nutHeight, M10.d / 2 + PLAY), rodWasher = washer(11, 5.25);
+  const rodEnd = inside - 22, upper = SIZE + 2, lower = inside - 2 - ROD.nutHeight; // the low end of a rod and of its two nuts
+  const rodThread = [screwTooth(M10, rodEnd, rodEnd + ROD.height)];
+  const rod = own(compound([own(cylinder(M10.minor / 2, ROD.height, { at: [0, 0, rodEnd] })), ...rodThread, ...[upper, lower].map((z) => nutTooth(M10, z, z + ROD.nutHeight))]) as Shape);
   for (const x of [slots[0]!, slots[slots.length - 1]!]) {
-    zinc.push(own(cylinder(ROD.radius, ROD.height, { at: [x, 0, inside - 22] })));
-    zinc.push(at(rodWasher, x, 0, SIZE), at(rodNut, x, 0, SIZE + 2), at(rodWasher, x, 0, inside - 2), at(rodNut, x, 0, inside - 2 - ROD.nutHeight));
+    zinc.push(at(rod, x, 0, 0));
+    zinc.push(at(rodWasher, x, 0, SIZE), at(rodNut, x, 0, upper), at(rodWasher, x, 0, inside - 2), at(rodNut, x, 0, lower));
   }
   // A pipe lies on the back between two slots. The legs of its U-bolt go through the slots to a nut each.
   const reach = PIPE.radius + UBOLT.radius;
   const tube = own(rotate(lathe([[PIPE.radius - PIPE.wall, 0], [PIPE.radius, 0], [PIPE.radius, PIPE.length], [PIPE.radius - PIPE.wall, PIPE.length]]), 90, { axis: [1, 0, 0] }) as Shape);
   const round = own(unwrap(face(own(unwrap(wire([own(circle(UBOLT.radius, { at: [reach, 0, 0] }))]))) as never)));
   const arch = own(unwrap(revolve(round, { axis: [0, 1, 0], angle: -Math.PI })) as Shape);
-  const boltNut = hexNut(UBOLT.nut, UBOLT.nutHeight, UBOLT.radius), boltWasher = washer(8, UBOLT.radius);
+  const boltNut = hexNut(UBOLT.nut, UBOLT.nutHeight, M8.d / 2 + PLAY), boltWasher = washer(8, 4.2);
+  // The end of each leg has a helical thread, and its nut has the mating tooth.
+  const legEnd = inside - 14, legTop = legEnd + UBOLT.thread, nutEnd = inside - 2 - UBOLT.nutHeight;
+  const legThread = own(compound([own(cylinder(M8.minor / 2, UBOLT.thread, { at: [0, 0, legEnd] })), screwTooth(M8, legEnd, legTop), nutTooth(M8, nutEnd, nutEnd + UBOLT.nutHeight)]) as Shape);
   const pairs = slots.length >= 6 ? [1, slots.length - 3] : [];
   pairs.forEach((first, n) => {
     const x = (slots[first]! + slots[first + 1]!) / 2, z = SIZE + PIPE.radius;
     pipes[n] = translate(tube, [x, PIPE.length / 2, z]) as Shape;
     zinc.push(at(arch, x, 0, z));
     for (const side of [-1, 1]) {
-      zinc.push(own(cylinder(UBOLT.radius, z - inside + 14, { at: [x + side * reach, 0, inside - 14] })));
-      zinc.push(at(boltWasher, x + side * reach, 0, inside - 2), at(boltNut, x + side * reach, 0, inside - 2 - UBOLT.nutHeight));
+      zinc.push(own(cylinder(UBOLT.radius, z - legTop, { at: [x + side * reach, 0, legTop] })), at(legThread, x + side * reach, 0, 0));
+      zinc.push(at(boltWasher, x + side * reach, 0, inside - 2), at(boltNut, x + side * reach, 0, nutEnd));
     }
   });
   return { steel, zinc: compound(zinc) as Shape, pipes, ...info };
@@ -298,14 +373,14 @@ export default present(
     id: 'sheet-metal-louvered-panel',
     label: 'Louvered Enclosure Cover',
     description:
-      'The louvered cover of an equipment enclosure, from 20 gauge steel, with its screws, a name plate and the enclosure behind it. Each louver is a cut on three sides with the flap formed out along the fourth side, so the flat blank keeps all its material. The gauge is a published figure. The kernel unfolds the cover to the flat blank and measures its mass. The size, the louvers, the enclosure and the hardware are a display model. The DXF button downloads the flat blank.',
-    code: `import { box, clone, compound, cutAll, cylinder, measureVolume, polygon, revolve, rotate, translate, unwrap } from 'brepjs/quick';
+      'The louvered cover of an equipment enclosure, from 20 gauge steel, with its screws, a name plate and the enclosure behind it. Each louver is a cut on three sides with the flap formed out along the fourth side, so the flat blank keeps all its material. The gauge and the screw threads are published figures. The M4 screws and the cable glands have true helical threads in tapped holes. The kernel unfolds the cover to the flat blank and measures its mass. The size, the louvers, the enclosure and the hardware are a display model. The DXF button downloads the flat blank.',
+    code: `import { box, clone, compound, cutAll, cylinder, line, loft, measureVolume, polygon, revolve, rotate, translate, unwrap, wire } from 'brepjs/quick';
 import { addPolygonCutout, author, flatPatternToPolylines, louver, toDXF, unfold } from 'brepjs-sheetmetal';
 import { color, present } from 'brepjs/playground';
 
 // Louvered cover of an equipment enclosure, from 20 gauge steel. Each louver is a cut on three sides:
 // a press forms the flap out along the fourth side, so no material leaves the blank.
-// The gauge and the density are published figures. The size, the louvers, the enclosure and the hardware are a display model.
+// The gauge, the density and the screw threads are published figures. The size, the louvers, the enclosure and the hardware are a display model.
 interface PanelParams {
   fold?: number; // 0 to 1: how far the four edge flanges are folded. Below 1 the example shows only the cover
   rows?: number; // rows of louvers, 1 to 9
@@ -328,6 +403,8 @@ const freeing = <T,>(build: () => T): T => { try { return build(); } finally { o
 // ---- published figures
 const T = 0.912; // 20 gauge steel sheet, 0.0359 inch
 const STEEL = 7.85e-3; // grams per cubic millimetre
+const M4 = { d: 4, minor: 3.242, pitch: 0.7, head: 8, k: 3.1, length: 10 }; // pan head screw with a cross recess, metric coarse thread, right hand
+const M16 = { d: 16, minor: 14.376, pitch: 1.5 }; // metric thread of a cable gland
 
 // ---- display model
 const RULE = { innerRadius: 1, kFactor: 0.44 }; // air bend
@@ -336,6 +413,8 @@ const LOUVER = { length: 90, width: 10, pitch: 22, columns: [65, 175], top: 76 }
 const SCREWS: P2[] = [[10, 10], [230, 10], [10, 160], [230, 160], [10, 310], [230, 310]];
 const BOX = { depth: 90, rim: 20 };
 const PLATE = { width: 70, height: 22, y: 20 }; // the name plate
+const TAPPED = 12; // depth of the tapped holes in the rim
+const PLAY = 0.08; // radial play between a screw thread and its tapped hole
 
 const made = (r: ReturnType<typeof author>): Part => {
   const p = unwrap(r);
@@ -362,33 +441,66 @@ function cover(rows: number, height: number, angle: number): Part {
 const block = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number): Shape => own(translate(own(box(x1 - x0, y1 - y0, z1 - z0)), [x0, y0, z0])) as Shape;
 const lathe = (profile: P2[]): Shape => own(unwrap(revolve(own(unwrap(polygon(profile.map(([r, z]): P3 => [r, 0, z])))))) as Shape);
 
+// One helical thread tooth about +Z, from z = from to z = to. Its crest passes the +X side at z = ref.
+// The tooth is a row of smooth lofts of 4 turns or less, end to end on one helix: a long loft is slow to mesh.
+// tip > core is the thread of a screw on a core of that radius. tip < core is the thread in a bore.
+const SECTIONS = 12; // loft sections in each turn
+const SLACK = 0.998; // keeps the tooth a hair clear of its core or its bore
+const helixTooth = (core: number, tip: number, pitch: number, from: number, to: number, ref: number): Shape => {
+  const root = tip > core ? core / SLACK : core * SLACK;
+  const crest = tip > core ? tip : tip / SLACK;
+  const half = 0.42 * pitch;
+  const start = from + half, span = to - from - 2 * half, pieces = Math.ceil(span / (4 * pitch));
+  const n = Math.max(2, Math.round((span / pieces / pitch) * SECTIONS)); // sections in each piece
+  const section = (z: number) => {
+    const a = (2 * Math.PI * (z - ref)) / pitch;
+    const pts = [[root, -half], [crest, 0], [root, half]].map(([r, dz]): P3 => [r! * Math.cos(a), r! * Math.sin(a), z + dz!]);
+    return own(unwrap(wire(pts.map((q, i) => own(line(q, pts[(i + 1) % 3]!))))));
+  };
+  const lofts = Array.from({ length: pieces }, (_, k) => own(unwrap(loft(Array.from({ length: n + 1 }, (_, j) => section(start + (span * (k + j / n)) / pieces)), { ruled: false }))));
+  return own(compound(lofts)) as Shape;
+};
+// The thread of a screw between two heights, and the mating thread of a nut or a tapped hole, half a pitch out of phase.
+type Thread = { d: number; minor: number; pitch: number };
+const screwTooth = (m: Thread, z0: number, z1: number): Shape => helixTooth(m.minor / 2, m.d / 2, m.pitch, z0, z1, 0);
+const nutTooth = (m: Thread, z0: number, z1: number): Shape => helixTooth(m.d / 2 + PLAY, m.minor / 2 + PLAY, m.pitch, z0, z1, m.pitch / 2);
+
 // The enclosure and the small parts, in the frame of the cover: the face is on Z = 0, and the back is on Z = T.
 function hardware() {
   const { width: w, height: h } = COVER;
   const outward = (s: Shape): Shape => own(rotate(s, 180, { axis: [1, 0, 0] })) as Shape; // a turned part that points out of the face
   // The enclosure: a box with a rim for the screws. The cover lies on the rim, and its flanges go around the box.
-  const holes = SCREWS.map(([x, y]) => own(cylinder(1.6, 12, { at: [x, y, T] })));
-  const body = own(unwrap(cutAll(block(0, 0, T, w, h, T + BOX.depth), [block(BOX.rim, BOX.rim, T - 1, w - BOX.rim, h - BOX.rim, T + BOX.depth - 2), ...holes]))) as Shape;
-  // Pan head screws with a cross recess.
-  const head = lathe([[0, 0], [3.6, 0], [3.6, 1.2], [2.2, 2.6], [0, 2.6]]);
-  const cross = [0, 90].map((turn) => own(rotate(block(-2.1, -0.4, 1.7, 2.1, 0.4, 3), turn)));
-  const screw = outward(own(unwrap(cutAll(head, cross))) as Shape);
-  const shank = own(cylinder(1.6, T + 10));
-  const screws = SCREWS.flatMap(([x, y]) => [own(translate(screw, [x, y, 0])) as Shape, own(translate(shank, [x, y, 0])) as Shape]);
+  const holes = SCREWS.map(([x, y]) => own(cylinder(M4.d / 2 + PLAY, TAPPED, { at: [x, y, T] })));
+  const glandAt = [70, 170], mid = T + BOX.depth / 2;
+  const entries = glandAt.map((x) => own(cylinder(M16.d / 2 + PLAY, BOX.rim + 2, { at: [x, h - BOX.rim - 1, mid], axis: [0, 1, 0] })));
+  const body = own(unwrap(cutAll(block(0, 0, T, w, h, T + BOX.depth), [block(BOX.rim, BOX.rim, T - 1, w - BOX.rim, h - BOX.rim, T + BOX.depth - 2), ...holes, ...entries]))) as Shape;
+  // M4 x 10 pan head screws with a cross recess. Each has one helical tooth, and each tapped hole in the rim has the mating tooth.
+  const head = lathe([[0, 0], [M4.head / 2, 0], [M4.head / 2, 1.4], [2.4, M4.k], [0, M4.k]]);
+  const cross = [0, 90].map((turn) => own(rotate(block(-2.3, -0.4, 1.9, 2.3, 0.4, 3.5), turn)));
+  const screw = own(compound([outward(own(unwrap(cutAll(head, cross))) as Shape), own(cylinder(M4.minor / 2, M4.length)), screwTooth(M4, 0, M4.length)])) as Shape;
+  const tapped = nutTooth(M4, T, T + TAPPED);
+  const screws = SCREWS.map(([x, y]) => own(translate(screw, [x, y, 0])) as Shape);
+  const threads = SCREWS.map(([x, y]) => own(translate(tapped, [x, y, 0])) as Shape);
   // The name plate, with a rivet at each end.
   const px = w / 2 - PLATE.width / 2;
   const plate = block(px, PLATE.y, -0.8, px + PLATE.width, PLATE.y + PLATE.height, 0);
   const rivet = outward(lathe([[0, 0], [1.8, 0], [1.2, 0.8], [0, 0.8]]));
   const rivets = [px + 5, px + PLATE.width - 5].map((x) => own(translate(rivet, [x, PLATE.y + PLATE.height / 2, -0.8])) as Shape);
-  // Two cable glands under the box: a hex nut, a dome nut, and a piece of cable.
+  // Two cable glands under the box: a hex body with an M16 thread on each side, a dome nut, and a piece of cable.
+  // The entry thread turns into a tapped hole of the box, and the dome nut has the mating thread of the body.
   const hex = (r: number, z0: number, z1: number): Shape =>
     own(unwrap(cutAll(own(cylinder(r * 1.3, z1 - z0, { at: [0, 0, z0] })), [0, 60, 120].flatMap((turn) => [-1, 1].map((side) => own(rotate(block(-2 * r, side > 0 ? r : -3 * r, z0 - 1, 2 * r, side > 0 ? 3 * r : -r, z1 + 1), turn))))))) as Shape;
-  const gland = [hex(9, 0, 5), lathe([[0, 5], [8, 5], [8, 13], [6.5, 17], [0, 17]])];
+  const bore = M16.d / 2 + PLAY;
+  const gland = [
+    hex(11, 0, 5), lathe([[bore, 5], [10.5, 5], [10.5, 13], [8.5, 17], [0, 17], [0, 13], [bore, 13]]), nutTooth(M16, 5, 13),
+    own(cylinder(M16.minor / 2, 8, { at: [0, 0, -8] })), screwTooth(M16, -8, 0), own(cylinder(M16.minor / 2, 7.5, { at: [0, 0, 5] })), screwTooth(M16, 5, 12.5),
+  ];
+  const entryTooth = nutTooth(M16, -BOX.rim, 0);
   const cable = own(cylinder(4, 28, { at: [0, 0, 17] }));
   const down = (s: Shape, x: number): Shape => own(translate(own(rotate(s, -90, { axis: [1, 0, 0] })), [x, h, T + BOX.depth / 2])) as Shape;
-  const glands = [70, 170].flatMap((x) => gland.map((s) => down(s, x)));
-  const cables = [70, 170].map((x) => down(cable, x));
-  return { body: unwrap(clone(body)) as Shape, bright: compound([...screws, ...rivets, ...glands]) as Shape, plate: unwrap(clone(plate)) as Shape, cables: compound(cables) as Shape };
+  const glands = glandAt.flatMap((x) => gland.map((s) => down(s, x)));
+  const cables = glandAt.map((x) => down(cable, x));
+  return { body: compound([body, ...threads, ...glandAt.map((x) => down(entryTooth, x))]) as Shape, bright: compound([...screws, ...rivets, ...glands]) as Shape, plate: unwrap(clone(plate)) as Shape, cables: compound(cables) as Shape };
 }
 
 function panel({ fold = 1, rows = 9, height = 6 }: PanelParams = {}) {
@@ -433,14 +545,14 @@ export default present(
     id: 'sheet-metal-hemmed-panel',
     label: 'Hemmed Parts Tray',
     description:
-      'A parts tray from 16 gauge steel with a hemmed safe edge, in cutaway: the top of each wall folds back on itself, and the cut shows the section of two hems. Set the type of the hem to closed, open, teardrop or rolled. The gauge is a published figure. The kernel gives the sheet that one hem takes, unfolds the tray to the flat blank and measures its mass. The size, the handles, the feet and the hardware in the tray are a display model. The DXF button downloads the flat blank.',
-    code: `import { box, compound, cut, cylinder, extrude, measureVolume, polygon, revolve, translate, unwrap } from 'brepjs/quick';
+      'A parts tray from 16 gauge steel with a hemmed safe edge, in cutaway: the top of each wall folds back on itself, and the cut shows the section of two hems. Set the type of the hem to closed, open, teardrop or rolled. The gauge and the M6 bolts with their helical thread are published figures. The kernel gives the sheet that one hem takes, unfolds the tray to the flat blank and measures its mass. The size, the handles, the feet and the hardware in the tray are a display model. The DXF button downloads the flat blank.',
+    code: `import { box, compound, cut, cylinder, extrude, line, loft, measureVolume, polygon, revolve, rotate, translate, unwrap, wire } from 'brepjs/quick';
 import { addPolygonCutout, author, flatPatternToPolylines, hem, relieveCorner, toDXF, unfold } from 'brepjs-sheetmetal';
 import { color, present } from 'brepjs/playground';
 
 // Parts tray with a hemmed safe edge, from 16 gauge steel, in cutaway. The top of each wall folds back on itself:
 // the hem hides the sharp cut edge and makes the wall stiff. The cut shows the section of two hems.
-// The gauge and the density are published figures. The size, the handles, the feet and the hardware in the tray are a display model.
+// The gauge, the density and the M6 bolts are published figures. The size, the handles, the feet and the hardware in the tray are a display model.
 interface TrayParams {
   fold?: number; // 0 to 1: how far the four walls are folded
   type?: 'closed' | 'open' | 'teardrop' | 'rolled'; // the shape of the hem
@@ -463,6 +575,7 @@ const freeing = <T,>(build: () => T): T => { try { return build(); } finally { o
 // ---- published figures
 const T = 1.519; // 16 gauge steel sheet, 0.0598 inch
 const STEEL = 7.85e-3; // grams per cubic millimetre
+const M6 = { d: 6, minor: 4.917, pitch: 1, flats: 10, head: 4, length: 30, thread: 18 }; // hex bolt with a part thread, metric coarse, right hand
 
 // ---- display model
 const RULE = { innerRadius: 1.5, kFactor: 0.44 }; // air bend
@@ -481,6 +594,26 @@ const slot = (x: number, y: number, length: number, width: number): P2[] => {
   const r = width / 2, d = length / 2 - r, n = 8;
   const end = (cx: number, from: number): P2[] => Array.from({ length: n + 1 }, (_, i): P2 => [cx + r * Math.cos(from + (i * Math.PI) / n), y + r * Math.sin(from + (i * Math.PI) / n)]);
   return [...end(x + d, -Math.PI / 2), ...end(x - d, Math.PI / 2)];
+};
+
+// One helical thread tooth about +Z, from z = from to z = to. Its crest passes the +X side at z = ref.
+// The tooth is a row of smooth lofts of 4 turns or less, end to end on one helix: a long loft is slow to mesh.
+// tip > core is the thread of a screw on a core of that radius. tip < core is the thread in a bore.
+const SECTIONS = 12; // loft sections in each turn
+const SLACK = 0.998; // keeps the tooth a hair clear of its core or its bore
+const helixTooth = (core: number, tip: number, pitch: number, from: number, to: number, ref: number): Shape => {
+  const root = tip > core ? core / SLACK : core * SLACK;
+  const crest = tip > core ? tip : tip / SLACK;
+  const half = 0.42 * pitch;
+  const start = from + half, span = to - from - 2 * half, pieces = Math.ceil(span / (4 * pitch));
+  const n = Math.max(2, Math.round((span / pieces / pitch) * SECTIONS)); // sections in each piece
+  const section = (z: number) => {
+    const a = (2 * Math.PI * (z - ref)) / pitch;
+    const pts = [[root, -half], [crest, 0], [root, half]].map(([r, dz]): P3 => [r! * Math.cos(a), r! * Math.sin(a), z + dz!]);
+    return own(unwrap(wire(pts.map((q, i) => own(line(q, pts[(i + 1) % 3]!))))));
+  };
+  const lofts = Array.from({ length: pieces }, (_, k) => own(unwrap(loft(Array.from({ length: n + 1 }, (_, j) => section(start + (span * (k + j / n)) / pieces)), { ruled: false }))));
+  return own(compound(lofts)) as Shape;
 };
 
 // The tray: four walls with a relief at each corner, a hem on each wall, and a handle slot in each end wall.
@@ -519,13 +652,15 @@ function hemmedTray({ fold = 1, type = 'open', cutaway = 0.3 }: TrayParams = {})
   const feet = spots.filter(([x]) => cutaway <= 0 || x + FOOT.radius < edge).map(([x, y]) => own(translate(foot, [x, y, 0])) as Shape);
   const far = own(translate(own(box(400, 600, 400)), [edge, -300, -200])) as Shape;
   const steel = cutaway > 0 ? (unwrap(cut(part.solid as Shape, far)) as Shape) : (translate(part.solid as Shape, [0, 0, 0]) as Shape);
-  // Hardware in the tray, at the end that stays: three hex bolts and a stack of washers.
-  const AF = 10, r = AF / Math.sqrt(3), z = T + AF / 2;
+  // Hardware in the tray, at the end that stays: three M6 x 30 hex bolts and a stack of washers.
+  // A bolt is made along Z: the head, the plain shank, then the core with one helical tooth of 18 turns. It lies on a flat of its head.
+  const r = M6.flats / Math.sqrt(3), plain = M6.length - M6.thread;
+  const bolt = own(rotate(own(compound([
+    own(unwrap(extrude(own(unwrap(polygon(Array.from({ length: 6 }, (_, i): P3 => [r * Math.cos((i * Math.PI) / 3), r * Math.sin((i * Math.PI) / 3), -M6.head])))), [0, 0, M6.head]))),
+    own(cylinder(M6.d / 2, plain)), own(cylinder(M6.minor / 2, M6.thread, { at: [0, 0, plain] })), helixTooth(M6.minor / 2, M6.d / 2, M6.pitch, plain, M6.length, 0),
+  ])), -90, { axis: [1, 0, 0] })) as Shape;
   const inTray = (x: number): boolean => cutaway <= 0 || x + 6 < edge;
-  const bolts = [28, 46, 64].filter(inTray).flatMap((x) => [
-    own(unwrap(extrude(own(unwrap(polygon(Array.from({ length: 6 }, (_, i): P3 => [x + r * Math.cos((i * Math.PI) / 3), 22, z + r * Math.sin((i * Math.PI) / 3)])))), [0, 4, 0]))) as Shape,
-    own(cylinder(3, 30, { at: [x, 26, z], axis: [0, 1, 0] })) as Shape,
-  ]);
+  const bolts = [28, 46, 64].filter(inTray).map((x) => own(translate(bolt, [x, 22 + M6.head, T + M6.flats / 2])) as Shape);
   const washer = own(unwrap(revolve(own(unwrap(polygon([[3.2, 0, 0], [6, 0, 0], [6, 0, 1.6], [3.2, 0, 1.6]]))))) as Shape);
   const washers = [0, 1, 2, 3].filter(() => inTray(46)).map((i) => own(translate(washer, [46, 78, T + i * 1.6])) as Shape);
   const group = (list: Shape[]): Shape[] => (list.length ? [compound(list) as Shape] : []);
