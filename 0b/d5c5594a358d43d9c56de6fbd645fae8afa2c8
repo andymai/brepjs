@@ -1,0 +1,19 @@
+apps/playground/src/lib/examples/mechanical.ts
+  s_8e26ce757a4a72::t_0b599a6fe83671 6704,6783
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0bd5c5594a358d43d9c56de6fbd645fae8afa2c8",
+  "prompts": {},
+  "sessions": {
+    "s_8e26ce757a4a72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e2a2abb-96e7-41bf-9f42-70cf1b42e7a4",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
