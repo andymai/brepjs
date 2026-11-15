@@ -12,6 +12,7 @@ import {
   CompoundSketch,
   isCompound,
   isValid,
+  getShells,
   line,
   unwrap,
 } from '@/index.js';
@@ -165,9 +166,36 @@ describe('compoundSketchLoft', () => {
     const inner2 = sketchCircle(2, { plane: 'XY', origin: 10 });
     const compound2 = new CompoundSketch([outer2, inner2]);
 
-    const solid = compoundSketchLoft(compound1, compound2, { ruled: true });
-    expect(solid).toBeDefined();
-    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
+    try {
+      using solid = compoundSketchLoft(compound1, compound2, { ruled: true });
+      expect(isValid(solid)).toBe(true);
+      // The prism less the round hole through it.
+      expect(unwrap(measureVolume(solid))).toBeCloseTo(1000 - 40 * Math.PI, 3);
+      expect(getShells(solid)).toHaveLength(1);
+    } finally {
+      compound1.delete();
+      compound2.delete();
+    }
+  });
+
+  it('lofts a frustum with a tapered square hole', () => {
+    const low = new CompoundSketch([sketchRectangle(20, 20), sketchRectangle(8, 8)]);
+    const high = new CompoundSketch([
+      sketchRectangle(12, 12, { plane: 'XY', origin: 10 }),
+      sketchRectangle(4, 4, { plane: 'XY', origin: 10 }),
+    ]);
+
+    try {
+      using solid = compoundSketchLoft(low, high, { ruled: true });
+      expect(isValid(solid)).toBe(true);
+      // The outer frustum (20 to 12) less the inner one (8 to 4), 10 high.
+      const frustum = (a: number, b: number): number => (10 / 3) * (a * a + b * b + a * b);
+      expect(unwrap(measureVolume(solid))).toBeCloseTo(frustum(20, 12) - frustum(8, 4), 3);
+      expect(getShells(solid)).toHaveLength(1);
+    } finally {
+      low.delete();
+      high.delete();
+    }
   });
 });
 
