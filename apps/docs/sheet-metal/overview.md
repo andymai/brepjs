@@ -8,8 +8,10 @@ description: 'brepjs-sheetmetal authors a folded sheet-metal part from a base an
 `brepjs-sheetmetal` is a sheet-metal layer on brepjs. You describe a part as a flat base and the flanges that fold from its edges. The package folds that description to a 3D solid, and it unfolds the same description to the flat blank that a shop cuts and bends.
 
 ```bash
-npm install brepjs-sheetmetal brepjs
+npm install brepjs-sheetmetal brepjs occt-wasm
 ```
+
+The package builds its shapes with brepjs, so a kernel must be ready before the first call. [Install & Initialize](../getting-started/install) shows how.
 
 The package is experimental, so its API can change between minor versions.
 
@@ -50,6 +52,12 @@ if (warnings.length !== 0) throw new Error('warnings');
 for (const layer of ['OUTLINE', 'BEND_UP', 'CUTOUT']) {
   if (!dxf.includes(layer)) throw new Error(`no ${layer} layer`);
 }
+
+// The solids and the pattern geometry are kernel objects. Free them when you are done.
+const bendEdges = pattern.bendLines.map((bend) => bend.line);
+for (const shape of [channel.solid, part.solid, pattern.outline, ...pattern.holes, ...bendEdges]) {
+  shape?.delete();
+}
 ```
 
 Each call returns a `Result`, so `unwrap` throws on a spec that cannot be built. The folded solid is `part.solid`, an ordinary brepjs solid that you can measure, cut, or export to STEP.
@@ -60,7 +68,9 @@ Each call returns a `Result`, so `unwrap` throws on a spec that cannot be built.
 
 - **`pattern`** is the flat blank as geometry: the outline wire, one edge for each bend line, and one closed wire for each cutout. `toDXF(pattern)` writes it as a DXF with the layers `OUTLINE`, `BEND_UP` and `CUTOUT`.
 - **`report`** is the bend report. For the channel above it lists two 90° bends with an allowance of 4.524 mm each, and a blank of 149.048 × 50 mm.
-- **`warnings`** names what a shop must know, such as a corner where two flanges collide or a radius below the minimum. The channel has none.
+- **`warnings`** names what the unfold could not do cleanly, such as a bend with an inner radius below one thickness, or a closed profile that needs a seam. The channel has none.
+
+The unfold does not look for flanges that collide. `validate(part)` does that check on the folded part, and it returns the same kind of warning list.
 
 The blank length shows the bend model at work. The base is 80 mm, each flange adds 30 mm, and each bend adds its allowance: 80 + 2 × 30 + 2 × 4.524 = 149.048 mm.
 
@@ -76,7 +86,7 @@ BA = (π / 180) × angle × (R + K × T)
 
 ## Features
 
-The package has more features than this page shows. Each one is recorded on the part, so it is in the folded solid and in the flat pattern.
+The package has more features than this page shows. Each one is recorded on the part, so it is in the folded solid. Most are in the flat pattern too. A corner miter is an exception: the unfold draws its chamfer only for some flange layouts. Beside a tab it leaves the chamfer out and gives a `MITER_NOT_DEVELOPED` warning. Compare the blank with the folded part before you cut it.
 
 - Flanges on each of the four base edges, flanges on flanges, and partial flanges.
 - Corner miters, bend reliefs and corner reliefs.
