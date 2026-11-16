@@ -56,6 +56,12 @@ This skips the `release-please` job and runs only `publish-brepjs` against the c
 gh workflow run publish-brepjs-<pkg>.yml -f dry_run=false --ref <release-tag>
 ```
 
+The workflow of `create-brepjs` has no `brepjs-` prefix:
+
+```
+gh workflow run publish-create-brepjs.yml -f dry_run=false --ref <release-tag>
+```
+
 **`brepjs-opencascade` needs publishing.** Manual only:
 
 ```
