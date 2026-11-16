@@ -1,0 +1,94 @@
+apps/docs/tasks/import-export.md
+  s_8e26ce757a4a72::t_e872bb7373b8cb 284-289
+apps/playground/src/lib/examples/search.ts
+  s_8e26ce757a4a72::t_1c3e735a7ece35 1-41,47-119
+  s_8e26ce757a4a72::t_9780fa3525b8b1 42-46
+  s_8e26ce757a4a72::t_a4f798f700fc39 120-122
+apps/docs/.vitepress/theme/components/RelatedExamples.vue
+  s_8e26ce757a4a72::t_09f01a2ecc89b6 21
+  s_8e26ce757a4a72::t_e872bb7373b8cb 1-20,22-39
+apps/docs/.vitepress/theme/components/Landing.vue
+  s_8e26ce757a4a72::t_3ebd8c1d27634a 6,1336-1341,1343-1347
+  s_8e26ce757a4a72::t_d4c8f6fa1d336d 13-14,1342
+  s_8e26ce757a4a72::t_e872bb7373b8cb 488-490
+apps/playground/src/components/playground/ExampleGallery.tsx
+  s_8e26ce757a4a72::t_6e1ecd0cb5fafe 2-3,15,77-78,82-84,86,88-92,177,219,221-225,227-228,242-245,252-260,316-332
+apps/docs/tasks/primitives.md
+  s_8e26ce757a4a72::t_e872bb7373b8cb 207-212
+apps/playground/src/lib/examples/index.ts
+  s_8e26ce757a4a72::t_6e1ecd0cb5fafe 8,27
+tests/playgroundExampleSearch.test.ts
+  s_8e26ce757a4a72::t_9780fa3525b8b1 32-35,38-40
+  s_8e26ce757a4a72::t_e35ca8826d6aa5 1-31,36-37,41-63
+apps/playground/src/components/playground/PlaygroundPage.tsx
+  s_8e26ce757a4a72::t_57b65d3dbce70d 86-88
+apps/docs/.vitepress/config.ts
+  s_8e26ce757a4a72::t_9780fa3525b8b1 3,304-442,481-499
+  s_8e26ce757a4a72::t_c9e54e6bfa9b60 23-24,459-476
+  s_8e26ce757a4a72::t_cc325b47470f9f 7,16-22,25-32,157-159,171-177,204-207,291
+  s_8e26ce757a4a72::t_bec4c87528396b 500
+apps/docs/tasks/parametric-csg.md
+  s_8e26ce757a4a72::t_e872bb7373b8cb 166-171
+apps/docs/examples/[id].paths.ts
+  s_8e26ce757a4a72::t_5dcd6e990f2f88 1-45
+apps/docs/.vitepress/theme/playgroundLink.ts
+  s_8e26ce757a4a72::t_cc325b47470f9f 27-28
+apps/docs/.vitepress/theme/custom.css
+  s_8e26ce757a4a72::t_09f01a2ecc89b6 224-226
+  s_8e26ce757a4a72::t_cc325b47470f9f 198-223,227-326
+apps/playground/src/components/playground/Toolbar.tsx
+  s_8e26ce757a4a72::t_57b65d3dbce70d 68
+  s_8e26ce757a4a72::t_285392e6090332 4
+apps/docs/tasks/lofts-sweeps.md
+  s_8e26ce757a4a72::t_e872bb7373b8cb 309-314
+apps/docs/.vitepress/theme/index.ts
+  s_8e26ce757a4a72::t_e872bb7373b8cb 9,91
+  s_8e26ce757a4a72::t_cc325b47470f9f 7-8,89-90
+apps/docs/tasks/booleans.md
+  s_8e26ce757a4a72::t_e872bb7373b8cb 264-269
+apps/docs/examples/examples.data.ts
+  s_8e26ce757a4a72::t_5dcd6e990f2f88 1-10
+apps/docs/examples/[id].md
+  s_8e26ce757a4a72::t_5dcd6e990f2f88 1-8
+apps/docs/tasks/sketching.md
+  s_8e26ce757a4a72::t_e872bb7373b8cb 250-255
+apps/docs/.vitepress/exampleCatalog.ts
+  s_8e26ce757a4a72::t_5dcd6e990f2f88 1-39
+apps/docs/.vitepress/theme/components/ExampleFigure.vue
+  s_8e26ce757a4a72::t_5dcd6e990f2f88 1-20,27-45
+  s_8e26ce757a4a72::t_9780fa3525b8b1 21-26
+apps/docs/.vitepress/theme/components/ExampleIndex.vue
+  s_8e26ce757a4a72::t_9780fa3525b8b1 5,28-30,49-51
+  s_8e26ce757a4a72::t_5dcd6e990f2f88 1-4,6-27,31-48,52-76
+apps/playground/scripts/galleryE2e.ts
+  s_8e26ce757a4a72::t_57b65d3dbce70d 127,133-140,142-151
+  s_8e26ce757a4a72::t_d4c8f6fa1d336d 66-67
+apps/docs/tasks/fillets.md
+  s_8e26ce757a4a72::t_e872bb7373b8cb 244-249
+apps/docs/examples/index.md
+  s_8e26ce757a4a72::t_5dcd6e990f2f88 1-12
+apps/docs/tasks/measurement.md
+  s_8e26ce757a4a72::t_e872bb7373b8cb 211-216
+apps/docs/tasks/finders.md
+  s_8e26ce757a4a72::t_e872bb7373b8cb 242-247
+apps/docs/bim/overview.md
+  s_8e26ce757a4a72::t_e872bb7373b8cb 68-73
+apps/docs/getting-started/first-solid.md
+  s_8e26ce757a4a72::t_e872bb7373b8cb 207-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "32b863aee277ff8b269bdbdc474331ca60c21b3b",
+  "prompts": {},
+  "sessions": {
+    "s_8e26ce757a4a72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e2a2abb-96e7-41bf-9f42-70cf1b42e7a4",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
