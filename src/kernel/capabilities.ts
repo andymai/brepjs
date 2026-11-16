@@ -40,6 +40,14 @@ export interface KernelCapabilities {
    * that reorient while sewing leave it unset.
    */
   readonly sewKeepsOrientation?: boolean | undefined;
+  /**
+   * A rigid move (`locate`) gives a shape that shares the geometry of its
+   * source and has a new location, and the kernel's operations take such a
+   * shape as they take a copy. `translate` and `rotate` then move by location:
+   * constant time, and one mesh for all moved copies of a shape. Kernels that
+   * copy the geometry on each move leave it unset.
+   */
+  readonly placementSharesGeometry?: boolean | undefined;
 }
 
 /** Default for an exact B-rep kernel (OCCT family, brepkit). */
@@ -55,6 +63,7 @@ export const OCCT_CAPABILITIES: KernelCapabilities = {
   ...EXACT_BREP_CAPABILITIES,
   nativeHistory: true,
   sewKeepsOrientation: true,
+  placementSharesGeometry: true,
 };
 
 /**
