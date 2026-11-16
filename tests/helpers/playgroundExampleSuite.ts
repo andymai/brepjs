@@ -43,13 +43,17 @@ export function describeExamplesOfFile(path: string): void {
     for (const example of examples) {
       if (!CONNECTED_BODY_EXAMPLES.includes(example.id)) continue;
       const { id, code } = example;
-      it.skipIf(hangs(id))(`every returned body is a single connected solid: ${id}`, async () => {
-        const counts = await bodySolidCounts(code);
-        expect(counts.length).toBeGreaterThan(0);
-        counts.forEach((n, i) => {
-          expect(n, `${id} body[${i}] is not one solid (getSolids=${n})`).toBe(1);
-        }, HEAVY_EXAMPLE_TIMEOUT);
-      });
+      it.skipIf(hangs(id))(
+        `every returned body is a single connected solid: ${id}`,
+        async () => {
+          const counts = await bodySolidCounts(code);
+          expect(counts.length).toBeGreaterThan(0);
+          counts.forEach((n, i) => {
+            expect(n, `${id} body[${i}] is not one solid (getSolids=${n})`).toBe(1);
+          });
+        },
+        HEAVY_EXAMPLE_TIMEOUT
+      );
     }
   });
 }
