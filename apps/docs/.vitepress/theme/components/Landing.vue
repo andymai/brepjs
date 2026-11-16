@@ -5,12 +5,12 @@ import { highlightCode, highlightLine } from './codeHighlight';
 import { MAJOR } from '../../version';
 import { data as exampleCatalog } from '../../../examples/examples.data';
 
+const exampleCount = exampleCatalog.reduce((n, c) => n + c.examples.length, 0);
+
 // "Native to your stack" — the real Three.js mesh-adapter integration.
 const stackSnippetHtml = highlightCode(
   `import { box, mesh, toBufferGeometryData } from 'brepjs/quick';
 import * as THREE from 'three';
-
-const exampleCount = exampleCatalog.reduce((n, c) => n + c.examples.length, 0);
 
 const data = toBufferGeometryData(mesh(box(30, 20, 10)));
 
