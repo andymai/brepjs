@@ -16,3 +16,6 @@ npx brepjs diff room               # compare a copied family against the registr
 `src/main.tsx` default-exports the element tree; the tools own evaluation.
 Families copied in by `brepjs add` are yours: edit them freely. `brepjs diff`
 compares your copies against the registry when you want to see upstream drift.
+
+For complete programs to read, see the [brepjs examples](https://brepjs.dev/examples/). The
+[Families examples](https://brepjs.dev/examples/#families) use the same element trees as this project.
