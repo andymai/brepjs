@@ -206,15 +206,16 @@ function solidsCoverShape(
 // `expected` is either fixed dims or a function of the parameter values. Fixed dims describe
 // the part at its defaults only, so they are not checked when the caller set a value: a
 // mismatch there would say nothing about the part.
-function expectedFor(
+async function expectedFor(
   spec: unknown,
   values: ParamValues | undefined,
   input: ParamInput | undefined,
   report: VerifyReport
-): unknown {
+): Promise<unknown> {
   if (typeof spec === 'function') {
     try {
-      return (spec as (v?: ParamValues) => unknown)(values);
+      // Awaited: a Promise would otherwise pass for an expectations object with no fields.
+      return await (spec as (v?: ParamValues) => unknown)(values);
     } catch (e) {
       pushError(report, { ...toErrorInfo('expected threw', e), code: 'EXPECTED_THREW' });
       return undefined;
@@ -311,7 +312,7 @@ export async function runPart(
   if (values) result.params = values;
   // Asserted dims: compare measured volume/area/bounds against the part's `export const expected`.
   // When present, every assertion must pass for `ok` (enforced by reportOk).
-  const expectedSpec = expectedFor(mod.expected, values, opts.params, result);
+  const expectedSpec = await expectedFor(mod.expected, values, opts.params, result);
   const invalidExpected = expectedSpec === undefined ? [] : invalidExpectedValues(expectedSpec);
   if (invalidExpected.length > 0) {
     pushError(result, {
