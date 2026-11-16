@@ -69,6 +69,10 @@ const config: KnipConfig = {
     'packages/brepjs-cad': {
       ignore: ['**'],
     },
+    // VitePress loads a route's `.paths.ts` and a `.data.ts` loader by file name.
+    'apps/docs': {
+      entry: ['examples/*.paths.ts', 'examples/*.data.ts'],
+    },
     'apps/playground': {
       ignore: ['**'],
     },
