@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.28.1](https://github.com/andymai/brepjs/compare/brepjs-v20.28.0...brepjs-v20.28.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* **topology:** report the evolution of shapes that have no metadata ([#2718](https://github.com/andymai/brepjs/issues/2718)) ([4793711](https://github.com/andymai/brepjs/commit/47937114927ad4dc084b6474f6a801ae0f174473))
+
 ## [20.28.0](https://github.com/andymai/brepjs/compare/brepjs-v20.27.3...brepjs-v20.28.0) (2026-11-16)
 
 
