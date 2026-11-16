@@ -1,7 +1,6 @@
 {
   "name": "brepjs-mesh2solid",
   "version": "0.1.0",
-  "private": true,
   "description": "Mesh-to-solid conversion for brepjs: turn STL, OBJ, PLY and 3MF meshes (CAD exports or 3D scans) into B-Rep solids. Includes a Rust → WebAssembly mesh engine.",
   "keywords": [
     "mesh",
@@ -19,6 +18,9 @@
     "type": "git",
     "url": "https://github.com/andymai/brepjs",
     "directory": "packages/brepjs-mesh2solid"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "type": "module",
   "sideEffects": false,
@@ -51,7 +53,7 @@
     "lint": "eslint src tests"
   },
   "peerDependencies": {
-    "brepjs": ">=20.0.0"
+    "brepjs": ">=20.18.0"
   },
   "devDependencies": {
     "@eslint/js": "*",
