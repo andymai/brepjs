@@ -18,6 +18,7 @@ import {
   watchTree,
 } from './watch.js';
 import { exportPart, stem } from './exportPart.js';
+import { collectParam, PARAM_FLAG, PARAM_HELP } from './params.js';
 import { openBrowser, shouldAutoOpen } from './openBrowser.js';
 import { disposeShape } from '../disposeShape.js';
 import type { shoot as ShootFn } from '../snapshot/shoot.js';
@@ -82,6 +83,7 @@ program
     '--metrics',
     'compute deterministic manufacturability metrics (per-body breakdown + interference matrix) for the design judge — slower; off by default'
   )
+  .option(PARAM_FLAG, PARAM_HELP, collectParam)
   .action(
     async (
       files: string[],
@@ -95,6 +97,7 @@ program
         expectCode?: string;
         expectInvalid?: boolean;
         metrics?: boolean;
+        param?: Record<string, string>;
         // Commander materializes a negated flag as a concrete boolean: true by
         // default, false when --no-open is passed.
         open: boolean;
@@ -120,10 +123,11 @@ program
           opts.snapshot ||
           opts.glb ||
           opts.expectCode ||
-          opts.expectInvalid
+          opts.expectInvalid ||
+          opts.param
         ) {
           process.stderr.write(
-            'batch mode: --step/--glb/--serve/--snapshot/--expect-code/--expect-invalid ignored (single-file only)\n'
+            'batch mode: --step/--glb/--serve/--snapshot/--expect-code/--expect-invalid/--param ignored (single-file only)\n'
           );
         }
         const results: { file: string; ok: boolean; report: VerifyReport }[] = [];
@@ -152,6 +156,7 @@ program
         check: Boolean(opts.check),
         // A snapshot feeds the design judge, so compute metrics too (bores → an aimed section shot).
         metrics: Boolean(opts.metrics) || Boolean(opts.snapshot),
+        ...(opts.param ? { params: opts.param } : {}),
       });
       let stepPath: string | undefined = opts.step;
       try {
@@ -262,45 +267,55 @@ program
   )
   .option('--out <dir>', 'output directory for the PNGs (default <file>-shots)')
   .option('--label <tag>', 'subfolder for this render set (e.g. pre, post) for A/B pairing')
-  .action(async (file: string, opts: { out?: string; label?: string }) => {
-    const resolved = resolve(file);
-    const base = opts.out ? resolve(opts.out) : `${resolved}-shots`;
-    const outDir = opts.label ? join(base, opts.label) : base;
-    const { report, step, shape } = await runPart(resolved, { step: true, metrics: true });
-    try {
-      if (!step) {
-        process.stderr.write('snapshot: part produced no STEP — nothing to render\n');
-        process.stdout.write(serializeReport(report) + '\n');
-        process.exitCode = 1;
-        return;
-      }
-      const stepPath = join(tmpdir(), `brep-snap-${basename(file)}.step`);
-      writeFileSync(stepPath, Buffer.from(step));
-      const shoot = await loadSnapshotShoot();
-      if (!shoot) {
-        // puppeteer absent: loadSnapshotShoot set exitCode + stderr; still emit the report so a
-        // caller parsing stdout gets the validity info rather than an empty buffer.
-        process.stdout.write(serializeReport(report) + '\n');
-        return;
-      }
-      // fresh: a private ephemeral render server so parallel snapshots don't contend on :7373.
-      const section = aimedSection(
-        report.manufacturability?.bores ?? [],
-        report.measurements.bounds
-      );
-      const marks = featureMarks(report.bodies ?? [], report.manufacturability?.bores ?? []);
-      const { pngs } = await shoot({
-        file: stepPath,
-        outDir,
-        fresh: true,
-        ...(section ? { section } : {}),
-        ...(marks.length > 0 ? { marks } : {}),
+  .option(PARAM_FLAG, PARAM_HELP, collectParam)
+  .action(
+    async (
+      file: string,
+      opts: { out?: string; label?: string; param?: Record<string, string> }
+    ) => {
+      const resolved = resolve(file);
+      const base = opts.out ? resolve(opts.out) : `${resolved}-shots`;
+      const outDir = opts.label ? join(base, opts.label) : base;
+      const { report, step, shape } = await runPart(resolved, {
+        step: true,
+        metrics: true,
+        ...(opts.param ? { params: opts.param } : {}),
       });
-      for (const p of pngs) process.stdout.write(`${p}\n`);
-    } finally {
-      disposeShape(shape);
+      try {
+        if (!step) {
+          process.stderr.write('snapshot: part produced no STEP — nothing to render\n');
+          process.stdout.write(serializeReport(report) + '\n');
+          process.exitCode = 1;
+          return;
+        }
+        const stepPath = join(tmpdir(), `brep-snap-${basename(file)}.step`);
+        writeFileSync(stepPath, Buffer.from(step));
+        const shoot = await loadSnapshotShoot();
+        if (!shoot) {
+          // puppeteer absent: loadSnapshotShoot set exitCode + stderr; still emit the report so a
+          // caller parsing stdout gets the validity info rather than an empty buffer.
+          process.stdout.write(serializeReport(report) + '\n');
+          return;
+        }
+        // fresh: a private ephemeral render server so parallel snapshots don't contend on :7373.
+        const section = aimedSection(
+          report.manufacturability?.bores ?? [],
+          report.measurements.bounds
+        );
+        const marks = featureMarks(report.bodies ?? [], report.manufacturability?.bores ?? []);
+        const { pngs } = await shoot({
+          file: stepPath,
+          outDir,
+          fresh: true,
+          ...(section ? { section } : {}),
+          ...(marks.length > 0 ? { marks } : {}),
+        });
+        for (const p of pngs) process.stdout.write(`${p}\n`);
+      } finally {
+        disposeShape(shape);
+      }
     }
-  });
+  );
 
 program
   .command('init')
@@ -319,11 +334,15 @@ program
 program
   .command('watch')
   .argument('<file>', 'path to a .brep.ts module; re-verifies on each save until Ctrl-C')
-  .action((file: string) => {
+  .option(PARAM_FLAG, PARAM_HELP, collectParam)
+  .action((file: string, opts: { param?: Record<string, string> }) => {
     const path = resolve(file);
     const run = async (fresh: boolean) => {
       try {
-        const { report, shape } = await runPart(path, { freshImport: fresh });
+        const { report, shape } = await runPart(path, {
+          freshImport: fresh,
+          ...(opts.param ? { params: opts.param } : {}),
+        });
         try {
           process.stdout.write(serializeReport(report) + '\n');
         } finally {
@@ -402,6 +421,7 @@ program
   .option('--all', 'write STEP + GLB + STL')
   .option('--3dm', 'write a Rhino .3dm (element-aware: one named object per element, layered)')
   .option('--out <dir>', 'output directory', '.')
+  .option(PARAM_FLAG, PARAM_HELP, collectParam)
   .action(
     async (
       file: string,
@@ -412,6 +432,7 @@ program
         all?: boolean;
         '3dm'?: boolean;
         out: string;
+        param?: Record<string, string>;
       }
     ) => {
       const path = resolve(file);
@@ -419,6 +440,11 @@ program
         // The .3dm path evaluates the element-aware module contract; the other formats
         // run the shape contract — one invocation cannot honor both.
         process.stderr.write('--3dm cannot be combined with --step/--glb/--stl/--all\n');
+        process.exitCode = 1;
+        return;
+      }
+      if (opts['3dm'] && opts.param) {
+        process.stderr.write('--param does not apply to --3dm\n');
         process.exitCode = 1;
         return;
       }
@@ -464,7 +490,7 @@ program
         process.exitCode = 1;
         return;
       }
-      const result = await exportPart(path, formats, resolve(opts.out));
+      const result = await exportPart(path, formats, resolve(opts.out), opts.param);
       for (const p of result.written) process.stderr.write(`wrote: ${p}\n`);
       for (const e of result.errors) process.stderr.write(`error: ${e}\n`);
       process.stdout.write(

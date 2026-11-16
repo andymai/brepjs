@@ -4,6 +4,7 @@ import { loadBrep } from '../verify/brepjsRuntime.js';
 import { runPart } from '../verify/runPart.js';
 import { reportOk, type VerifyReport } from '../verify/report.js';
 import { disposeShape } from '../disposeShape.js';
+import type { ParamInput } from '../verify/partParams.js';
 
 export interface ExportFormats {
   step?: boolean;
@@ -27,11 +28,13 @@ export function stem(file: string): string {
 export async function exportPart(
   modulePath: string,
   formats: ExportFormats,
-  outDir: string
+  outDir: string,
+  params?: ParamInput
 ): Promise<ExportResult> {
   const { shape, report, step, glb } = await runPart(modulePath, {
     step: Boolean(formats.step),
     glb: Boolean(formats.glb),
+    ...(params ? { params } : {}),
   });
   const errors: string[] = [];
   const written: string[] = [];
