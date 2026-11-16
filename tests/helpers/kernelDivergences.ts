@@ -315,7 +315,7 @@ export const divergences: DivergenceMap = {
         "The committed IFC fixture holds occt-wasm's triangulation of each body. brepkit triangulates the same faces in another vertex and triangle order, so four IFCTRIANGULATEDFACESET bodies differ.",
     },
     // -----------------------------------------------------------------------
-    // playgroundExamples.test.ts
+    // playgroundExamplesMechanicalAL.test.ts (helpers/playgroundExampleSuite.ts)
     // -----------------------------------------------------------------------
     'playgroundExamples.benchVise': {
       kind: 'skip',

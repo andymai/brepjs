@@ -157,7 +157,7 @@ async function evalPrompt(
   if (p.referenceCode) {
     try {
       // The reference is a playground example — the corpus is gated to valid, single-connected
-      // solids (the connectivity test in playgroundExamples.test.ts), so it builds a STEP under the
+      // solids (the connected-body test of the playground examples), so it builds a STEP under the
       // sandboxed `--check --step` path. A reference that fails to build is excluded (quality:null →
       // absolute grading): better to fall back than to anchor against a broken exemplar. (The
       // strict path is the only sandboxed step export; the lenient snapshot/runPart render gates on

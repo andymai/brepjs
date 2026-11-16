@@ -393,7 +393,7 @@ TASKS:
    template literal. PRESERVE the attribution line at the top of each code string. Keep new
    entries in the order given. Do not alter any existing entry or the validated source.
 2. After writing, run the regression test to prove the whole set still evals+meshes:
-     TEST_KERNEL=occt npx vitest run tests/playgroundExamples.test.ts --reporter=dot
+     TEST_KERNEL=occt npx vitest run tests/playgroundExamples --reporter=dot
    Report the final pass/fail counts. If anything fails, fix the module assembly (escaping,
    backticks inside code) — NOT the validated logic — and re-run.
 3. Write a markdown translation report to ${REPORT_PATH} covering: each accepted model
@@ -484,7 +484,7 @@ It lives in ${MODULE_PATH} as the entry with id '${v.id}'. Edit ONLY that entry'
 
 WORKFLOW:
 1. Edit the entry's code in ${MODULE_PATH}.
-2. Re-validate: TEST_KERNEL=occt npx vitest run tests/playgroundExamples.test.ts --reporter=dot
+2. Re-validate: TEST_KERNEL=occt npx vitest run tests/playgroundExamples --reporter=dot
 3. Re-screenshot just this one (reuse the running server if up, else start it as
    the audit step did): cd apps/playground && npm run shoot <URL> tmp/shots ${v.id}
 4. Read apps/playground/tmp/shots/${v.id}.png and confirm the issue is resolved.

@@ -79,23 +79,39 @@
       "tracking": "andymai/brepkit#2375",
       "tests": ["importOBJ > imports disjoint closed bodies as a compound of solids"]
     },
-    "tests/playgroundExamples.test.ts": {
+    "tests/playgroundExamplesBim.test.ts": {
+      "tracking": "andymai/brepkit#2372, andymai/brepkit#2396, andymai/brepkit#2502",
+      "tests": ["playground examples > evaluates and meshes: bim-switchback-stair"]
+    },
+    "tests/playgroundExamplesMechanicalAL.test.ts": {
       "tracking": "andymai/brepkit#2372, andymai/brepkit#2396, andymai/brepkit#2502",
       "tests": [
         "playground examples > evaluates and meshes: axial-fan",
         "playground examples > evaluates and meshes: ball-bearing",
-        "playground examples > evaluates and meshes: bim-switchback-stair",
         "playground examples > evaluates and meshes: conical-pour-funnel",
         "playground examples > evaluates and meshes: cube-truss-frame",
-        "playground examples > evaluates and meshes: fan-guard",
-        "playground examples > evaluates and meshes: mars-rover",
-        "playground examples > evaluates and meshes: pocket-watch",
-        "playground examples > evaluates and meshes: robot-arm",
+        "playground examples > evaluates and meshes: fan-guard"
+      ]
+    },
+    "tests/playgroundExamplesMechanicalMZ.test.ts": {
+      "tracking": "andymai/brepkit#2372, andymai/brepkit#2396, andymai/brepkit#2502",
+      "tests": [
         "playground examples > evaluates and meshes: rotary-potentiometer",
-        "playground examples > evaluates and meshes: sheet-metal-u-channel",
         "playground examples > evaluates and meshes: universal-joint",
         "playground examples > evaluates and meshes: wall-mount-flanged-junction-box",
         "playground examples > every returned body is a single connected solid: universal-joint"
+      ]
+    },
+    "tests/playgroundExamplesSheetMetal.test.ts": {
+      "tracking": "andymai/brepkit#2372, andymai/brepkit#2396, andymai/brepkit#2502",
+      "tests": ["playground examples > evaluates and meshes: sheet-metal-u-channel"]
+    },
+    "tests/playgroundExamplesShowcase.test.ts": {
+      "tracking": "andymai/brepkit#2372, andymai/brepkit#2396, andymai/brepkit#2502",
+      "tests": [
+        "playground examples > evaluates and meshes: mars-rover",
+        "playground examples > evaluates and meshes: pocket-watch",
+        "playground examples > evaluates and meshes: robot-arm"
       ]
     }
   }

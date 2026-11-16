@@ -66,20 +66,22 @@ Regenerating types: `generate-ambient-types.ts` reads each package's built `node
 
 Where it runs in CI: the playground `build` script is `tsc -b && npm run check:examples && vite build` (`package.json`), reached through the `site-build` job's `npm run build:site` (path-gated on the site filter in `.github/workflows/ci.yml`). The playground's `prebuild` hook (`build:deps`) builds `brepjs-families`, `brepjs-bim`, `brepjs-sheetmetal`, and `brepjs-viewer` first.
 
-### Gate 2 — geometry (`tests/playgroundExamples.test.ts`)
+### Gate 2 — geometry (`tests/playgroundExamples*.test.ts`)
 
 ```
-npx vitest run --project occt-wasm tests/playgroundExamples.test.ts
+npx vitest run --project occt-wasm tests/playgroundExamples
 ```
+
+The geometry tests are in several files, so CI forks share the work: one file for each category, and two for Mechanical (`tests/playgroundExamplesMechanicalAL.test.ts` holds the ids from a to l, `...MZ` holds the others). `EXAMPLE_TEST_FILES` in `tests/helpers/playgroundExampleCategories.ts` is the list, and each file is one call of `describeExamplesOfFile`. To run one group, name its file. `tests/playgroundExamples.test.ts` holds the checks that need no kernel, and it fails when an example is in no file or in two. A new category needs a new file and an entry in `EXAMPLE_TEST_FILES`. The brepkit known-failure list (`tests/knownFailures/brepkit.json`) has the file name as its key, so a failure of a new example on brepkit goes under the file that holds it.
 
 Run from the repo root. This lives in `tests/`, so it is part of the root suite and needs no dist build — root vitest aliases `brepjs`, `brepjs-sheetmetal`, `brepjs-bim`, and `brepjs-families` to live `src` (`vitest.config.ts`). Pre-commit's changed-file run (`vitest run --project occt-wasm --changed`) picks it up when an example file changes, because vitest `--changed` follows the import graph into `apps/playground/src/lib/examples/`.
 
-Four assertion families (`tests/playgroundExamples.test.ts`):
+Four assertion families:
 
-1. **Unique `id` and `label`** across all examples (lines 20-25).
-2. **Evals + meshes**: each example produces `shapeCount > 0` and `totalVertices > 0` (lines 27-33).
-3. **No silent finishing-op fallback**: the regex `/(\.ok\s*\?[^:]*:|isOk\s*\([^)]*\)\s*\?[^:]*:)/` must not match — patterns like `x.ok ? x.value : base` or `isOk(x) ? unwrap(x) : base` are banned (lines 40-48). A swallowed fillet/chamfer failure makes a no-op pass the mesh check while shipping an unfinished part. Use `unwrap()` so failures throw and get caught. See result-error-handling.
-4. **Connected-body check** for a hard-coded assembly list `CONNECTED_BODY_EXAMPLES` (universal-joint, geneva-drive, bench-vise, scotch-yoke, three-jaw-chuck, worm-gear-drive, lines 55-62): each exported body must have `getSolids().length === 1`. A disjoint compound still meshes but detaches on STEP/GLB export. **When adding a multi-body mechanism/assembly example, add its id to this list.**
+1. **Unique `id` and `label`** across all examples.
+2. **Evals + meshes**: each example produces `shapeCount > 0` and `totalVertices > 0`.
+3. **No silent finishing-op fallback**: the regex `/(\.ok\s*\?[^:]*:|isOk\s*\([^)]*\)\s*\?[^:]*:)/` must not match — patterns like `x.ok ? x.value : base` or `isOk(x) ? unwrap(x) : base` are banned. A swallowed fillet/chamfer failure makes a no-op pass the mesh check while shipping an unfinished part. Use `unwrap()` so failures throw and get caught. See result-error-handling.
+4. **Connected-body check** for a hard-coded assembly list `CONNECTED_BODY_EXAMPLES` (universal-joint, geneva-drive, bench-vise, scotch-yoke, three-jaw-chuck, worm-gear-drive, in `tests/helpers/playgroundExampleCategories.ts`): each exported body must have `getSolids().length === 1`. A disjoint compound still meshes but detaches on STEP/GLB export. **When adding a multi-body mechanism/assembly example, add its id to this list.**
 
 If geometry is wrong (see debugging-geometry for the full triage): common example pitfalls are `revolve()` of a profile whose edge touches the axis (degenerate), features added where they should be cut (inverted boolean), and the silent-fallback pattern above.
 
@@ -116,7 +118,7 @@ Note: the production `playground-smoke` workflow only checks the deployed engine
 
 1. Add the `Example` to the right category file (or register a new category in `index.ts`).
 2. `cd apps/playground && npm run check:examples` — types green.
-3. `npx vitest run --project occt-wasm tests/playgroundExamples.test.ts` — geometry green (add multi-body assemblies to `CONNECTED_BODY_EXAMPLES`).
+3. `npx vitest run --project occt-wasm tests/playgroundExamples` — geometry green (add multi-body assemblies to `CONNECTED_BODY_EXAMPLES`).
 4. Start dev server, `npm run thumbs "$URL" <id>`, commit `public/example-thumbs/<id>.webp`.
 5. Optional: `npm run shoot "$URL" tmp/shots <id>` + Read the PNG to confirm framing.
 
@@ -126,7 +128,7 @@ The in-code file headers are the authoritative depth and stay current with the c
 
 - `apps/playground/src/lib/examples/types.ts` — authoring rules
 - `apps/playground/scripts/checkExamples.ts` — Gate 1
-- `tests/playgroundExamples.test.ts` + `tests/helpers/playgroundExampleEval.ts` — Gate 2 + eval harness mechanics
+- `tests/playgroundExamples*.test.ts` + `tests/helpers/playgroundExampleSuite.ts` + `tests/helpers/playgroundExampleEval.ts` — Gate 2 + eval harness mechanics
 - `apps/playground/scripts/shootExamples.ts` — Gate 3, audit and turntable modes
 - `apps/playground/scripts/generate-ambient-types.ts` + `apps/playground/src/lib/ambientModule.ts` — the editor type surface
 - `.claude/workflows/scad-to-playground.js` — bulk-import automation precedent
