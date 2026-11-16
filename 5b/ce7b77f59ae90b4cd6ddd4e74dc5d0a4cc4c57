@@ -1,0 +1,26 @@
+CLAUDE.md
+  s_8e26ce757a4a72::t_1732b2e79f363b 25
+packages/brepjs-mesh2solid/README.md
+  s_8e26ce757a4a72::t_1732b2e79f363b 3-7
+.github/workflows/publish-brepjs-mesh2solid.yml
+  s_8e26ce757a4a72::t_1732b2e79f363b 3-5
+packages/brepjs-mesh2solid/package.json
+  s_8e26ce757a4a72::t_49949fda91af2b 22-24
+  s_8e26ce757a4a72::t_67e9eb5ad600fd 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5bce7b77f59ae90b4cd6ddd4e74dc5d0a4cc4c57",
+  "prompts": {},
+  "sessions": {
+    "s_8e26ce757a4a72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e2a2abb-96e7-41bf-9f42-70cf1b42e7a4",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
