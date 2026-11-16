@@ -136,7 +136,7 @@ function chartSurface(poles: readonly Vec3[], owned: Owned[]): Face | null {
  * surface as an edge. Neighbours lay a shared run onto their own surfaces,
  * which part by about their fit error; sewing closes that gap.
  */
-function trimmedFace(
+export function trimmedFace(
   chart: FreeformChart,
   runs: readonly FreeformRun[],
   tolerance: number,

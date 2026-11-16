@@ -8,6 +8,7 @@ import {
   exportSTEP,
   exportSTL,
   exportThreeMF,
+  faceGeomType,
   fillet,
   getFaces,
   importSTEP,
@@ -25,6 +26,7 @@ import {
 } from 'brepjs';
 import { describe, expect, it } from 'vitest';
 import { inspectMesh, meshToSolid, unitSuggestions } from '../src/index.js';
+import { MIXED_CORPUS } from './corpus.js';
 
 async function stlOf(shape: AnyShape, tolerance?: number): Promise<Uint8Array> {
   const blob = unwrap(exportSTL(shape, { binary: true, ...(tolerance ? { tolerance } : {}) }));
@@ -335,7 +337,7 @@ describe('meshToSolid tier 1', () => {
     expect(isShell(shape)).toBe(true);
   });
 
-  it('rebuilds a part with a freeform surface from B-spline faces', async () => {
+  it('keeps the exact faces of a part with a freeform surface', async () => {
     const res = unwrap(await meshToSolid(saddleBlockStl(16)));
     using shape = res.shape;
     const r = res.report;
@@ -343,13 +345,41 @@ describe('meshToSolid tier 1', () => {
     expect(isValid(shape)).toBe(true);
     expect(r.tierReached).toBe(1);
     expect(r.tier1?.unfitTriangles).toBeGreaterThan(0);
-    expect(r.tier1?.freeform?.analyticReason).toMatch(/fit no analytic surface/);
-    expect(r.tier1?.freeform?.faces).toBe(getFaces(shape).length);
-    expect(r.faces.unified).toBe(false);
+    const mixed = r.tier1?.mixed;
+    expect(mixed?.analyticReason).toMatch(/fit no analytic surface/);
+    expect(mixed?.regions).toHaveLength(1);
+    const kinds: Record<string, number> = {};
+    for (const f of getFaces(shape)) kinds[faceGeomType(f)] = (kinds[faceGeomType(f)] ?? 0) + 1;
+    expect(kinds).toEqual({ PLANE: 5, BSPLINE_SURFACE: mixed?.freeformFaces });
+    expect(mixed?.analyticFaces).toBe(5);
+    expect(r.tier1?.freeform).toBeUndefined();
+    expect(r.faces.unified).toBe(true);
     expect(r.tier2?.fallbackReason).toBe('B-spline faces have no feature program');
-    expect(r.warnings.some((w) => w.startsWith('rebuilt from'))).toBe(true);
+    expect(r.warnings.some((w) => w.startsWith('1 freeform region filled'))).toBe(true);
     // The top z = 5 + (x² - y²) / 40 over a 20 mm square encloses exactly 2000 mm³.
     expect(vol(shape)).toBeCloseTo(2000, 0);
+  });
+});
+
+describe('meshToSolid with a freeform region', () => {
+  it('gives each exact surface one face', async () => {
+    const block = MIXED_CORPUS.find((c) => c.name === 'saddle block');
+    if (block === undefined) throw new Error('no saddle block');
+    using base = block.build();
+    // The plane of the hole's floor, as wide as its patch, crosses the wall
+    // at x = 0: the arrangement leaves that wall in two pieces.
+    using drill = cylinder(9, 6, { at: [10, 15, 0] });
+    using part = unwrap(cut(base, drill));
+    const res = unwrap(await meshToSolid(await stlOf(part)));
+    using shape = res.shape;
+    const mixed = res.report.tier1?.mixed;
+    const kinds: Record<string, number> = {};
+    for (const f of getFaces(shape)) kinds[faceGeomType(f)] = (kinds[faceGeomType(f)] ?? 0) + 1;
+    expect(isValid(shape)).toBe(true);
+    expect(mixed?.arrangement.kept).toBeGreaterThan(7);
+    expect(kinds).toEqual({ PLANE: 6, CYLINDRE: 1, BSPLINE_SURFACE: mixed?.freeformFaces });
+    expect(res.report.faces.unified).toBe(true);
+    expect(Math.abs(vol(shape) - vol(part)) / vol(part)).toBeLessThan(1e-5);
   });
 });
 

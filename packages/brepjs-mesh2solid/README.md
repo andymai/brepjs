@@ -84,9 +84,9 @@ cylinder rather than dozens of strips.
 4. **Sews** each body's pieces into a solid, subtracts cavities, unifies faces, and checks the result
    against the mesh in both directions.
 
-When triangles fit no analytic surface, a closed mesh is rebuilt from B-spline faces instead (see
-Freeform shapes below). Tier 1 falls back to tier 0 when a body is open, or when both rebuilds fail
-or stray from the mesh. `report.tier1.fallbackReason` says why, and `report.warnings` records the
+When triangles fit no analytic surface, a closed mesh gets B-spline faces: only in its freeform
+regions when the rest has exact faces to keep, else throughout (see Freeform shapes below). Tier 1
+falls back to tier 0 when a body is open, or when every rebuild fails or strays from the mesh. `report.tier1.fallbackReason` says why, and `report.warnings` records the
 fallback.
 
 ### Freeform shapes
@@ -103,9 +103,51 @@ faces:
    within their fit error and checks it against the mesh in both directions.
 
 The blob, peanut, and bumpy ring in the eval come back as valid solids of 18 to 57 faces, with their
-volume within 0.015% of the smooth shape the mesh was sampled from. A part with a freeform region
-is rebuilt this way throughout, flat faces included, and tier 2 has no feature program for it. On a
-scan, more than 16 sphere and torus fits mark a freeform part, and the analytic rebuild stops there.
+volume within 0.015% of the smooth shape the mesh was sampled from. On a scan, more than 16 sphere
+and torus fits mark a freeform part, and the analytic rebuild stops there.
+
+### Parts with a freeform region
+
+A block with one sculpted face keeps its other faces exact:
+
+1. **Finds the freeform regions**: the triangles no surface fits, plus the fragments around them. A
+   single triangle is always a plane and a short strip always some cylinder or torus, so a fitted
+   region joins the freeform region beside it when it is the smaller of the two and meets it without
+   a crease along a quarter of its boundary or more. On a scan, torus and cone fits start a freeform
+   region too (within noise they fit a stretch of any curved surface).
+2. **Charts and fits** each freeform region as above, as one face when one surface follows it. The
+   surface is held to the region's boundary with each exact face, and on a scan it leaves a face it
+   meets smoothly along that face's tangent.
+3. **Cuts** the arrangement of the exact surfaces along those boundaries, so the pieces under a
+   freeform region drop out, and trims each B-spline face along the same boundaries.
+4. **Sews** the exact pieces and the B-spline faces into each body's solid, unifies its faces, and checks it against
+   the mesh in both directions with the analytic rebuild's own gate.
+
+In the eval a block with a sculpted top comes back as its 5 planes and 1 B-spline face, a plate with a
+drilled hole and a domed boss as 6 planes, 1 cylinder, and 1 B-spline face, and a stepped shaft with a
+sculpted end as 2 planes, 2 cylinders, and 1 B-spline face. The planes and radii are the drawn ones,
+and the volume is within 3 parts in a million of the source solid's. Scanned at 0.02 mm of noise, the
+plate comes back with the same faces under two noise seeds, its volume within 0.04%.
+
+Limits:
+
+- The B-spline faces meet their neighbours within a sewing tolerance (`report.tier1.mixed.sewTolerance`:
+  about 0.005 mm on these CAD meshes, 0.3 mm on the scans), not along exact shared curves. Tangency
+  across a smooth boundary holds within the fit, and is not enforced.
+- A face that runs smoothly into a freeform region covers it until the region stands one fit tolerance
+  off the face. On a scan that tolerance is three times the noise, so the foot of the boss above comes
+  back flat where it is lower than that.
+- A small exact face that meets a larger freeform region smoothly (a fillet under a sculpted face)
+  joins that region and comes back as part of its B-spline faces.
+- Within scan noise a torus fits a gentle saddle. The scanned shaft above comes back with a torus for
+  its sculpted end, and the scanned block with a torus or with B-spline faces from seed to seed, inside
+  the same gate.
+- Tier 2 has no feature program for a part with B-spline faces: `report.tier2.fallbackReason` says
+  `B-spline faces have no feature program`.
+- When the exact faces cannot be kept (a freeform boundary that does not sew, for one), the part is
+  rebuilt from B-spline faces throughout as before, and `report.tier1.freeform.mixedReason` says why.
+- On a CAD mesh with a freeform region the surface fits take most of the time: 14 to 20 s for these
+  parts, against 7 s for the scans.
 
 ### Scans
 
@@ -200,9 +242,11 @@ mesh; `report.tier2.fallbackReason` says why.
 percentile distance from the input to the result (`reverseMax` is the other direction, sampled at each output triangle's corners and centroid).
 `report.faces` counts triangles in and faces out, and `report.warnings` lists every repair and
 fallback that happened. `report.tier1` lists the fitted surfaces with their residuals, the tangent
-pairs found, and the arrangement's piece counts; after a freeform rebuild, `report.tier1.freeform`
-counts the charts, the boundaries between them, and the faces, and says why the analytic rebuild
-failed. `report.tier2.features` lists the recognized features in build order.
+pairs found, and the arrangement's piece counts. After a rebuild that kept exact faces beside freeform
+regions, `report.tier1.mixed` lists each region (its triangles, share of the area, charts, faces, fit
+error, and sag), counts the exact and the B-spline faces, and says why the analytic rebuild alone
+failed. After a rebuild from B-spline faces throughout, `report.tier1.freeform` counts the charts, the
+boundaries between them, and the faces, and says why the other two rebuilds failed. `report.tier2.features` lists the recognized features in build order.
 
 ## Quality gate
 
@@ -217,7 +261,10 @@ plate, sphere, filleted box, and drilled plate, and the same calls from the knob
 under two noise seeds each. The organic cases (a blob, a peanut, and a bumpy ring, sampled
 from formulas, clean and with scan noise) require a valid tier 1 solid of B-spline faces, at most 64
 of them, and the smooth shape's volume; on the clean meshes it must land at least four times closer
-to it than the mesh's own facets do.
+to it than the mesh's own facets do. The mixed cases (a block, a drilled plate, and a stepped shaft,
+each with one sculpted face) require every drawn plane and cylinder back as an exact face with its
+drawn position or radius, B-spline faces for the sculpted one, and the source solid's volume to
+within one part in 100,000; the plate is also scanned under two noise seeds.
 Set `MESH2SOLID_SCORECARD=<path>` when running it to write per-case metrics.
 
 ## Developing the engine

@@ -8,6 +8,7 @@ use crate::fit::Surface;
 use crate::json::{array, Obj};
 use crate::math::{add, scale, Bbox, V3};
 use crate::mesh::{Mesh, Topology};
+use crate::mixed::Mixed;
 use crate::pipeline::{run_tier0, Options, Tier0, MAX_DEVIATION_SAMPLES};
 use crate::segment::{
     absorb, consolidate, dissolve_redundant, merge_adjacent, merge_same_surface, reassign,
@@ -24,12 +25,12 @@ pub struct Tier1 {
     /// Largest gap between a fitted triangle and its exact surface.
     pub sag: f64,
     pub snapped: SnapReport,
-    bvh: Bvh,
+    pub(crate) bvh: Bvh,
 }
 
 /// Edges sharper than this split fitting neighbourhoods. Growth itself is
 /// decided by point distances, so a chamfer under this angle still separates.
-const CREASE_DEG: f64 = 50.0;
+pub(crate) const CREASE_DEG: f64 = 50.0;
 
 /// The coarsest chord a CAD tessellation of this mesh plausibly has. The chord
 /// estimate is a 90th percentile and undershoots the worst faces a few times;
@@ -186,7 +187,7 @@ fn input_sag(mesh: &Mesh, seg: &Segmentation) -> f64 {
 
 /// Freeform charts stay within this angle of their mean normal, so each is a
 /// height field over its mean plane that one fitted surface can follow.
-const CHART_CONE_DEG: f64 = 40.0;
+pub(crate) const CHART_CONE_DEG: f64 = 40.0;
 /// A curved chart spans at most this share of its body's diagonal.
 const CHART_EXTENT: f64 = 0.5;
 /// Runs are cut to at most this share of their body's diagonal.
@@ -217,6 +218,8 @@ impl Tier1 {
             mesh,
             topo: &topo,
             mask: &mask,
+            outside: &[],
+            supports: &[],
             tri_body: &self.tri_body,
             bvh: &self.bvh,
             input,
@@ -245,6 +248,36 @@ impl Tier1 {
                     .regions
                     .iter()
                     .enumerate()
+                    .map(|(i, r)| (i, r.surface.distance(q)))
+                    .min_by(|x, y| x.1.total_cmp(&y.1));
+                (best.map_or(-1, |(i, _)| i as i64), d)
+            })
+            .collect()
+    }
+
+    /// Like `nearest` (or `nearest_by_surface` when `by_surface`) for a mixed
+    /// part: -1 in a freeform region, else a kept analytic surface.
+    pub fn nearest_mixed(&self, mixed: &Mixed, points: &[V3], by_surface: bool) -> Vec<(i64, f64)> {
+        let mut stack = Vec::new();
+        let m = &self.t0.mesh;
+        points
+            .iter()
+            .map(|&p| {
+                let (d, t) = self.bvh.nearest(p, &mut stack);
+                let Some(&r) = mixed.label.get(t as usize).filter(|&&r| r != u32::MAX) else {
+                    return (-1, d);
+                };
+                if !by_surface {
+                    return (r as i64, d);
+                }
+                let [a, b, c] = m.tri(t as usize);
+                let q = closest_on_triangle(p, a, b, c);
+                let best = self
+                    .seg
+                    .regions
+                    .iter()
+                    .enumerate()
+                    .filter(|(i, _)| mixed.kept[*i])
                     .map(|(i, r)| (i, r.surface.distance(q)))
                     .min_by(|x, y| x.1.total_cmp(&y.1));
                 (best.map_or(-1, |(i, _)| i as i64), d)

@@ -14,6 +14,10 @@ export class FreeformCharts {
      */
     readonly chart_bodies: Uint32Array;
     /**
+     * Index into the session's `mixed_regions` per chart (a mixed part only).
+     */
+    readonly chart_regions: Uint32Array;
+    /**
      * Largest height of a chart's fitted points off its surface, per chart.
      */
     readonly fit_errors: Float64Array;
@@ -25,6 +29,14 @@ export class FreeformCharts {
      * Flat xyz of every run, corner to corner.
      */
     readonly run_points: Float64Array;
+    /**
+     * 1 per run its two faces meet along without a crease, else 0.
+     */
+    readonly run_smooth: Uint8Array;
+    /**
+     * The analytic surface on the other side of each run, or -1 for a chart.
+     */
+    readonly run_surfaces: Int32Array;
     /**
      * Start of each chart's sides in `sides`, plus the end.
      */
@@ -94,6 +106,14 @@ export class Tier1Session {
      */
     deviation(positions: Float64Array, indices: Uint32Array): string;
     /**
+     * The mesh as a mixed part: analytic surfaces kept (`mixed_kept`) and
+     * the freeform regions between them split into charts, whose runs name
+     * the kept surface on their other side. `max_extent` is the largest
+     * curved chart as a share of its body's diagonal. `undefined` when the
+     * mesh is not such a part; `mixed_reason` then says why.
+     */
+    mixed(max_extent: number): FreeformCharts | undefined;
+    /**
      * For flat xyz `points`: (surface id or -1, distance to the mesh) per point.
      */
     nearest(points: Float64Array): Float64Array;
@@ -102,6 +122,11 @@ export class Tier1Session {
      * to its nearest mesh point (robust to fuzzy region boundaries on scans).
      */
     nearest_by_surface(points: Float64Array): Float64Array;
+    /**
+     * Like `nearest` (`nearest_by_surface` when `by_surface`) under the last
+     * `mixed` split: -1 in a freeform region, else a kept surface.
+     */
+    nearest_mixed(points: Float64Array, by_surface: boolean): Float64Array;
     /**
      * The whole-mesh Tier 0 result, the fallback when Tier 1 can't rebuild.
      */
@@ -119,6 +144,22 @@ export class Tier1Session {
      * (empty unless the session was created with a heatmap).
      */
     readonly measured_deviation: Float32Array;
+    /**
+     * 1 per surface the last `mixed` split kept as an exact face, else 0.
+     */
+    readonly mixed_kept: Uint8Array;
+    /**
+     * Why the last `mixed` call returned nothing.
+     */
+    readonly mixed_reason: string;
+    /**
+     * The freeform regions of the last `mixed` split, as a JSON array.
+     */
+    readonly mixed_regions: string;
+    /**
+     * `sag` for the last `mixed` split: over its kept surfaces and its charts.
+     */
+    readonly mixed_sag: number;
     /**
      * Largest gap between a fitted mesh triangle and its exact surface.
      */
@@ -179,9 +220,12 @@ export interface InitOutput {
     readonly convert_tier0: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number];
     readonly convert_tier1: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number];
     readonly freeformcharts_chart_bodies: (a: number) => [number, number];
+    readonly freeformcharts_chart_regions: (a: number) => [number, number];
     readonly freeformcharts_fit_errors: (a: number) => [number, number];
     readonly freeformcharts_run_offsets: (a: number) => [number, number];
     readonly freeformcharts_run_points: (a: number) => [number, number];
+    readonly freeformcharts_run_smooth: (a: number) => [number, number];
+    readonly freeformcharts_run_surfaces: (a: number) => [number, number];
     readonly freeformcharts_side_offsets: (a: number) => [number, number];
     readonly freeformcharts_sides: (a: number) => [number, number];
     readonly freeformcharts_surface_offsets: (a: number) => [number, number];
@@ -204,8 +248,14 @@ export interface InitOutput {
     readonly tier1session_charts: (a: number) => number;
     readonly tier1session_deviation: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly tier1session_measured_deviation: (a: number) => [number, number];
+    readonly tier1session_mixed: (a: number, b: number) => number;
+    readonly tier1session_mixed_kept: (a: number) => [number, number];
+    readonly tier1session_mixed_reason: (a: number) => [number, number];
+    readonly tier1session_mixed_regions: (a: number) => [number, number];
+    readonly tier1session_mixed_sag: (a: number) => number;
     readonly tier1session_nearest: (a: number, b: number, c: number) => [number, number];
     readonly tier1session_nearest_by_surface: (a: number, b: number, c: number) => [number, number];
+    readonly tier1session_nearest_mixed: (a: number, b: number, c: number, d: number) => [number, number];
     readonly tier1session_sag: (a: number) => number;
     readonly tier1session_surface_bounds: (a: number) => [number, number];
     readonly tier1session_surface_kinds: (a: number) => [number, number];
