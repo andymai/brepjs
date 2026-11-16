@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.28.2](https://github.com/andymai/brepjs/compare/brepjs-v20.28.1...brepjs-v20.28.2) (2026-11-16)
+
+
+### Performance Improvements
+
+* **topology:** move a shape by location on a kernel that shares geometry ([#2723](https://github.com/andymai/brepjs/issues/2723)) ([21e3fe7](https://github.com/andymai/brepjs/commit/21e3fe7d785b7a467855aa3af5350a8d4ddc6731))
+
 ## [20.28.1](https://github.com/andymai/brepjs/compare/brepjs-v20.28.0...brepjs-v20.28.1) (2026-11-16)
 
 
