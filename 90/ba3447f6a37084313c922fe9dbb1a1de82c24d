@@ -1,0 +1,25 @@
+apps/playground/src/lib/meshOptions.ts
+  s_8e26ce757a4a72::t_5a9b894118417d 25-26,33
+  s_8e26ce757a4a72::t_e6a36843e1a024 1-24,27-32,34-71
+apps/playground/src/workers/cad.worker.ts
+  s_8e26ce757a4a72::t_ff13980a45d240 4-9
+  s_8e26ce757a4a72::t_e6a36843e1a024 373,376,378-387
+tests/playgroundMeshOptions.test.ts
+  s_8e26ce757a4a72::t_ff13980a45d240 1-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "90ba3447f6a37084313c922fe9dbb1a1de82c24d",
+  "prompts": {},
+  "sessions": {
+    "s_8e26ce757a4a72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e2a2abb-96e7-41bf-9f42-70cf1b42e7a4",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
