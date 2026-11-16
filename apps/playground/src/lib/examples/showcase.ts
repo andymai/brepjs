@@ -252,7 +252,7 @@ export default [
     id: 'robot-arm',
     label: 'Six-Axis Robot Arm (cutaway)',
     description:
-      'A six-axis industrial arm of the 3 kg, 580 mm class in cutaway. The joint layout is a published Denavit-Hartenberg table, and forwardKinematics() places every link from six joint angles. The housings are a display model: a boolean cut opens four of them to show illustrative servo drives with strain-wave reducers.',
+      'A six-axis industrial arm of the 3 kg, 580 mm class in cutaway. The joint layout is a published Denavit-Hartenberg table, and forwardKinematics() places every link from six joint angles. The housings are a display model: a boolean cut opens four of them to show illustrative servo drives with strain-wave reducers. The screws are M4 socket head cap screws to ISO 4762, and the cut shows two of them in their threaded holes.',
     code: `import {
   addChild,
   addJoint,
@@ -273,6 +273,7 @@ export default [
   getBounds,
   jointsFromDH,
   line,
+  loft,
   polygon,
   revolve,
   rotate,
@@ -300,6 +301,10 @@ const DH = [
   { name: 'link5', a: 0, alpha: -90, d: 0, theta: 0, min: -120, max: 120 },
   { name: 'link6', a: 0, alpha: 0, d: D6, theta: 180, min: -400, max: 400 },
 ];
+
+// ---- published figures: socket head cap screw M4 x 10 (ISO 4762), coarse thread (ISO 261 and ISO 724),
+// clearance hole of the medium series (ISO 273), tap drill (ISO 2306)
+const M4 = { major: 4, minor: 3.242, pitch: 0.7, head: 7, headHeight: 4, socket: 3, socketDepth: 2, length: 10, clearance: 4.5, tapDrill: 3.3 };
 
 type P2 = [number, number];
 type P3 = [number, number, number];
@@ -336,6 +341,14 @@ const lathe = (o: P3, dir: P3, pts: P2[]): Shape => {
   const out: P3 = dir[2] === 1 ? X : Z; // radial direction of the profile plane
   const profile = own(unwrap(polygon(pts.map(([t, r]) => along(along(o, dir, t), out, r)))));
   return own(unwrap(revolve(profile, { axis: dir, at: o }))) as Shape;
+};
+
+// The same profile revolved only from one angle to another, in degrees from the profile plane.
+const wedge = (o: P3, dir: P3, pts: P2[], from: number, to: number): Shape => {
+  const out: P3 = dir[2] === 1 ? X : Z;
+  const profile = own(unwrap(polygon(pts.map(([t, r]) => along(along(o, dir, t), out, r)))));
+  const swept = own(unwrap(revolve(profile, { axis: dir, at: o, angle: ((to - from) * Math.PI) / 180 })));
+  return own(rotate(swept, from, { axis: dir, at: o })) as Shape;
 };
 
 // Two circles in the XZ plane joined by their outer tangents, extruded from y0 to y1.
@@ -377,21 +390,40 @@ const place = (s: Shape, o: P3, dir: P3, t = 0): Shape => {
   return own(translate(own(rotate(s, turn.deg, { axis: turn.axis })), along(o, dir, t)) as Shape);
 };
 
-// One socket-head cap screw head along +Z.
-const screwHead = (): Shape => {
-  const hex = Array.from({ length: 6 }, (_, i): P3 => [1.75 * Math.cos((i * Math.PI) / 3), 1.75 * Math.sin((i * Math.PI) / 3), 1.6]);
-  const socket = own(unwrap(extrude(own(unwrap(polygon(hex))), 3)));
-  return own(unwrap(cut(own(cylinder(3.5, 4)), socket))) as Shape;
+// One M4 cap screw along +Z: the head sits on z = 0 and the shank goes toward -Z. The shank is the thread root.
+const capScrew = (): Shape => {
+  const r = M4.socket / Math.sqrt(3);
+  const hex = Array.from({ length: 6 }, (_, i): P3 => [r * Math.cos((i * Math.PI) / 3), r * Math.sin((i * Math.PI) / 3), M4.headHeight - M4.socketDepth]);
+  const socket = own(unwrap(extrude(own(unwrap(polygon(hex))), M4.socketDepth + 1)));
+  const body = lathe([0, 0, 0], Z, [[-M4.length, 0], [-M4.length, M4.minor / 2], [0, M4.minor / 2], [0, M4.head / 2], [M4.headHeight, M4.head / 2], [M4.headHeight, 0]]);
+  return own(unwrap(cut(body, socket))) as Shape;
 };
 
-// count copies of a screw head on a circle of radius r about the line through o along dir, seated at station t.
-const boltCircle = (head: Shape, o: P3, dir: P3, t: number, r: number, count: number): Shape[] => {
+// A helical thread tooth about +Z, from z = from to z = to. Its crest passes the +X side at z = ref.
+// tip > core is the thread of a screw, tip < core the thread in a hole. The loft is smooth: no facets.
+const helixTooth = (core: number, tip: number, from: number, to: number, ref: number): Shape => {
+  const outward = tip > core;
+  const root = outward ? core / 0.998 : core * 0.998; // a hair clear of the core or the bore
+  const crest = outward ? tip : tip / 0.998;
+  const half = 0.42 * M4.pitch;
+  const n = Math.max(2, Math.round(((to - from) / M4.pitch) * 12)); // 12 sections in each turn
+  const sections = Array.from({ length: n + 1 }, (_, j) => {
+    const z = from + ((to - from) * j) / n;
+    const a = 2 * Math.PI * ((z - ref) / M4.pitch);
+    const at = (rr: number, dz: number): P3 => [rr * Math.cos(a), rr * Math.sin(a), z + dz];
+    const pts = [at(root, -half), at(crest, 0), at(root, half)];
+    return own(unwrap(wire(pts.map((p, i) => own(line(p, pts[(i + 1) % 3]!))))));
+  });
+  return own(unwrap(loft(sections, { ruled: false }))) as Shape;
+};
+
+// count seats on a circle of radius r about the line through o along dir, at station t.
+const circle = (o: P3, dir: P3, t: number, r: number, count: number): P3[] => {
   const u: P3 = dir[2] !== 0 ? X : Z;
   const v: P3 = [dir[1] * u[2] - dir[2] * u[1], dir[2] * u[0] - dir[0] * u[2], dir[0] * u[1] - dir[1] * u[0]];
-  const turned = place(head, [0, 0, 0], dir);
   return Array.from({ length: count }, (_, i) => {
     const a = (2 * Math.PI * (i + 0.5)) / count;
-    return own(translate(turned, along(along(along(o, dir, t), u, r * Math.cos(a)), v, r * Math.sin(a))) as Shape);
+    return along(along(along(o, dir, t), u, r * Math.cos(a)), v, r * Math.sin(a));
   });
 };
 
@@ -444,21 +476,55 @@ function armParts(grip: number, cutaway: boolean): Part[] {
   const right: P3 = [0, -1, 0];
   const parts: Part[] = [];
   const add = (link: number, tone: Tone, ...shapes: Shape[]) => shapes.forEach((shape) => parts.push({ link, tone, shape }));
-  const head = screwHead();
-  const bolts = (o: P3, dir: P3, t: number, r: number, count: number) => boltCircle(head, o, dir, t, r, count);
   const minus = (s: Shape, tool: Shape): Shape => own(unwrap(cut(s, tool))) as Shape;
   // A real boolean opens a housing: one quarter comes off along the joint axis.
   const open = (s: Shape, window: Shape): Shape => (cutaway ? minus(s, window) : s);
-  // Screws on the quarter that came off go with it.
-  const kept = (shapes: Shape[], gone: (x: number, y: number, z: number) => boolean): Shape[] =>
-    shapes.filter((s) => {
-      const b = getBounds(s);
-      return !(cutaway && gone((b.xMin + b.xMax) / 2, (b.yMin + b.yMax) / 2, (b.zMin + b.zMax) / 2));
-    });
   const fit = (link: number, o: P3, dir: P3, t: number, R: number, L: number) => drive(R, L).forEach(([tone, shape]) => add(link, tone, place(shape, o, dir, t)));
-  // A motor cap: a can and an end plate, hollow inside.
-  const cap = (o: P3, dir: P3, t: number, r: number, len: number): Shape =>
-    minus(fused([rod(o, dir, r, t, t + len), rod(o, dir, r - 8, t + len, t + len + 6)]), rod(o, dir, r - 7, t - 1, t + len));
+
+  // Screws. A seat is the point under a screw head. Stations of a hole are measured from the seat, into the part.
+  const screw = capScrew();
+  const drill = (seats: P3[], dir: P3, d: number, t0: number, t1: number): Shape[] => seats.map((p) => rod(p, dir, d / 2, t0, t1));
+  const screws = (seats: P3[], dir: P3): Shape[] => {
+    const turned = place(screw, O, dir);
+    return seats.map((p) => own(translate(turned, p)) as Shape);
+  };
+  // A hidden thread is not modelled: the shank is the root cylinder, in a hole of the tap drill size.
+  // The two screws that the cutaway shows from the side have the true helix, in a hole with the mating thread.
+  const PLAY = 0.08; // radial play between the two threads
+  const thread = cutaway ? helixTooth(M4.minor / 2, M4.major / 2, 0.3 - M4.length, -0.5, 0) : undefined;
+  const halfTurn = cutaway ? helixTooth(M4.major / 2 + PLAY, M4.minor / 2 + PLAY, M4.pitch, 1.5 * M4.pitch, M4.pitch / 2) : undefined;
+
+  // A motor cap: a can and a lid, hollow inside. Six screws go through the lid into lugs on the can wall.
+  // On an opened cap one screw goes with the quarter that comes off, and the cut plane passes through the next one.
+  const LID = 6;
+  const LUG = 9;
+  const cap = (link: number, o: P3, dir: P3, t: number, r: number, len: number, ring: number, window?: Shape, spin = 0): Shape => {
+    const seats = circle(o, dir, t + len + LID, ring, 6);
+    const half = (Math.asin(5.5 / ring) * 180) / Math.PI;
+    const section: P2[] = [[t + len - LUG, ring - 4.5], [t + len - LUG, r - 7], [t + len, r - 7], [t + len, ring - 4.5]];
+    const tapped = (d: number, at: P3) => rod(at, dir, d / 2, -LID - LUG - 1, 1 - LID);
+    const lug = minus(wedge(o, dir, section, 30 - half, 30 + half), tapped(M4.tapDrill, seats[0]!));
+    const hidden = screws(seats, dir);
+    seats.forEach((seat, i) => {
+      if (cutaway && window && i === 5) return;
+      if (cutaway && window && i === 4) {
+        // The half lug that stays, the whole screw, and the half turns of the thread in the hole.
+        const put = (s: Shape) => own(translate(place(own(rotate(s, spin)) as Shape, O, dir), seat)) as Shape;
+        add(link, 'cover', minus(wedge(o, dir, section, 270 - half, 270), tapped(M4.major + 2 * PLAY, seat)));
+        add(link, 'cover', ...Array.from({ length: 10 }, (_, k) => put(own(translate(halfTurn!, [0, 0, -(k + 11) * M4.pitch])) as Shape)));
+        add(link, 'steel', put(screw), put(thread!));
+        return;
+      }
+      add(link, 'cover', own(rotate(lug, 60 * i, { axis: dir, at: o })) as Shape);
+      add(link, 'steel', hidden[i]!);
+    });
+    const shell = fused([rod(o, dir, r, t, t + len), rod(o, dir, r - 8, t + len, t + len + LID)]);
+    const body = own(unwrap(cutAll(shell, [rod(o, dir, r - 7, t - 1, t + len), ...drill(seats, dir, M4.clearance, -LID - 1, 1)]))) as Shape;
+    return window ? open(body, window) : body;
+  };
+  // A flat cover: screws through the cover into blind holes in the casting under it.
+  const coverHoles = (seats: P3[], dir: P3) => drill(seats, dir, M4.clearance, -8, 1);
+  const tapHoles = (seats: P3[], dir: P3, thickness: number) => drill(seats, dir, M4.tapDrill, -M4.length - 2, 1 - thickness);
 
   // ---- base: 180 x 180 foot, pedestal, rear connector box
   const foot = corners(block(-90, 90, -90, 90, 0, 16), 'Z', 24);
@@ -477,16 +543,19 @@ function armParts(grip: number, cutaway: boolean): Part[] {
   const shoulder = minus(round(belt([0, 215], 60, [0, D1], 62, -50, 50), 'y', 10), block(-120, 120, -60, 60, 100, 178));
   const window1 = block(0, 130, -100, 49, D1, D1 + 130);
   add(1, 'cast', open(minus(fused([drum, shoulder, rod([-58, 0, 0], Z, 30, 178, 252)]), fused([rod(J2, right, 55, -51, 44), rod(J2, right, 39, 43, 51)])), window1));
-  add(1, 'cover', open(cap(J2, right, 50, 46, 30), window1));
-  add(1, 'steel', ...kept(bolts(J2, right, 86, 30, 6), (x, _y, z) => x > -4 && z > D1 - 4));
+  add(1, 'cover', cap(1, J2, right, 50, 46, 30, 30, window1));
   add(1, 'ring', rod(J2, Y, 52, 50, 52));
   fit(1, J2, right, -48, 52, 124);
 
   // ---- link 2: upper arm, a slab beside the housings
   const slab = round(belt([0, D1], 60, [0, J3[2]], 52, 52, 112), 'y', 8);
-  add(2, 'cast', minus(slab, belt([0, D1 + 72], 24, [0, J3[2] - 66], 20, 108, 113)));
-  add(2, 'cover', rod(J2, Y, 42, 112, 117), rod(J3, Y, 36, 112, 117), belt([0, D1 + 72], 21, [0, J3[2] - 66], 17, 108, 109.5));
-  add(2, 'steel', ...bolts(J2, Y, 117, 35, 8), ...bolts(J3, Y, 117, 30, 8));
+  const seatsJ2 = circle(J2, Y, 117, 35, 8);
+  const seatsJ3 = circle(J3, Y, 117, 30, 8);
+  const seats2 = [...seatsJ2, ...seatsJ3];
+  add(2, 'cast', own(unwrap(cutAll(slab, [belt([0, D1 + 72], 24, [0, J3[2] - 66], 20, 108, 113), ...tapHoles(seats2, Y, 5)]))) as Shape);
+  add(2, 'cover', own(unwrap(cutAll(rod(J2, Y, 42, 112, 117), coverHoles(seatsJ2, Y)))) as Shape, own(unwrap(cutAll(rod(J3, Y, 36, 112, 117), coverHoles(seatsJ3, Y)))) as Shape);
+  add(2, 'cover', belt([0, D1 + 72], 21, [0, J3[2] - 66], 17, 108, 109.5));
+  add(2, 'steel', ...screws(seats2, Y));
   add(2, 'ring', rod(J3, Y, 44, 50, 52));
 
   // ---- link 3: elbow housing, carries the drives of axes 3 and 4
@@ -495,8 +564,7 @@ function armParts(grip: number, cutaway: boolean): Part[] {
   const hollow3 = fused([rod(J3, right, 47, -51, 44), rod(J3, right, 33, 43, 51), rod(J4, back, 44, -81, 68), rod(J4, back, 35, 67, 75)]);
   const window3 = block(-120, 81.5, -100, 0, J4[2], J4[2] + 80);
   add(3, 'cast', open(minus(fused([elbow, barrel4]), hollow3), window3));
-  add(3, 'cover', open(cap(J4, back, 74, 42, 28), window3), cap(J3, right, 50, 40, 28));
-  add(3, 'steel', ...kept(bolts(J4, back, 108, 27, 6), (_x, y, z) => y < 4 && z > J4[2] - 4), ...bolts(J3, right, 84, 25, 6));
+  add(3, 'cover', cap(3, J4, back, 74, 42, 28, 27, window3, -90), cap(3, J3, right, 50, 40, 28, 25));
   add(3, 'ring', rod(J4, X, 46, 80, 83));
   fit(3, J3, right, -48, 44, 118);
   fit(3, J4, back, -78, 42, 176);
@@ -504,8 +572,10 @@ function armParts(grip: number, cutaway: boolean): Part[] {
   // ---- link 4: forearm tube and wrist fork, turns about X; the two wrist motors sit inside
   const tube = lathe(J4, X, [[83, 45], [96, 45], [112, 37], [240, 32], [240, 0], [83, 0]]);
   const bore = lathe(J4, X, [[86, 0], [86, 39], [98, 39], [112, 31], [232, 26], [232, 0]]);
+  const seats4 = circle(W, Y, 48, 15, 4);
   const cheeks = [27, -45].map((y) => round(belt([240, W[2]], 32, [D4, W[2]], 28, y, y + 18), 'y', 3));
-  add(4, 'cast', fused([open(minus(tube, bore), block(84, 236, -100, 0, W[2], W[2] + 80)), ...cheeks]));
+  const tappedCheek = own(unwrap(cutAll(cheeks[0]!, tapHoles(seats4, Y, 3)))) as Shape;
+  add(4, 'cast', fused([open(minus(tube, bore), block(84, 236, -100, 0, W[2], W[2] + 80)), tappedCheek, cheeks[1]!]));
   for (const y of [13, -13]) {
     add(4, 'dark', rod([0, y, W[2]], X, 11, 126, 200));
     add(4, 'steel', rod([0, y, W[2]], X, 8.5, 200, 224));
@@ -516,8 +586,8 @@ function armParts(grip: number, cutaway: boolean): Part[] {
   add(4, 'dark', beltLoop);
   add(4, 'steel', rod([250, 0, W[2]], right, 12, 45, 51), rod(W, right, 16, 45, 51));
   if (!cutaway) add(4, 'cover', minus(belt([250, W[2]], 19, [D4, W[2]], 23, -53, -45), belt([250, W[2]], 17, [D4, W[2]], 21, -51.5, -44)));
-  add(4, 'cover', rod(W, Y, 21, 45, 48));
-  add(4, 'steel', ...bolts(W, Y, 48, 15, 4));
+  add(4, 'cover', own(unwrap(cutAll(rod(W, Y, 21, 45, 48), coverHoles(seats4, Y)))) as Shape);
+  add(4, 'steel', ...screws(seats4, Y));
   add(4, 'ring', rod(W, Y, 26, 25, 27), rod(W, Y, 26, -27, -25));
 
   // ---- link 5: wrist, bends about Y
@@ -613,7 +683,7 @@ export default [
     id: 'pocket-watch',
     label: 'Pocket Watch',
     description:
-      'An open-face pocket watch with a hand-wound movement of the 16.5 ligne class: 36.6 mm, 17 jewels, 18,000 vibrations per hour. Each tooth count is from a published teardown, so the gear ratios are true, and the three hands show the time that the train gives them. The time parameter runs the watch. The bridges, the escapement shapes, the winding parts, the dial and the case are a display model.',
+      'An open-face pocket watch with a hand-wound movement of the 16.5 ligne class: 36.6 mm, 17 jewels, 18,000 vibrations per hour. Each tooth count is from a published teardown, so the gear ratios are true, and the three hands show the time that the train gives them. The time parameter runs the watch. The screws have the miniature thread of ISO 1501, and in the exploded view each one turns out of its tapped hole. The bridges, the escapement shapes, the winding parts, the dial and the case are a display model.',
     code: `import {
   box,
   chamfer,
@@ -630,6 +700,7 @@ export default [
   interpolateCurve,
   intersect,
   line,
+  loft,
   makeExternalGear,
   polygon,
   revolve,
@@ -679,6 +750,11 @@ const FOURTH = { teeth: 70, module: 0.116, leaves: 8 };
 const ESCAPE = { teeth: 15, leaves: 7, phase: (15.5 * Math.PI) / 180 }; // phase: the angle of the wheel on its arbor, which puts a tooth against a pallet stone
 const MOTION = { cannon: 12, minute: 36, minutePinion: 10, hour: 40, module: 0.214, hourModule: 0.2054 }; // 12 + 36 and 10 + 40 teeth on one centre distance
 const WINDING = { ratchet: 56, crown: 35, module: 0.238, setting: 16 };
+// ---- the screws: miniature thread S for timepieces (ISO 1501). minor is the minor diameter of the thread in the hole.
+type Thread = { major: number; pitch: number; minor: number };
+const S06: Thread = { major: 0.6, pitch: 0.15, minor: 0.456 };
+const S08: Thread = { major: 0.8, pitch: 0.2, minor: 0.608 };
+const PLAY = 0.012; // radial play between a screw thread and the thread in its hole
 
 const centres = (module: number, z1: number, z2: number): number => (module * (z1 + z2)) / 2;
 const polar = (o: P2, r: number, a: number): P2 => [o[0] + r * Math.cos(a), o[1] + r * Math.sin(a)];
@@ -784,9 +860,34 @@ const spiral = (r0: number, r1: number, turns: number, thick: number, z0: number
   return own(unwrap(extrude(own(unwrap(face(own(unwrap(wire(edges))) as never))), z1 - z0))) as Shape;
 };
 
-// A screw head with a slot.
-const screw = (c: P2, z: number, r = 0.75): Shape =>
-  at(own(unwrap(cut(disc(r, 0, 0.3), own(translate(own(box(2 * r + 0.2, 0.2, 0.2)), [-r - 0.1, -0.1, 0.16]))))) as Shape, c, z, (c[0] * 7 + c[1] * 3) % TAU);
+// A helical thread tooth about +Z, from z = from to z = to. Its crest passes the +X side at z = ref.
+// tip > core is the thread of a screw, tip < core the thread in a hole. The loft is smooth: no facets.
+const helixTooth = (t: Thread, core: number, tip: number, from: number, to: number, ref: number): Shape => {
+  const outward = tip > core;
+  const root = outward ? core / 0.998 : core * 0.998; // a hair clear of the core or the bore
+  const crest = outward ? tip : tip / 0.998;
+  const half = 0.42 * t.pitch;
+  const n = Math.max(2, Math.round(((to - from) / t.pitch) * 12)); // 12 sections in each turn
+  const sections = Array.from({ length: n + 1 }, (_, j) => {
+    const z = from + ((to - from) * j) / n;
+    const a = TAU * ((z - ref) / t.pitch);
+    const p = (r: number, dz: number): P3 => [r * Math.cos(a), r * Math.sin(a), z + dz];
+    const pts = [p(root, -half), p(crest, 0), p(root, half)];
+    return own(unwrap(wire(pts.map((q, i) => own(line(q, pts[(i + 1) % 3]!))))));
+  });
+  return own(unwrap(loft(sections, { ruled: false }))) as Shape;
+};
+// A slotted screw along Z, and its thread. The head sits on z = 0. The shank is the thread root, and the thread
+// is on the last part of it.
+const slotted = (t: Thread, r: number, length: number, threaded: number): [Shape, Shape] => {
+  const profile: P2[] = [[0, -length], [t.minor / 2, -length], [t.minor / 2, 0], [r, 0], [r, 0.3], [0, 0.3]];
+  const body = own(unwrap(revolve(own(unwrap(polygon(profile.map(([x, z]): P3 => [x, 0, z])))))));
+  const slot = own(translate(own(box(2 * r + 0.2, 0.2, 0.2)), [-r - 0.1, -0.1, 0.16]));
+  return [own(unwrap(cut(body, slot))) as Shape, helixTooth(t, t.minor / 2, t.major / 2, 0.42 * t.pitch - length, threaded - length - 0.42 * t.pitch, 0)];
+};
+// The thread in a hole, from z = 0 down to a depth. It is half a pitch from the thread of a screw on the same axis.
+const tapped = (t: Thread, depth: number): Shape => helixTooth(t, t.major / 2 + PLAY, t.minor / 2 + PLAY, 0.42 * t.pitch - depth, -0.42 * t.pitch, t.pitch / 2);
+const bore = (t: Thread): number => t.major / 2 + PLAY; // the radius of a hole that gets a thread
 
 // A pierced jewel, flush with the face at z1.
 const jewel = (c: P2, z0: number, z1: number, r = 0.55): Shape => at(ring(0.13, r, z0, z1), c);
@@ -820,7 +921,7 @@ function angles(time: number): Record<Mobile, number> {
 }
 
 // All parts of the movement after a running time in seconds.
-function movementParts(time = 0): Part[] {
+function movementParts(time = 0, explode = 0): Part[] {
   const A = angles(time);
   const parts: Part[] = [];
   const add = (tone: Tone, lift: number, ...shapes: Shape[]): void => {
@@ -830,12 +931,23 @@ function movementParts(time = 0): Part[] {
     for (const shape of shapes) parts.push({ tone, lift, on, shape: at(shape, ARBOR[on], 0, A[on]) });
   };
 
+  // ---- where the screws are: three on the barrel bridge, two on the train bridge, one on the cock, two on the
+  // pallet bridge and one on the click. A bridge screw goes through a foot of its bridge into the plate.
+  const [g0, g1] = Z.bridge;
+  const barrelScrews: P2[] = [[-2.4, 15.6], [13.9, 9.4], [15.8, -3.4]];
+  const trainScrews: P2[] = [[-13.2, 8.2], [-14.6, -5.2]];
+  const cockScrew = polar(COCK_FOOT, 0.9, STUD_DIR);
+  const palletScrews = [-3.85, -5.05].map((d) => polar(AT_PALLET, d, TO_BALANCE + Math.PI / 2));
+  const clickAt = polar(AT_BARREL, 8.75, (150 * Math.PI) / 180);
+  const through = (t: Thread, c: P2, z0: number, z1: number): Shape => disc(t.major / 2 + 0.05, z0, z1, c); // a clearance hole
+
   // ---- main plate: the dial side has a recess for the motion works
   const [p0, p1] = Z.plate;
+  const tappedHoles = [...[...barrelScrews, ...trainScrews, cockScrew].map((c) => disc(bore(S08), -1.0, 0.1, c)), ...palletScrews.map((c) => disc(bore(S06), -0.66, 0.1, c))];
   const recess = [disc(4.9, p0 - 0.1, -0.7, AT_CENTRE), disc(4.7, p0 - 0.1, -0.7, AT_MINUTE), disc(2.3, p0 - 0.1, -0.7, AT_SET1), disc(2.3, p0 - 0.1, -0.7, AT_SET2)];
   const pivots = [...[AT_CENTRE, AT_THIRD, AT_FOURTH, AT_ESCAPE, AT_PALLET].map((c) => disc(0.55, -0.3, 0.1, c)), disc(0.6, -0.62, 0.1, AT_BALANCE)];
   const stemSlot = own(translate(own(box(R - 9.4, 3.7, 1.5)), [9.5, -1.85, -1.05])) as Shape;
-  add('plate', 0, minus(disc(R, p0, p1), [...recess, ...pivots, stemSlot, disc(1.0, p0 - 0.1, p1 + 0.1, AT_BARREL), disc(0.5, p0 - 0.1, p1 + 0.1, AT_CENTRE), disc(0.2, p0 - 0.1, p1 + 0.1, AT_FOURTH)]));
+  add('plate', 0, minus(disc(R, p0, p1), [...recess, ...pivots, ...tappedHoles, stemSlot, disc(1.0, p0 - 0.1, p1 + 0.1, AT_BARREL), disc(0.5, p0 - 0.1, p1 + 0.1, AT_CENTRE), disc(0.2, p0 - 0.1, p1 + 0.1, AT_FOURTH)]));
 
   // ---- barrel: 88 teeth on the drum, the mainspring inside, the arbor up to the ratchet wheel
   const [b0, b1] = Z.barrelTeeth;
@@ -843,7 +955,7 @@ function movementParts(time = 0): Part[] {
   turn('barrel', 'brass', 1, drum);
   turn('barrel', 'brass', 1.5, ring(0.95, 7.2, 2.3, 2.42));
   turn('barrel', 'blue', 1.25, spiral(1.75, 7.05, 19.53, 0.165, b0 + 0.25, b0 + 1.75)); // 1.5 x 0.165 x 540 mm
-  add('steel', 1, at(fused([disc(0.9, 0.05, 3.2), disc(1.6, b0 + 0.25, 2.3)]), AT_BARREL));
+  add('steel', 1, at(minus(fused([disc(0.9, 0.05, 3.2), disc(1.6, b0 + 0.25, 2.3)]), [disc(bore(S08), 2.05, 3.3)]), AT_BARREL)); // tapped for the ratchet screw
 
   // ---- going train. Each mobile is a wheel and the pinion that the wheel before it drives.
   const mobile = (on: Mobile, wheelShape: Shape, pinion: Shape, zArbor: readonly [number, number]): void => {
@@ -882,8 +994,7 @@ function movementParts(time = 0): Part[] {
   const coils = HAIRSPRING.turns - A.balance / TAU;
   add('blue', 2, at(spiral(HAIRSPRING.r0, HAIRSPRING.r1, coils, 0.04, 2.0, 2.22), AT_BALANCE, 0, STUD_DIR - coils * TAU));
 
-  // ---- bridges. Each one is a slab on a wall at the rim of the plate.
-  const [g0, g1] = Z.bridge;
+  // ---- bridges. Each one is a slab on a wall at the rim of the plate, with a foot under each screw.
   const rounded = (s: Shape, r: number): Shape => own(unwrap(fillet(s, edgeFinder().inDirection('Z').findAll(s), r))) as Shape;
   const bevel = (s: Shape, z: number): Shape => {
     const onTop = (e: Parameters<typeof getBounds>[0]) => {
@@ -892,19 +1003,22 @@ function movementParts(time = 0): Part[] {
     };
     return own(unwrap(chamfer(s, edgeFinder().when(onTop).findAll(s), 0.1))) as Shape;
   };
-  const slab = (outline: P2[], holes: Shape[]): Shape => {
+  const slab = (outline: P2[], holes: Shape[], screws: P2[]): Shape => {
     const top = bevel(own(unwrap(intersect(rounded(prism(outline, g0, g1), 0.9), disc(R - 0.15, g0, g1)))) as Shape, g1);
     const wall = own(unwrap(intersect(prism(outline, 0, g0), ring(R - 1.5, R - 0.15, 0, g0)))) as Shape;
-    return minus(fused([top, wall]), holes);
+    return minus(fused([top, wall, ...screws.map((c) => disc(1.0, 0, g0 + 0.1, c))]), [...holes, ...screws.map((c) => through(S08, c, -0.1, g1 + 0.1))]);
   };
   const stemHole = own(cylinder(1.0, 4, { at: [R - 3, 0, 0.9], axis: [1, 0, 0] }));
   const barrelBridge = slab(
     [[-4, 20], [-4, 3.2], [-2.2, -1.4], [0.8, -2.6], [10, -2.6], [13.2, -4.9], [20, -4.9], [20, 20]],
-    [disc(7.15, 2.9, g1 + 0.1, AT_BARREL), disc(4.6, 2.9, g1 + 0.1, AT_CROWN), disc(1.0, g0 - 0.1, g1, AT_BARREL), disc(0.55, g0 - 0.1, g1 + 0.1, AT_CENTRE), stemHole, disc(8.9, -0.1, g0 - 0.02, AT_BARREL), own(translate(own(box(1.2, 2.6, 0.6)), [12.3, -1.3, g0 - 0.1])) as Shape],
+    [disc(7.15, 2.9, g1 + 0.1, AT_BARREL), disc(4.6, 2.9, g1 + 0.1, AT_CROWN), disc(1.0, g0 - 0.1, g1, AT_BARREL), disc(0.55, g0 - 0.1, g1 + 0.1, AT_CENTRE), stemHole, disc(8.9, -0.1, g0 - 0.02, AT_BARREL), own(translate(own(box(1.2, 2.6, 0.6)), [12.3, -1.3, g0 - 0.1])) as Shape,
+      disc(bore(S08), g0 - 0.1, 2.95, AT_CROWN), disc(bore(S06), g1 - 0.66, g1 + 0.1, clickAt)], // tapped for the crown wheel screw and the click screw
+    barrelScrews,
   );
   const trainBridge = slab(
     [[-20, 10.5], [-4.6, 10.5], [-4.6, 3.4], [-2.9, -1.0], [-4.9, -2.2], [-12.5, -8], [-20, -8]],
     [AT_THIRD, AT_FOURTH, AT_ESCAPE].map((c) => disc(0.55, g0 - 0.1, g1 + 0.1, c)),
+    trainScrews,
   );
   add('bridge', 3, barrelBridge, trainBridge);
 
@@ -914,7 +1028,7 @@ function movementParts(time = 0): Part[] {
   const side = (c: P2, w: number, s: 1 | -1): P2 => polar(c, w, armDir + (s * Math.PI) / 2);
   const head = Array.from({ length: 13 }, (_, i): P2 => polar(AT_BALANCE, 1.9, armDir - (130 * Math.PI) / 180 - (i * 100 * Math.PI) / 180 / 12));
   const cockTop = prism([side(AT_BALANCE, 1.5, 1), side(foot, 2.6, 1), side(polar(foot, 2.6, armDir), 2.6, 1), side(polar(foot, 2.6, armDir), 2.6, -1), side(foot, 2.6, -1), side(AT_BALANCE, 1.5, -1), ...head], g0, g1);
-  const cock = minus(fused([bevel(own(unwrap(intersect(cockTop, disc(R - 0.15, g0, g1)))) as Shape, g1), own(unwrap(intersect(prism([side(polar(foot, -1.6, armDir), 2.6, 1), side(polar(foot, 2.6, armDir), 2.6, 1), side(polar(foot, 2.6, armDir), 2.6, -1), side(polar(foot, -1.6, armDir), 2.6, -1)], 0, g0), disc(R - 0.15, 0, g0)))) as Shape]), [disc(0.7, g0 - 0.1, g1 + 0.1, AT_BALANCE)]);
+  const cock = minus(fused([bevel(own(unwrap(intersect(cockTop, disc(R - 0.15, g0, g1)))) as Shape, g1), own(unwrap(intersect(prism([side(polar(foot, -1.6, armDir), 2.6, 1), side(polar(foot, 2.6, armDir), 2.6, 1), side(polar(foot, 2.6, armDir), 2.6, -1), side(polar(foot, -1.6, armDir), 2.6, -1)], 0, g0), disc(R - 0.15, 0, g0)))) as Shape]), [disc(0.7, g0 - 0.1, g1 + 0.1, AT_BALANCE), through(S08, cockScrew, -0.1, g1 + 0.1)]);
   add('bridge', 3, cock);
   add('steel', 3, disc(0.22, 2.0, g0, polar(AT_BALANCE, HAIRSPRING.r1 + 0.25, STUD_DIR))); // the stud that holds the hairspring
   // Regulator: a pointer on the cock (display shape).
@@ -924,7 +1038,7 @@ function movementParts(time = 0): Part[] {
   const across = TO_BALANCE + Math.PI / 2;
   const bar = (z0: number, z1: number, from: number, to: number): Shape =>
     prism([polar(polar(AT_PALLET, from, across), 1.0, TO_BALANCE), polar(polar(AT_PALLET, to, across), 1.0, TO_BALANCE), polar(polar(AT_PALLET, to, across), -1.0, TO_BALANCE), polar(polar(AT_PALLET, from, across), -1.0, TO_BALANCE)], z0, z1);
-  add('bridge', 2.5, minus(fused([bar(0.95, 1.2, -5.7, 1.0), bar(0, 0.95, -5.7, -3.2)]), [disc(0.45, 0.9, 1.25, AT_PALLET)]));
+  add('bridge', 2.5, minus(fused([bar(0.95, 1.2, -5.7, 1.0), bar(0, 0.95, -5.7, -3.2)]), [disc(0.45, 0.9, 1.25, AT_PALLET), ...palletScrews.map((c) => through(S06, c, -0.1, 1.3))]));
 
   // ---- 17 jewels: a pair for each of five arbors, hole and cap jewels for the balance, the impulse jewel, two stones
   for (const c of [AT_CENTRE, AT_THIRD, AT_FOURTH, AT_ESCAPE]) {
@@ -940,8 +1054,7 @@ function movementParts(time = 0): Part[] {
   add('steel', 4, at(gear(WINDING.ratchet, WINDING.module, [2.92, 3.2], 0, 1.8), AT_BARREL));
   const crownA = meshAngle(AT_BARREL, 0, WINDING.ratchet, AT_CROWN, WINDING.crown);
   add('steel', 4, at(minus(gear(WINDING.crown, WINDING.module, [2.92, 3.2]), [disc(0.6, 2.8, 3.3)]), AT_CROWN, 0, crownA));
-  const clickAt = polar(AT_BARREL, 8.75, (150 * Math.PI) / 180);
-  add('steel', 4, at(prism([[-0.6, -0.5], [2.1, -0.25], [2.3, 0.35], [-0.6, 0.5]], g1, g1 + 0.25), clickAt, 0, (-65 * Math.PI) / 180));
+  add('steel', 4, at(minus(prism([[-0.6, -0.5], [2.1, -0.25], [2.3, 0.35], [-0.6, 0.5]], g1, g1 + 0.25), [through(S06, [0, 0], g1 - 0.1, g1 + 0.35)]), clickAt, 0, (-65 * Math.PI) / 180));
   // The stem carries the winding pinion and the sliding pinion. Their tooth counts are not published.
   const onStem = (g: Shape, x: number): Shape => own(translate(own(rotate(g, 90, { axis: [0, 1, 0] })), [x, 0, 0.9])) as Shape;
   add('steel', 1, fused([own(cylinder(0.6, CASE.crown - 8.5, { at: [8.5, 0, 0.9], axis: [1, 0, 0] })), onStem(gear(16, 0.2, [0, 0.9], 0, 0), 12.45), onStem(gear(12, 0.19, [0, 1.3], 0, 0), 9.5)]));
@@ -954,13 +1067,24 @@ function movementParts(time = 0): Part[] {
   turn('set1', 'steel', -1, gear(WINDING.setting, MOTION.module, [-0.9, -0.76], 0.2));
   turn('set2', 'steel', -1, gear(WINDING.setting, MOTION.module, [-0.9, -0.76], -0.2));
 
-  // ---- screws: three on the barrel bridge, two on the train bridge, two on the pallet bridge, one on the cock
-  const heads: [P2, number][] = [
-    [[-2, 14.2], g1], [[13.9, 9.4], g1], [[15.8, -3.4], g1],
-    [[-13.2, 8.2], g1], [[-14.6, -5.2], g1],
-    [polar(foot, 0.9, armDir), g1],
-  ];
-  add('blue', 4, ...heads.map(([c, z]) => screw(c, z)), ...[-3.85, -5.05].map((d) => screw(polar(AT_PALLET, d, across), 1.2, 0.5)), screw(AT_BARREL, 3.2, 0.95), screw(AT_CROWN, 3.2, 0.95), screw(clickAt, g1 + 0.25, 0.5));
+  // ---- screws. Each one has a slot, a shank and a true thread, and its hole has the mating thread. In the
+  // exploded view a screw turns out of its thread, one turn for each pitch. into is the level of the tapped part.
+  const fasten = (t: Thread, [body, thread]: [Shape, Shape], nut: Shape, c: P2, z: number, grip: number, tone: Tone, into: number): void => {
+    const slotAt = (c[0] * 7 + c[1] * 3) % TAU;
+    const turned = (slotAt + (((4 - into) * explode * LIFT) / t.pitch) * TAU) % TAU;
+    add('blue', 4, at(body, c, z, turned), at(thread, c, z, turned));
+    add(tone, into, at(nut, c, z - grip, (slotAt - (grip / t.pitch) * TAU) % TAU));
+  };
+  const bridgeScrew = slotted(S08, 0.75, g1 + 0.8, 0.8);
+  const wheelScrew = slotted(S08, 0.95, 1.05, 0.7);
+  const palletScrew = slotted(S06, 0.5, 1.8, 0.6);
+  const clickScrew = slotted(S06, 0.5, 0.9, 0.65);
+  const [deep, shallow, small] = [tapped(S08, 0.7), tapped(S08, 0.45), tapped(S06, 0.6)];
+  for (const c of [...barrelScrews, ...trainScrews, cockScrew]) fasten(S08, bridgeScrew, deep, c, g1, g1, 'plate', 0);
+  for (const c of palletScrews) fasten(S06, palletScrew, small, c, 1.2, 1.2, 'plate', 0);
+  fasten(S08, wheelScrew, deep, AT_BARREL, 3.2, 0.35, 'steel', 1); // the ratchet wheel, on the barrel arbor
+  fasten(S08, wheelScrew, shallow, AT_CROWN, 3.2, 0.3, 'bridge', 3); // the crown wheel, on the barrel bridge
+  fasten(S06, clickScrew, small, clickAt, g1 + 0.25, 0.25, 'bridge', 3);
 
   // Gold settings round the four train jewels of the bridges, and the scale of the regulator on the cock.
   add('brass', 3, ...[AT_CENTRE, AT_THIRD, AT_FOURTH, AT_ESCAPE].map((c) => at(ring(0.55, 0.85, g1, g1 + 0.04), c)));
@@ -1043,7 +1167,7 @@ interface WatchParams {
 }
 
 const watch = ({ time = 0, explode = 0 }: WatchParams = {}) => freeing(() => {
-  const parts = movementParts(time);
+  const parts = movementParts(time, explode);
   const tones: Tone[] = ['plate', 'bridge', 'brass', 'steel', 'blue', 'ruby', 'dial', 'ink', 'case', 'glass'];
   const built = Object.fromEntries(
     tones.map((tone) => [
@@ -1087,7 +1211,7 @@ export default [
     id: 'mars-rover',
     label: 'Mars Rover',
     description:
-      'A six-wheel planetary rover of the 1-tonne class with a rocker-bogie suspension, in cutaway. The wheel size, the corner wheel positions, the deck height, the ground clearance, the mast height and the arm length are published figures. The kernel measures the volume of each part, and the example turns the volumes into a mass budget of 899 kg and a centre of mass. The arm parameter moves the arm, and the centre of mass moves with it. The link lengths, the body layout and the equipment inside the body are a display model.',
+      'A six-wheel planetary rover of the 1-tonne class with a rocker-bogie suspension, in cutaway. The wheel size, the corner wheel positions, the deck height, the ground clearance, the mast height and the arm length are published figures. The kernel measures the volume of each part, and the example turns the volumes into a mass budget of 899 kg and a centre of mass. The arm parameter moves the arm, and the centre of mass moves with it. The screws are hexagon head screws M5, M6 and M8 to ISO 4017, each in a clearance hole and a tapped hole. The link lengths, the body layout and the equipment inside the body are a display model.',
     code: `import {
   box,
   circle,
@@ -1159,6 +1283,14 @@ const TOTAL_KG = 899;
 const PUBLISHED_KG = { power: 45, arm: 70, turret: 30 };
 // kg per cubic millimetre. An instrument box is mostly electronics and air.
 const DENSITY = { aluminium: 2.7e-6, titanium: 4.43e-6, instrument: 0.8e-6, cable: 2.2e-6 };
+// Hexagon head screws (ISO 4017) with the coarse thread (ISO 724): width across flats, head height, clearance
+// hole of the medium series (ISO 273) and tap drill (ISO 2306).
+const SCREW = {
+  M5: { pitch: 0.8, minor: 4.134, flats: 8, head: 3.5, clearance: 5.5, tapDrill: 4.2 },
+  M6: { pitch: 1, minor: 4.917, flats: 10, head: 4, clearance: 6.6, tapDrill: 5 },
+  M8: { pitch: 1.25, minor: 6.647, flats: 13, head: 5.3, clearance: 9, tapDrill: 6.8 },
+};
+type Size = keyof typeof SCREW;
 
 // ---- display layout
 const BODY = { x0: -720, x1: 850, half: 800 };
@@ -1200,21 +1332,39 @@ const beam = (a: P3, b: P3, w: number, h: number, wall = 0): Shape => {
   const pitched = own(rotate(s, -Math.atan2(d[2], Math.hypot(d[0], d[1])) / DEG, { axis: [0, 1, 0] }));
   return own(translate(own(rotate(pitched, Math.atan2(d[1], d[0]) / DEG)), a)) as Shape;
 };
-// A ring of bolt heads about the line from a toward b.
-const bolts = (a: P3, b: P3, radius: number, count: number, r = 6): Shape => {
-  const d: P3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-  const len = Math.hypot(...d);
-  const n: P3 = [d[0] / len, d[1] / len, d[2] / len];
-  const flat = Math.hypot(n[0], n[1]);
-  const u: P3 = flat < 0.4 ? [1, 0, 0] : [-n[1] / flat, n[0] / flat, 0];
-  const v: P3 = [n[1] * u[2] - n[2] * u[1], n[2] * u[0] - n[0] * u[2], n[0] * u[1] - n[1] * u[0]];
-  return group(
-    Array.from({ length: count }, (_, i) => {
+// A ring of hexagon head screws about the line through seat along n. The heads sit on the plane of seat and
+// point along n. Each screw goes through a part of thickness grip into a tapped hole in the part under it.
+// The threads are inside the holes and are not modelled: a shank is the root cylinder, in a hole of the tap
+// drill size. clear and tap are the tools that cut the holes in the two parts.
+type Ring = { screws: Shape; clear: Shape[]; tap: Shape[] };
+type Bolted = (seat: P3, n: P3, radius: number, count: number, size: Size, grip: number, length: number) => Ring;
+const fasteners = (): Bolted => {
+  const made = new Map<string, Shape>();
+  const screw = (size: Size, length: number): Shape => {
+    const key = size + ' x ' + length;
+    const { flats, head, minor } = SCREW[size];
+    const c = flats / Math.sqrt(3);
+    const hexagon = (): Shape => own(unwrap(extrude(own(unwrap(polygon(Array.from({ length: 6 }, (_, i): P3 => [c * Math.cos(i * 60 * DEG), c * Math.sin(i * 60 * DEG), 0])))), head))) as Shape;
+    if (!made.has(key)) made.set(key, fused([hexagon(), own(cylinder(minor / 2, length, { at: [0, 0, -length] }))]));
+    return made.get(key) as Shape;
+  };
+  return (seat, n, radius, count, size, grip, length) => {
+    const flat = Math.hypot(n[0], n[1]);
+    const u: P3 = flat < 0.4 ? [1, 0, 0] : [-n[1] / flat, n[0] / flat, 0];
+    const v: P3 = [n[1] * u[2] - n[2] * u[1], n[2] * u[0] - n[0] * u[2], n[0] * u[1] - n[1] * u[0]];
+    const turned = own(rotate(screw(size, length), Math.atan2(flat, n[2]) / DEG, { axis: flat < 1e-9 ? [1, 0, 0] : [-n[1], n[0], 0] })) as Shape;
+    const spots = Array.from({ length: count }, (_, i) => {
       const t = (i * 2 * Math.PI) / count;
-      const at = [0, 1, 2].map((k) => (a[k] as number) + radius * (Math.cos(t) * (u[k] as number) + Math.sin(t) * (v[k] as number))) as P3;
-      return own(cylinder(r, len, { at, axis: n }));
-    }),
-  );
+      return [0, 1, 2].map((k) => (seat[k] as number) + radius * (Math.cos(t) * (u[k] as number) + Math.sin(t) * (v[k] as number))) as P3;
+    });
+    const hole = (p: P3, d: number, from: number, to: number): Shape =>
+      own(cylinder(d / 2, to - from, { at: [p[0] + n[0] * from, p[1] + n[1] * from, p[2] + n[2] * from], axis: n }));
+    return {
+      screws: group(spots.map((p) => own(translate(turned, p)) as Shape)),
+      clear: spots.map((p) => hole(p, SCREW[size].clearance, -grip - 1, 1)),
+      tap: spots.map((p) => hole(p, SCREW[size].tapDrill, -length - 2, 1 - grip)),
+    };
+  };
 };
 // A cable: a circle swept along a smooth curve through the points.
 const cable = (points: P3[], r: number): Shape => {
@@ -1227,7 +1377,7 @@ const pathLength = (points: P3[]): number =>
   points.slice(1).reduce((sum, p, i) => sum + Math.hypot(p[0] - (points[i] as P3)[0], p[1] - (points[i] as P3)[1], p[2] - (points[i] as P3)[2]), 0);
 
 // ---- one wheel, with its axis on Z and its inner side at +Z. All six wheels are copies of it.
-function wheelParts() {
+function wheelParts(bolted: Bolted) {
   const { radius: r, width: w, skin, grousers, grouserHeight } = WHEEL;
   const ring = (r0: number, r1: number, z0: number, z1: number): Shape =>
     solidOf(own(cylinder(r1, z1 - z0, { at: [0, 0, z0] })), [own(cylinder(r0, z1 - z0 + 2, { at: [0, 0, z0 - 1] }))]);
@@ -1258,11 +1408,16 @@ function wheelParts() {
   ];
   const spoke = own(unwrap(extrude(own(unwrap(face(own(unwrap(wire(edges))) as never))), 66))) as Shape;
   const spokes = Array.from({ length: 6 }, (_, i) => own(rotate(spoke, i * 60)) as Shape);
-  // The drive actuator in the hub, with cooling ribs, and a cap with its bolts on the outer side.
-  const hub = fused([own(cylinder(70, 195, { at: [0, 0, 20] })), ...[70, 110, 150, 190].map((z) => own(cylinder(80, 8, { at: [0, 0, z] })))]);
-  const cap = own(cylinder(88, 30, { at: [0, 0, -10] }));
-  const capBolts = bolts([0, 0, -16], [0, 0, -10], 66, 8);
-  return { tyre, spokes, hub, cap, capBolts };
+  // The drive actuator in the hub, with cooling ribs. A cap is bolted to its outer end, and the flange of the
+  // suspension bracket to its inner end.
+  const capRing = bolted([0, 0, -10], [0, 0, -1], 58, 8, 'M8', 30, 40);
+  const flangeRing = bolted([0, 0, 275], [0, 0, 1], 58, 8, 'M6', 60, 70);
+  const hub = solidOf(fused([own(cylinder(70, 195, { at: [0, 0, 20] })), ...[70, 110, 150, 190].map((z) => own(cylinder(80, 8, { at: [0, 0, z] })))]), [...capRing.tap, ...flangeRing.tap]);
+  const cap = solidOf(own(cylinder(88, 30, { at: [0, 0, -10] })), capRing.clear);
+  const flange = solidOf(own(cylinder(85, 60, { at: [0, 0, 215] })), flangeRing.clear);
+  // The bracket beam goes through the flange: an access hole in the beam lets the top screw pass.
+  const access = [58, -58].map((y) => own(cylinder(8, 80, { at: [0, y, 200] })) as Shape);
+  return { tyre, spokes, hub, cap, capBolts: capRing.screws, flange, flangeBolts: flangeRing.screws, access };
 }
 
 // ---- the suspension pose. Each side is a planar linkage: the bogie keeps the middle and the rear wheel on the
@@ -1327,16 +1482,28 @@ function roverParts(arm = 0): Part[] {
     const at = [0, 1, 2].map((k) => points.reduce((sum, p) => sum + (p[k] as number), 0) / points.length) as P3;
     parts.push({ system, tone: 'gold', link, shape: cable(points, r), kg: DENSITY.cable * Math.PI * r * r * pathLength(points), at });
   };
-  // An actuator: a ribbed can from a to b, with a cap and a ring of bolts at b.
+  const bolted = fasteners();
+  // An actuator: a ribbed can from a to b, with a cap at b. Eight screws go through the cap into the can.
+  // Actuators of one size and direction are copies.
+  const actuators = new Map<string, { a: P3; shapes: Shape[] }>();
   const actuator = (system: System, link: Link, a: P3, b: P3, r: number): void => {
     const len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
-    const out = (d: number): P3 => along(a, b, 1 + d / len);
-    add(system, 'dark', link, DENSITY.aluminium, fused([rod(a, b, r), ...[0.25, 0.5, 0.75].map((t) => rod(along(a, b, t - 4 / len), along(a, b, t + 4 / len), r + 7))]));
-    add(system, 'metal', link, DENSITY.aluminium, rod(b, out(12), r + 6), bolts(out(12), out(17), r - 8, 8, 5));
+    const n: P3 = [(b[0] - a[0]) / len, (b[1] - a[1]) / len, (b[2] - a[2]) / len];
+    const key = [r, len, ...n].join(' ');
+    if (!actuators.has(key)) {
+      const out = (d: number): P3 => along(a, b, 1 + d / len);
+      const ring = bolted(out(12), n, r - 8, 8, 'M6', 12, 20);
+      const can = solidOf(fused([rod(a, b, r), ...[0.25, 0.5, 0.75].map((t) => rod(along(a, b, t - 4 / len), along(a, b, t + 4 / len), r + 7))]), ring.tap);
+      actuators.set(key, { a, shapes: [can, solidOf(rod(b, out(12), r + 6), ring.clear), ring.screws] });
+    }
+    const first = actuators.get(key) as { a: P3; shapes: Shape[] };
+    const [can, cap, screws] = first.shapes.map((s) => own(translate(s, [a[0] - first.a[0], a[1] - first.a[1], a[2] - first.a[2]])) as Shape) as [Shape, Shape, Shape];
+    add(system, 'dark', link, DENSITY.aluminium, can);
+    add(system, 'metal', link, DENSITY.aluminium, cap, screws);
   };
 
   // ---- wheels and suspension, one side at a time (side = 1 is the left)
-  const wheel = wheelParts();
+  const wheel = wheelParts(bolted);
   const r = WHEEL.radius;
   for (const side of [1, -1] as const) {
     const rocker: Link = side > 0 ? 'rockerL' : 'rockerR';
@@ -1350,8 +1517,8 @@ function roverParts(arm = 0): Part[] {
       add('wheels', 'metal', link, DENSITY.aluminium, put(wheel.cap), put(wheel.capBolts));
       // The bracket from the inner end of the hub up to the suspension.
       const inner = y - side * 245;
-      add('suspension', 'titanium', link, DENSITY.titanium, beam([x, inner, r], [x, inner, 540], 70, 50, 3), rod([x, inner + side * 30, r], [x, inner - side * 30, r], 85));
-      add('suspension', 'metal', link, DENSITY.aluminium, bolts([x, inner - side * 30, r], [x, inner - side * 36, r], 68, 8, 5));
+      add('suspension', 'titanium', link, DENSITY.titanium, solidOf(beam([x, inner, r], [x, inner, 540], 70, 50, 3), wheel.access.map(put)), put(wheel.flange));
+      add('suspension', 'metal', link, DENSITY.aluminium, put(wheel.flangeBolts));
     };
     // A corner wheel hangs from a steering actuator above the tread.
     const steered = (link: Link, x: number): void => {
@@ -1372,10 +1539,11 @@ function roverParts(arm = 0): Part[] {
     const middleEnd: P3 = [0, middle - side * 245, 540];
     add('suspension', 'titanium', rocker, DENSITY.titanium, rod(along(pivot, frontEnd, 0.075), frontEnd, 45, 42), rod(along(pivot, bogiePivot, 0.09), bogiePivot, 45, 42));
     add('suspension', 'titanium', bogie, DENSITY.titanium, rod(along(bogiePivot, middleEnd, 0.12), middleEnd, 40, 37), rod(along(bogiePivot, rearEnd, 0.1), rearEnd, 40, 37));
-    // The pivot housings, with a cap and bolts on the outer side.
+    // The pivot housings. Ten screws go through the cap on the outer side into the housing.
     const knuckle = (link: Link, c: P3, radius: number, y0: number, y1: number): void => {
-      add('suspension', 'titanium', link, DENSITY.titanium, rod([c[0], c[1] + side * y0, c[2]], [c[0], c[1] + side * y1, c[2]], radius));
-      add('suspension', 'metal', link, DENSITY.aluminium, rod([c[0], c[1] + side * y1, c[2]], [c[0], c[1] + side * (y1 + 10), c[2]], radius - 12), bolts([c[0], c[1] + side * y1, c[2]], [c[0], c[1] + side * (y1 + 5), c[2]], radius - 6, 10, 4));
+      const ring = bolted([c[0], c[1] + side * (y1 + 10), c[2]], [0, side, 0], radius - 22, 10, 'M5', 10, 20);
+      add('suspension', 'titanium', link, DENSITY.titanium, solidOf(rod([c[0], c[1] + side * y0, c[2]], [c[0], c[1] + side * y1, c[2]], radius), ring.tap));
+      add('suspension', 'metal', link, DENSITY.aluminium, solidOf(rod([c[0], c[1] + side * y1, c[2]], [c[0], c[1] + side * (y1 + 10), c[2]], radius - 12), ring.clear), ring.screws);
     };
     knuckle(rocker, pivot, 72, -55, 55);
     knuckle(bogie, bogiePivot, 62, 50, 115);
@@ -1389,9 +1557,11 @@ function roverParts(arm = 0): Part[] {
     add('suspension', 'titanium', 'body', DENSITY.titanium, rod([PIVOT[0] - 150, side * (BODY.half + 55), PIVOT[1] + 40], [PIVOT[0] - 150, side * (BODY.half + 55), DECK + 60], 14));
     add('suspension', 'metal', 'body', DENSITY.aluminium, rod([PIVOT[0] - 150, side * (BODY.half + 40), DECK + 60], [PIVOT[0] - 150, side * (BODY.half + 70), DECK + 60], 24));
   }
-  add('suspension', 'titanium', 'body', DENSITY.titanium, beam([PIVOT[0] - 150, -BODY.half - 60, DECK + 60], [PIVOT[0] - 150, BODY.half + 60, DECK + 60], 60, 36, 3));
+  // The differential bar. Eight screws go through the pivot cap into the top wall of the bar.
+  const pivotRing = bolted([PIVOT[0] - 150, 0, DECK + 90], [0, 0, 1], 22, 8, 'M6', 12, 16);
+  add('suspension', 'titanium', 'body', DENSITY.titanium, solidOf(beam([PIVOT[0] - 150, -BODY.half - 60, DECK + 60], [PIVOT[0] - 150, BODY.half + 60, DECK + 60], 60, 36, 3), pivotRing.tap));
   add('suspension', 'dark', 'body', DENSITY.aluminium, own(cylinder(70, 44, { at: [PIVOT[0] - 150, 0, DECK] })));
-  add('suspension', 'metal', 'body', DENSITY.aluminium, own(cylinder(48, 12, { at: [PIVOT[0] - 150, 0, DECK + 78] })), bolts([PIVOT[0] - 150, 0, DECK + 90], [PIVOT[0] - 150, 0, DECK + 95], 34, 8, 5));
+  add('suspension', 'metal', 'body', DENSITY.aluminium, solidOf(own(cylinder(48, 12, { at: [PIVOT[0] - 150, 0, DECK + 78] })), pivotRing.clear), pivotRing.screws);
 
   // ---- body: a thin aluminium box with sloped ends below, a deck plate, side panels and a rail round the deck
   const { x0, x1, half } = BODY;
@@ -1431,13 +1601,16 @@ function roverParts(arm = 0): Part[] {
       add('body', 'metal', 'body', DENSITY.aluminium, rod([x + dir * 44, y, 885], [x + dir * 56, y, 885], 22, 14));
     }
 
-  // ---- power source at the rear: a finned cylinder with its published mass, between two heat exchanger plates
+  // ---- power source at the rear: a finned cylinder with its published mass, between two heat exchanger plates.
+  // Twelve screws go through its end plate into the cylinder.
   const fin = Array.from({ length: 8 }, (_, i) => own(rotate(own(translate(own(box(200, 5, 600)), [120, -2.5, 30])), i * 45 + 22.5)) as Shape);
-  const generator = fused([own(cylinder(130, 660)), own(cylinder(150, 24, { at: [0, 0, -12] })), own(cylinder(150, 24, { at: [0, 0, 648] })), ...fin]);
+  const endRing = bolted([0, 0, 672], [0, 0, 1], 120, 12, 'M8', 24, 35);
+  const generator = solidOf(fused([own(cylinder(130, 648)), own(cylinder(150, 24, { at: [0, 0, -12] })), ...fin]), endRing.tap);
+  const endPlate = solidOf(own(cylinder(150, 24, { at: [0, 0, 648] })), endRing.clear);
   const lean = (s: Shape): Shape => own(translate(own(rotate(s, -65, { axis: [0, 1, 0] })), [x0 - 60, 0, 1010])) as Shape;
   // A point of the leaned frame: x across the cylinder, y to the left, z along the cylinder.
   const leanAt = (p: P3): P3 => [x0 - 60 + p[0] * Math.cos(65 * DEG) - p[2] * Math.sin(65 * DEG), p[1], 1010 + p[0] * Math.sin(65 * DEG) + p[2] * Math.cos(65 * DEG)];
-  lump('power', 'body', PUBLISHED_KG.power, [['white', lean(generator)], ['metal', lean(bolts([0, 0, 672], [0, 0, 678], 120, 12, 6))]]);
+  lump('power', 'body', PUBLISHED_KG.power, [['white', lean(generator)], ['white', lean(endPlate)], ['metal', lean(endRing.screws)]]);
   add('body', 'white', 'body', DENSITY.aluminium, ...[-1, 1].map((s) => lean(own(translate(own(box(520, 8, 620)), [-260, s * 400 - 4, 20])) as Shape)));
   add('body', 'titanium', 'body', DENSITY.titanium, ...[-1, 1].flatMap((s) => [rod([x0, s * 150, 980], leanAt([0, s * 110, 120]), 16), rod([x0, s * 420, 1040], leanAt([0, s * 400, 200]), 12), rod([x0, s * 150, 800], leanAt([-100, s * 100, 60]), 14)]));
   // Coolant tubes from the body to the heat exchanger plates.
@@ -1623,8 +1796,8 @@ export default [
     id: 'server-chassis',
     label: 'Server Chassis (1U)',
     description:
-      'A 1U rack-mount server chassis for a 19-inch rack. Seven sheet-metal parts make the enclosure, and each one is a feature tree of bends and cutouts: the kernel folds it, unfolds it to a flat blank, and nests the blanks of four chassis on one stock sheet. The DXF button downloads that sheet. The rack dimensions, the fans, the drives, the board size and the power supply size are published figures. The layout, the vents and all small parts are a display model.',
-    code: `import { box, compound, cutAll, cylinder, polygon, revolve, rotate, translate, unwrap } from 'brepjs/quick';
+      'A 1U rack-mount server chassis for a 19-inch rack. Seven sheet-metal parts make the enclosure, and each one is a feature tree of bends and cutouts: the kernel folds it, unfolds it to a flat blank, and nests the blanks of four chassis on one stock sheet. The DXF button downloads that sheet. The rack dimensions, the fans, the drives, the board size, the power supply size and the M3 screws are published figures. The cover screws turn out of the tapped lips and stay in the thread of the cover. The layout, the vents and all small parts are a display model.',
+    code: `import { box, compound, cutAll, cylinder, line, loft, polygon, revolve, rotate, translate, unwrap, wire } from 'brepjs/quick';
 import { addPolygonCutout, author, hem, louver, miterCorner, nest, nestToDXF, relieveCorner, unfold } from 'brepjs-sheetmetal';
 import { color, present } from 'brepjs/playground';
 
@@ -1660,6 +1833,9 @@ const FAN = { size: 40, depth: 28, holes: 32, bore: 37, at: [56.5, 136.5, 216.5,
 const DRIVE = { width: 69.85, length: 100.45, height: 15, rows: [6, 23], columns: [15.1, 89.05] }; // 2.5 inch
 const BOARD = { size: 170, x: 222, y: 254, top: 9.1 }; // Mini-ITX
 const SUPPLY = { length: 150, width: 81.5, height: 40.5, x: 250.5, y: 12 }; // Flex ATX
+// The screws: pan head with a cross recess, M3 (ISO 7045), coarse thread (ISO 261 and ISO 724), tap drill (ISO 2306).
+const M3 = { major: 3, minor: 2.459, pitch: 0.5, head: 5.6, headHeight: 2.4, tapDrill: 2.5 };
+const PLAY = 0.08; // radial play between a screw thread and the thread in its hole
 
 // ---- sheet metal: each function is one part in its own frame, folded to the angle of the fold parameter
 const made = (r: ReturnType<typeof author>): Part => {
@@ -1672,7 +1848,8 @@ const ngon = (x: number, y: number, r: number, n: number, turn = 0): P2[] =>
   Array.from({ length: n }, (_, i): P2 => [x + r * Math.cos(turn + (i * 2 * Math.PI) / n), y + r * Math.sin(turn + (i * 2 * Math.PI) / n)]);
 const slot = (x: number, y: number, length: number, width: number): P2[] => [...ngon(x + (length - width) / 2, y, width / 2, 12).slice(0, 4), ...ngon(x - (length - width) / 2, y, width / 2, 12).slice(3, 10), ...ngon(x + (length - width) / 2, y, width / 2, 12).slice(9)];
 const punch = (p: Part, region: string, ...loops: P2[][]): Part => loops.reduce((q, loop) => made(addPolygonCutout(q, region, loop)), p);
-const screwHole = (x: number, y: number): P2[] => ngon(x, y, 1.75, 8, Math.PI / 8);
+const screwHole = (x: number, y: number): P2[] => ngon(x, y, 1.75, 8, Math.PI / 8); // a clearance hole
+const tapHole = (x: number, y: number): P2[] => ngon(x, y, (M3.major / 2 + PLAY) / Math.cos(Math.PI / 16), 16); // a hole that gets a thread
 const hexes = (x: number, y: number, columns: number, rows: number, r: number): P2[][] =>
   Array.from({ length: columns * rows }, (_, i) => ngon(x + (i % columns) * r * 1.9 + (Math.floor(i / columns) % 2) * r * 0.95, y + Math.floor(i / columns) * r * 1.65, r, 6, Math.PI / 6));
 
@@ -1691,15 +1868,15 @@ function tray(angle: number): Part {
   // Rear wall, seen from inside: power inlet, vents for the power supply, then the ports of the board.
   const z = (h: number): number => h - S;
   p = punch(p, 'rear', rect(22.1, z(11.25), 49.4, z(30.75)), ...hexes(62, z(11), 3, 3, 5), rect(270, z(10.5), 286, z(24)), rect(290, z(10.5), 306, z(24)), rect(312, z(10.5), 326, z(26.5)), rect(339.6, z(12), 359.4, z(23.2)), ...hexes(380, z(12), 3, 3, 4));
-  // Side walls: two louvers each, and the three holes of the rack ear.
+  // Side walls: two louvers each, and the three tapped holes of the rack ear.
   for (const side of ['left', 'right']) {
     const x = (d: number): number => (side === 'left' ? d : BODY.depth - d);
     for (const d of [200, 300]) p = made(louver(p, { region: side, x: x(d), y: 20, length: 60, width: 7, height: 3 }));
-    p = punch(p, side, ...EAR_HOLES.map(([d, h]) => screwHole(x(d), z(side === 'left' ? h : TOP + T - h))));
+    p = punch(p, side, ...EAR_HOLES.map(([d, h]) => tapHole(x(d), z(side === 'left' ? h : TOP + T - h))));
   }
-  // Lips: three holes each for the cover.
-  for (const d of COVER_SCREWS) p = punch(p, 'lipLeft', screwHole(d - 10, 4.5));
-  for (const d of COVER_SCREWS) p = punch(p, 'lipRight', screwHole(BODY.depth - d, 4.5));
+  // Lips: three tapped holes each for the cover.
+  for (const d of COVER_SCREWS) p = punch(p, 'lipLeft', tapHole(d - 10, 4.5));
+  for (const d of COVER_SCREWS) p = punch(p, 'lipRight', tapHole(BODY.depth - d, 4.5));
   return p;
 }
 const BOARD_HOLES: P2[] = [[159.84, 6.35], [136.98, 163.83], [4.9, 6.35], [4.9, 163.83]]; // the holes C, F, H and J of the ATX pattern
@@ -1719,7 +1896,7 @@ function cover(angle: number): Part {
   p = made(miterCorner(p, 'right', 'rear', 0.5));
   p = made(hem(p, { region: 'base', side: 'xmin', type: 'closed', length: 8, rule: RULE }));
   const y = (side: number): number => (side ? COVER.width - 5.75 : 5.75);
-  p = punch(p, 'base', ...[0, 1].flatMap((side) => COVER_SCREWS.map((d) => screwHole(d + 1, y(side)))), ...hexes(250, 262, 6, 4, 6));
+  p = punch(p, 'base', ...[0, 1].flatMap((side) => COVER_SCREWS.map((d) => tapHole(d + 1, y(side)))), ...hexes(250, 262, 6, 4, 6));
   return p;
 }
 
@@ -1793,20 +1970,67 @@ const NAMES = Object.keys(SHEET) as Name[];
 const block = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number): Shape => own(translate(own(box(x1 - x0, y1 - y0, z1 - z0)), [x0, y0, z0])) as Shape;
 const rod = (at: P3, r: number, length: number, axis: P3 = [0, 0, 1]): Shape => own(cylinder(r, length, { at, axis })) as Shape;
 const lathe = (profile: P2[]): Shape => own(unwrap(revolve(own(unwrap(polygon(profile.map(([r, z]): P3 => [r, 0, z]))))))) as Shape;
-function hardware(): [Tone, Shape][] {
+// A helical thread tooth of the M3 thread about +Z, from z = from to z = to. Its crest passes the +X side at z = ref.
+// tip > core is the thread of a screw, tip < core the thread in a hole. The loft is smooth: no facets.
+const helixTooth = (core: number, tip: number, from: number, to: number, ref: number): Shape => {
+  const outward = tip > core;
+  const root = outward ? core / 0.998 : core * 0.998; // a hair clear of the core or the bore
+  const crest = outward ? tip : tip / 0.998;
+  const half = 0.42 * M3.pitch;
+  const n = Math.max(2, Math.round(((to - from) / M3.pitch) * 12)); // 12 sections in each turn
+  const sections = Array.from({ length: n + 1 }, (_, j) => {
+    const z = from + ((to - from) * j) / n;
+    const a = 2 * Math.PI * ((z - ref) / M3.pitch);
+    const at = (r: number, dz: number): P3 => [r * Math.cos(a), r * Math.sin(a), z + dz];
+    const pts = [at(root, -half), at(crest, 0), at(root, half)];
+    return own(unwrap(wire(pts.map((p, i) => own(line(p, pts[(i + 1) % 3]!))))));
+  });
+  return own(unwrap(loft(sections, { ruled: false }))) as Shape;
+};
+function hardware(lid: number): [Tone, Shape][] {
   const out: [Tone, Shape][] = [];
   const add = (tone: Tone, ...shapes: Shape[]): void => shapes.forEach((s) => out.push([tone, s]));
-  // A pan-head screw with its head on the origin. The shank points down, or into the left wall, the right wall or the rear.
-  const screwShape = lathe([[0, 0], [0, 1.6], [2.1, 1.6], [2.7, 0.9], [2.7, 0], [1.4, 0], [1.4, -4.5], [0, -4.5]]);
-  const screw = (at: P3, into: 'down' | 'left' | 'right' | 'rear'): void =>
-    add('steel', move(into === 'down' ? screwShape : into === 'rear' ? turn(screwShape, -90, [0, 1, 0]) : turn(screwShape, into === 'left' ? 90 : -90, [1, 0, 0]), at));
-  for (const d of COVER_SCREWS) for (const y of [4.5, BODY.width - 4.5]) screw([d, y, TOP + T], 'down');
-  for (const [d, h] of EAR_HOLES) { screw([d, -S - T, h], 'left'); screw([d, BODY.width + S + T, TOP + T - h], 'right'); }
+  // A pan-head screw with its seat on the origin and its shank toward -Z. The shank is the thread root.
+  const panScrew = (length: number): Shape => {
+    const body = lathe([[0, -length], [M3.minor / 2, -length], [M3.minor / 2, 0], [M3.head / 2, 0], [M3.head / 2, 1.3], [2, M3.headHeight], [0, M3.headHeight]]);
+    const wing = block(-1.5, -0.3, M3.headHeight - 1.2, 1.5, 0.3, M3.headHeight + 1); // the recess is a display shape
+    return own(unwrap(cutAll(body, [wing, turn(wing, 90, [0, 0, 1])]))) as Shape;
+  };
+  const short = panScrew(4);
+  const long = panScrew(6);
+  // The thread of the short screw, and one turn of thread in a sheet of 1 mm under a sheet of 1 mm.
+  const thread = helixTooth(M3.minor / 2, M3.major / 2, -3.8, -1.4, 0);
+  const sheetThread = helixTooth(M3.major / 2 + PLAY, M3.minor / 2 + PLAY, 0.22 - 2 * T, -0.22 - T, M3.pitch / 2);
+  // The shank points down, or into the left wall, the right wall or the rear.
+  type Into = 'down' | 'left' | 'right' | 'rear';
+  const put = (s: Shape, at: P3, into: Into): Shape =>
+    move(into === 'down' ? s : into === 'rear' ? turn(s, -90, [0, 1, 0]) : turn(s, into === 'left' ? 90 : -90, [1, 0, 0]), at);
+  // A hidden thread is not modelled: the shank is the root cylinder, in a hole of the tap drill size.
+  const screw = (at: P3, into: Into, body = short): void => add('steel', put(body, at, into));
+  // Where the thread shows, the screw has the true helix.
+  const threaded = (at: P3, into: Into): void => add('steel', put(short, at, into), put(thread, at, into));
+
+  // Cover screws: the cover and the lip are both tapped, and the shank is plain under the head. With the cover shut
+  // a screw clamps the cover to the lip. To open the cover, each screw turns out by 3 mm (six turns) and then
+  // stays in the thread of the cover.
+  const backedOut = lid > 0 ? 4 - T : 0;
+  for (const d of COVER_SCREWS) for (const y of [4.5, BODY.width - 4.5]) {
+    const seat: P3 = [d + 330 * lid, y, TOP + T + 8 * lid];
+    add('steel', put(sheetThread, [d, y, TOP + T], 'down'), put(sheetThread, [seat[0], y, seat[2] + T], 'down'));
+    const turns = (s: Shape): Shape => put(turn(s, (360 * backedOut) / M3.pitch, [0, 0, 1]), [seat[0], y, seat[2] + backedOut], 'down');
+    add('steel', turns(short), turns(thread));
+  }
+  // Ear screws: through the ear into the tapped wall. Their ends show inside the chassis.
+  for (const [d, h] of EAR_HOLES) for (const [at, into] of [[[d, -S - T, h], 'left'], [[d, BODY.width + S + T, TOP + T - h], 'right']] as [P3, Into][]) {
+    threaded(at, into);
+    add('steel', put(sheetThread, at, into));
+  }
 
   // Fans: a frame with a round bore and four screw holes, a hub with its label, and seven blades.
   for (const y of FAN.at) {
     const c: P3 = [FAN.x + 0.2, y, 1.1 + FAN.size / 2];
-    const corners = [-1, 1].flatMap((u) => [-1, 1].map((v) => rod([c[0], y + (u * FAN.holes) / 2, c[2] + (v * FAN.holes) / 2], 1.9, FAN.depth, [1, 0, 0])));
+    // Two of the four corner holes take a screw: they are the tap drill size.
+    const corners = [-1, 1].flatMap((u) => [-1, 1].map((v) => rod([c[0], y + (u * FAN.holes) / 2, c[2] + (v * FAN.holes) / 2], u === v ? 1.9 : M3.tapDrill / 2, FAN.depth, [1, 0, 0])));
     add('dark', own(unwrap(cutAll(block(c[0], y - 20, 1.1, c[0] + FAN.depth, y + 20, 41.1), [rod(c, FAN.bore / 2, FAN.depth, [1, 0, 0]), ...corners]))) as Shape);
     add('dark', rod([c[0] + 2, y, c[2]], 9, FAN.depth - 4, [1, 0, 0]));
     add('alloy', rod([c[0] + FAN.depth - 2, y, c[2]], 7, 0.4, [1, 0, 0]));
@@ -1839,15 +2063,18 @@ function hardware(): [Tone, Shape][] {
   const chip = (tone: Tone, dx: number, dy: number, w: number, d: number, h: number, dz = 0): void => add(tone, block(b.x + dx, b.y + dy, top + dz, b.x + dx + w, b.y + dy + d, top + dz + h));
   add('board', own(unwrap(cutAll(block(b.x, b.y, top - 1.6, b.x + b.size, b.y + b.size, top), BOARD_HOLES.map(([hx, hy]) => rod([b.x + hx, b.y + hy, top - 1.6], 1.6, 1.6))))) as Shape);
   for (const [hx, hy] of BOARD_HOLES) {
-    add('gold', move(lathe([[1.5, 0], [3, 0], [3, top - 1.6 - T], [1.5, top - 1.6 - T]]), [b.x + hx, b.y + hy, T]));
+    add('gold', move(lathe([[M3.tapDrill / 2, 0], [3, 0], [3, top - 1.6 - T], [M3.tapDrill / 2, top - 1.6 - T]]), [b.x + hx, b.y + hy, T]));
     screw(at(hx, hy), 'down');
   }
-  // The processor socket and its heat sink: a base with four screws and 30 fins along the air flow.
+  // The processor socket and its heat sink: a base with four screws into tapped posts, and 30 fins along the air flow.
   chip('dark', 55, 50, 50, 50, 3);
   const posts: P2[] = [37, 123].flatMap((dx) => [41, 109].map((dy): P2 => [dx, dy]));
   add('alloy', own(unwrap(cutAll(block(b.x + 34, b.y + 35, top + 3, b.x + 126, b.y + 115, top + 7), posts.map(([dx, dy]) => rod(at(dx, dy, 3), 1.55, 4))))) as Shape);
   for (let i = 0; i < 30; i++) chip('alloy', 40, 35.4 + i * 2.7, 80, 1, 23, 7);
-  for (const [dx, dy] of posts) screw(at(dx, dy, 7), 'down');
+  for (const [dx, dy] of posts) {
+    add('gold', move(lathe([[M3.tapDrill / 2, 0], [2.6, 0], [2.6, 3], [M3.tapDrill / 2, 3]]), at(dx, dy)));
+    screw(at(dx, dy, 7), 'down', long);
+  }
   // Four memory modules: two rails and two latches for each socket, the module, and its eight chips.
   for (let i = 0; i < 4; i++) {
     const dy = 128 + i * 9;
@@ -1910,7 +2137,7 @@ const chassis = ({ fold = 1, lid = 0, sheet = { width: 1250, height: 2500 }, set
   const nested = unwrap(nest(patterns, { sheet, margin: 10, spacing: 6, allowRotation: true }));
   if (nested.sheets.length !== 1 || nested.unplaced.length > 0) throw new Error('The blanks of ' + sets + ' chassis do not fit on one sheet. Use fewer sets or a larger sheet.');
   const shown = NAMES.map((name): [Tone, Shape] => [toneOf(name), name === 'cover' ? move(SHEET.cover.place(parts.cover.solid as Shape), [330 * lid, 0, 8 * lid]) : SHEET[name].place(parts[name].solid as Shape)]);
-  shown.push(...hardware());
+  shown.push(...hardware(lid));
   return {
     ...byTone(shown),
     solids: shown.length,
