@@ -9,15 +9,20 @@
     "dev": "vite",
     "build": "tsgo -b && vite build",
     "typecheck": "tsgo -b",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "samples": "tsx scripts/genSamples.ts",
+    "e2e": "tsx scripts/pageE2e.ts"
   },
   "dependencies": {
     "@react-three/drei": "10.7.9",
     "@react-three/fiber": "9.8.2",
+    "@vercel/analytics": "2.0.1",
     "brepjs": "*",
     "brepjs-mesh2solid": "*",
     "brepjs-viewer": "*",
+    "lz-string": "1.5.0",
     "occt-wasm": "*",
+    "posthog-js": "1.447.3",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "three": "0.187.0"

@@ -107,6 +107,8 @@ Start with the chapter guide:
 - **[Core Concepts](https://brepjs.dev/concepts/brep-vs-mesh)**: B-Rep, topology, types, kernels, tolerance
 - **[Common Tasks](https://brepjs.dev/tasks/booleans)**: booleans, fillets, sketching, lofts, sweeps, finders, measurement, IO
 - **[Declarative Models](https://brepjs.dev/families/overview)**: React-like parametric components (brepjs-families), key-path identity, IFC export
+- **[Sheet Metal](https://brepjs.dev/sheet-metal/overview)**: fold a part from a base and flanges, then unfold it to a flat pattern and a DXF (brepjs-sheetmetal)
+- **[Mesh to Solid](https://brepjs.dev/mesh2solid/overview)**: turn an STL, OBJ, PLY or 3MF mesh into a solid and a STEP file (brepjs-mesh2solid), or [convert one in your browser](https://brepjs.dev/mesh-to-solid)
 - **[Three.js Integration](https://brepjs.dev/integration/threejs)**: how to mesh shapes and render them
 - **[Migration](https://brepjs.dev/migration/replicad)**: how to move from Replicad, OpenSCAD, or Three.js
 - **[Extending brepjs](https://brepjs.dev/extending/architecture)**: custom kernels, custom operations, architecture
