@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.28.0](https://github.com/andymai/brepjs/compare/brepjs-v20.27.3...brepjs-v20.28.0) (2026-11-16)
+
+
+### Features
+
+* **core:** let a part declare its parameters with defineParams ([#2709](https://github.com/andymai/brepjs/issues/2709)) ([9930728](https://github.com/andymai/brepjs/commit/99307280b0eb43a636dae6ff406f693f4617fb09))
+
 ## [20.27.3](https://github.com/andymai/brepjs/compare/brepjs-v20.27.2...brepjs-v20.27.3) (2026-11-15)
 
 
