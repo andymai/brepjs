@@ -1,0 +1,19 @@
+apps/playground/src/workers/cad.worker.ts
+  s_8e26ce757a4a72::t_926f35d88990e5 359-367,389,394-415,481,531
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fee98e86b8fdf1766dd07ac842d5009622422105",
+  "prompts": {},
+  "sessions": {
+    "s_8e26ce757a4a72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e2a2abb-96e7-41bf-9f42-70cf1b42e7a4",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
