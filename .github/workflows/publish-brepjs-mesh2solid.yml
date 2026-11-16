@@ -1,8 +1,8 @@
 name: Publish brepjs-mesh2solid
 
-# release-please does not manage this package, so a release is a dispatch of this
-# workflow by hand. The npm trusted publisher of brepjs-mesh2solid is bound to this
-# exact filename: a rename breaks the publish.
+# release-please.yml dispatches this workflow against the release tag when it cuts a
+# brepjs-mesh2solid release. The npm trusted publisher of brepjs-mesh2solid is bound
+# to this exact filename: a rename breaks the publish.
 
 on:
   workflow_dispatch:

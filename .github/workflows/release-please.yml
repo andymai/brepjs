@@ -40,6 +40,8 @@ jobs:
       brepjs_sheetmetal_tag_name: ${{ steps.release.outputs['packages/brepjs-sheetmetal--tag_name'] }}
       brepjs_families_release_created: ${{ steps.release.outputs['packages/brepjs-families--release_created'] }}
       brepjs_families_tag_name: ${{ steps.release.outputs['packages/brepjs-families--tag_name'] }}
+      brepjs_mesh2solid_release_created: ${{ steps.release.outputs['packages/brepjs-mesh2solid--release_created'] }}
+      brepjs_mesh2solid_tag_name: ${{ steps.release.outputs['packages/brepjs-mesh2solid--tag_name'] }}
       create_brepjs_release_created: ${{ steps.release.outputs['packages/create-brepjs--release_created'] }}
       create_brepjs_tag_name: ${{ steps.release.outputs['packages/create-brepjs--tag_name'] }}
       prs_created: ${{ steps.release.outputs.prs_created }}
@@ -264,6 +266,25 @@ jobs:
           GH_REPO: ${{ github.repository }}
           GH_REF: ${{ needs.release-please.outputs.brepjs_families_tag_name }}
         run: gh workflow run publish-brepjs-families.yml -f dry_run=false --ref "$GH_REF" --repo "$GH_REPO"
+
+  # Auto-publish brepjs-mesh2solid — same pattern as brepjs-bim above.
+  publish-brepjs-mesh2solid:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [release-please]
+    if: ${{ needs.release-please.outputs.brepjs_mesh2solid_release_created == 'true' }}
+    steps:
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        id: app-token
+        with:
+          app-id: ${{ secrets.BREPJS_BOT_APP_ID }}
+          private-key: ${{ secrets.BREPJS_BOT_PRIVATE_KEY }}
+      - name: Dispatch publish-brepjs-mesh2solid (real publish)
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          GH_REF: ${{ needs.release-please.outputs.brepjs_mesh2solid_tag_name }}
+        run: gh workflow run publish-brepjs-mesh2solid.yml -f dry_run=false --ref "$GH_REF" --repo "$GH_REPO"
 
   # Auto-publish create-brepjs — same pattern as brepjs-bim above.
   publish-create-brepjs:
