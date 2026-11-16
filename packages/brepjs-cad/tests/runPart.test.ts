@@ -141,3 +141,70 @@ describe('runPart', () => {
     expect(hint?.nextStep.length).toBeGreaterThan(0);
   }, 30000);
 });
+
+describe('runPart with declared parameters', () => {
+  it('builds at the defaults and reports them', async () => {
+    const { report } = await runPart(fix('paramBox.brep.ts'));
+    expect(reportOk(report)).toBe(true);
+    expect(report.params).toEqual({ width: 10, height: 10, label: 'a' });
+    expect(report.measurements.volume).toBeCloseTo(1000, 1);
+  }, 30000);
+
+  it('builds with caller values, converted from strings', async () => {
+    const { report } = await runPart(fix('paramBox.brep.ts'), {
+      params: { width: '40', label: 'b' },
+    });
+    expect(reportOk(report)).toBe(true);
+    expect(report.params).toEqual({ width: 40, height: 10, label: 'b' });
+    expect(report.measurements.volume).toBeCloseTo(4000, 1);
+  }, 30000);
+
+  it('checks an expected function against the values in use', async () => {
+    const { report } = await runPart(fix('paramBox.brep.ts'), { params: { width: 40 } });
+    expect(report.assertions).toEqual([
+      { name: 'volume', expected: 4000, actual: expect.closeTo(4000, 1) as number, passed: true },
+    ]);
+  }, 30000);
+
+  it.each([
+    ['a value outside its limits', { width: 500 }, 'PARAM_OUT_OF_RANGE'],
+    ['a value of the wrong type', { width: 'wide' }, 'PARAM_INVALID_VALUE'],
+    ['a name that is not declared', { depth: 5 }, 'PARAM_UNKNOWN'],
+  ])(
+    'does not build with %s',
+    async (_case, params, code) => {
+      const { report, shape } = await runPart(fix('paramBox.brep.ts'), { params });
+      expect(shape).toBeNull();
+      expect(reportOk(report)).toBe(false);
+      expect(report.errorInfos.map((e) => e.code)).toEqual([code]);
+      expect(report.errors[0]).toMatch(/^params: /);
+    },
+    30000
+  );
+
+  it('skips a fixed expected when a value is set, and says so', async () => {
+    const { report } = await runPart(fix('paramBoxFixedExpected.brep.ts'), {
+      params: { width: 20 },
+    });
+    expect(reportOk(report)).toBe(true);
+    expect(report.assertions).toEqual([]);
+    expect(report.notes?.join(' ')).toContain('expected was not checked');
+  }, 30000);
+
+  it('checks a fixed expected at the defaults', async () => {
+    const { report } = await runPart(fix('paramBoxFixedExpected.brep.ts'));
+    expect(report.assertions.map((a) => a.passed)).toEqual([true]);
+  }, 30000);
+
+  it('rejects a value for a part that declares no parameters', async () => {
+    const { report, shape } = await runPart(fix('validBox.brep.ts'), { params: { width: 5 } });
+    expect(shape).toBeNull();
+    expect(report.errorInfos[0]?.code).toBe('PARAMS_NOT_DECLARED');
+  }, 30000);
+
+  it('leaves a part alone when its own params export is not a declaration', async () => {
+    const { report } = await runPart(fix('ownParamsExport.brep.ts'));
+    expect(reportOk(report)).toBe(true);
+    expect(report.params).toBeUndefined();
+  }, 30000);
+});

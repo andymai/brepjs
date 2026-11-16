@@ -34,6 +34,7 @@ Prefix any command with `npx -y -p brepjs-cad` to run without installing.
 | `--serve`              | After a passing verify, start a preview server and print a clickable `?dir=&file=` link rendering the real STEP; it stays running until Ctrl-C. Only serves when the report is `ok`; a failing report still exits non-zero. In an interactive terminal it also opens your default browser (skipped when the server is reused, under CI, on non-TTY/agent runs, or with no Linux display). |
 | `--no-open`            | With `--serve`, never auto-open the browser; print the URL only.                                                                                                                                                                                                                                                                                                                          |
 | `--metrics`            | Add deterministic manufacturability metrics (per-body breakdown, body interference, bores) to the report. Slower; `--snapshot` turns it on.                                                                                                                                                                                                                                               |
+| `--param <name=value>` | Set a parameter that the part declares with `defineParams`. Repeat the flag for more than one. Also on `export`, `snapshot`, and `watch`. See [the `params` contract](#the-params-contract).                                                                                                                                                                                              |
 | `--expect-code <code>` | Exit 0 only if the report carries this error code. For known-bad fixtures and evals.                                                                                                                                                                                                                                                                                                      |
 | `--expect-invalid`     | Exit 0 only if the report is not `ok`. For known-bad fixtures.                                                                                                                                                                                                                                                                                                                            |
 
@@ -56,6 +57,10 @@ npx -y -p brepjs-cad brep part.brep.ts --serve --no-open
 
 # batch every artifact behind a validity gate
 npx -y -p brepjs-cad brep export part.brep.ts --all --out dist/
+
+# verify and export a part at a different size
+npx -y -p brepjs-cad brep part.brep.ts --param width=80 --param holes=6
+npx -y -p brepjs-cad brep export part.brep.ts --step --param width=80
 ```
 
 ## The `expected` contract
@@ -80,6 +85,33 @@ export default () => box(40, 20, 10, { centered: true });
 ```
 
 Each declared field appears in `report.assertions` as `{ name, expected, actual, passed }`. `volume` and `area` each produce one assertion; every declared `bounds` edge produces its own (named `bounds.xMin`, `bounds.xMax`, …).
+
+## The `params` contract
+
+Declare the values a caller can change with `defineParams`, and take them as the argument of the part function. `--param name=value` then builds the part at a different size with no edit to the file.
+
+<!-- @no-test -->
+
+```ts
+import { box, defineParams } from 'brepjs';
+
+export const params = defineParams({
+  width: { type: 'number', default: 40, min: 10, max: 200, unit: 'mm' },
+  holes: { type: 'number', default: 4, min: 0, max: 12, integer: true },
+  style: { type: 'choice', default: 'round', options: ['round', 'square'] },
+});
+
+// A function of the values, so the assertion holds at each size.
+export const expected = (p = params.values) => ({ volume: p.width * 20 * 10 });
+
+export default (p = params.values) => box(p.width, 20, 10);
+```
+
+- The default argument (`p = params.values`) lets the part build at its defaults when no value is set.
+- The report lists the values in use as `report.params`.
+- A value outside `min` and `max`, a value of the wrong type, or a name that is not declared stops the build. The report is not `ok` and carries `PARAM_OUT_OF_RANGE`, `PARAM_INVALID_VALUE`, or `PARAM_UNKNOWN`.
+- A `--param` for a part with no declaration gives `PARAMS_NOT_DECLARED`.
+- An `expected` that is a fixed object describes the part at its defaults. The CLI does not check it when a parameter is set, and `report.notes` says so.
 
 ## Snapshots & the preview server
 

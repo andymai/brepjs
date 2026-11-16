@@ -118,6 +118,11 @@ export interface VerifyReport {
    * declares no expectations; when non-empty, `ok` additionally requires every assertion pass.
    */
   assertions: VerifyAssertion[];
+  /**
+   * The parameter values the part was built with: its declared defaults, with any caller input
+   * applied. Absent when the part declares no parameters.
+   */
+  params?: Readonly<Record<string, number | boolean | string>>;
   /** Per-body breakdown for multi-body parts. Absent unless metrics were requested + bodies > 1. */
   bodies?: BodyInfo[];
   /** Pairwise body relationships. Absent unless metrics were requested + bodies > 1. */

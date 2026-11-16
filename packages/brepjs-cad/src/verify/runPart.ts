@@ -3,6 +3,7 @@ import { basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { loadBrep, initOcctWasm, toolDir, type BrepNs } from './brepjsRuntime.js';
 import { runChecks } from './checks.js';
+import { resolvePartParams, type ParamInput, type ParamValues } from './partParams.js';
 import {
   evaluateExpected,
   invalidExpectedValues,
@@ -13,7 +14,14 @@ import {
 import { typecheckPart } from './typecheck.js';
 import { buildHints, emptyReport, pushError, type ErrorInfo, type VerifyReport } from './report.js';
 
-type PartFn = () => unknown;
+type PartFn = (values?: ParamValues) => unknown;
+
+interface PartModule {
+  default?: unknown;
+  expected?: unknown;
+  materials?: unknown;
+  params?: unknown;
+}
 
 // A part may `export const materials` to colour its GLB: either one material for
 // the whole shape (a GltfMaterial object), or a MaterialFn selector keyed on each
@@ -62,18 +70,11 @@ function buildMaterialMap(
 // hook propagates it across the part's own imports) so watch reruns pick up edits.
 let importGeneration = 0;
 
-export async function loadPart(
-  modulePath: string,
-  fresh = false
-): Promise<{ default?: unknown; expected?: unknown; materials?: unknown }> {
+export async function loadPart(modulePath: string, fresh = false): Promise<PartModule> {
   const url = new URL(pathToFileURL(modulePath).href);
   if (fresh) url.searchParams.set('v', String(++importGeneration));
   try {
-    return (await import(url.href)) as {
-      default?: unknown;
-      expected?: unknown;
-      materials?: unknown;
-    };
+    return (await import(url.href)) as PartModule;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     // A TypeScript part (.ts/.mts/.cts/.tsx) that fails to load is almost always a
@@ -168,6 +169,11 @@ export interface RunPartOptions {
    * edits). The kernel realm (`brepjs`/`occt-wasm`) keeps its stable URLs either way.
    */
   freshImport?: boolean;
+  /**
+   * Values for the parameters the part declares with `defineParams`, by name. A string is
+   * converted to the declared type. A part with no declaration rejects any value.
+   */
+  params?: ParamInput;
 }
 
 export interface RunPartResult {
@@ -195,6 +201,32 @@ function solidsCoverShape(
   const count = (get: (s: AnyShape) => readonly unknown[]) =>
     solids.reduce((n, s) => n + get(s).length, 0) === get(shape).length;
   return count(brep.getFaces) && count(brep.getEdges) && count(brep.getVertices);
+}
+
+// `expected` is either fixed dims or a function of the parameter values. Fixed dims describe
+// the part at its defaults only, so they are not checked when the caller set a value: a
+// mismatch there would say nothing about the part.
+function expectedFor(
+  spec: unknown,
+  values: ParamValues | undefined,
+  input: ParamInput | undefined,
+  report: VerifyReport
+): unknown {
+  if (typeof spec === 'function') {
+    try {
+      return (spec as (v?: ParamValues) => unknown)(values);
+    } catch (e) {
+      pushError(report, { ...toErrorInfo('expected threw', e), code: 'EXPECTED_THREW' });
+      return undefined;
+    }
+  }
+  if (spec !== undefined && input !== undefined && Object.keys(input).length > 0) {
+    (report.notes ??= []).push(
+      'expected was not checked: it is a fixed object and parameters were set. Export it as a function of the values, `export const expected = (p = params.values) => ({ ... })`, to check each size.'
+    );
+    return undefined;
+  }
+  return spec;
 }
 
 function partName(modulePath: string): string {
@@ -227,7 +259,7 @@ export async function runPart(
     return finalize({ shape: null, report });
   }
   const { isOk, mesh, exportGlb, exportSTEP, exportSTEPConfigured, getSolids } = brep;
-  let mod: { default?: unknown; expected?: unknown; materials?: unknown };
+  let mod: PartModule;
   try {
     mod = await loadPart(modulePath, opts.freshImport);
   } catch (e) {
@@ -238,9 +270,16 @@ export async function runPart(
     pushError(report, { message: 'module has no default-exported part function' });
     return finalize({ shape: null, report });
   }
+  const partParams = resolvePartParams(brep, mod.params, opts.params);
+  if ('error' in partParams) {
+    pushError(report, partParams.error);
+    return finalize({ shape: null, report });
+  }
+  const { values } = partParams;
   let out: unknown;
   try {
-    out = await (mod.default as PartFn)();
+    const part = mod.default as PartFn;
+    out = await (values ? part(values) : part());
   } catch (e) {
     pushError(report, toErrorInfo('part threw', e));
     return finalize({ shape: null, report });
@@ -269,17 +308,19 @@ export async function runPart(
   // Push export errors into the report we actually return (runChecks's), so a failed export
   // surfaces as ok:false rather than being dropped.
   const result = runChecks(brep, shape, { metrics: Boolean(opts.metrics) });
+  if (values) result.params = values;
   // Asserted dims: compare measured volume/area/bounds against the part's `export const expected`.
   // When present, every assertion must pass for `ok` (enforced by reportOk).
-  const invalidExpected = mod.expected === undefined ? [] : invalidExpectedValues(mod.expected);
+  const expectedSpec = expectedFor(mod.expected, values, opts.params, result);
+  const invalidExpected = expectedSpec === undefined ? [] : invalidExpectedValues(expectedSpec);
   if (invalidExpected.length > 0) {
     pushError(result, {
       message: `expected has values that aren't numbers, so none of its assertions ran: ${invalidExpected.join(', ')}.`,
       code: 'EXPECTED_INVALID_VALUE',
     });
   }
-  if (isExpectedDims(mod.expected)) {
-    const expected: ExpectedDims = mod.expected;
+  if (isExpectedDims(expectedSpec)) {
+    const expected: ExpectedDims = expectedSpec;
     result.assertions = evaluateExpected(expected, result.measurements);
     // A wrong `expected` shape (e.g. bounds as { min, max } or { x } instead of
     // { xMin, xMax, … }) would otherwise be ignored, vacuously passing. Fail loud.

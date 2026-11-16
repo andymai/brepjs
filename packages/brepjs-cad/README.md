@@ -75,6 +75,8 @@ The `brep` bin is a multi-command CLI. `verify` is the default command, so `brep
 
 Every command writes a single machine-readable JSON document to stdout; diagnostics (paths, kernel chatter, watch notices) go to stderr.
 
+`verify`, `export`, `snapshot`, and `watch` take `--param <name=value>` (repeatable). It sets a parameter that the part declares with `export const params = defineParams({ ... })`, and the report lists the values in use as `params`. A value outside its limits, or a name that is not declared, stops the build with an error code.
+
 ## MCP server
 
 `brep-mcp` is a stdio [MCP](https://modelcontextprotocol.io) server that exposes the verify substrate to MCP-capable agents (Claude Code, Claude Desktop, any MCP client).
