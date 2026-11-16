@@ -398,7 +398,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # The shard that gets tests/playgroundExamples.test.ts builds and meshes each
+    # playground example in one fork. That file alone takes about 9 minutes here.
+    timeout-minutes: 20
     # Sharded across runners so each fork processes ~1/4 of the suite. OCCT WASM
     # linear memory grows monotonically across tests; a long single-runner run
     # (173 files / 4 forks × 6 GB heap) over-commits the 16 GB runner into swap,
