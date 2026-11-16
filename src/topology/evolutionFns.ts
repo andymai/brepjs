@@ -23,7 +23,7 @@ import { type Result, ok, err, isErr } from '@/core/result.js';
 import { validationError, typeCastError, kernelError, BrepErrorCode } from '@/core/errors.js';
 import type { BooleanOptions, KernelShape, ShapeEvolution, KernelType } from '@/kernel/types.js';
 import { getEdges } from './shapeFns.js';
-import { collectInputFaceHashes, propagateAllMetadata } from './metadata/metadataPropagation.js';
+import { allInputFaceHashes, propagateAllMetadata } from './metadata/metadataPropagation.js';
 import {
   chamferUnsupportedError,
   filletUnsupportedError,
@@ -152,7 +152,7 @@ export function fuseWithEvolution(
   if (isErr(checkA)) return checkA;
   const checkB = validateShape3D(b, 'fuseWithEvolution: second operand');
   if (isErr(checkB)) return checkB;
-  const inputFaceHashes = collectInputFaceHashes([a, b]);
+  const inputFaceHashes = allInputFaceHashes([a, b]);
   const { shape: resultShape, evolution } = getKernel().fuseWithHistory(
     a.wrapped,
     b.wrapped,
@@ -202,7 +202,7 @@ export function cutWithEvolution(
   if (isErr(checkBase)) return checkBase;
   const checkTool = validateShape3D(tool, 'cutWithEvolution: tool');
   if (isErr(checkTool)) return checkTool;
-  const inputFaceHashes = collectInputFaceHashes([base, tool]);
+  const inputFaceHashes = allInputFaceHashes([base, tool]);
   const { shape: resultShape, evolution } = getKernel().cutWithHistory(
     base.wrapped,
     tool.wrapped,
@@ -252,7 +252,7 @@ export function intersectWithEvolution(
   if (isErr(checkA)) return checkA;
   const checkB = validateShape3D(b, 'intersectWithEvolution: second operand');
   if (isErr(checkB)) return checkB;
-  const inputFaceHashes = collectInputFaceHashes([a, b]);
+  const inputFaceHashes = allInputFaceHashes([a, b]);
   const { shape: resultShape, evolution } = getKernel().intersectWithHistory(
     a.wrapped,
     b.wrapped,
@@ -353,7 +353,7 @@ export function filletWithEvolution(
       kernelRadius = radius;
     }
 
-    const inputFaceHashes = collectInputFaceHashes([shape]);
+    const inputFaceHashes = allInputFaceHashes([shape]);
     const { shape: resultShape, evolution } = getKernel().filletWithHistory(
       shape.wrapped,
       filteredEdges.map((e) => e.wrapped),
@@ -448,7 +448,7 @@ export function chamferWithEvolution(
       kernelDistance = distance;
     }
 
-    const inputFaceHashes = collectInputFaceHashes([shape]);
+    const inputFaceHashes = allInputFaceHashes([shape]);
     const { shape: resultShape, evolution } = getKernel().chamferWithHistory(
       shape.wrapped,
       filteredEdges.map((e) => e.wrapped),
@@ -501,7 +501,7 @@ export function shellWithEvolution(
   }
 
   try {
-    const inputFaceHashes = collectInputFaceHashes([shape]);
+    const inputFaceHashes = allInputFaceHashes([shape]);
     const { shape: resultShape, evolution } = getKernel().shellWithHistory(
       shape.wrapped,
       faces.map((f) => f.wrapped),
