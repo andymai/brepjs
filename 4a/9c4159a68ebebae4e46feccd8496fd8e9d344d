@@ -1,0 +1,28 @@
+apps/mesh2solid/src/App.tsx
+  s_8e26ce757a4a72::t_0bc6b6437b88e3 8-13,189-192,260,264
+apps/mesh2solid/src/playground.ts
+  s_8e26ce757a4a72::t_0bc6b6437b88e3 5,7-9,73-81,85,87,89-93
+apps/mesh2solid/scripts/pageE2e.ts
+  s_8e26ce757a4a72::t_b8f11708c13ea3 226-227
+  s_8e26ce757a4a72::t_0bc6b6437b88e3 17,111,131,136-138,140,142,184,187,191
+  s_8e26ce757a4a72::t_e5d0dd541eecca 37-42,180,218,222-225,228-244
+  s_8e26ce757a4a72::t_f678fb63282cdc 245
+apps/playground/src/lib/urlCodec.ts
+  s_8e26ce757a4a72::t_0bc6b6437b88e3 32-35,37-39,41,51-55,62-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4a9c4159a68ebebae4e46feccd8496fd8e9d344d",
+  "prompts": {},
+  "sessions": {
+    "s_8e26ce757a4a72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e2a2abb-96e7-41bf-9f42-70cf1b42e7a4",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
