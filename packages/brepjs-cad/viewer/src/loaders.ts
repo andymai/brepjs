@@ -40,7 +40,8 @@ function measureModel(bk: BrepjsForLoad, shape: unknown): ModelMeasurements {
   const vol = safe(() => bk.measureVolume(shape));
   if (vol && bk.isOk(vol) && typeof vol.value === 'number' && vol.value > 0) m.volume = vol.value;
   const area = safe(() => bk.measureArea(shape));
-  if (area && bk.isOk(area) && typeof area.value === 'number' && area.value > 0) m.area = area.value;
+  if (area && bk.isOk(area) && typeof area.value === 'number' && area.value > 0)
+    m.area = area.value;
   return m;
 }
 function safe<T>(fn: () => T): T | undefined {
@@ -90,7 +91,8 @@ function collectFaceInfos(bk: BrepjsForLoad, shape: unknown): FaceInfo[] {
       const st = bk.getSurfaceType(face);
       const surfaceType = bk.isOk(st) && st.value ? st.value : 'OTHER_SURFACE';
       const areaResult = bk.measureArea(face);
-      const area = bk.isOk(areaResult) && typeof areaResult.value === 'number' ? areaResult.value : NaN;
+      const area =
+        bk.isOk(areaResult) && typeof areaResult.value === 'number' ? areaResult.value : NaN;
       infos.push({ faceId: bk.getHashCode(face), surfaceType, area, normal: bk.normalAt(face) });
     } catch (err) {
       // A single degenerate face (normalAt can throw on quirky BSpline UVs) shouldn't
@@ -105,14 +107,17 @@ export async function loadModel(
   bk: BrepjsForLoad,
   blob: Blob,
   ext: string,
-  inspect = false,
+  inspect = false
 ): Promise<LoadedModel> {
   const result = await importerFor(bk, ext)(blob);
   if (!bk.isOk(result)) {
     const err = (result as { error?: unknown }).error;
     throw new Error(`import failed: ${typeof err === 'string' ? err : JSON.stringify(err)}`);
   }
-  const shape = (result as unknown as { value: unknown }).value;
+  return modelFromShape(bk, (result as unknown as { value: unknown }).value, inspect);
+}
+
+export function modelFromShape(bk: BrepjsForLoad, shape: unknown, inspect = false): LoadedModel {
   const meshData = shapeMeshToMeshData(bk.mesh(shape), bk.meshEdges(shape).lines);
   // Face metadata powers click-to-inspect; skip it for headless snapshots (inspect=false)
   // so capture stays as fast as before.

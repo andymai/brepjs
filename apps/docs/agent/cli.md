@@ -18,6 +18,7 @@ Prefix any command with `npx -y -p brepjs-cad` to run without installing.
 | `brep watch <file>`    | Re-verifies on every save until Ctrl-C (debounced; watches the project tree, from the nearest `package.json`/`tsconfig.json`, to survive editor rename-on-save).                                                                                         |
 | `brep preview <file>`  | Element-aware live viewer for a model module (families element tree, resolved tree, or plain shape). `--watch` re-evaluates on save; `--write-only` (CI), `--glb <out>`, `--json <out>`, `--port <n>`, `--no-open`.                                      |
 | `brep export <file>`   | Batch artifacts behind a validity gate: `--step`, `--glb`, `--stl`, or `--all`; `--3dm` writes an element-aware Rhino file (optional `rhino3dm` install; not combinable with the other formats); `--out <dir>` (default `.`). Exits non-zero on failure. |
+| `brep publish <file>`  | Writes a static page for the part into `--out <dir>`: sliders for its parameters, a 3D view, and STEP, 3MF and STL downloads. `--title <text>`, `--force`. See [publish a part as a page](#publish-a-part-as-a-page).                                    |
 | `brep measure <a> [b]` | Measurements for one part; with a second module, the distance between the two parts.                                                                                                                                                                     |
 | `brep diff <a> <b>`    | Compares the measurements of a baseline and a comparison module.                                                                                                                                                                                         |
 | `brep snapshot <file>` | Multi-view PNG capture (`--out <dir>`, `--label <tag>`), also available via `verify --snapshot <dir>`. Needs the optional `puppeteer`/Chrome dependency.                                                                                                 |
@@ -112,6 +113,33 @@ export default (p = params.values) => box(p.width, 20, 10);
 - A value outside `min` and `max`, a value of the wrong type, or a name that is not declared stops the build. The report is not `ok` and carries `PARAM_OUT_OF_RANGE`, `PARAM_INVALID_VALUE`, or `PARAM_UNKNOWN`.
 - A `--param` for a part with no declaration gives `PARAMS_NOT_DECLARED`.
 - An `expected` that is a fixed object describes the part at its defaults. The CLI does not check it when a parameter is set, and `report.notes` says so.
+
+## Publish a part as a page
+
+`brep publish` turns a part into a folder of static files that a person can open with no install. The page builds the part in the browser, so it needs no server.
+
+```bash
+npx -y -p brepjs-cad brep publish part.brep.ts --out site --title "Mounting plate"
+```
+
+Put the folder on any static host (GitHub Pages, Vercel, an S3 bucket). The page needs no special headers and works below a sub-path.
+
+The page shows:
+
+- One control for each parameter of [the `params` contract](#the-params-contract): a slider for a number with `min` and `max`, a checkbox for a boolean, and a list for a choice. `group`, `label`, `unit` and `description` arrange and name the controls.
+- The values in the URL (`?width=80&bolt=M4`), so a configured part has its own link.
+- The presets of the part, from an optional `export const presets = { Small: { width: 40 }, Large: { width: 120 } }`.
+- A 3D view with a section plane, sizes, volume, area, and face inspection.
+- Downloads for STEP, 3MF and STL, made in the browser from the part on screen.
+- The source of the part and of each file it imports.
+
+A value that does not fit its declaration, or a build that fails, leaves the last good part on screen and shows the reason.
+
+`brep publish` verifies the part at its defaults first and writes nothing when the part is not `ok`. It writes into an empty directory or over an earlier publish, and it needs `--force` for a directory that holds other files.
+
+The page builds the part again for each change. Release each shape that is not the result (`using plate = ...`), or the memory of the page grows with each build.
+
+A published part can import `brepjs` and its own files. An import of another package stops the publish with `PUBLISH_UNSUPPORTED_IMPORT`. The page uses the brepjs and the kernel that ship with `brepjs-cad`. The folder is about 23 MB, and 21 MB of that is the kernel.
 
 ## Snapshots & the preview server
 

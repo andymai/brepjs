@@ -501,6 +501,25 @@ program
     }
   );
 
+program
+  .command('publish')
+  .argument('<file>', 'path to a part (.brep.ts) module')
+  .requiredOption('--out <dir>', 'directory for the static page')
+  .option('--title <text>', 'page title (default: the part file name)')
+  .option('--force', 'write into a directory that holds other files')
+  .action(async (file: string, opts: { out: string; title?: string; force?: boolean }) => {
+    // Lazy: keeps the publish graph (typescript) off the default CLI path.
+    const { publishPart } = await import('../publish/publish.js');
+    const result = await publishPart(resolve(file), resolve(opts.out), {
+      ...(opts.title ? { title: opts.title } : {}),
+      ...(opts.force ? { force: true } : {}),
+    });
+    for (const e of result.errors) process.stderr.write(`error: ${e.message}\n`);
+    if (result.ok) process.stderr.write(`published: ${join(result.outDir, 'index.html')}\n`);
+    process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+    if (!result.ok) process.exitCode = 1;
+  });
+
 // Only drive the CLI when run as the entry script, so tests can import the
 // guarded loaders without commander parsing the test runner's argv.
 // Resolve symlinks on both sides: the npm-installed bin (node_modules/.bin/brepjs)

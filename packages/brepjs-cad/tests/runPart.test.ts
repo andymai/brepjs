@@ -197,6 +197,13 @@ describe('runPart with declared parameters', () => {
     expect(reportOk(report)).toBe(false);
   }, 30000);
 
+  it('fails for an expected function that returns no value', async () => {
+    const { report } = await run(fix('paramBoxExpectedNoReturn.brep.ts'));
+    expect(reportOk(report)).toBe(false);
+    expect(report.errorInfos.map((e) => e.code)).toEqual(['EXPECTED_INVALID_VALUE']);
+    expect(report.assertions).toEqual([]);
+  }, 30000);
+
   it('skips a fixed expected when a value is set, and says so', async () => {
     const { report } = await run(fix('paramBoxFixedExpected.brep.ts'), {
       params: { width: 20 },

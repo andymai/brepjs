@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>brepjs part</title>
+    <link rel="icon" href="data:," />
+    <style>
+      html,
+      body,
+      #root {
+        margin: 0;
+        height: 100%;
+        background: #1a1d21;
+        color: #e6e9ee;
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+      }
+      .page {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        height: 100%;
+      }
+      .panel {
+        display: flex;
+        flex-direction: column;
+        padding: 16px;
+        overflow-y: auto;
+        border-right: 1px solid #2c323b;
+        background: #20242a;
+      }
+      .panel h1 {
+        font-size: 18px;
+        margin: 0 0 16px;
+        overflow-wrap: anywhere;
+      }
+      .downloads {
+        display: grid;
+        gap: 8px;
+        margin-top: 16px;
+      }
+      .downloads button,
+      .tabs button {
+        font: inherit;
+        color: #e6e9ee;
+        background: #2c323b;
+        border: 1px solid #3a414c;
+        border-radius: 6px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      .downloads button:first-child {
+        background: #2f6fed;
+        border-color: #2f6fed;
+      }
+      .downloads button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .panel footer {
+        margin-top: auto;
+        padding-top: 16px;
+        color: #8b95a3;
+        font-size: 12px;
+      }
+      a {
+        color: #7fb0ff;
+      }
+      .stage {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        min-height: 0;
+      }
+      .tabs {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-bottom: 1px solid #2c323b;
+      }
+      .tabs button[aria-selected='true'] {
+        background: #3a414c;
+      }
+      .viewport {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+      }
+      .viewport[hidden] {
+        display: none;
+      }
+      .source {
+        flex: 1;
+        overflow: auto;
+        padding: 0 16px 16px;
+      }
+      .source h2 {
+        font:
+          12px ui-monospace,
+          monospace;
+        color: #8b95a3;
+      }
+      .source pre {
+        margin: 0;
+        padding: 12px;
+        background: #11141a;
+        border-radius: 6px;
+        overflow-x: auto;
+        font:
+          13px/1.5 ui-monospace,
+          monospace;
+      }
+      .hint {
+        color: #8b95a3;
+        font-size: 12px;
+      }
+      .notice {
+        padding: 16px;
+        color: #8b95a3;
+      }
+      .banner,
+      .notice.error {
+        margin: 0;
+        padding: 8px 12px;
+        color: #ffb4b4;
+        background: #3a2224;
+        overflow-wrap: anywhere;
+      }
+      .wide-only {
+        display: contents;
+      }
+      @media (max-width: 720px) {
+        .page {
+          display: flex;
+          flex-direction: column;
+          height: auto;
+          min-height: 100%;
+        }
+        .stage {
+          order: -1;
+        }
+        .viewport {
+          flex: none;
+          height: 56vh;
+        }
+        .panel {
+          border-right: 0;
+          border-top: 1px solid #2c323b;
+        }
+        .wide-only {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/publish.tsx"></script>
+  </body>
+</html>

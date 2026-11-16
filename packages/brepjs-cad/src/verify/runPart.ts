@@ -215,7 +215,16 @@ async function expectedFor(
   if (typeof spec === 'function') {
     try {
       // Awaited: a Promise would otherwise pass for an expectations object with no fields.
-      return await (spec as (v?: ParamValues) => unknown)(values);
+      const out = await (spec as (v?: ParamValues) => unknown)(values);
+      if (out !== undefined && out !== null) return out;
+      // An arrow body in braces with no `return` gives undefined, which must not read as
+      // "the part declares no expectations".
+      pushError(report, {
+        message:
+          'expected returned no value, so none of its assertions ran. Return the object: `(p = params.values) => ({ volume: ... })`.',
+        code: 'EXPECTED_INVALID_VALUE',
+      });
+      return undefined;
     } catch (e) {
       pushError(report, { ...toErrorInfo('expected threw', e), code: 'EXPECTED_THREW' });
       return undefined;
