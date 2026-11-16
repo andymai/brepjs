@@ -2,10 +2,11 @@ const ENTRY = 'export default () => {';
 const IMPORT = /^import \{([^}]*)\} from 'brepjs';$/m;
 const USING = /^ {2}using (\w+) = /m;
 
-// The playground reads this entry when its address ends in `#handoff`
+// The playground reads the entry that the fragment names
 // (apps/playground/src/lib/urlCodec.ts).
-export const HANDOFF_KEY = 'brepjs-playground-handoff';
-export const PLAYGROUND_HANDOFF_URL = '/playground#handoff';
+export const HANDOFF_KEY = 'brepjs-playground-handoff:';
+// Older handoffs go, so the storage does not grow with each conversion.
+const HANDOFFS_KEPT = 5;
 
 /** The index after the `;` that ends the statement at `from`, or -1. Skips brackets and strings. */
 function statementEnd(code: string, from: number): number {
@@ -69,13 +70,27 @@ export function toPlaygroundCode(program: string): string | null {
   ].join('\n');
 }
 
+/** A name for one handoff. It starts with the time, so names sort by age. */
+export function newHandoffId(): string {
+  return Date.now().toString(36).padStart(9, '0') + Math.random().toString(36).slice(2, 8);
+}
+
+export function playgroundHandoffUrl(id: string): string {
+  return `/playground#handoff/${id}`;
+}
+
 /**
  * Give the program to the playground through localStorage. A link with the
  * program in its address would send the dimensions of the part to the server.
+ * Each handoff has its own entry, so a tab that reloads keeps its own program.
  */
-export function handOffToPlayground(code: string): void {
+export function handOffToPlayground(id: string, code: string): void {
   try {
-    localStorage.setItem(HANDOFF_KEY, code);
+    localStorage.setItem(HANDOFF_KEY + id, code);
+    const entries = Object.keys(localStorage)
+      .filter((key) => key.startsWith(HANDOFF_KEY))
+      .sort();
+    for (const key of entries.slice(0, -HANDOFFS_KEPT)) localStorage.removeItem(key);
   } catch {
     // Storage can be off (private mode). The playground then says that it has no program.
   }

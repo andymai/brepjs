@@ -14,7 +14,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer, { type Page } from 'puppeteer';
-import { HANDOFF_KEY, PLAYGROUND_HANDOFF_URL } from '../src/playground.js';
+import { HANDOFF_KEY } from '../src/playground.js';
 import { SAMPLES } from '../src/samples.js';
 
 const args = process.argv.slice(2);
@@ -32,6 +32,12 @@ const EXPECTED: Record<string, string> = {
   'bracket.stl': 'Rebuilt as a feature program',
   'knob-scan.ply': 'Rebuilt as a feature program',
   'blob.obj': 'Rebuilt from exact surfaces',
+};
+
+// Text that only the program of that sample has, without white space.
+const PROGRAM_MARKER: Record<string, string> = {
+  'bracket.stl': 'box(60,30,6)',
+  'knob-scan.ply': 'threePointArc(',
 };
 
 const browser = await puppeteer.launch({
@@ -102,7 +108,7 @@ try {
   pass(`the page shows ${cards} samples`);
 
   if (shots !== null) mkdirSync(shots, { recursive: true });
-  const programs: { file: string; code: string }[] = [];
+  const programs: { file: string; href: string; code: string }[] = [];
   for (const sample of SAMPLES) {
     await clickButton(page, sample.title);
     await waitForResult(page);
@@ -122,17 +128,18 @@ try {
     if (EXPECTED[sample.file] === 'Rebuilt as a feature program') {
       // The link hands the program over through localStorage. Stop the new tab
       // here, so the playground step can open its own.
-      const code = await page.evaluate((key) => {
+      const handoff = await page.evaluate((prefix) => {
         const link = document.querySelector<HTMLAnchorElement>('[aria-label="Downloads"] a.button');
         if (!link) return null;
         link.addEventListener('click', (e) => e.preventDefault(), { once: true });
         link.click();
-        return link.getAttribute('href') + '\n' + (localStorage.getItem(key) ?? '');
+        const href = link.getAttribute('href') ?? '';
+        const id = href.split('#handoff/')[1] ?? '';
+        return { href, code: localStorage.getItem(prefix + id) ?? '' };
       }, HANDOFF_KEY);
-      const [href, ...lines] = (code ?? '').split('\n');
-      if (href !== PLAYGROUND_HANDOFF_URL || lines.join('').trim() === '')
+      if (!handoff?.href.startsWith('/playground#handoff/') || handoff.code.trim() === '')
         fail(`${sample.file}: the playground link hands over no program`);
-      programs.push({ file: sample.file, code: lines.join('\n') });
+      else programs.push({ file: sample.file, ...handoff });
     }
     if (shots !== null) {
       await page.addStyleTag({ content: '.view-toggle { visibility: hidden; }' });
@@ -170,16 +177,18 @@ try {
   await waitForResult(page);
   pass('a cancel leaves a page that converts again');
 
+  const tabs: { file: string; tab: Page }[] = [];
   for (const program of withPlayground ? programs : []) {
     const tab = await browser.newPage();
     await tab.setViewport({ width: 1280, height: 800 });
+    const id = program.href.split('#handoff/')[1] ?? '';
     await tab.evaluateOnNewDocument(
       (key, code) => localStorage.setItem(key, code),
-      HANDOFF_KEY,
+      HANDOFF_KEY + id,
       program.code
     );
     // A Vite server needs the slash after its base. Vercel serves both forms.
-    await tab.goto(`${playgroundOrigin}${PLAYGROUND_HANDOFF_URL.replace('#', '/#')}`, {
+    await tab.goto(`${playgroundOrigin}${program.href.replace('#', '/#')}`, {
       waitUntil: 'domcontentloaded',
       timeout: 60_000,
     });
@@ -206,9 +215,33 @@ try {
         path: resolve(shots, `${program.file}.playground.png`) as `${string}.png`,
       });
     }
-    await tab.close();
+    tabs.push({ file: program.file, tab });
     pass(`${program.file}: the playground runs the generated program`);
   }
+
+  // Each handoff has its own entry. A reload of the first tab must show the
+  // first program again, not the one that a later tab opened.
+  const first = tabs[0];
+  if (first !== undefined && tabs.length > 1) {
+    // Chrome slows a tab that is not in front.
+    await first.tab.bringToFront();
+    await first.tab.reload({ waitUntil: 'domcontentloaded' });
+    await first.tab.waitForFunction(() => !document.querySelector('.absolute.inset-0.z-50'), {
+      timeout: 120_000,
+    });
+    await first.tab
+      .waitForFunction(
+        (marker) =>
+          (document.querySelector('.monaco-editor')?.textContent ?? '')
+            .replace(/\s/g, '')
+            .includes(marker),
+        { timeout: 30_000 },
+        PROGRAM_MARKER[first.file] ?? ''
+      )
+      .catch(() => fail(`${first.file}: a reload of its playground tab shows another program`));
+    pass(`${first.file}: a reload of its playground tab keeps its program`);
+  }
+  for (const { tab } of tabs) await tab.close();
 
   if (problems.length > 0) fail(`browser errors:\n  ${problems.join('\n  ')}`);
   console.log('all steps passed');
