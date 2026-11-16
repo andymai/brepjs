@@ -16,7 +16,14 @@
     // These import brepjs-bim, -sheetmetal, and -families, whose types come from builds
     // that the CI typecheck job doesn't run (vitest aliases them to src instead).
     "tests/helpers/playgroundExampleEval.ts",
-    "tests/playgroundExamples.test.ts",
+    "tests/helpers/playgroundExampleSuite.ts",
+    "tests/playgroundExamplesBasics.test.ts",
+    "tests/playgroundExamplesBim.test.ts",
+    "tests/playgroundExamplesFamilies.test.ts",
+    "tests/playgroundExamplesMechanicalAL.test.ts",
+    "tests/playgroundExamplesMechanicalMZ.test.ts",
+    "tests/playgroundExamplesSheetMetal.test.ts",
+    "tests/playgroundExamplesShowcase.test.ts",
     "tests/validateCandidate.test.ts"
   ]
 }

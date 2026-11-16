@@ -1,26 +1,24 @@
 /**
- * Regression guard for the playground command-palette examples.
+ * Regression guard for the playground examples.
  *
- * Every entry in the playground's EXAMPLES list — the hand-written core set
- * plus anything the scad-to-playground workflow adds — must evaluate and
- * mesh against the shipped OCCT kernel. Nothing else verifies this; the
- * production smoke test only checks the engine boots, not that each example
- * runs. Without this, an example can silently rot into a blank viewer.
+ * Every entry in the playground's EXAMPLES list must evaluate and mesh against
+ * the kernel under test. Nothing else verifies this; the production smoke test
+ * only checks the engine boots, not that each example runs. Without this, an
+ * example can silently rot into a blank viewer.
+ *
+ * The geometry tests are in the files of `EXAMPLE_TEST_FILES`
+ * (`helpers/playgroundExampleCategories.ts`). This file holds the checks that
+ * need no kernel.
  */
-import { describe, it, beforeAll, expect } from 'vitest';
-import { initKernel } from './setup.js';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { describe, it, expect } from 'vitest';
 import { EXAMPLES } from '../apps/playground/src/lib/examples/index.js';
-import { evalAndMeshExample, bodySolidCounts } from './helpers/playgroundExampleEval.js';
-import { shouldSkipSuite } from './helpers/kernelDivergences.js';
-
-beforeAll(async () => {
-  await initKernel();
-}, 60000);
-
-// A test timeout cannot stop a synchronous kernel call that never returns, so
-// an example that hangs on a kernel must be skipped before it starts.
-const hangs = (id: string): boolean =>
-  id === 'bench-vise' && shouldSkipSuite('playgroundExamples.benchVise');
+import {
+  CONNECTED_BODY_EXAMPLES,
+  EXAMPLE_TEST_FILES,
+  examplesOfFile,
+} from './helpers/playgroundExampleCategories.js';
 
 describe('playground examples', () => {
   it('has a unique id and label for every entry', () => {
@@ -30,17 +28,27 @@ describe('playground examples', () => {
     expect(new Set(labels).size).toBe(labels.length);
   });
 
-  for (const example of EXAMPLES) {
-    it.skipIf(hangs(example.id))(`evaluates and meshes: ${example.id}`, async () => {
-      const { shapeCount, totalVertices } = await evalAndMeshExample(example.code);
-      expect(shapeCount).toBeGreaterThan(0);
-      expect(totalVertices).toBeGreaterThan(0);
-    });
-  }
+  it('has every example in exactly one geometry test file', () => {
+    const files = new Map<string, string[]>();
+    for (const { file } of EXAMPLE_TEST_FILES) {
+      expect(existsSync(resolve(import.meta.dirname, file)), `tests/${file} does not exist`).toBe(
+        true
+      );
+      for (const example of examplesOfFile(file))
+        files.set(example.id, [...(files.get(example.id) ?? []), file]);
+    }
+    for (const example of EXAMPLES)
+      expect(files.get(example.id), `files that hold ${example.id}`).toHaveLength(1);
+  });
+
+  it('checks connected bodies only for examples that exist', () => {
+    const ids = new Set(EXAMPLES.map((e) => e.id));
+    expect(CONNECTED_BODY_EXAMPLES.filter((id) => !ids.has(id))).toEqual([]);
+  });
 
   // A finishing op (fillet/chamfer/etc.) that returns Result.Err must NOT be
-  // swallowed with a fallback to the pre-op shape — that makes a no-op pass the
-  // eval+mesh check above while silently shipping an unfinished part. Require
+  // swallowed with a fallback to the pre-op shape: that makes a no-op pass the
+  // eval+mesh check while silently shipping an unfinished part. Require
   // Result-returning ops to be unwrap()'d so failures throw and get caught.
   // Matches patterns like `x.ok ? x.value : base` and `isOk(x) ? unwrap(x) : base`.
   const SILENT_FALLBACK = /(\.ok\s*\?[^:]*:|isOk\s*\([^)]*\)\s*\?[^:]*:)/;
@@ -50,31 +58,6 @@ describe('playground examples', () => {
         SILENT_FALLBACK.test(example.code),
         `${example.id} swallows a Result with a fallback; unwrap() finishing ops instead so failures surface`
       ).toBe(false);
-    });
-  }
-
-  // Multi-part mechanism/assembly examples return an array of DISTINCT bodies,
-  // each of which must be a single connected solid. A body that is secretly a
-  // multi-solid compound — a pin floating off its disc, parts glued by a fuse
-  // that never welded — passes eval+mesh (a disjoint compound still meshes) yet
-  // detaches on STEP/GLB export. getSolids() is the only thing that catches it.
-  const CONNECTED_BODY_EXAMPLES = [
-    'universal-joint',
-    'geneva-drive',
-    'bench-vise',
-    'scotch-yoke',
-    'three-jaw-chuck',
-    'worm-gear-drive',
-  ];
-  for (const id of CONNECTED_BODY_EXAMPLES) {
-    it.skipIf(hangs(id))(`every returned body is a single connected solid: ${id}`, async () => {
-      const example = EXAMPLES.find((e) => e.id === id);
-      if (!example) throw new Error(`example ${id} not found`);
-      const counts = await bodySolidCounts(example.code);
-      expect(counts.length).toBeGreaterThan(0);
-      counts.forEach((n, i) => {
-        expect(n, `${id} body[${i}] is not one solid (getSolids=${n})`).toBe(1);
-      });
     });
   }
 });
