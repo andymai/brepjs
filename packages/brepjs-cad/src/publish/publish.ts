@@ -5,7 +5,7 @@ import { runPart } from '../verify/runPart.js';
 import { reportOk } from '../verify/report.js';
 import { disposeShape } from '../disposeShape.js';
 import { stem } from '../cli/exportPart.js';
-import { collectPartFiles, PublishError } from './partFiles.js';
+import { collectPartFiles, PublishError, urlPath } from './partFiles.js';
 
 /** What the page reads at `part.json` to find and describe the part. */
 export interface PartManifest {
@@ -33,6 +33,7 @@ export interface PublishResult {
 
 const MANIFEST = 'part.json';
 const PART_DIR = 'part';
+const FALLBACK_FONT = 'Inter-Bold.ttf';
 
 function runtimeDir(): string {
   return join(toolDir(), 'viewer', 'dist', 'publish');
@@ -40,6 +41,11 @@ function runtimeDir(): string {
 
 function wasmDir(): string {
   return join(toolDir(), 'viewer', 'dist', 'wasm');
+}
+
+// The font that `brep verify` installs as the fallback, so text in a part looks the same on the page.
+function fallbackFont(): string {
+  return join(toolDir(), 'assets', 'fonts', FALLBACK_FONT);
 }
 
 function toolVersion(): string {
@@ -116,6 +122,13 @@ export async function publishPart(
   mkdirSync(outDir, { recursive: true });
   cpSync(runtime, outDir, { recursive: true });
   cpSync(wasmDir(), join(outDir, 'wasm'), { recursive: true });
+  mkdirSync(join(outDir, 'fonts'), { recursive: true });
+  cpSync(fallbackFont(), join(outDir, 'fonts', FALLBACK_FONT));
+  // The font's license asks that a copy goes with the font.
+  cpSync(
+    join(dirname(fallbackFont()), 'Inter-LICENSE.txt'),
+    join(outDir, 'fonts', 'Inter-LICENSE.txt')
+  );
   for (const file of part.files) {
     const target = join(outDir, PART_DIR, file.outPath);
     mkdirSync(dirname(target), { recursive: true });
@@ -126,7 +139,7 @@ export async function publishPart(
   const manifest: PartManifest = {
     name,
     title: opts.title ?? name,
-    entry: `${PART_DIR}/${part.entry}`,
+    entry: `${PART_DIR}/${urlPath(part.entry)}`,
     sources: part.files.map(({ path, text }) => ({ path, text })),
     generator: { name: 'brepjs-cad', version: toolVersion() },
   };

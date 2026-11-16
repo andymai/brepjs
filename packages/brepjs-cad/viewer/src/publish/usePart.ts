@@ -110,16 +110,16 @@ export function usePart(manifest: PartManifest | null) {
       } else if (msg.type === 'fatal') {
         setState((s) => ({ ...s, status: 'fatal', fatal: msg.message }));
       } else if (msg.type === 'built') {
-        if (msg.id !== latest.current) return;
+        // The worker exports its newest successful build, so the view shows each one, also one
+        // that a newer request already replaced. The controls follow the newest request only.
+        const model = { data: msg.meshData, measurements: msg.measurements };
+        if (msg.id !== latest.current) {
+          setState((s) => ({ ...s, model }));
+          return;
+        }
         // The part converts URL strings to numbers and booleans; show what it built with.
         if (Object.keys(msg.values).length > 0) inputRef.current = msg.values;
-        setState((s) => ({
-          ...s,
-          model: { data: msg.meshData, measurements: msg.measurements },
-          input: inputRef.current,
-          building: false,
-          error: null,
-        }));
+        setState((s) => ({ ...s, model, input: inputRef.current, building: false, error: null }));
       } else if (msg.type === 'failed') {
         if (msg.id !== latest.current) return;
         setState((s) => ({ ...s, building: false, error: msg.message }));

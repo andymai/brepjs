@@ -137,4 +137,19 @@ describe.skipIf(!canRender)('a published page', () => {
     ).toEqual(['lib/holes.ts', 'plate.brep.ts']);
     expect(errors).toEqual([]);
   }, 120000);
+
+  it('builds a part that draws text with the fallback font', async () => {
+    const textOut = mkdtempSync(join(tmpdir(), 'brep-publish-text-'));
+    const textServer = await serveBelow('/', textOut);
+    try {
+      const result = await publishPart(fix('engravedText.brep.ts'), textOut);
+      expect(result.ok).toBe(true);
+      await page.goto(`http://127.0.0.1:${(textServer.address() as AddressInfo).port}/`);
+      await waitForInfo('40 × 20 × 3');
+      expect(await page.$('[role="alert"]')).toBeNull();
+    } finally {
+      textServer.close();
+      rmSync(textOut, { recursive: true, force: true });
+    }
+  }, 120000);
 });

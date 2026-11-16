@@ -76,7 +76,7 @@ function hasComputedImport(ts: typeof TS, file: string, text: string): boolean {
   const visit = (node: TS.Node): boolean =>
     (ts.isCallExpression(node) &&
       node.expression.kind === ts.SyntaxKind.ImportKeyword &&
-      !(node.arguments[0] !== undefined && ts.isStringLiteralLike(node.arguments[0]))) ||
+      !(node.arguments[0] !== undefined && ts.isStringLiteral(node.arguments[0]))) ||
     (ts.forEachChild(node, visit) ?? false);
   return visit(source);
 }
@@ -90,7 +90,7 @@ function collect(ts: typeof TS, entry: string): Map<string, Collected> {
     if (hasComputedImport(ts, file, text)) {
       throw new PublishError(
         'PUBLISH_UNSUPPORTED_IMPORT',
-        `${file} has an import() whose path is not a string literal. A published part needs each import path in the source.`
+        `${file} has an import() whose path is not a quoted string. A published part needs each import path as a plain string in the source.`
       );
     }
     const imports = new Map<string, string>();
@@ -117,9 +117,17 @@ function collect(ts: typeof TS, entry: string): Map<string, Collected> {
   return seen;
 }
 
+/** A file path as a URL path: `plate#1.js` must not read as a URL with a fragment. */
+export function urlPath(path: string): string {
+  return path
+    .split('/')
+    .map((segment) => (segment === '.' || segment === '..' ? segment : encodeURIComponent(segment)))
+    .join('/');
+}
+
 function relativeSpecifier(fromOutPath: string, toOutPath: string): string {
   const rel = posix(relative(dirname(fromOutPath), toOutPath));
-  return rel.startsWith('.') ? rel : `./${rel}`;
+  return urlPath(rel.startsWith('.') ? rel : `./${rel}`);
 }
 
 /** Rewrites each import and export specifier of one file with `map`. */
@@ -161,12 +169,12 @@ function rewriteSpecifiers(
       if (
         ts.isCallExpression(node) &&
         node.expression.kind === ts.SyntaxKind.ImportKeyword &&
-        node.arguments.length === 1 &&
         node.arguments[0] !== undefined &&
         ts.isStringLiteral(node.arguments[0])
       ) {
         return factory.updateCallExpression(node, node.expression, node.typeArguments, [
           factory.createStringLiteral(map(node.arguments[0].text)),
+          ...node.arguments.slice(1),
         ]);
       }
       return ts.visitEachChild(node, visit, context);

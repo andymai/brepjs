@@ -28,6 +28,8 @@ describe.skipIf(!runtimeBuilt)('publishPart', () => {
       'brepjs.js',
       'wasm/occt-wasm.js',
       'wasm/occt-wasm.wasm',
+      'fonts/Inter-Bold.ttf',
+      'fonts/Inter-LICENSE.txt',
       'part/plate.brep.js',
       'part/lib/holes.js',
       'part.json',

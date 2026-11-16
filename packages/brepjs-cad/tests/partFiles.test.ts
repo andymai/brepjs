@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { collectPartFiles, PublishError } from '@/publish/partFiles.js';
+import { collectPartFiles, PublishError, urlPath } from '@/publish/partFiles.js';
 
 const fix = (n: string) => fileURLToPath(new URL(`./fixtures/${n}`, import.meta.url));
 
@@ -109,8 +109,45 @@ describe('collectPartFiles', () => {
     );
     await expect(collectPartFiles(entry, '../brepjs.js')).rejects.toMatchObject({
       code: 'PUBLISH_UNSUPPORTED_IMPORT',
-      message: expect.stringContaining('not a string literal') as string,
+      message: expect.stringContaining('not a quoted string') as string,
     });
+  });
+
+  it('rejects an import() with a template literal path', async () => {
+    write('lib/shape.ts', 'export const size = 1;\n');
+    const entry = write(
+      'part.brep.ts',
+      'export default async () => (await import(`./lib/shape.ts`)).size;\n'
+    );
+    await expect(collectPartFiles(entry, '../brepjs.js')).rejects.toMatchObject({
+      code: 'PUBLISH_UNSUPPORTED_IMPORT',
+    });
+  });
+
+  it('rewrites an import() that has a second argument, and keeps the argument', async () => {
+    write('lib/shape.ts', 'export const size = 1;\n');
+    const entry = write(
+      'part.brep.ts',
+      "export default async () => (await import('./lib/shape.ts', { with: {} })).size;\n"
+    );
+    const part = await collectPartFiles(entry, '../brepjs.js');
+    expect(part.files.find((f) => f.outPath === part.entry)?.js).toMatch(
+      /import\("\.\/lib\/shape\.js", \{ with: \{\} \}\)/
+    );
+  });
+
+  it('writes a file name with URL characters as a URL path', async () => {
+    write('lib/hole #1.ts', 'export const size = 1;\n');
+    const entry = write(
+      'plate#1.brep.ts',
+      "import { size } from './lib/hole #1.js';\nexport default () => size;\n"
+    );
+    const part = await collectPartFiles(entry, '../brepjs.js');
+    expect(part.entry).toBe('plate#1.brep.js');
+    expect(urlPath(part.entry)).toBe('plate%231.brep.js');
+    expect(part.files.find((f) => f.outPath === part.entry)?.js).toContain(
+      'from "./lib/hole%20%231.js"'
+    );
   });
 
   it('follows an import() with a literal path', async () => {

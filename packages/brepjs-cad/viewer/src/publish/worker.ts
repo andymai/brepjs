@@ -8,6 +8,7 @@ import {
 import type { FromWorker, ToWorker } from './protocol.js';
 
 interface Kernel extends BrepjsForPart {
+  setFallbackFont?: (font: ArrayBuffer) => void;
   registerKernel: (id: string, adapter: unknown) => void;
   OcctWasmAdapter: new (m: unknown, k: unknown) => unknown;
 }
@@ -36,6 +37,10 @@ async function boot(base: string, entry: string): Promise<PartRunner> {
   });
   const brep = (await import(/* @vite-ignore */ `${base}brepjs.js`)) as unknown as Kernel;
   brep.registerKernel('occt-wasm', new brep.OcctWasmAdapter(Module, new Module.OcctKernel()));
+  // `brep verify` installs this font as the fallback, so a part can draw text with no font of
+  // its own. Without it here, such a part would verify and then fail on the page.
+  const font = await fetch(`${base}fonts/Inter-Bold.ttf`);
+  if (font.ok) brep.setFallbackFont?.(await font.arrayBuffer());
   const mod = (await import(/* @vite-ignore */ `${base}${entry}`)) as PartModule;
   return createPartRunner(brep, mod);
 }
