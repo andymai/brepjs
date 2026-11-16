@@ -1,0 +1,23 @@
+packages/brepjs-cad/src/verify/runPart.ts
+  s_b288ee9273ceb3::t_d6e3d505be8fb5 209,214,217-218,315
+packages/brepjs-cad/tests/fixtures/paramBoxAsyncExpected.brep.ts
+  s_b288ee9273ceb3::t_1cd41d5afd3d09 1-10
+packages/brepjs-cad/tests/runPart.test.ts
+  s_b288ee9273ceb3::t_2b743e33c379ec 146-152,154,161,170,183,192-199,201,210,215,221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "49e7b90253b04d4c500e7ca1613af311e8afe5bc",
+  "prompts": {},
+  "sessions": {
+    "s_b288ee9273ceb3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3f0356f-cf6a-42dc-a9e4-1988e327040d",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
