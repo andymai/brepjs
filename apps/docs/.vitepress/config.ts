@@ -381,6 +381,10 @@ export default defineConfig({
           ],
         },
         {
+          text: 'Sheet Metal',
+          items: [{ text: 'Fold & Unfold', link: '/sheet-metal/overview' }],
+        },
+        {
           text: 'Advanced',
           items: [
             { text: 'Memory Management', link: '/advanced/memory' },
