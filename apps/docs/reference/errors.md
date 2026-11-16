@@ -228,6 +228,28 @@ Using a shape after it was disposed throws `Error('Shape handle has been dispose
 
 **Fix**: Move the operation inside the scope. Or copy the data you need (numbers from measurements) before disposal.
 
+## Part parameters
+
+`resolveParams` returns these when caller input does not fit the declaration from `defineParams`.
+
+### `PARAM_UNKNOWN`
+
+The input has a key that the part does not declare. The `suggestion` field lists the declared names.
+
+**Fix**: Use a declared name. Check the spelling against the keys of the object passed to `defineParams`.
+
+### `PARAM_INVALID_VALUE`
+
+The value has the wrong type: text for a number, a fraction for an `integer` parameter, or a string that is not one of the `options` of a choice.
+
+**Fix**: Pass a value of the declared type. A string such as `'80'` or `'true'` is accepted for a number or a boolean parameter.
+
+### `PARAM_OUT_OF_RANGE`
+
+The value is below `min`, above `max`, or longer than `maxLength`. A default that breaks its own limits gives this error too.
+
+**Fix**: Pass a value inside the limits, or change the limits in the declaration.
+
 ## Custom-kernel-related
 
 ### `UNSUPPORTED_CAPABILITY`
