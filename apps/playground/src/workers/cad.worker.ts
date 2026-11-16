@@ -1,6 +1,12 @@
 import { transform } from 'sucrase';
 import type { ToWorker, FromWorker, MeshTransfer, FaceGroup, EdgeGroup } from './workerProtocol';
 import { WASM_CACHE_NAME, wasmUrl } from '../lib/wasmConfig';
+import {
+  draftMeshOptions,
+  fineMeshOptions,
+  type Bounds,
+  type MeshOptions,
+} from '../lib/meshOptions';
 
 declare function postMessage(message: unknown, transfer?: Transferable[]): void;
 declare function postMessage(message: unknown, options?: StructuredSerializeOptions): void;
@@ -356,31 +362,29 @@ function extractUserLine(err: unknown, userBlobUrl: string): number | undefined 
   return undefined;
 }
 
-const FINE_MESH = { tolerance: 0.1, angularTolerance: 0.2 };
-// A draft mesh lets a slow model show in full before its final mesh is ready.
-// The tolerance follows the size of the first shape, so a small part is not
-// reduced to a few facets.
-const DRAFT_ANGULAR_TOLERANCE = 0.8;
-const DRAFT_TOLERANCE_RATIO = 0.002;
 // The draft pass costs time, and for a model of flat faces it is no faster than
 // the final mesh. It runs only after the first shape shows that a draft is this
 // many times faster, and only when the mesh work is slow enough to see.
 const DRAFT_MIN_SPEEDUP = 3;
 const DRAFT_AFTER_MS = 150;
 
-interface MeshOptions {
-  tolerance: number;
-  angularTolerance: number;
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs shape handle
 function draftOptionsFor(shape: any): MeshOptions {
-  const b = brepjs.getBounds(shape);
-  const diagonal = Math.hypot(b.xMax - b.xMin, b.yMax - b.yMin, b.zMax - b.zMin);
-  return {
-    tolerance: Math.max(FINE_MESH.tolerance, diagonal * DRAFT_TOLERANCE_RATIO),
-    angularTolerance: DRAFT_ANGULAR_TOLERANCE,
-  };
+  return draftMeshOptions(brepjs.getBounds(shape));
+}
+
+/** The final mesh options for a model, from the bounds of all of its shapes. */
+function fineOptionsFor(shapes: unknown[]): MeshOptions {
+  return fineMeshOptions(
+    shapes.map((item) => {
+      try {
+        return brepjs.getBounds(unwrapResultShape(item)) as Bounds;
+      } catch {
+        // The mesh loop reports a shape that cannot be read.
+        return null;
+      }
+    })
+  );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs shape handle
@@ -448,6 +452,7 @@ function meshShapes(
     return mesh;
   };
 
+  const fineOptions = fineOptionsFor(shapes);
   let draftOptions: MeshOptions | null = null;
   let draftSpeedup = 0;
   let streamed = false;
@@ -497,7 +502,7 @@ function meshShapes(
         probeMs = performance.now() - probeStart;
       }
       const fineStart = performance.now();
-      const mesh = tint(meshShape(shape, FINE_MESH, inspect), i);
+      const mesh = tint(meshShape(shape, fineOptions, inspect), i);
       if (probeMs > 0) draftSpeedup = (performance.now() - fineStart) / probeMs;
 
       cacheMeshes.push(cloneMeshTransfer(mesh));
