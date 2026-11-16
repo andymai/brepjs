@@ -17,12 +17,23 @@ Install the runtime where `brepjs` resolves (it also bundles its own `brepjs` + 
 npm i -D brepjs-cad
 ```
 
-A model is a `.brep.ts` module: a default-exported zero-arg function returning a shape (or `Result<shape>`), optionally with an `expected` block that the CLI asserts:
+A model is a `.brep.ts` module: a default-exported function returning a shape (or `Result<shape>`), optionally with an `expected` block that the CLI asserts:
 ```ts
 import { box } from 'brepjs';
 export const expected = { volume: 8000, tolerancePct: 1 }; // optional: volume|area|bounds + tolerancePct
 export default () => box(40, 20, 10, { centered: true });
 ```
+
+To let a caller change a dimension, declare it with `defineParams` and take the values as the argument. Keep the default argument, so the part also builds when it is called with no argument:
+```ts
+import { box, defineParams } from 'brepjs';
+export const params = defineParams({
+  width: { type: 'number', default: 40, min: 20, max: 120, unit: 'mm' }, // also: boolean | string | choice (options: [...])
+});
+export const expected = (p = params.values) => ({ volume: p.width * 20 * 10, tolerancePct: 1 }); // a function of the values
+export default (p = params.values) => box(p.width, 20, 10, { centered: true });
+```
+`brep verify part.brep.ts --param width=80` builds it at that size (repeat `--param` for more values; the report lists them as `params`; a bad value gives `PARAM_OUT_OF_RANGE`, `PARAM_INVALID_VALUE` or `PARAM_UNKNOWN`). `brep publish part.brep.ts --out site` writes a static page with one control for each parameter and STEP/3MF/STL downloads; a published part can import only `brepjs` and its own files, and it releases its intermediate shapes with `using`, because the page builds the part again for each change. Guide: https://brepjs.dev/agent/publish
 
 The loop, in order: brief → author `.brep.ts` → declare `expected` → `brep verify part.brep.ts --check --json report.json` → review `--snapshot shots/` → repair the smallest responsible section → `--step part.step` and hand off. Use `npx -y -p brepjs-cad brep …` if not installed.
 
@@ -34,7 +45,7 @@ The report (stdout JSON) is the source of truth:
 - `hints` — actionable fix + next step keyed on an error `code`; read before guessing.
 - `errorInfos` — raw `{code,message}` failures (authoring/kernel/export). Cite the `code` when repairing.
 
-CLI subcommands: `verify <file>` (default; flags `--check`, `--json`, `--step`, `--glb`, `--snapshot <dir>`, `--serve`), `init <name>` (scaffold), `watch <file>`, `export <file>` (`--step`/`--glb`/`--stl`/`--all` behind a validity gate), `measure <a> [b]`, `diff <a> <b>`. Exits non-zero when not `ok`.
+CLI subcommands: `verify <file>` (default; flags `--check`, `--json`, `--step`, `--glb`, `--snapshot <dir>`, `--serve`, `--param name=value`), `init <name>` (scaffold), `watch <file>`, `export <file>` (`--step`/`--glb`/`--stl`/`--all` behind a validity gate), `publish <file> --out <dir>` (static page; `--title`, `--force`), `measure <a> [b]`, `diff <a> <b>`. Exits non-zero when not `ok`.
 
 Reliable first-try: primitives, booleans, 2D sketch → extrude, fillet/chamfer, shell/offset, transforms. Advanced (verify carefully, expect iteration): sweeps, lofts, revolves, multi-section, assemblies, text. Author parts in ESM (a CJS project needs `"type":"module"` or a `.mts` file); Node 24+ strips the part's types natively.
 

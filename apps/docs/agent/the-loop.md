@@ -15,7 +15,7 @@ You write a `.brep.ts` part; `brep` runs it on a geometry kernel and reports wha
 4. **Verify (type + geometry).** `brep verify part.brep.ts --check --json report.json`. `--check` type-checks before running (catches wrong-API calls early); the JSON report is the source of truth. Iterate fast with `brep watch part.brep.ts`.
 5. **Verify visually.** Add `--snapshot shots/` for iso/front/top/right PNGs. Review against the brief. A visual concern is **not** a conclusion: convert it to a measurement ("hole looks off-center → check `bounds`").
 6. **Repair the smallest responsible section** and re-run. Use the report's `hints` to guide the fix.
-7. **Export + hand off.** `brep verify part.brep.ts --step part.step` (STEP is the validated primary deliverable; GLB/STL are derived). Batch behind a validity gate with `brep export part.brep.ts --all`. Report the STEP path.
+7. **Export + hand off.** `brep verify part.brep.ts --step part.step` (STEP is the validated primary deliverable; GLB/STL are derived). Batch behind a validity gate with `brep export part.brep.ts --all`. Report the STEP path. To hand the part to a person who does not run code, [publish it as a page](./publish) with `brep publish part.brep.ts --out site`.
 
 The commands above assume you've installed the package (`npm i -D brepjs-cad`) and call `brep` directly. Otherwise prefix every command with `npx -y -p brepjs-cad` to run it straight from npm.
 

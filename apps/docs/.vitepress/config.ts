@@ -407,6 +407,7 @@ export default defineConfig({
             { text: 'Overview', link: '/agent/overview' },
             { text: 'The Verify Loop', link: '/agent/the-loop' },
             { text: 'CLI Reference', link: '/agent/cli' },
+            { text: 'Publish a Part as a Page', link: '/agent/publish' },
             { text: 'BIM over MCP', link: '/agent/bim-mcp' },
             { text: 'Examples', link: '/agent/examples' },
             { text: 'Eval & Scorecard', link: '/agent/eval' },
