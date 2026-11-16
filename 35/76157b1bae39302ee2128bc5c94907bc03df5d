@@ -1,0 +1,35 @@
+apps/docs/agent/cli.md
+  s_b288ee9273ceb3::t_e80fd822347e5c 140-141
+packages/brepjs-cad/src/publish/partFiles.ts
+  s_b288ee9273ceb3::t_88135fdd658dd3 73-83,90-95,189-199
+packages/brepjs-cad/src/publish/publish.ts
+  s_b288ee9273ceb3::t_55fde032efdfc4 52-62,67
+packages/brepjs-cad/tests/fixtures/paramPlate/plate.brep.ts
+  s_b288ee9273ceb3::t_727873d2c67fb1 41,43,49-50,52,54-55
+packages/brepjs-cad/tests/partFiles.test.ts
+  s_b288ee9273ceb3::t_bb2c7d1bd12182 104-140
+packages/brepjs-cad/tests/publish.test.ts
+  s_b288ee9273ceb3::t_24e2ad05455a75 68-75
+packages/brepjs-cad/viewer/src/publish/partRunner.ts
+  s_b288ee9273ceb3::t_36eacf19ec0353 135-136
+packages/brepjs-cad/viewer/src/publish/usePart.ts
+  s_b288ee9273ceb3::t_aa34bbfdc7bfa5 78-81
+packages/brepjs-cad/viewer/tests/partRunner.test.ts
+  s_b288ee9273ceb3::t_5a6d9fb2d11306 99-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3576157b1bae39302ee2128bc5c94907bc03df5d",
+  "prompts": {},
+  "sessions": {
+    "s_b288ee9273ceb3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3f0356f-cf6a-42dc-a9e4-1988e327040d",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
