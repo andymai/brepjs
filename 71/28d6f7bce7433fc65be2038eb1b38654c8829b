@@ -1,0 +1,23 @@
+apps/docs/.vitepress/config.ts
+  s_8e26ce757a4a72::t_8d8871e3d6cf27 384-386
+  s_8e26ce757a4a72::t_ec2d0437dbabab 383
+apps/docs/sheet-metal/overview.md
+  s_8e26ce757a4a72::t_5c86458a52aa3c 8,10-19,23,27,38-39,41,44-72,74-100
+  s_8e26ce757a4a72::t_fa44e72eca475f 1-7,9,20-22,24-26,28-37,40,42-43,73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7128d6f7bce7433fc65be2038eb1b38654c8829b",
+  "prompts": {},
+  "sessions": {
+    "s_8e26ce757a4a72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e2a2abb-96e7-41bf-9f42-70cf1b42e7a4",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
