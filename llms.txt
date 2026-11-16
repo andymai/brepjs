@@ -38,6 +38,15 @@ CLI subcommands: `verify <file>` (default; flags `--check`, `--json`, `--step`, 
 
 Reliable first-try: primitives, booleans, 2D sketch → extrude, fillet/chamfer, shell/offset, transforms. Advanced (verify carefully, expect iteration): sweeps, lofts, revolves, multi-section, assemblies, text. Author parts in ESM (a CJS project needs `"type":"module"` or a `.mts` file); Node 24+ strips the part's types natively.
 
+## Companion packages
+
+Each one is a separate npm package that builds on brepjs. Each needs `brepjs` and a kernel (`occt-wasm`) beside it.
+
+- **brepjs-families**: declarative parametric components over the CSG IR. Guide: https://brepjs.dev/families/overview
+- **brepjs-bim**: IFC building elements and IFC import and export. Guide: https://brepjs.dev/bim/overview
+- **brepjs-sheetmetal**: fold a part from a base and flanges, unfold it to a flat pattern and a DXF. Guide: https://brepjs.dev/sheet-metal/overview
+- **brepjs-mesh2solid**: turn an STL, OBJ, PLY or 3MF mesh into a solid with exact surfaces, a STEP file, and a brepjs program (`meshToSolid`, `inspectMesh`). Guide: https://brepjs.dev/mesh2solid/overview. In a browser: https://brepjs.dev/mesh-to-solid
+
 ## Setup & Initialization
 
 Install:

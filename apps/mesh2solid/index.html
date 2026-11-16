@@ -5,14 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <title>Mesh to solid · brepjs</title>
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#4ACECC" />
+    <title>Mesh to solid: STL to STEP in the browser · brepjs</title>
     <meta
       name="description"
-      content="Turn an STL, OBJ, PLY, or 3MF mesh into a B-Rep solid and STEP file in your browser."
+      content="Turn an STL, OBJ, PLY, or 3MF mesh into a B-Rep solid and a STEP file. The conversion runs in your browser, and your file stays there."
     />
+    <link rel="canonical" href="https://brepjs.dev/mesh-to-solid" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="brepjs" />
+    <meta property="og:url" content="https://brepjs.dev/mesh-to-solid" />
+    <meta property="og:title" content="Mesh to solid: STL to STEP in the browser" />
+    <meta
+      property="og:description"
+      content="Turn an STL, OBJ, PLY, or 3MF mesh into a B-Rep solid and a STEP file. The conversion runs in your browser, and your file stays there."
+    />
+    <meta property="og:image" content="https://brepjs.dev/mesh-to-solid/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="A scanned knob rebuilt as a solid of 17 faces, colored by its distance to the scan"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Mesh to solid: STL to STEP in the browser" />
+    <meta
+      name="twitter:description"
+      content="Turn an STL, OBJ, PLY, or 3MF mesh into a B-Rep solid and a STEP file. The conversion runs in your browser, and your file stays there."
+    />
+    <meta name="twitter:image" content="https://brepjs.dev/mesh-to-solid/og.png" />
   </head>
   <body>
     <div id="root"></div>
+    <noscript>This page converts a mesh with WebAssembly, so it needs JavaScript.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

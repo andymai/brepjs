@@ -11,6 +11,9 @@ boolean, and export as STEP. Reads STL (binary and text), OBJ, PLY, and 3MF, fro
 scans. Everything runs locally: the mesh engine is Rust compiled to WebAssembly and ships inside this
 package, and the B-Rep is built by brepjs's kernel.
 
+To try it without an install, drop a mesh on [brepjs.dev/mesh-to-solid](https://brepjs.dev/mesh-to-solid).
+The [guide](https://brepjs.dev/mesh2solid/overview) is a shorter introduction than this file.
+
 ```ts
 import { init, exportSTEP, unwrap } from 'brepjs';
 import { meshToSolid } from 'brepjs-mesh2solid';

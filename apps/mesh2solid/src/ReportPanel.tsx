@@ -52,7 +52,7 @@ export function ReportPanel({ report, solid }: { report: ConversionReport; solid
       <dl className="rows">
         <Row label="Result">{resultLabel(report, solid)}</Row>
         <Row label="Faces">
-          {count(report.faces.triangles)} triangles in, {count(report.faces.faces)} faces out
+          {count(report.input.rawTriangles)} triangles in, {count(report.faces.faces)} faces out
         </Row>
         <Row label="Distance to mesh">
           95% within {length(report.deviation.p95)}, largest {length(report.deviation.max)}

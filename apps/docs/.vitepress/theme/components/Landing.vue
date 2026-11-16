@@ -108,8 +108,8 @@ const REELS: Reel[] = [
     fact: 'A simulated 3D scan of a brake disc has 915,378 noisy triangles. It becomes a solid of 50 faces, and a program that builds it. Experimental.',
     video: '/media/mesh-reel.mp4',
     poster: '/media/mesh-reel-poster.webp',
-    href: 'https://github.com/andymai/brepjs/tree/main/packages/brepjs-mesh2solid',
-    cta: 'Read about the package →',
+    href: '/mesh-to-solid',
+    cta: 'Convert a mesh in your browser →',
   },
 ];
 const reducedMotion = () =>
