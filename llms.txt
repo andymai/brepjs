@@ -86,7 +86,7 @@ const b = box(10, 10, 10);
 
 See `docs/cheat-sheet.md` for a single-page reference covering all common operations (primitives, booleans, transforms, fillets, measurement, export, memory management, error handling).
 
-Works in both Node.js and browsers. For browser setup with Vite, see `docs/getting-started.md` (Browser Setup section). Try the [interactive playground](https://brepjs.dev/playground) for live experimentation.
+Works in both Node.js and browsers. For browser setup with Vite, see `docs/getting-started.md` (Browser Setup section). Try the [interactive playground](https://brepjs.dev/playground) for live experimentation. The [examples](https://brepjs.dev/examples/) are complete programs: each page at `https://brepjs.dev/examples/<id>` is static HTML with the full code of one example.
 
 ## API Style
 

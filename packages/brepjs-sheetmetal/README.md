@@ -26,6 +26,9 @@ flange-off-flange** bends (U-channels, Z-profiles, box walls), **up/down** fold 
 **partial/offset** flanges (more than one flange per edge). Closed profiles (tubes/boxes) author a seam
 edge that the unfold leaves uncut as a `SEAM_CUT`, flattening into a valid connected pattern.
 
+The [sheet-metal examples](https://brepjs.dev/examples/#sheet-metal) are complete programs that you can
+read and run in the browser.
+
 ## Status
 
 | Area            | State                                                                                        |

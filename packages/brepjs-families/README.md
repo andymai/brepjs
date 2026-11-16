@@ -74,6 +74,7 @@ A copy-in starter registry (storey, wall, slab, column, beam, roof, stair, door,
 ## Docs
 
 - [Families overview](https://brepjs.dev/families/overview)
+- [Examples](https://brepjs.dev/examples/#families): complete programs that you can read and run in the browser
 - [Your first building](https://brepjs.dev/families/first-building)
 - [Identity and key paths](https://brepjs.dev/families/identity)
 - [Openings](https://brepjs.dev/families/openings)
