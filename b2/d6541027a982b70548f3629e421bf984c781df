@@ -1,0 +1,32 @@
+apps/docs/agent/publish.md
+  s_b288ee9273ceb3::t_98e9e2564e3009 1-170
+  s_b288ee9273ceb3::t_e0eb687f40a17b 171-184
+README.md
+  s_b288ee9273ceb3::t_e7a492b9f2974d 173,186-203
+apps/docs/.vitepress/config.ts
+  s_b288ee9273ceb3::t_228e0c9ceb37ab 410
+apps/docs/agent/overview.md
+  s_b288ee9273ceb3::t_40e66fcc853d42 107,130-146,161-163,172
+apps/docs/agent/the-loop.md
+  s_b288ee9273ceb3::t_e5e0a70944d3ef 18
+llms-full.txt
+  s_b288ee9273ceb3::t_c305e3084f0c17 20,27-37,48
+llms.txt
+  s_b288ee9273ceb3::t_a540c437414cbd 20,27-37,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b2d6541027a982b70548f3629e421bf984c781df",
+  "prompts": {},
+  "sessions": {
+    "s_b288ee9273ceb3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3f0356f-cf6a-42dc-a9e4-1988e327040d",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
