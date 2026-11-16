@@ -1,0 +1,23 @@
+packages/brepjs-cad/src/cli/scaffold.ts
+  s_b288ee9273ceb3::t_45f78cd6ebbd58 36-37,47
+packages/brepjs-cad/src/verify/typecheck.ts
+  s_b288ee9273ceb3::t_ed62dad39ef75e 124-126
+packages/brepjs-cad/tests/typecheckNoNodeTypes.test.ts
+  s_b288ee9273ceb3::t_6036457d02259e 1-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3b0a00c47299cafe1f7fbff5244a72778265412b",
+  "prompts": {},
+  "sessions": {
+    "s_b288ee9273ceb3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3f0356f-cf6a-42dc-a9e4-1988e327040d",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
