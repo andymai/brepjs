@@ -1,9 +1,11 @@
-import { describe, expect, it, beforeAll } from 'vitest';
+import { describe, expect, it, beforeAll, vi } from 'vitest';
 import { initKernel } from './setup.js';
 import { currentKernelId } from './helpers/kernelDivergences.js';
 import {
   box,
+  getKernel,
   locate,
+  rotate,
   translate,
   getBounds,
   getFaces,
@@ -75,5 +77,64 @@ describe('locate', () => {
     const one = locate(box(5, 5, 5), { type: 'translate', v: [3, 0, 0] });
     const arr = locate(box(5, 5, 5), [{ type: 'translate', v: [3, 0, 0] }]);
     expect(getBounds(one).xMax).toBeCloseTo(getBounds(arr).xMax, 6);
+  });
+});
+
+// On a kernel where a moved shape shares the geometry of its source,
+// translate() and rotate() move by location and do not copy.
+describe('translate and rotate by location', () => {
+  const sharesGeometry = (): boolean => getKernel().capabilities.placementSharesGeometry === true;
+
+  it('translate takes the copying path only on a kernel that does not share geometry', () => {
+    const copy = vi.spyOn(getKernel(), 'translateWithHistory');
+    try {
+      using source = box(10, 10, 10);
+      using moved = translate(source, [5, -3, 2]);
+      expect(copy).toHaveBeenCalledTimes(sharesGeometry() ? 0 : 1);
+      const b = getBounds(moved);
+      expect(b.xMin).toBeCloseTo(5, 6);
+      expect(b.yMax).toBeCloseTo(7, 6);
+      expect(b.zMax).toBeCloseTo(12, 6);
+      expect(unwrap(measureVolume(moved))).toBeCloseTo(1000, 4);
+    } finally {
+      copy.mockRestore();
+    }
+  });
+
+  it('rotate takes the copying path only on a kernel that does not share geometry', () => {
+    const copy = vi.spyOn(getKernel(), 'rotateWithHistory');
+    try {
+      using source = box(10, 20, 30);
+      // A quarter turn about the vertical line through (10, 0).
+      using moved = rotate(source, 90, { at: [10, 0, 0], axis: [0, 0, 1] });
+      expect(copy).toHaveBeenCalledTimes(sharesGeometry() ? 0 : 1);
+      const b = getBounds(moved);
+      expect(b.xMin).toBeCloseTo(-10, 6);
+      expect(b.xMax).toBeCloseTo(10, 6);
+      expect(b.yMin).toBeCloseTo(-10, 6);
+      expect(b.yMax).toBeCloseTo(0, 6);
+      expect(b.zMax).toBeCloseTo(30, 6);
+      expect(unwrap(measureVolume(moved))).toBeCloseTo(6000, 4);
+    } finally {
+      copy.mockRestore();
+    }
+  });
+
+  it('keeps a face tag through translate and rotate', () => {
+    using source = box(10, 10, 10);
+    const [face] = getFaces(source);
+    if (!face) throw new Error('expected a face');
+    tagFaces(source, [face], 'marked');
+    using moved = translate(source, [25, 0, 0]);
+    using turned = rotate(moved, 30, { axis: [0, 0, 1] });
+    expect(findFacesByTag(moved, 'marked').length).toBeGreaterThanOrEqual(1);
+    expect(findFacesByTag(turned, 'marked').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('leaves the source where it was', () => {
+    using source = box(10, 10, 10);
+    using moved = translate(source, [100, 0, 0]);
+    expect(getBounds(source).xMax).toBeCloseTo(10, 6);
+    expect(getBounds(moved).xMin).toBeCloseTo(100, 6);
   });
 });
