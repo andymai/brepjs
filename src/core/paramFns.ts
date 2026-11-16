@@ -111,8 +111,10 @@ export interface Params<D extends ParamDefs = ParamDefs> {
  * function with no argument builds the part at its defaults.
  */
 export function defineParams<const D extends ParamDefs>(defs: D & ChoiceDefaults<D>): Params<D> {
-  const values: Record<string, ParamValue> = {};
-  for (const [name, def] of Object.entries<ParamDef>(defs)) values[name] = def.default;
+  // Object.fromEntries defines own properties, so a parameter named `__proto__` keeps its value.
+  const values = Object.fromEntries(
+    Object.entries<ParamDef>(defs).map(([name, def]) => [name, def.default])
+  );
   return Object.freeze({
     kind: 'brepjs.params',
     defs,
@@ -133,10 +135,21 @@ export function isParams(value: unknown): value is Params {
   );
 }
 
+// JSON.stringify throws on a bigint and on a circular object, and gives undefined for a function.
+function show(raw: unknown): string {
+  try {
+    // The lib type says string, but the result is undefined for a function or a symbol.
+    const text = JSON.stringify(raw) as string | undefined;
+    return text ?? String(raw);
+  } catch {
+    return String(raw);
+  }
+}
+
 function invalidValue(name: string, expected: string, raw: unknown): BrepError {
   return validationError(
     BrepErrorCode.PARAM_INVALID_VALUE,
-    `Parameter "${name}" must be ${expected}, got ${JSON.stringify(raw)}`,
+    `Parameter "${name}" must be ${expected}, got ${show(raw)}`,
     undefined,
     { param: name, value: raw }
   );
@@ -145,7 +158,7 @@ function invalidValue(name: string, expected: string, raw: unknown): BrepError {
 function outOfRange(name: string, limit: string, value: ParamValue): BrepError {
   return validationError(
     BrepErrorCode.PARAM_OUT_OF_RANGE,
-    `Parameter "${name}" must be ${limit}, got ${JSON.stringify(value)}`,
+    `Parameter "${name}" must be ${limit}, got ${show(value)}`,
     undefined,
     { param: name, value }
   );
@@ -231,12 +244,13 @@ export function resolveParams<D extends ParamDefs>(
       )
     );
   }
-  const values: Record<string, ParamValue> = {};
+  const entries: [string, ParamValue][] = [];
   for (const [name, def] of Object.entries(params.defs)) {
-    const raw = input[name];
+    // An own-key read, so a parameter named `constructor` does not pick up an inherited value.
+    const raw: unknown = Object.hasOwn(input, name) ? input[name] : undefined;
     const resolved = resolveOne(name, def, raw === undefined ? def.default : raw);
     if (!resolved.ok) return resolved;
-    values[name] = resolved.value;
+    entries.push([name, resolved.value]);
   }
-  return ok(values as ParamValues<D>);
+  return ok(Object.fromEntries(entries) as ParamValues<D>);
 }

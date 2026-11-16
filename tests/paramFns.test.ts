@@ -6,7 +6,7 @@ import {
   resolveParams,
   unwrap,
   unwrapErr,
-} from '../src/index.js';
+} from '@/index.js';
 
 const params = defineParams({
   width: { type: 'number', default: 50, min: 10, max: 200, unit: 'mm' },
@@ -141,6 +141,45 @@ describe('resolveParams', () => {
   it('rejects a default that breaks its own limits', () => {
     const bad = defineParams({ bevel: { type: 'number', default: 20, max: 8 } });
     expect(unwrapErr(resolveParams(bad)).code).toBe(BrepErrorCode.PARAM_OUT_OF_RANGE);
+  });
+
+  it.each([
+    ['a bigint', 1n],
+    ['a function', () => 1],
+    [
+      'a circular object',
+      (() => {
+        const o: Record<string, unknown> = {};
+        o['self'] = o;
+        return o;
+      })(),
+    ],
+  ])('returns an error for %s, with no throw', (_case, value) => {
+    expect(unwrapErr(resolveParams(params, { width: value })).code).toBe(
+      BrepErrorCode.PARAM_INVALID_VALUE
+    );
+  });
+
+  it('handles parameter names that an object inherits', () => {
+    const odd = defineParams({
+      constructor: { type: 'number', default: 1 },
+      ['__proto__']: { type: 'number', default: 2 },
+    });
+    expect(Object.entries(odd.values)).toEqual([
+      ['constructor', 1],
+      ['__proto__', 2],
+    ]);
+    expect(Object.entries(unwrap(resolveParams(odd)))).toEqual([
+      ['constructor', 1],
+      ['__proto__', 2],
+    ]);
+    const set = unwrap(
+      resolveParams(odd, JSON.parse('{"__proto__": 5}') as Record<string, unknown>)
+    );
+    expect(Object.entries(set)).toEqual([
+      ['constructor', 1],
+      ['__proto__', 5],
+    ]);
   });
 
   it('resolves a declaration that came through JSON', () => {
