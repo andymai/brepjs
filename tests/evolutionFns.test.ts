@@ -69,6 +69,39 @@ describe('evolution of shapes without metadata', () => {
     expect(evolution.modified.size + evolution.deleted.size).toBeGreaterThan(0);
     expect(evolution.generated.size + evolution.modified.size).toBeGreaterThan(0);
   });
+
+  it('tracks the faces of an intersection', () => {
+    using a = box(10, 10, 10);
+    using b = sphere(6);
+    const { shape, evolution } = unwrap(intersectWithEvolution(a, b));
+    using _shape = shape;
+    expect(evolution.modified.size).toBeGreaterThan(0);
+    expect(evolution.deleted.size).toBeGreaterThan(0);
+  });
+
+  // A fillet or a chamfer on one edge trims the two faces beside it, and a
+  // shell removes its open face and offsets the others.
+  it('tracks the faces of a fillet', () => {
+    using b = box(10, 10, 10);
+    const { shape, evolution } = unwrap(filletWithEvolution(b, getEdges(b).slice(0, 1), 1));
+    using _shape = shape;
+    expect(evolution.modified.size).toBeGreaterThanOrEqual(2);
+  });
+
+  it('tracks the faces of a chamfer', () => {
+    using b = box(10, 10, 10);
+    const { shape, evolution } = unwrap(chamferWithEvolution(b, getEdges(b).slice(0, 1), 1));
+    using _shape = shape;
+    expect(evolution.modified.size).toBeGreaterThanOrEqual(2);
+  });
+
+  it('tracks the faces of a shell', () => {
+    using b = box(10, 10, 10);
+    const { shape, evolution } = unwrap(shellWithEvolution(b, getFaces(b).slice(0, 1), 1));
+    using _shape = shape;
+    const tracked = evolution.modified.size + evolution.generated.size + evolution.deleted.size;
+    expect(tracked).toBeGreaterThan(0);
+  });
 });
 
 describe('cutWithEvolution', () => {
