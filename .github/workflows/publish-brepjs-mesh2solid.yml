@@ -1,9 +1,8 @@
 name: Publish brepjs-mesh2solid
 
-# The package is `private` until every tier of the mesh-to-solid plan is done,
-# so `npm publish` refuses. TODO: remove `private` and register the package with
-# release-please when the final tier ships, then publish once by hand before
-# setting up the trusted publisher for this file.
+# release-please does not manage this package, so a release is a dispatch of this
+# workflow by hand. The npm trusted publisher of brepjs-mesh2solid is bound to this
+# exact filename: a rename breaks the publish.
 
 on:
   workflow_dispatch:
