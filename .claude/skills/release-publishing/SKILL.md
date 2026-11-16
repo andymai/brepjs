@@ -10,7 +10,7 @@ Every release in this repo flows through one workflow: `.github/workflows/releas
 ## Mental model
 
 - **release-please, manifest mode.** Versions live in `.release-please-manifest.json`; managed packages are declared in `release-please-config.json`. On every push to `main`, release-please opens/updates a per-package release PR (`separate-pull-requests: true`), bumping the version and CHANGELOG from Conventional Commits.
-- **Six managed packages, two deliberately unmanaged.** Managed: root `.` (`brepjs`), `packages/brepjs-opencascade`, `packages/brepjs-voxel-wasm`, `packages/brepjs-cad`, `packages/brepjs-bim`, `packages/brepjs-sheetmetal`. NOT managed by release-please: `brepjs-viewer` (versioned/published manually — see below) and `packages/brepjs-voxel` (unpublished workspace consumer).
+- **Nine managed packages, two deliberately unmanaged.** Managed: root `.` (`brepjs`), `packages/brepjs-opencascade`, `packages/brepjs-voxel-wasm`, `packages/brepjs-cad`, `packages/brepjs-bim`, `packages/brepjs-sheetmetal`, `packages/brepjs-families`, `packages/brepjs-mesh2solid`, `packages/create-brepjs`. `release-please-config.json` is the list of record. NOT managed by release-please: `brepjs-viewer` (versioned/published manually — see below) and `packages/brepjs-voxel` (unpublished workspace consumer).
 - **node-workspace re-pins cross-deps.** The `node-workspace` plugin rewrites each leaf package's `brepjs` dependency to the version of the pending root release. This is the source of the ETARGET hazard (below).
 - **npm auth is OIDC trusted publishers, bound to workflow filenames.** Each package's publish authenticates via an npm trusted publisher tied to a specific `.github/workflows/publish-*.yml` filename. Renaming a publish workflow breaks auth silently.
 
@@ -50,7 +50,7 @@ gh workflow run release-please.yml -f republish=true
 
 This skips the `release-please` job and runs only `publish-brepjs` against the current `main` `package.json` version. Republish covers **root brepjs only**.
 
-**A leaf publish failed (`brepjs-cad`/`bim`/`sheetmetal`).** Re-dispatch that leaf's own publish workflow against the release tag:
+**A leaf publish failed (`brepjs-cad`/`bim`/`sheetmetal`/`families`/`mesh2solid`/`create-brepjs`).** Re-dispatch that leaf's own publish workflow against the release tag:
 
 ```
 gh workflow run publish-brepjs-<pkg>.yml -f dry_run=false --ref <release-tag>
@@ -76,12 +76,15 @@ gh workflow run publish-opencascade.yml -f dry_run=false --ref <release-tag>
 | `brepjs-cad`         | yes                      | yes (after root)  | yes, dispatched             | `publish-brepjs-cad.yml`                         |
 | `brepjs-bim`         | yes                      | yes (after root)  | yes, dispatched             | `publish-brepjs-bim.yml`                         |
 | `brepjs-sheetmetal`  | yes                      | yes (after root)  | yes, dispatched             | `publish-brepjs-sheetmetal.yml`                  |
+| `brepjs-families`    | yes                      | yes (after root)  | yes, dispatched             | `publish-brepjs-families.yml`                    |
+| `brepjs-mesh2solid`  | yes                      | yes (after root)  | yes, dispatched             | `publish-brepjs-mesh2solid.yml`                  |
+| `create-brepjs`      | yes                      | yes (after root)  | yes, dispatched             | `publish-create-brepjs.yml`                      |
 | `brepjs-opencascade` | yes                      | **held (manual)** | **manual only**             | `publish-opencascade.yml` (Docker WASM)          |
 | `brepjs-voxel-wasm`  | yes (bumps `Cargo.toml`) | yes (after root)  | **no workflow, not on npm** | none                                             |
 | `brepjs-viewer`      | **no**                   | n/a               | manual                      | `publish-brepjs-viewer.yml`                      |
 | `brepjs-voxel`       | no                       | n/a               | not published               | none                                             |
 
-Build prerequisites baked into the publish workflows: `brepjs-cad` restores OCCT WASM (`scripts/ensure-wasm.sh`, 3× retry) then builds root + `brepjs-viewer` + itself (viewer is a build-time devDep whose dist is bundled into the `brepjs-cad` build output). `bim` and `sheetmetal` build root `brepjs` first (their `vite-plugin-dts` needs root's emitted types). `brepjs-viewer` uses `npm ci --ignore-scripts` and publishes `--access public`.
+Build prerequisites baked into the publish workflows: `brepjs-cad` restores OCCT WASM (`scripts/ensure-wasm.sh`, 3× retry) then builds root + `brepjs-viewer` + itself (viewer is a build-time devDep whose dist is bundled into the `brepjs-cad` build output). `bim`, `sheetmetal` and `mesh2solid` build root `brepjs` first (their `vite-plugin-dts` needs root's emitted types). The Rust engine of `mesh2solid` is the committed build in `wasm/`, so its publish needs no Rust toolchain. `brepjs-viewer` uses `npm ci --ignore-scripts` and publishes `--access public`.
 
 ## Notes and gotchas
 
@@ -89,6 +92,7 @@ Build prerequisites baked into the publish workflows: `brepjs-cad` restores OCCT
 - **The Claude-plugin marketplace version is independent of the npm version.** release-please does not bump `packages/brepjs-cad/.claude-plugin/plugin.json`; the plugin version and the npm `brepjs-cad` version move separately.
 - **Docs deploy is not release-triggered.** `.github/workflows/docs.yml` chains off successful CI on `main` (`workflow_run`); emergency redeploy is a main-only `workflow_dispatch`.
 - **`npm unpublish` is never available for `brepjs`.** The published satellites (`brepjs-bim`, `brepjs-families`, `brepjs-sheetmetal`, `brepjs-cad`) declare `brepjs >=18.x`, and npm refuses to unpublish a version that any registry package depends on, even inside the 72-hour window; only `npm deprecate` is offered. A mistaken release therefore stays: annotate its changelog section and GitHub release notes instead (brepjs 20.0.0, 2026-09-21, was a no-op major kept this way). Rewinding the manifest is not an option either, since the version remains on the registry.
+- **First publish of a new package.** The repo `.npmrc` sets `provenance=true`, so a local `npm publish` stops with "Automatic provenance generation not supported for provider: null". Either pass `--provenance=false`, or run `npm stage publish` and approve the staged version with 2FA on npmjs.com. Until the approval finishes, a direct publish of that version gets 409 "Cannot publish over previously staged version". Then bind the trusted publisher to the package's `publish-*.yml` and allow the publish action (a stage-only permission gives 403 "OIDC permission denied for this action" in CI). Last, register the package in `release-please-config.json`, the manifest and `release-please.yml` (#2703 is the pattern). release-please then cuts a release from the package history at once.
 - **`scripts/publish-all.sh` is a legacy manual OTP fallback** (opencascade → root only, `--no-provenance`). The OIDC workflows supersede it; use only as a local last resort, and note it does not cover cad/bim/sheetmetal/viewer.
 
 ## Additional resources
