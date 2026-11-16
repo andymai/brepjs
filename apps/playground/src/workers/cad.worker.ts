@@ -1,6 +1,12 @@
 import { transform } from 'sucrase';
 import type { ToWorker, FromWorker, MeshTransfer, FaceGroup, EdgeGroup } from './workerProtocol';
 import { WASM_CACHE_NAME, wasmUrl } from '../lib/wasmConfig';
+import {
+  draftMeshOptions,
+  fineMeshOptions,
+  type Bounds,
+  type MeshOptions,
+} from '../lib/meshOptions';
 
 declare function postMessage(message: unknown, transfer?: Transferable[]): void;
 declare function postMessage(message: unknown, options?: StructuredSerializeOptions): void;
@@ -356,61 +362,29 @@ function extractUserLine(err: unknown, userBlobUrl: string): number | undefined 
   return undefined;
 }
 
-// The final mesh. All of its time is the kernel's tessellation, so its cost
-// follows the triangle count. The chord tolerance follows the size of the
-// whole model: 0.1 mm on a 4 m rover is far below a pixel at any view that
-// shows the model, and it made half of that example's triangles. A model
-// under 400 mm keeps 0.1 mm. The angle limit sets the facets of small curved
-// faces (fillets, bores, balls), which the chord tolerance does not reach.
-const FINE_TOLERANCE = 0.1;
-const FINE_TOLERANCE_RATIO = 0.00025;
-const FINE_ANGULAR_TOLERANCE = 0.3;
-// A draft mesh lets a slow model show in full before its final mesh is ready.
-// The tolerance follows the size of the first shape, so a small part is not
-// reduced to a few facets.
-const DRAFT_ANGULAR_TOLERANCE = 0.8;
-const DRAFT_TOLERANCE_RATIO = 0.002;
 // The draft pass costs time, and for a model of flat faces it is no faster than
 // the final mesh. It runs only after the first shape shows that a draft is this
 // many times faster, and only when the mesh work is slow enough to see.
 const DRAFT_MIN_SPEEDUP = 3;
 const DRAFT_AFTER_MS = 150;
 
-interface MeshOptions {
-  tolerance: number;
-  angularTolerance: number;
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs shape handle
 function draftOptionsFor(shape: any): MeshOptions {
-  const b = brepjs.getBounds(shape);
-  const diagonal = Math.hypot(b.xMax - b.xMin, b.yMax - b.yMin, b.zMax - b.zMin);
-  return {
-    tolerance: Math.max(FINE_TOLERANCE, diagonal * DRAFT_TOLERANCE_RATIO),
-    angularTolerance: DRAFT_ANGULAR_TOLERANCE,
-  };
+  return draftMeshOptions(brepjs.getBounds(shape));
 }
 
-/** The final mesh options for a model: one tolerance for all of its shapes, from the size of the whole. */
+/** The final mesh options for a model, from the bounds of all of its shapes. */
 function fineOptionsFor(shapes: unknown[]): MeshOptions {
-  const lo = [Infinity, Infinity, Infinity];
-  const hi = [-Infinity, -Infinity, -Infinity];
-  for (const item of shapes) {
-    try {
-      const b = brepjs.getBounds(unwrapResultShape(item));
-      [b.xMin, b.yMin, b.zMin].forEach((v, k) => (lo[k] = Math.min(lo[k] ?? v, v)));
-      [b.xMax, b.yMax, b.zMax].forEach((v, k) => (hi[k] = Math.max(hi[k] ?? v, v)));
-    } catch {
-      // The mesh loop reports a shape that cannot be read.
-    }
-  }
-  const diagonal = Math.hypot(...hi.map((v, k) => v - (lo[k] ?? v)));
-  return {
-    tolerance: Number.isFinite(diagonal)
-      ? Math.max(FINE_TOLERANCE, diagonal * FINE_TOLERANCE_RATIO)
-      : FINE_TOLERANCE,
-    angularTolerance: FINE_ANGULAR_TOLERANCE,
-  };
+  return fineMeshOptions(
+    shapes.map((item) => {
+      try {
+        return brepjs.getBounds(unwrapResultShape(item)) as Bounds;
+      } catch {
+        // The mesh loop reports a shape that cannot be read.
+        return null;
+      }
+    })
+  );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs shape handle
