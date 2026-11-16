@@ -241,6 +241,12 @@ const part = shape(box(30, 20, 10)).chamfer((e) => e.inDirection('Z'), 0.3).val;
 export default part;
 ```
 
+## Examples
+
+These playground examples select edges with a finder and round them.
+
+<RelatedExamples ids="project-enclosure tx-enclosure stud-brick robot-arm" />
+
 ## Next steps
 
 - [Finders & Queries](./finders): selecting the exact edges you want

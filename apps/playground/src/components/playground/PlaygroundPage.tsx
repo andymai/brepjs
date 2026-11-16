@@ -83,6 +83,9 @@ export default function PlaygroundPage() {
     if (!exampleRoute.open && id) {
       const example = EXAMPLES.find((e) => e.id === id);
       if (example) actions.handleLoadExample(example);
+      // A link to an example that does not exist opens the gallery, so the visitor
+      // can find the part and does not get the default model without a reason.
+      else exampleRoute.openGallery();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on initial deep-land
   }, []);

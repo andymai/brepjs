@@ -163,6 +163,12 @@ isErr(r3); // true
 
 `fuse(empty, x)` _does_ work; it short-circuits to `x` directly without calling the kernel's union. `Empty` nodes exist as the identity element of `optimize()`'s simplifications; they're meant to disappear before evaluation.
 
+## Examples
+
+These playground examples build their models as CSG trees through the family layer.
+
+<RelatedExamples ids="families-building families-room families-structure families-dedup" />
+
 ## Where to go next
 
 - **[Declarative Models](/families/overview)**: wrap trees like this one in prop-driven `brepjs-families` components — the bin becomes `<Bin length={42} wall={1.2} />` with key-path identity and free dedup on this same evaluator.

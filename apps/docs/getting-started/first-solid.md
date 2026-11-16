@@ -204,6 +204,12 @@ The most common failures and their typical causes:
 
 [Error Codes](../reference/errors) lists the common codes with recovery patterns.
 
+## Examples
+
+The playground has more parts at this level. Each one is a single file that you can read and change.
+
+<RelatedExamples ids="drilled-bracket stud-brick mortise-tenon pegboard" />
+
 ## Next steps
 
 - [Cheat Sheet](./cheat-sheet): single-page reference for the full API

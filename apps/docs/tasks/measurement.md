@@ -208,6 +208,12 @@ const massGrams = volumeCm3 * aluminiumDensity;
 console.log(`Mass: ${massGrams.toFixed(2)} g`);
 ```
 
+## Examples
+
+These playground examples print a quantity that the kernel measures: a mass, a centre of mass, a clearance or an area.
+
+<RelatedExamples ids="mars-rover d-sub-connector bim-roof-gallery bim-takeoff" />
+
 ## Next steps
 
 - [Finders & Queries](./finders): selecting specific entities to measure

@@ -239,6 +239,12 @@ Surface type, area range, and direction together usually pin down a specific fac
 
 `inDirection('Z')` matches edges parallel to Z, in either direction, and so does an explicit vector. If you need edges going specifically `[0, 0, +1]` (e.g. for face-orientation logic), check the tangent yourself in a `.when()` predicate.
 
+## Examples
+
+These playground examples use `edgeFinder` to select the edges that a fillet or a chamfer changes.
+
+<RelatedExamples ids="drilled-bracket d-sub-connector vented-louvre-case pocket-watch" />
+
 ## Next steps
 
 - [Fillets & Chamfers](./fillets): the operation finders are most often used for
