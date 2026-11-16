@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/andymai/brepjs/compare/brepjs-mesh2solid-v0.2.0...brepjs-mesh2solid-v0.3.0) (2026-11-16)
+
+
+### Features
+
+* **mesh2solid:** keep exact faces on a part with a freeform region ([#2707](https://github.com/andymai/brepjs/issues/2707)) ([4f5ae58](https://github.com/andymai/brepjs/commit/4f5ae58e6d731c241e7a6a985a4462989cb2735e))
+
 ## [0.2.0](https://github.com/andymai/brepjs/compare/brepjs-mesh2solid-v0.1.0...brepjs-mesh2solid-v0.2.0) (2026-11-16)
 
 
