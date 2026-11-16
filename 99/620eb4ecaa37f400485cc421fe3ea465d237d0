@@ -1,0 +1,19 @@
+.size-limit.json
+  s_b288ee9273ceb3::t_770188b08e18b5 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "99620eb4ecaa37f400485cc421fe3ea465d237d0",
+  "prompts": {},
+  "sessions": {
+    "s_b288ee9273ceb3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3f0356f-cf6a-42dc-a9e4-1988e327040d",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
