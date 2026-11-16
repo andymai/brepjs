@@ -42,7 +42,7 @@ An agent rebuilt the 46 parts in our example gallery from their descriptions, an
 
 ## Or write it yourself
 
-**[▶ Try the live playground](https://brepjs.dev/playground)** · **[Getting Started](./docs/getting-started.md)** · **[Cheat Sheet](./docs/cheat-sheet.md)** · **[Docs](https://brepjs.dev/)**
+**[▶ Try the live playground](https://brepjs.dev/playground)** · **[Examples](https://brepjs.dev/examples/)** · **[Getting Started](./docs/getting-started.md)** · **[Cheat Sheet](./docs/cheat-sheet.md)** · **[Docs](https://brepjs.dev/)**
 
 Shapes are exact mathematical boundaries (not triangle meshes), so booleans are precise, measurements are real, and you can export to STEP. TypeScript types prove that the geometry is valid at compile time.
 
@@ -62,7 +62,7 @@ const step = unwrap(exportSTEP(part));
 await writeFile('part.step', await step.text()); // the standard exchange format for CAD tools
 ```
 
-To see a part while you write it, use the [playground](https://brepjs.dev/playground).
+To see a part while you write it, use the [playground](https://brepjs.dev/playground). To read complete programs, see the [examples](https://brepjs.dev/examples/): each page has a picture, the full code, and a link that runs it.
 
 ## Why?
 

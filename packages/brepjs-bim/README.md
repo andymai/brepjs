@@ -21,6 +21,9 @@ stable GlobalIds derived from component key paths. Hand-authoring specs against 
 the low-level path (and covers elements the declarative route doesn't yet). See the
 [Declarative Models guide](https://brepjs.dev/families/overview).
 
+The [BIM examples](https://brepjs.dev/examples/#bim) are complete programs that you can read and run in
+the browser.
+
 ## Scope
 
 Parametric authoring of the common IFC4 building elements plus the data layers that make a model

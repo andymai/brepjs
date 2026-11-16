@@ -148,6 +148,8 @@ Few-shot examples live under `skills/brepjs-implement/examples/<name>.brep.ts`, 
 - **Modifiers**: `rounded-block` (fillet), `chamfered-block` (chamfer), `hollow-enclosure` (shell)
 - **Gridfinity primitives**: `gridfinity-baseplate`, `gridfinity-bin`, `gridfinity-divider`
 
+For larger programs, see the [playground examples](https://brepjs.dev/examples/). Each page has the full code of one model.
+
 ## Eval / scorecard
 
 `npm run eval` (`bench/run.ts`) replays every `skills/brepjs-implement/examples/*.brep.ts` with a sibling `*.expected.json` through the public `runPart` runtime, compares measured volume/area/validity/shape-type against the recorded baseline within each file's tolerance (default 0.5%), prints a PASS/FAIL scorecard, and exits non-zero on any regression. It is deterministic (no LLM or API key) so it runs in CI as the package's regression net. Refresh a baseline by re-recording the example's `*.expected.json` after an intentional geometry change.
