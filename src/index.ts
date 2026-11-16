@@ -117,6 +117,21 @@ export {
 
 export { DEG2RAD, RAD2DEG, HASH_CODE_MAX } from './core/constants.js';
 
+export {
+  defineParams,
+  resolveParams,
+  isParams,
+  type Params,
+  type ParamDef,
+  type ParamDefs,
+  type ParamValue,
+  type ParamValues,
+  type NumberParamDef,
+  type BooleanParamDef,
+  type StringParamDef,
+  type ChoiceParamDef,
+} from './core/paramFns.js';
+
 export { type Deletable } from './core/disposal.js';
 
 export { makePlane } from './core/planeOps.js';

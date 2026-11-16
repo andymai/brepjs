@@ -220,6 +220,11 @@ export const BrepErrorCode = {
 
   // Unsupported capability errors (ADR-0006 Phase 4)
   UNSUPPORTED_CAPABILITY: 'UNSUPPORTED_CAPABILITY',
+
+  // Part parameter errors
+  PARAM_UNKNOWN: 'PARAM_UNKNOWN',
+  PARAM_INVALID_VALUE: 'PARAM_INVALID_VALUE',
+  PARAM_OUT_OF_RANGE: 'PARAM_OUT_OF_RANGE',
 } as const;
 
 /** Union of all known error code string literals. */

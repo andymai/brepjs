@@ -68,6 +68,7 @@ graph TB
 | `shapeTypes.ts`      | Branded shape types (`Vertex`, `Edge`, `Solid`, etc.)          | `disposal.ts`, `kernel/`                                      |
 | `result.ts`          | Rust-style `Result<T,E>` for error handling                    | None                                                          |
 | `errors.ts`          | `BrepError` types and constructor functions                    | `utils/bug.js`                                                |
+| `paramFns.ts`        | `defineParams`, `resolveParams`: declared part parameters      | `result.ts`, `errors.ts`                                      |
 | `constants.ts`       | `HASH_CODE_MAX`, `DEG2RAD`, `RAD2DEG`                          | None                                                          |
 | `definitionMaps.ts`  | `CurveType` union, lazy kernel enum mappings                   | None                                                          |
 | `kernelCall.ts`      | `kernelCall`, `kernelCallRaw`, `kernelCallScoped` wrappers     | `kernel/`, `disposal.ts`, `result.ts`                         |
@@ -144,18 +145,7 @@ interface Plane {
 }
 
 type PlaneName =
-  | 'XY'
-  | 'YZ'
-  | 'ZX'
-  | 'XZ'
-  | 'YX'
-  | 'ZY'
-  | 'front'
-  | 'back'
-  | 'left'
-  | 'right'
-  | 'top'
-  | 'bottom';
+  'XY' | 'YZ' | 'ZX' | 'XZ' | 'YX' | 'ZY' | 'front' | 'back' | 'left' | 'right' | 'top' | 'bottom';
 
 type PlaneInput = Plane | PlaneName;
 ```

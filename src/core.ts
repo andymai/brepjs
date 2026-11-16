@@ -66,6 +66,21 @@ export {
 } from './core/errors.js';
 
 export { DEG2RAD, RAD2DEG, HASH_CODE_MAX } from './core/constants.js';
+
+export {
+  defineParams,
+  resolveParams,
+  isParams,
+  type Params,
+  type ParamDef,
+  type ParamDefs,
+  type ParamValue,
+  type ParamValues,
+  type NumberParamDef,
+  type BooleanParamDef,
+  type StringParamDef,
+  type ChoiceParamDef,
+} from './core/paramFns.js';
 export { GeometryCleanupError } from './core/cleanupError.js';
 
 export type { Plane as FnPlane, PlaneName as FnPlaneName, PlaneInput } from './core/planeTypes.js';
