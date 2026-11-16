@@ -1,0 +1,20 @@
+packages/brepjs-mesh2solid/src/solidFns.ts
+  s_8e26ce757a4a72::t_1a396a0f67d367 92,94,99,101
+  s_8e26ce757a4a72::t_fdf04fa298ac52 30-33,35-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9ae3199242f1b27c6975358ee21b0ef6ec957b62",
+  "prompts": {},
+  "sessions": {
+    "s_8e26ce757a4a72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e2a2abb-96e7-41bf-9f42-70cf1b42e7a4",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
