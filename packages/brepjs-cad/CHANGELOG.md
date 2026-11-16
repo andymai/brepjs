@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.193.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.192.5...brepjs-cad-v0.193.0) (2026-11-16)
+
+
+### Features
+
+* **brepjs-cad:** build a part at a different size with --param ([#2712](https://github.com/andymai/brepjs/issues/2712)) ([3c356bb](https://github.com/andymai/brepjs/commit/3c356bb689a1cd24a58b3c0f40b0b9591ce8cf42))
+
 ## [0.192.5](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.192.4...brepjs-cad-v0.192.5) (2026-11-14)
 
 
