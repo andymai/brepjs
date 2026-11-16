@@ -1,0 +1,29 @@
+src/topology/transformFns.ts
+  s_8e26ce757a4a72::t_aa527d046b7b02 27-29,34,53-54,57,361-365,369-370
+  s_8e26ce757a4a72::t_95454aa74bd72b 30-33,36-38,55-56,64-66,366
+src/kernel/capabilities.ts
+  s_8e26ce757a4a72::t_95454aa74bd72b 43-50,66
+src/topology/api.ts
+  s_8e26ce757a4a72::t_95454aa74bd72b 140-141
+  s_8e26ce757a4a72::t_aa527d046b7b02 139,142
+tests/stepConfigFns.test.ts
+  s_8e26ce757a4a72::t_776f84c0dd6cfd 13
+  s_8e26ce757a4a72::t_727b8703480031 135
+  s_8e26ce757a4a72::t_cd3abed86523c7 120,128-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "00eee46f697cef40a6fa61e5b4a9ea41d26981c7",
+  "prompts": {},
+  "sessions": {
+    "s_8e26ce757a4a72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e2a2abb-96e7-41bf-9f42-70cf1b42e7a4",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
