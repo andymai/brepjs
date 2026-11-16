@@ -1,0 +1,24 @@
+src/topology/evolutionFns.ts
+  s_8e26ce757a4a72::t_6342c4460aed48 26,155,205,255,356,451,504
+tests/evolutionFns.test.ts
+  s_8e26ce757a4a72::t_aa44f9a75a8884 14
+  s_8e26ce757a4a72::t_6342c4460aed48 53-73
+src/topology/metadata/metadataPropagation.ts
+  s_8e26ce757a4a72::t_6342c4460aed48 49-53,57-58,60-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b6e568d64f67f28f344a70fed6dd2a434ce169f4",
+  "prompts": {},
+  "sessions": {
+    "s_8e26ce757a4a72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e2a2abb-96e7-41bf-9f42-70cf1b42e7a4",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
