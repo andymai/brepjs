@@ -1,0 +1,29 @@
+README.md
+  s_8e26ce757a4a72::t_c8954602dd4985 45,65
+packages/brepjs-bim/README.md
+  s_8e26ce757a4a72::t_c8954602dd4985 24-26
+llms.txt
+  s_8e26ce757a4a72::t_c8954602dd4985 89
+packages/brepjs-families/README.md
+  s_8e26ce757a4a72::t_c8954602dd4985 77
+docs/getting-started.md
+  s_8e26ce757a4a72::t_c8954602dd4985 244
+packages/brepjs-sheetmetal/README.md
+  s_8e26ce757a4a72::t_33eaf0212afb08 29-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0778aa2c93d4531e030cefa76c54af4e9aefc704",
+  "prompts": {},
+  "sessions": {
+    "s_8e26ce757a4a72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e2a2abb-96e7-41bf-9f42-70cf1b42e7a4",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
