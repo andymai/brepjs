@@ -7,14 +7,14 @@ const viewerSrc = resolve(import.meta.dirname, 'viewer/src');
 
 export default defineConfig({
   resolve: {
-    // `@/verify|snapshot|cli|sandbox|mcp|preview|session` are this package's own dirs; every other `@/...`
+    // `@/verify|snapshot|cli|sandbox|mcp|preview|session|publish` are this package's own dirs; every other `@/...`
     // belongs to the live brepjs source we alias below, so it must resolve into
     // the root src tree. A single `@`→pkgSrc alias misroutes brepjs's internal
     // `@/utils`/`@/kernel` imports and breaks any test that imports `brepjs`.
     alias: [
       { find: /^@viewer\//, replacement: `${viewerSrc}/` },
       {
-        find: /^@\/(verify|snapshot|cli|sandbox|mcp|preview|session)\//,
+        find: /^@\/(verify|snapshot|cli|sandbox|mcp|preview|session|publish)\//,
         replacement: `${pkgSrc}/$1/`,
       },
       { find: /^@\//, replacement: `${rootSrc}/` },
