@@ -46,14 +46,26 @@ export function hasAnyMetadata(shape: AnyShape<Dimension>): boolean {
   );
 }
 
+/**
+ * Face hashes for an operation that only moves metadata to its result. With
+ * no metadata on an input there is nothing to move, and the list is empty so
+ * the kernel tracks no face.
+ */
 export function collectInputFaceHashes(inputs: readonly AnyShape<Dimension>[]): number[] {
   // O(1) check: skip expensive face iteration when no metadata exists
   if (!inputs.some(hasAnyMetadata)) return [];
+  return allInputFaceHashes(inputs);
+}
 
-  // Only the face hashes are needed (a membership set for metadata matching), so
-  // use subShapeHashes — the native occt-wasm 3.7.0 path reads them without
-  // allocating a handle per face, avoiding per-face arena churn on every
-  // WithHistory boolean/transform/modifier.
+/**
+ * Every face hash of the inputs. An operation whose caller asks for the
+ * evolution must track each face: the answer cannot depend on whether a shape
+ * has metadata.
+ */
+export function allInputFaceHashes(inputs: readonly AnyShape<Dimension>[]): number[] {
+  // Only the face hashes are needed (a membership set for the kernel), so use
+  // subShapeHashes: the native occt-wasm 3.7.0 path reads them without a
+  // handle for each face.
   const hashes: number[] = [];
   for (const input of inputs) hashes.push(...subShapeHashes(input, 'face'));
   return hashes;

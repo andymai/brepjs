@@ -11,6 +11,7 @@ import {
   filletWithEvolution,
   chamferWithEvolution,
   shellWithEvolution,
+  sphere,
   isOk,
   isErr,
   unwrap,
@@ -46,6 +47,27 @@ describe('fuseWithEvolution', () => {
     const totalTracked =
       evolution.modified.size + evolution.generated.size + evolution.deleted.size;
     expect(totalTracked).toBeGreaterThan(0);
+  });
+});
+
+// A shape got metadata as a side effect of translate(), and only a shape with
+// metadata had its faces tracked. These operands have none.
+describe('evolution of shapes without metadata', () => {
+  it('tracks the faces of a fuse', () => {
+    using a = box(10, 10, 10);
+    using b = sphere(6);
+    const { shape, evolution } = unwrap(fuseWithEvolution(a, b));
+    using _shape = shape;
+    expect(evolution.modified.size).toBeGreaterThan(0);
+  });
+
+  it('tracks the faces of a cut', () => {
+    using a = box(10, 10, 10);
+    using b = sphere(6);
+    const { shape, evolution } = unwrap(cutWithEvolution(a, b));
+    using _shape = shape;
+    expect(evolution.modified.size + evolution.deleted.size).toBeGreaterThan(0);
+    expect(evolution.generated.size + evolution.modified.size).toBeGreaterThan(0);
   });
 });
 
