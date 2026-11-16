@@ -306,6 +306,12 @@ A profile, two `lineTo`s, a revolve. Simpler than building two cones and fusing.
 
 See [Error Codes](../reference/errors) for reading and handling errors.
 
+## Examples
+
+These playground examples build their main shapes with `loft`, `sweep` and `revolve`.
+
+<RelatedExamples ids="turbofan-engine axial-fan panel-fuse-holder worm-gear-drive" />
+
 ## Next steps
 
 - [Boolean Operations](./booleans): combining the solids you build here

@@ -65,3 +65,9 @@ Member and Sign are explicitly outside this profile. They remain hard unsupporte
 Continue with the [element catalog](/bim/elements), [IFC export & import](/bim/ifc), [validation](/bim/validation), and [interop](/bim/interop).
 
 IfcOpenShell 0.8.5 currently reports a tessellation `Normals` schema error for the existing IFC4X3 writer, including single Proxy and retained Families Body items. The verified fixtures still produce the expected shapes and world placement. IFC4X3 schema conformance is not established by those geometry checks.
+
+## Examples
+
+These playground examples build BIM models and export them to IFC.
+
+<RelatedExamples ids="office-building bim-steel-frame bim-curtain-wall bim-datacenter" />

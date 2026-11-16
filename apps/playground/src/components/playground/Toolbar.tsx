@@ -1,6 +1,7 @@
 import { useEngineStore } from '../../stores/engineStore';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
 import { SHORTCUTS, formatShortcut } from '../../lib/shortcuts';
+import { EXAMPLES } from '../../lib/examples';
 import Logo from '../shared/Logo';
 
 interface ToolbarProps {
@@ -64,6 +65,7 @@ export default function Toolbar({
             className="rounded border border-gray-700 bg-surface-overlay px-2.5 py-1 text-xs font-medium text-gray-200 transition-colors hover:border-gray-500 hover:bg-gray-700 hover:text-white"
           >
             Examples
+            <span className="ml-1.5 tabular-nums text-gray-500">{EXAMPLES.length}</span>
           </button>
           {selectionCount > 0 && (
             <button

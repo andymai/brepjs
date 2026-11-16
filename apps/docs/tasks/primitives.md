@@ -204,6 +204,12 @@ translate(cylinder(5, 20), [0, 0, -10]); // translate manually
 sphere(5); // already centred
 ```
 
+## Examples
+
+These playground examples use only primitives, transforms and booleans.
+
+<RelatedExamples ids="primitives stud-brick pegboard cube-truss-frame" />
+
 ## Next steps
 
 - [Boolean Operations](./booleans): `fuse`, `cut`, `intersect`, and the failure modes

@@ -261,6 +261,12 @@ These will fail or produce nonsense regardless of how you frame them:
 - **Booleans on faces** (without converting to solids first): `fuse(face, face)` doesn't make geometric sense. Convert to solids by extruding or building shells.
 - **Booleans on shapes with very different tolerances**: the kernel uses the larger of the two and may treat distant geometry as coincident. Normalize first.
 
+## Examples
+
+These playground examples get their shape from cuts, fuses and intersections.
+
+<RelatedExamples ids="drilled-bracket mortise-tenon dovetail-joint pipe-saddle-p-clamp" />
+
 ## Next steps
 
 - [Fillets & Chamfers](./fillets): refining the edges that appear after booleans

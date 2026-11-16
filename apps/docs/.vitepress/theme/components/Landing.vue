@@ -3,6 +3,9 @@ import { onMounted, onBeforeUnmount, ref } from 'vue';
 import CodeCadHero from './CodeCadHero.vue';
 import { highlightCode, highlightLine } from './codeHighlight';
 import { MAJOR } from '../../version';
+import { data as exampleCatalog } from '../../../examples/examples.data';
+
+const exampleCount = exampleCatalog.reduce((n, c) => n + c.examples.length, 0);
 
 // "Native to your stack" — the real Three.js mesh-adapter integration.
 const stackSnippetHtml = highlightCode(
@@ -482,6 +485,9 @@ onBeforeUnmount(() => observer?.disconnect());
               </span>
             </a>
           </div>
+          <p class="all-examples">
+            <a href="/examples/">See all {{ exampleCount }} examples with their code →</a>
+          </p>
         </div>
       </section>
 
@@ -1326,6 +1332,18 @@ pre.term {
   font-weight: 500;
   font-size: 1.08rem;
   color: var(--ink-0);
+}
+.all-examples {
+  margin-top: 28px;
+  text-align: center;
+  font-weight: 600;
+}
+.all-examples a {
+  color: var(--teal-200);
+  text-decoration: none;
+}
+.all-examples a:hover {
+  text-decoration: underline;
 }
 .reel-cap em {
   font-style: normal;
