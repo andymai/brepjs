@@ -13,7 +13,7 @@
  * scripts/extract-doc-tests.ts: example source is the same sandboxed-snippet
  * trust level as the doc-snippet harness, run only in tests, never in
  * production. This is the single validation path shared by the permanent
- * regression test (tests/playgroundExamples.test.ts) and the
+ * regression tests (tests/playgroundExamples*.test.ts) and the
  * scad-to-playground workflow's validate stage, so "passes here" means
  * "renders in the playground".
  */

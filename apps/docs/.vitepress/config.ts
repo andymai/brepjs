@@ -117,9 +117,9 @@ export default defineConfig({
   base: process.env.DOCS_BASE ?? '/',
   cleanUrls: true,
   lastUpdated: true,
-  // /playground is staged into the VitePress dist after this build runs
-  // (see vercel.json buildCommand), so the link checker can't see it.
-  ignoreDeadLinks: [/^\/playground(\/|$)/],
+  // /playground and /mesh-to-solid are staged into the VitePress dist after
+  // this build runs (see the build:site script), so the link checker can't see them.
+  ignoreDeadLinks: [/^\/playground(\/|$)/, /^\/mesh-to-solid(\/|$)/],
   head: [
     ['link', { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' }],
     ['link', { rel: 'icon', href: '/favicon.ico', type: 'image/x-icon' }],
@@ -385,6 +385,13 @@ export default defineConfig({
           items: [{ text: 'Fold & Unfold', link: '/sheet-metal/overview' }],
         },
         {
+          text: 'Mesh to Solid',
+          items: [
+            { text: 'Convert a Mesh', link: '/mesh2solid/overview' },
+            { text: 'Try It in the Browser', link: '/mesh-to-solid', target: '_self' },
+          ],
+        },
+        {
           text: 'Advanced',
           items: [
             { text: 'Memory Management', link: '/advanced/memory' },
@@ -517,5 +524,8 @@ export default defineConfig({
   },
   sitemap: {
     hostname: 'https://brepjs.dev',
+    // The mesh-to-solid page is an app of its own (apps/mesh2solid), so
+    // VitePress does not know it.
+    transformItems: (items) => [...items, { url: 'mesh-to-solid', changefreq: 'monthly' }],
   },
 });
