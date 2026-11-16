@@ -1,0 +1,21 @@
+tests/locate.test.ts
+  s_8e26ce757a4a72::t_67fe281752daff 1,6,8,82-108,110-128,130-139
+  s_8e26ce757a4a72::t_6a76d9615ad83e 109,129
+  s_8e26ce757a4a72::t_dd955edf50ac81 140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "81ade33da1c24655a23489592656cea32c667ada",
+  "prompts": {},
+  "sessions": {
+    "s_8e26ce757a4a72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e2a2abb-96e7-41bf-9f42-70cf1b42e7a4",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
