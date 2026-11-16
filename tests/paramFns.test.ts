@@ -52,6 +52,13 @@ describe('defineParams', () => {
     }>();
   });
 
+  it('types a part function from its default argument', () => {
+    const part = (p = params.values) => `${p.style}:${p.width}`;
+    expectTypeOf(part).parameter(0).toEqualTypeOf<typeof params.values | undefined>();
+    expect(part()).toBe('round:50');
+    expect(part(unwrap(resolveParams(params, { width: 80 })))).toBe('round:80');
+  });
+
   it('rejects a choice default that is not an option, at compile time', () => {
     // @ts-expect-error -- 'hex' is not in options
     defineParams({ style: { type: 'choice', default: 'hex', options: ['round', 'square'] } });

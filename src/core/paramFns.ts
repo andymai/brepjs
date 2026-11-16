@@ -89,7 +89,7 @@ export type ParamValues<D extends ParamDefs> = { readonly [K in keyof D]: ValueO
 export interface Params<D extends ParamDefs = ParamDefs> {
   readonly kind: 'brepjs.params';
   readonly defs: D;
-  /** The default value of each parameter. Use `typeof params.values` to type a part function. */
+  /** The default value of each parameter. Use it as the default argument of the part function. */
   readonly values: ParamValues<D>;
 }
 
@@ -104,8 +104,11 @@ export interface Params<D extends ParamDefs = ParamDefs> {
  *   style: { type: 'choice', default: 'round', options: ['round', 'square'] },
  * });
  *
- * export default (p: typeof params.values) => box(p.width, 30, 20);
+ * export default (p = params.values) => box(p.width, 30, 20);
  * ```
+ *
+ * The default argument lets the part run with no caller input, so a tool that calls the part
+ * function with no argument builds the part at its defaults.
  */
 export function defineParams<const D extends ParamDefs>(defs: D & ChoiceDefaults<D>): Params<D> {
   const values: Record<string, ParamValue> = {};
