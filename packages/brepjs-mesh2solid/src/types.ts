@@ -83,8 +83,44 @@ export interface ConversionReport {
             }
           | undefined;
         /**
+         * Present when the part has freeform regions between analytic faces: the analytic faces
+         * were kept exact and each freeform region was filled with B-spline faces.
+         */
+        readonly mixed?:
+          | {
+              /** Each connected freeform region and the faces that fill it. */
+              readonly regions: readonly {
+                /** The mesh body it lies on. */
+                readonly body: number;
+                readonly triangles: number;
+                /** Its share of the mesh area. */
+                readonly area: number;
+                /** Smooth discs it was split into, one B-spline face each. */
+                readonly charts: number;
+                readonly faces: number;
+                /** Largest distance of a fitted mesh point from its face's surface, millimeters. */
+                readonly fitError: number;
+                /** Largest distance of a mesh triangle's centroid or edge midpoint from it. */
+                readonly sag: number;
+              }[];
+              readonly analyticFaces: number;
+              readonly freeformFaces: number;
+              /** Boundaries of the freeform faces, each a curve two faces share. */
+              readonly runs: number;
+              /** Tolerance the freeform faces were sewn to their neighbours within, millimeters. */
+              readonly sewTolerance: number;
+              readonly arrangement: {
+                readonly patches: number;
+                readonly pieces: number;
+                readonly kept: number;
+              };
+              /** Why the analytic rebuild alone failed. */
+              readonly analyticReason: string;
+            }
+          | undefined;
+        /**
          * Present when no analytic surfaces rebuilt the mesh and it was rebuilt from B-spline
-         * faces instead, each fitted to one smooth disc-shaped chart of the mesh.
+         * faces throughout, each fitted to one smooth disc-shaped chart of the mesh.
          */
         readonly freeform?:
           | {
@@ -94,6 +130,8 @@ export interface ConversionReport {
               readonly faces: number;
               /** Why the analytic rebuild failed. */
               readonly analyticReason: string;
+              /** Why the analytic faces could not be kept beside freeform regions. */
+              readonly mixedReason: string;
             }
           | undefined;
         /** Why the result fell back to tier 0. */
@@ -193,7 +231,7 @@ export interface ConversionReport {
     /**
      * True when the kernel's coplanar-face unification ran and its result passed validation (on a
      * mesh with no coplanar neighbors it merges nothing). False means the shape was kept as built:
-     * triangulated at tier 0, or the B-spline faces of a freeform rebuild, which never share a surface.
+     * triangulated at tier 0, or sewn from B-spline faces (a freeform or mixed rebuild).
      */
     readonly unified: boolean;
   };

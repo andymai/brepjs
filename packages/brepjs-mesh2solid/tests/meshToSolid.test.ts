@@ -335,7 +335,7 @@ describe('meshToSolid tier 1', () => {
     expect(isShell(shape)).toBe(true);
   });
 
-  it('rebuilds a part with a freeform surface from B-spline faces', async () => {
+  it('keeps the exact faces of a part with a freeform surface', async () => {
     const res = unwrap(await meshToSolid(saddleBlockStl(16)));
     using shape = res.shape;
     const r = res.report;
@@ -343,11 +343,15 @@ describe('meshToSolid tier 1', () => {
     expect(isValid(shape)).toBe(true);
     expect(r.tierReached).toBe(1);
     expect(r.tier1?.unfitTriangles).toBeGreaterThan(0);
-    expect(r.tier1?.freeform?.analyticReason).toMatch(/fit no analytic surface/);
-    expect(r.tier1?.freeform?.faces).toBe(getFaces(shape).length);
+    const mixed = r.tier1?.mixed;
+    expect(mixed?.analyticReason).toMatch(/fit no analytic surface/);
+    expect(mixed?.regions).toHaveLength(1);
+    expect(mixed?.analyticFaces).toBe(5);
+    expect((mixed?.analyticFaces ?? 0) + (mixed?.freeformFaces ?? 0)).toBe(getFaces(shape).length);
+    expect(r.tier1?.freeform).toBeUndefined();
     expect(r.faces.unified).toBe(false);
     expect(r.tier2?.fallbackReason).toBe('B-spline faces have no feature program');
-    expect(r.warnings.some((w) => w.startsWith('rebuilt from'))).toBe(true);
+    expect(r.warnings.some((w) => w.startsWith('1 freeform region filled'))).toBe(true);
     // The top z = 5 + (x² - y²) / 40 over a 20 mm square encloses exactly 2000 mm³.
     expect(vol(shape)).toBeCloseTo(2000, 0);
   });

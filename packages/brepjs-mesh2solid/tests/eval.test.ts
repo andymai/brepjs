@@ -2,16 +2,32 @@
  * Synthetic round-trip gate: known brepjs solids → mesh → meshToSolid → compare.
  * CAD cases use the solid's own tessellation; scan cases subdivide it to scanner
  * density and add normal noise. Organic cases are smooth closed meshes no
- * analytic surface fits, sampled from formulas.
+ * analytic surface fits, sampled from formulas. Mixed cases are solids with
+ * exact faces and one sculpted region.
  */
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { type AnyShape, type Dimension, getFaces, isValid, measureVolume, unwrap } from 'brepjs';
+import {
+  type AnyShape,
+  type Dimension,
+  type Face,
+  type Vec3,
+  faceCenter,
+  faceGeomType,
+  getFaces,
+  isValid,
+  measureVolume,
+  normalAt,
+  pointOnSurface,
+  unwrap,
+  uvBounds,
+} from 'brepjs';
 import { afterAll, describe, expect, it } from 'vitest';
 import { meshToSolid } from '../src/index.js';
 import {
   CAD_CORPUS,
+  MIXED_CORPUS,
   ORGANIC_CORPUS,
   meshVolume,
   noisy,
@@ -270,5 +286,126 @@ describe('freeform eval: organic meshes', () => {
         }
       });
     }
+  }
+});
+
+/** Radius of a cylinder face, from two of its points and the normals there. */
+function cylinderRadius(f: Face): number {
+  const b = uvBounds(f);
+  const at = (t: number): [Vec3, Vec3] => {
+    const p = pointOnSurface(f, b.uMin + t * (b.uMax - b.uMin), (b.vMin + b.vMax) / 2);
+    return [p, normalAt(f, p)];
+  };
+  const [[p, n], [q, m]] = [at(0.2), at(0.45)];
+  return (
+    Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) /
+    Math.hypot(n[0] - m[0], n[1] - m[1], n[2] - m[2])
+  );
+}
+
+describe('mixed eval: exact faces beside a freeform region', () => {
+  const sigma = 0.02;
+  const runs: { name: string; seed?: number }[] = [
+    ...MIXED_CORPUS.map((c) => ({ name: c.name })),
+    // The same part under different noise must come back with the same faces.
+    ...[1, 7].map((seed) => ({ name: 'plate with a hole and a boss', seed })),
+  ];
+  for (const { name, seed } of runs) {
+    it(seed === undefined ? name : `${name} (σ=${sigma} mm, seed ${seed})`, async () => {
+      const c = MIXED_CORPUS.find((k) => k.name === name);
+      if (c === undefined) throw new Error(`no corpus case ${name}`);
+      const scan = seed !== undefined;
+      using src = c.build();
+      // A finer chord than the CAD scans use: the sculpted face is what is measured.
+      const stl = scan
+        ? scanLike(src, { targetTriangles: 60_000, sigma, seed, chord: 0.005 })
+        : await stlOf(src);
+      const t0 = performance.now();
+      const res = unwrap(await meshToSolid(stl, scan ? { maxTriangles: 20_000 } : {}));
+      const ms = performance.now() - t0;
+      using shape = res.shape;
+      const r = res.report;
+      const mixed = r.tier1?.mixed;
+      const faces = getFaces(shape);
+      const kinds: Record<string, number> = {};
+      for (const f of faces) kinds[faceGeomType(f)] = (kinds[faceGeomType(f)] ?? 0) + 1;
+      const diag = Math.hypot(...r.input.bboxMax.map((v, i) => v - (r.input.bboxMin[i] ?? 0)));
+      const volumeError = Math.abs(vol(shape) - vol(src)) / vol(src);
+      const d = r.deviation;
+      const tol = r.tier1?.fitTolerance ?? 0;
+      const summary = `${name}${scan ? ` scan ${seed}` : ''}: tier ${r.tierReached} ${r.tier1?.fallbackReason ?? ''} ${JSON.stringify(kinds)} ${JSON.stringify(mixed)}, volume error ${volumeError.toExponential(2)}, dev max ${d.max.toFixed(4)} p95 ${d.p95.toFixed(4)} reverse ${d.reverseMax.toFixed(4)} mm, ${ms.toFixed(0)} ms`;
+      scorecard.push({
+        case: name,
+        kind: scan ? 'mixed-scan' : 'mixed',
+        seed,
+        triangles: r.input.triangles,
+        faces: kinds,
+        regions: mixed?.regions,
+        sewTolerance: mixed?.sewTolerance,
+        volumeError,
+        devMax: d.max,
+        devP95: d.p95,
+        devReverseMax: d.reverseMax,
+        ms: Math.round(ms),
+      });
+      expect(r.estimate.kind, summary).toBe(scan ? 'scan' : 'cad');
+      expect(r.tierReached, summary).toBe(1);
+      expect(res.solid, summary).toBe(true);
+      expect(isValid(shape), summary).toBe(true);
+
+      // Every drawn face comes back as its own kind, and the sculpted one as B-spline faces.
+      expect(mixed, summary).toBeDefined();
+      expect(mixed?.regions, summary).toHaveLength(1);
+      expect(kinds, summary).toEqual({
+        PLANE: c.planes.length,
+        ...(c.cylinders.length > 0 ? { CYLINDRE: c.cylinders.length } : {}),
+        BSPLINE_SURFACE: mixed?.freeformFaces,
+      });
+      expect(mixed?.analyticFaces, summary).toBe(c.planes.length + c.cylinders.length);
+      expect(mixed?.freeformFaces, summary).toBeLessThanOrEqual(8);
+      expect(r.tier2, summary).toEqual({
+        features: [],
+        fallbackReason: 'B-spline faces have no feature program',
+      });
+
+      // The exact faces are the drawn ones, within the fit tolerance across the part.
+      const planes = faces.filter((f) => faceGeomType(f) === 'PLANE');
+      for (const [n, offset] of c.planes) {
+        const match = planes.some((f) => {
+          const m = normalAt(f);
+          const p = faceCenter(f);
+          const along = m[0] * n[0] + m[1] * n[1] + m[2] * n[2];
+          const turned = Math.sqrt(Math.max(0, 1 - along * along));
+          const at = p[0] * n[0] + p[1] * n[1] + p[2] * n[2];
+          return along > 0 && turned * diag <= tol && Math.abs(at - offset) <= tol;
+        });
+        expect(match, `${summary}: plane ${JSON.stringify(n)} at ${offset}`).toBe(true);
+      }
+      const radii = faces.filter((f) => faceGeomType(f) === 'CYLINDRE').map(cylinderRadius);
+      for (const radius of c.cylinders) {
+        expect(
+          radii.some((x) => Math.abs(x - radius) <= tol),
+          `${summary}: cylinder of radius ${radius} in ${JSON.stringify(radii)}`
+        ).toBe(true);
+      }
+
+      // Seconds, as for the organic cases, not minutes.
+      expect(ms, summary).toBeLessThan(60_000);
+      if (scan) {
+        // The faces follow the surface under the noise. A face that runs
+        // smoothly into the freeform region covers it until it stands one fit
+        // tolerance (three sigma) off the face, so the largest distance has
+        // that much on top of the eight sigma an organic scan is held to.
+        expect(d.p95, summary).toBeLessThan(4 * sigma);
+        expect(Math.max(d.max, d.reverseMax), summary).toBeLessThan(11 * sigma);
+        // That strip, flattened around the boss, is most of the volume error.
+        expect(volumeError, summary).toBeLessThan(1e-3);
+      } else {
+        // As close as an organic body's faces come to their mesh.
+        expect(Math.max(d.max, d.reverseMax), summary).toBeLessThan(4e-4 * diag);
+        // Only the sculpted face is fitted: the rest is the drawn solid.
+        expect(volumeError, summary).toBeLessThan(1e-5);
+      }
+    });
   }
 });

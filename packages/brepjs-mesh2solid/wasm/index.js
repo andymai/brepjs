@@ -32,6 +32,16 @@ export class FreeformCharts {
         return v1;
     }
     /**
+     * Index into the session's `mixed_regions` per chart (a mixed part only).
+     * @returns {Uint32Array}
+     */
+    get chart_regions() {
+        const ret = wasm.freeformcharts_chart_regions(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Largest height of a chart's fitted points off its surface, per chart.
      * @returns {Float64Array}
      */
@@ -59,6 +69,26 @@ export class FreeformCharts {
         const ret = wasm.freeformcharts_run_points(this.__wbg_ptr);
         var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v1;
+    }
+    /**
+     * 1 per run its two faces meet along without a crease, else 0.
+     * @returns {Uint8Array}
+     */
+    get run_smooth() {
+        const ret = wasm.freeformcharts_run_smooth(this.__wbg_ptr);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * The analytic surface on the other side of each run, or -1 for a chart.
+     * @returns {Int32Array}
+     */
+    get run_surfaces() {
+        const ret = wasm.freeformcharts_run_surfaces(this.__wbg_ptr);
+        var v1 = getArrayI32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
     }
     /**
@@ -338,6 +368,69 @@ export class Tier1Session {
         return v1;
     }
     /**
+     * The mesh as a mixed part: analytic surfaces kept (`mixed_kept`) and
+     * the freeform regions between them split into charts, whose runs name
+     * the kept surface on their other side. `max_extent` is the largest
+     * curved chart as a share of its body's diagonal. `undefined` when the
+     * mesh is not such a part; `mixed_reason` then says why.
+     * @param {number} max_extent
+     * @returns {FreeformCharts | undefined}
+     */
+    mixed(max_extent) {
+        const ret = wasm.tier1session_mixed(this.__wbg_ptr, max_extent);
+        return ret === 0 ? undefined : FreeformCharts.__wrap(ret);
+    }
+    /**
+     * 1 per surface the last `mixed` split kept as an exact face, else 0.
+     * @returns {Uint8Array}
+     */
+    get mixed_kept() {
+        const ret = wasm.tier1session_mixed_kept(this.__wbg_ptr);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * Why the last `mixed` call returned nothing.
+     * @returns {string}
+     */
+    get mixed_reason() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.tier1session_mixed_reason(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * The freeform regions of the last `mixed` split, as a JSON array.
+     * @returns {string}
+     */
+    get mixed_regions() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.tier1session_mixed_regions(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * `sag` for the last `mixed` split: over its kept surfaces and its charts.
+     * @returns {number}
+     */
+    get mixed_sag() {
+        const ret = wasm.tier1session_mixed_sag(this.__wbg_ptr);
+        return ret;
+    }
+    /**
      * For flat xyz `points`: (surface id or -1, distance to the mesh) per point.
      * @param {Float64Array} points
      * @returns {Float64Array}
@@ -360,6 +453,21 @@ export class Tier1Session {
         const ptr0 = passArrayF64ToWasm0(points, wasm.__wbindgen_malloc);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.tier1session_nearest_by_surface(this.__wbg_ptr, ptr0, len0);
+        var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v2;
+    }
+    /**
+     * Like `nearest` (`nearest_by_surface` when `by_surface`) under the last
+     * `mixed` split: -1 in a freeform region, else a kept surface.
+     * @param {Float64Array} points
+     * @param {boolean} by_surface
+     * @returns {Float64Array}
+     */
+    nearest_mixed(points, by_surface) {
+        const ptr0 = passArrayF64ToWasm0(points, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.tier1session_nearest_mixed(this.__wbg_ptr, ptr0, len0, by_surface);
         var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
         return v2;

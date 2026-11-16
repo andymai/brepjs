@@ -13,6 +13,7 @@ pub mod ingest;
 mod json;
 pub mod math;
 pub mod mesh;
+pub mod mixed;
 pub mod pipeline;
 pub mod regions;
 pub mod repair;
@@ -242,6 +243,9 @@ pub struct Tier1Session {
     heatmap: bool,
     /// Per input vertex distance to the last triangulation `deviation` measured.
     measured: Vec<f32>,
+    /// The last split `mixed` made, which `nearest_mixed` labels points by.
+    mixed: Option<mixed::Mixed>,
+    mixed_reason: String,
 }
 
 #[wasm_bindgen]
@@ -398,7 +402,97 @@ impl Tier1Session {
     /// Every body split into freeform charts for a B-spline rebuild, or
     /// `undefined` when the mesh doesn't split into few enough discs.
     pub fn charts(&self) -> Option<FreeformCharts> {
-        self.inner.charts().map(|inner| FreeformCharts { inner })
+        self.inner.charts().map(|inner| FreeformCharts {
+            inner,
+            chart_regions: Vec::new(),
+        })
+    }
+
+    /// The mesh as a mixed part: analytic surfaces kept (`mixed_kept`) and
+    /// the freeform regions between them split into charts, whose runs name
+    /// the kept surface on their other side. `max_extent` is the largest
+    /// curved chart as a share of its body's diagonal. `undefined` when the
+    /// mesh is not such a part; `mixed_reason` then says why.
+    pub fn mixed(&mut self, max_extent: f64) -> Option<FreeformCharts> {
+        self.mixed = None;
+        self.mixed_reason.clear();
+        match mixed::build(&self.inner, max_extent) {
+            Ok(mut m) => {
+                let out = FreeformCharts {
+                    inner: std::mem::replace(
+                        &mut m.charts,
+                        charts::Charts {
+                            tri_chart: Vec::new(),
+                            charts: Vec::new(),
+                            runs: Vec::new(),
+                        },
+                    ),
+                    chart_regions: m.chart_region.clone(),
+                };
+                self.mixed = Some(m);
+                Some(out)
+            }
+            Err(reason) => {
+                self.mixed_reason = reason;
+                None
+            }
+        }
+    }
+
+    /// Why the last `mixed` call returned nothing.
+    #[wasm_bindgen(getter)]
+    pub fn mixed_reason(&self) -> String {
+        self.mixed_reason.clone()
+    }
+
+    /// 1 per surface the last `mixed` split kept as an exact face, else 0.
+    #[wasm_bindgen(getter)]
+    pub fn mixed_kept(&self) -> Vec<u8> {
+        self.mixed
+            .as_ref()
+            .map(|m| m.kept.iter().map(|&k| u8::from(k)).collect())
+            .unwrap_or_default()
+    }
+
+    /// `sag` for the last `mixed` split: over its kept surfaces and its charts.
+    #[wasm_bindgen(getter)]
+    pub fn mixed_sag(&self) -> f64 {
+        self.mixed.as_ref().map_or(0.0, |m| m.sag)
+    }
+
+    /// The freeform regions of the last `mixed` split, as a JSON array.
+    #[wasm_bindgen(getter)]
+    pub fn mixed_regions(&self) -> String {
+        let regions: Vec<String> = self
+            .mixed
+            .iter()
+            .flat_map(|m| &m.regions)
+            .map(|r| {
+                json::Obj::new()
+                    .int("body", r.body as usize)
+                    .int("triangles", r.triangles)
+                    .num("area", r.area)
+                    .int("charts", r.charts)
+                    .num("fitError", r.fit_error)
+                    .num("sag", r.sag)
+                    .finish()
+            })
+            .collect();
+        json::array(&regions)
+    }
+
+    /// Like `nearest` (`nearest_by_surface` when `by_surface`) under the last
+    /// `mixed` split: -1 in a freeform region, else a kept surface.
+    pub fn nearest_mixed(&self, points: &[f64], by_surface: bool) -> Vec<f64> {
+        let Some(m) = &self.mixed else {
+            return Vec::new();
+        };
+        let pts: Vec<math::V3> = points.as_chunks::<3>().0.to_vec();
+        self.inner
+            .nearest_mixed(m, &pts, by_surface)
+            .into_iter()
+            .flat_map(|(s, d)| [s as f64, d])
+            .collect()
     }
 }
 
@@ -407,6 +501,8 @@ impl Tier1Session {
 #[wasm_bindgen]
 pub struct FreeformCharts {
     inner: charts::Charts,
+    /// Freeform region of each chart (a mixed part only).
+    chart_regions: Vec<u32>,
 }
 
 #[wasm_bindgen]
@@ -478,6 +574,34 @@ impl FreeformCharts {
     pub fn fit_errors(&self) -> Vec<f64> {
         self.inner.charts.iter().map(|c| c.fit_error).collect()
     }
+
+    /// The analytic surface on the other side of each run, or -1 for a chart.
+    #[wasm_bindgen(getter)]
+    pub fn run_surfaces(&self) -> Vec<i32> {
+        self.inner
+            .runs
+            .iter()
+            .map(|r| {
+                if r.region == u32::MAX {
+                    -1
+                } else {
+                    r.region as i32
+                }
+            })
+            .collect()
+    }
+
+    /// 1 per run its two faces meet along without a crease, else 0.
+    #[wasm_bindgen(getter)]
+    pub fn run_smooth(&self) -> Vec<u8> {
+        self.inner.runs.iter().map(|r| u8::from(r.smooth)).collect()
+    }
+
+    /// Index into the session's `mixed_regions` per chart (a mixed part only).
+    #[wasm_bindgen(getter)]
+    pub fn chart_regions(&self) -> Vec<u32> {
+        self.chart_regions.clone()
+    }
 }
 
 fn offsets(lens: impl Iterator<Item = usize>) -> Vec<u32> {
@@ -512,5 +636,7 @@ pub fn convert_tier1(
         inner,
         heatmap,
         measured: Vec::new(),
+        mixed: None,
+        mixed_reason: String::new(),
     })
 }

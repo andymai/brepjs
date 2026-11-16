@@ -1,19 +1,26 @@
 import {
   type AnyShape,
   type ValidSolid,
+  bezier,
   box,
   chamfer,
   cone,
   cut,
   cylinder,
   exportSTL,
+  extrude,
+  face,
   fillet,
   fuse,
+  line,
   mesh,
+  nurbsSurface,
+  revolve,
   sphere,
   torus,
   translate,
   unwrap,
+  wireLoop,
 } from 'brepjs';
 
 export interface CorpusCase {
@@ -267,6 +274,147 @@ export const SCAN_CORPUS: readonly ScanCase[] = [
   },
 ];
 
+type Range = readonly [number, number];
+
+/**
+ * A smooth face over the rectangle `x` by `y`: a uniform cubic B-spline whose
+ * poles, one per `spans` step plus three, stand at height `z(x, y)`.
+ */
+function sculptedFace(
+  x: Range,
+  y: Range,
+  spans: readonly [number, number],
+  z: (x: number, y: number) => number
+) {
+  const [ku, kv] = [spans[0] + 3, spans[1] + 3];
+  const at = (r: Range, i: number, n: number): number => r[0] + ((i - 1) / n) * (r[1] - r[0]);
+  const knots = (k: number): number[] => Array.from({ length: k + 4 }, (_, i) => i - 3);
+  return unwrap(
+    nurbsSurface({
+      degreeU: 3,
+      degreeV: 3,
+      poles: Array.from({ length: ku }, (_, i) =>
+        Array.from({ length: kv }, (_, j) => {
+          const [px, py] = [at(x, i, spans[0]), at(y, j, spans[1])];
+          return [px, py, z(px, py)] as const;
+        })
+      ),
+      knotsU: knots(ku),
+      knotsV: knots(kv),
+      multiplicitiesU: knots(ku).map(() => 1),
+      multiplicitiesV: knots(kv).map(() => 1),
+    })
+  );
+}
+
+/** `body` with everything above `top` cut away. */
+function sculptedTop(
+  body: ValidSolid,
+  top: ReturnType<typeof sculptedFace>,
+  keep: <S extends Owned>(s: S) => S
+): ValidSolid {
+  // The extruded face is typed for planar profiles; the kernel sweeps any face.
+  const above = keep(unwrap(extrude(top as unknown as Parameters<typeof extrude>[0], 100)));
+  return unwrap(cut(body, above as ValidSolid));
+}
+
+/** A part with exact faces and one sculpted region, for the mixed rebuild. */
+export interface MixedCase {
+  readonly name: string;
+  readonly build: () => ValidSolid;
+  /** Unit normal and offset of every plane drawn. */
+  readonly planes: readonly (readonly [readonly [number, number, number], number])[];
+  /** Radius of every cylinder drawn. */
+  readonly cylinders: readonly number[];
+}
+
+export const MIXED_CORPUS: readonly MixedCase[] = [
+  {
+    // The top meets all four sides at a crease.
+    name: 'saddle block',
+    build: () =>
+      owned((keep) => {
+        const top = keep(
+          sculptedFace([-8, 48], [-6, 36], [7, 7], (x, y) => {
+            const [u, v] = [(x - 20) / 20, (y - 15) / 15];
+            return 12 + 3 * (u * u - v * v) + 1.2 * u * v * v;
+          })
+        );
+        return sculptedTop(keep(box(40, 30, 30)), top, keep);
+      }),
+    planes: [
+      [[0, 0, -1], 0],
+      [[-1, 0, 0], 0],
+      [[1, 0, 0], 40],
+      [[0, -1, 0], 0],
+      [[0, 1, 0], 30],
+    ],
+    cylinders: [],
+  },
+  {
+    // The boss rises out of the top face with no crease around it: its
+    // section is a cubic Bézier that leaves the face flat and is flat at the crown.
+    name: 'plate with a hole and a boss',
+    build: () =>
+      owned((keep) => {
+        const [cx, cy, r, h] = [42, 20, 9, 2.5];
+        const drilled = keep(
+          unwrap(cut(keep(box(60, 40, 6)), keep(cylinder(5, 20, { at: [15, 20, -5] }))))
+        );
+        const socket = keep(unwrap(cut(drilled, keep(cylinder(r, 20, { at: [cx, cy, -5] })))));
+        const dome = unwrap(
+          bezier([
+            [cx + r, cy, 6],
+            [cx + (2 * r) / 3, cy, 6],
+            [cx + r / 3, cy, 6 + h],
+            [cx, cy, 6 + h],
+          ])
+        );
+        const outline = [
+          line([cx, cy, 0], [cx + r, cy, 0]),
+          line([cx + r, cy, 0], [cx + r, cy, 6]),
+          dome,
+          line([cx, cy, 6 + h], [cx, cy, 0]),
+        ].map(keep);
+        const loop = keep(unwrap(wireLoop(outline)));
+        const section = keep(unwrap(face(loop as Parameters<typeof face>[0])));
+        const plug = keep(unwrap(revolve(section, { at: [cx, cy, 0] })));
+        return unwrap(fuse(socket, plug as ValidSolid, { simplify: true }));
+      }),
+    planes: [
+      [[0, 0, -1], 0],
+      [[0, 0, 1], 6],
+      [[-1, 0, 0], 0],
+      [[1, 0, 0], 60],
+      [[0, -1, 0], 0],
+      [[0, 1, 0], 40],
+    ],
+    cylinders: [5],
+  },
+  {
+    // A flange and a shaft whose end is sculpted: its boundary runs around a cylinder.
+    name: 'shaft with a sculpted end',
+    build: () =>
+      owned((keep) => {
+        const turned = keep(
+          unwrap(fuse(keep(cylinder(14, 8)), keep(cylinder(9, 60)), { simplify: true }))
+        );
+        const top = keep(
+          sculptedFace([-15, 15], [-15, 15], [6, 6], (x, y) => {
+            const [u, v] = [x / 9, y / 9];
+            return 30 + 2 * (u * u - v * v) + 1.5 * u + 0.8 * u * v;
+          })
+        );
+        return sculptedTop(turned, top, keep);
+      }),
+    planes: [
+      [[0, 0, -1], 0],
+      [[0, 0, 1], 8],
+    ],
+    cylinders: [14, 9],
+  },
+];
+
 /** Deterministic standard normal samples (xorshift + Box-Muller). */
 function gaussian(seed: number): () => number {
   let s = seed >>> 0 || 1;
@@ -285,9 +433,9 @@ function gaussian(seed: number): () => number {
  */
 export function scanLike(
   shape: AnyShape,
-  opts: { targetTriangles: number; sigma: number; seed: number }
+  opts: { targetTriangles: number; sigma: number; seed: number; chord?: number }
 ): Uint8Array {
-  const m = mesh(shape, { tolerance: 0.05 });
+  const m = mesh(shape, { tolerance: opts.chord ?? 0.05 });
   const key = (i: number) =>
     `${m.vertices[3 * i]?.toFixed(5)},${m.vertices[3 * i + 1]?.toFixed(5)},${m.vertices[3 * i + 2]?.toFixed(5)}`;
   const ids = new Map<string, number>();

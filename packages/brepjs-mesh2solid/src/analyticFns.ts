@@ -18,6 +18,7 @@ import {
   polygon,
   simplify,
   sphere,
+  split,
   torus,
 } from 'brepjs';
 import { type Built, type Owned, cutCavities, outwardSolid } from './solidFns.js';
@@ -377,12 +378,37 @@ export interface AnalyticOptions {
     ((s: Solid) => { ok: true; value: Solid } | { ok: false; reason: string }) | undefined;
 }
 
+/** The covered pieces of each mesh body, with the surface each lies on. */
+export type PieceGroups = Map<number, { faces: Face[]; own: number[] }>;
+
+export type Arrangement =
+  | {
+      ok: true;
+      groups: PieceGroups;
+      stats: { patches: number; pieces: number; kept: number };
+    }
+  | { ok: false; reason: string };
+
 /**
- * Rebuild the mesh from its fitted surfaces: one oversized patch per surface,
- * a general fuse that splits every patch along its exact intersections with the
- * others (sharing the edges), then the pieces the mesh covers, sewn and unified.
+ * Curves that cut the arrangement further, given each surface's patch: the
+ * boundaries of regions no patch stands for.
  */
-export function buildAnalytic(seg: Segmentation, opts: AnalyticOptions): AnalyticResult {
+export type Cutters = (
+  patches: ReadonlyMap<number, Face>,
+  owned: Owned[]
+) => { ok: true; value: AnyShape<Dimension>[] } | { ok: false; reason: string };
+
+/**
+ * One oversized patch per surface, a general fuse that splits every patch
+ * along its exact intersections with the others (sharing the edges), then the
+ * pieces the mesh covers, grouped by mesh body.
+ */
+export function arrange(
+  seg: Segmentation,
+  opts: Pick<AnalyticOptions, 'coverage' | 'maxUnfitArea' | 'maxClosedPatches' | 'skip'>,
+  owned: Owned[],
+  cutters?: Cutters
+): Arrangement {
   if (seg.surfaces.length === 0) return { ok: false, reason: 'no surfaces were fitted' };
   if (seg.unfitTriangles > 0 && seg.unfitArea > opts.maxUnfitArea) {
     return { ok: false, reason: `${seg.unfitTriangles} triangles fit no analytic surface` };
@@ -408,73 +434,98 @@ export function buildAnalytic(seg: Segmentation, opts: AnalyticOptions): Analyti
   );
   const diag = len(sub(all[1], all[0]));
   const margin = Math.max(0.05 * diag, 20 * seg.tolerance);
+  const keep = <T extends Owned>(x: T): T => {
+    owned.push(x);
+    return x;
+  };
+  const skip = opts.skip ?? new Set<number>();
+  const patches = new Map<number, Face>();
+  for (let i = 0; i < seg.surfaces.length; i++) {
+    const s = seg.surfaces[i];
+    const b = seg.bounds[i];
+    if (s === undefined || b === undefined || skip.has(i)) continue;
+    const f = patch(s, b, margin, owned);
+    if (f === null)
+      return { ok: false, reason: `could not build a patch for surface ${i} (${s.kind})` };
+    patches.set(i, f);
+  }
+  // One argument per patch: the general fuse intersects arguments with each other.
+  const args = [...patches.values()].map((f) => keep(compound([f])));
+  const fused = fuseAll(args, { unsafe: true });
+  if (!fused.ok) return { ok: false, reason: `surface arrangement failed: ${fused.error.message}` };
+  owned.push(fused.value);
+  let arranged: AnyShape<Dimension> = fused.value;
+  if (cutters !== undefined) {
+    const tools = cutters(patches, owned);
+    if (!tools.ok) return tools;
+    if (tools.value.length > 0) {
+      const cut = split(arranged, tools.value);
+      if (!cut.ok)
+        return { ok: false, reason: `the arrangement could not be cut: ${cut.error.message}` };
+      arranged = keep(cut.value);
+    }
+  }
+  const pieces = getFaces(arranged) as Face[];
+  const coarse = Math.max(diag / 40, opts.coverage);
+  const samples = pieces.map((p) => samplePoints(p, coarse));
+  const flat = new Float64Array(samples.reduce((n, s) => n + s.pts.length * 3, 0));
+  let k = 0;
+  for (const s of samples) {
+    for (const p of s.pts) {
+      flat.set(p, k);
+      k += 3;
+    }
+  }
+  const near = seg.nearest(flat);
+  const bodyOf = seg.bodiesOf(flat);
+  const groups: PieceGroups = new Map();
+  let kept = 0;
+  let cursor = 0;
+  for (let i = 0; i < pieces.length; i++) {
+    const pts = samples[i]?.pts ?? [];
+    const weights = samples[i]?.weights ?? [];
+    const own = nearestSurface(seg.surfaces, pts, skip);
+    const start = cursor;
+    // Shares of the piece's area: on the mesh, and on a surface left out of the arrangement.
+    let hits = 0;
+    let neutral = 0;
+    let total = 0;
+    for (let j = 0; j < pts.length; j++, cursor++) {
+      const sid = near[2 * cursor] ?? -1;
+      const d = near[2 * cursor + 1] ?? Infinity;
+      const w = weights[j] ?? 0;
+      total += w;
+      if (skip.has(sid)) neutral += w;
+      else if (sid === own && d <= opts.coverage) hits += w;
+    }
+    const piece = pieces[i];
+    const judged = total - neutral;
+    if (piece === undefined || hits === 0 || hits / judged <= 0.5) continue;
+    const body = majority(bodyOf, start, pts.length);
+    const g = groups.get(body) ?? { faces: [], own: [] };
+    g.faces.push(piece);
+    g.own.push(own);
+    groups.set(body, g);
+    kept++;
+  }
+  if (kept === 0) return { ok: false, reason: 'no arrangement piece is covered by the mesh' };
+  return { ok: true, groups, stats: { patches: patches.size, pieces: pieces.length, kept } };
+}
+
+/**
+ * Rebuild the mesh from its fitted surfaces: the arrangement's covered
+ * pieces, sewn into each body's solid and unified.
+ */
+export function buildAnalytic(seg: Segmentation, opts: AnalyticOptions): AnalyticResult {
   const owned: Owned[] = [];
   const keep = <T extends Owned>(x: T): T => {
     owned.push(x);
     return x;
   };
   try {
-    const skip = opts.skip ?? new Set<number>();
-    const patches: Face[] = [];
-    for (let i = 0; i < seg.surfaces.length; i++) {
-      const s = seg.surfaces[i];
-      const b = seg.bounds[i];
-      if (s === undefined || b === undefined || skip.has(i)) continue;
-      const f = patch(s, b, margin, owned);
-      if (f === null)
-        return { ok: false, reason: `could not build a patch for surface ${i} (${s.kind})` };
-      patches.push(f);
-    }
-    // One argument per patch: the general fuse intersects arguments with each other.
-    const args = patches.map((f) => keep(compound([f])));
-    const fused = fuseAll(args, { unsafe: true });
-    if (!fused.ok)
-      return { ok: false, reason: `surface arrangement failed: ${fused.error.message}` };
-    owned.push(fused.value);
-    const pieces = getFaces(fused.value);
-    const coarse = Math.max(diag / 40, opts.coverage);
-    const samples = pieces.map((p) => samplePoints(p, coarse));
-    const flat = new Float64Array(samples.reduce((n, s) => n + s.pts.length * 3, 0));
-    let k = 0;
-    for (const s of samples) {
-      for (const p of s.pts) {
-        flat.set(p, k);
-        k += 3;
-      }
-    }
-    const near = seg.nearest(flat);
-    const bodyOf = seg.bodiesOf(flat);
-    const groups = new Map<number, { faces: Face[]; own: number[] }>();
-    let kept = 0;
-    let cursor = 0;
-    for (let i = 0; i < pieces.length; i++) {
-      const pts = samples[i]?.pts ?? [];
-      const weights = samples[i]?.weights ?? [];
-      const own = nearestSurface(seg.surfaces, pts, skip);
-      const start = cursor;
-      // Shares of the piece's area: on the mesh, and on a surface left out of the arrangement.
-      let hits = 0;
-      let neutral = 0;
-      let total = 0;
-      for (let j = 0; j < pts.length; j++, cursor++) {
-        const sid = near[2 * cursor] ?? -1;
-        const d = near[2 * cursor + 1] ?? Infinity;
-        const w = weights[j] ?? 0;
-        total += w;
-        if (skip.has(sid)) neutral += w;
-        else if (sid === own && d <= opts.coverage) hits += w;
-      }
-      const piece = pieces[i];
-      const judged = total - neutral;
-      if (piece === undefined || hits === 0 || hits / judged <= 0.5) continue;
-      const body = majority(bodyOf, start, pts.length);
-      const g = groups.get(body) ?? { faces: [], own: [] };
-      g.faces.push(piece);
-      g.own.push(own);
-      groups.set(body, g);
-      kept++;
-    }
-    if (kept === 0) return { ok: false, reason: 'no arrangement piece is covered by the mesh' };
+    const arranged = arrange(seg, opts, owned);
+    if (!arranged.ok) return arranged;
+    const { groups, stats } = arranged;
     // A body with no pieces would vanish, and the distance check can't see it
     // when another body lies within the deviation limit.
     for (let b = 0; b < seg.bodyClosed.length; b++) {
@@ -520,12 +571,7 @@ export function buildAnalytic(seg: Segmentation, opts: AnalyticOptions): Analyti
       ok: true,
       value: {
         shape: result,
-        stats: {
-          patches: patches.length,
-          pieces: pieces.length,
-          kept,
-          faces: getFaces(result).length,
-        },
+        stats: { ...stats, faces: getFaces(result).length },
         deviation: dev,
       },
     };

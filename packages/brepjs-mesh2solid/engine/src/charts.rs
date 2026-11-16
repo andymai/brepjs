@@ -14,6 +14,7 @@ use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 
 use crate::deviation::{closest_on_triangle, Bvh};
+use crate::fit::Surface;
 use crate::math::{add, cross, dist, dot, normalize, scale, sub, tri_area, tri_cross, Bbox, V3};
 use crate::mesh::{edge_key, Mesh, Topology};
 
@@ -33,6 +34,11 @@ const SMOOTH_PASSES: usize = 6;
 const SURFACE_MARGIN: f64 = 0.03;
 /// Input vertices per chart fitted for its surface, at most.
 const SURFACE_SAMPLES: usize = 4000;
+/// Rows of points taken from an analytic neighbour past a smooth boundary,
+/// and their spacing as a share of the chart's extent: the chart's surface
+/// then leaves that neighbour along its tangent.
+const TANGENT_ROWS: usize = 2;
+const TANGENT_STEP: f64 = 0.02;
 
 pub struct ChartParams {
     /// Largest angle between a chart's mean normal and its triangles'.
@@ -61,6 +67,11 @@ pub struct ChartInput<'a> {
     pub topo: &'a Topology,
     /// The triangles to chart.
     pub mask: &'a [bool],
+    /// For a triangle outside the mask, the analytic region it lies on
+    /// (`u32::MAX` for none); empty when every triangle is charted.
+    pub outside: &'a [u32],
+    /// The surface of each analytic region `outside` names.
+    pub supports: &'a [Surface],
     /// Body of each triangle.
     pub tri_body: &'a [u32],
     /// Over `mesh`'s triangles, to put points back on it.
@@ -86,6 +97,8 @@ pub struct Run {
     pub charts: [u32; 2],
     /// No crease along it: the faces meet tangentially.
     pub smooth: bool,
+    /// The analytic region on its other side, or `u32::MAX` when that is a chart.
+    pub region: u32,
 }
 
 pub struct Chart {
@@ -98,6 +111,9 @@ pub struct Chart {
     pub poles: Vec<V3>,
     /// Largest height of a fitted point off that surface.
     pub fit_error: f64,
+    /// Largest height of the chart's own triangles (centroids and edge
+    /// midpoints) off that surface: how far the face sits from the facets.
+    pub sag: f64,
 }
 
 pub struct Charts {
@@ -107,18 +123,24 @@ pub struct Charts {
     pub runs: Vec<Run>,
 }
 
-struct Geo {
-    normal: Vec<V3>,
-    area: Vec<f64>,
+pub(crate) struct Geo {
+    pub(crate) normal: Vec<V3>,
+    pub(crate) area: Vec<f64>,
     centroid: Vec<V3>,
     /// Neighbour across each edge when a chart may grow across it.
-    pass: Vec<[u32; 3]>,
+    pub(crate) pass: Vec<[u32; 3]>,
     /// 1 / (largest chart extent)² for each triangle's body.
     inv_reach2: Vec<f64>,
 }
 
 impl Geo {
-    fn new(mesh: &Mesh, topo: &Topology, mask: &[bool], crease_deg: f64, noise: f64) -> Geo {
+    pub(crate) fn new(
+        mesh: &Mesh,
+        topo: &Topology,
+        mask: &[bool],
+        crease_deg: f64,
+        noise: f64,
+    ) -> Geo {
         let n = mesh.triangles.len();
         let mut normal = Vec::with_capacity(n);
         let mut area = Vec::with_capacity(n);
@@ -431,7 +453,9 @@ fn loops_of(
         }
     }
     let mut loops = Vec::new();
-    while let Some((&start, _)) = next.iter().next() {
+    // From the lowest vertex, so the same mesh gives the same loops (and the
+    // same corners on a loop that has none of its own) on every run.
+    while let Some(start) = next.keys().copied().min() {
         let mut lp = Vec::new();
         let mut v = start;
         while let Some((t, i)) = next.remove(&v) {
@@ -619,21 +643,42 @@ fn trace(cx: &Ctx, g: &Geo, chart: &[u32], proxies: &[V3]) -> Option<(Vec<Chart>
     let (mesh, topo, tri_body, bvh) = (cx.src.mesh, cx.src.topo, cx.src.tri_body, cx.src.bvh);
     let count = proxies.len();
     let groups = members(chart, count);
-    let around = vertex_charts(mesh, chart);
+    let outside = |t: usize| cx.src.outside.get(t).copied().unwrap_or(NONE);
+    // A chart, or the analytic region beside the charted triangles.
+    let labels: Vec<u32> = (0..chart.len())
+        .map(|t| match (chart[t], outside(t)) {
+            (NONE, NONE) => NONE,
+            (NONE, r) => count as u32 + r,
+            (c, _) => c,
+        })
+        .collect();
+    let around = vertex_charts(mesh, &labels);
     let mut corner: Vec<bool> = around.iter().map(|c| c.len() >= 3).collect();
-    let crease = |t: u32, i: u8| g.pass[t as usize][i as usize] == NONE;
+    let cos_crease = cx.p.crease_deg.to_radians().cos();
+    let crease = |t: u32, i: u8| match topo.neighbor(t as usize, i as usize) {
+        Some(nb) => dot(g.normal[t as usize], g.normal[nb]) < cos_crease,
+        None => true,
+    };
     let mut loops = Vec::with_capacity(count);
     for tris in &groups {
         let lp = loops_of(mesh, topo, chart, tris)?;
         let [one] = <[_; 1]>::try_from(lp).ok()?;
         loops.push(one);
     }
+    // The analytic region across a boundary edge, if any.
+    let beside = |t: u32, i: u8| match topo.neighbor(t as usize, i as usize) {
+        Some(nb) if chart[nb] == NONE => outside(nb),
+        _ => NONE,
+    };
     // A run is all crease or all smooth: its faces meet one way along it.
+    // Along one analytic region the longer share decides instead: facets of
+    // a decimated scan that bridge the crease read as smooth here and there.
     for lp in &loops {
         for k in 0..lp.len() {
             let (t0, i0) = lp[k];
             let (t1, i1) = lp[(k + 1) % lp.len()];
-            if crease(t0, i0) != crease(t1, i1) {
+            let one_region = beside(t0, i0) != NONE && beside(t0, i0) == beside(t1, i1);
+            if !one_region && crease(t0, i0) != crease(t1, i1) {
                 corner[mesh.triangles[t1 as usize][i1 as usize] as usize] = true;
             }
         }
@@ -669,20 +714,37 @@ fn trace(cx: &Ctx, g: &Geo, chart: &[u32], proxies: &[V3]) -> Option<(Vec<Chart>
             }
             let id = stretches.len();
             let mut verts = Vec::with_capacity(seg.len() + 1);
-            let mut smooth = true;
+            let (mut creased, mut length) = (0.0, 0.0);
             for &(t, i) in &seg {
                 let tri = mesh.triangles[t as usize];
                 let (a, b) = (tri[i as usize], tri[(i as usize + 1) % 3]);
                 verts.push(a);
                 edge_stretch.insert(edge_key(a, b), id);
-                smooth &= !crease(t, i);
+                let len = dist(mesh.positions[a as usize], mesh.positions[b as usize]);
+                length += len;
+                if crease(t, i) {
+                    creased += len;
+                }
             }
+            let smooth = if beside(seg[0].0, seg[0].1) == NONE {
+                creased == 0.0
+            } else {
+                2.0 * creased < length
+            };
             let (t, i) = seg[seg.len() - 1];
             verts.push(mesh.triangles[t as usize][(i as usize + 1) % 3]);
             let nb = topo.neighbor(t as usize, i as usize)?;
+            // A boundary with nothing on its other side has no face to meet.
+            if labels[nb] == NONE {
+                return None;
+            }
             let mut pts: Vec<V3> = verts.iter().map(|&v| mesh.positions[v as usize]).collect();
             if smooth {
                 smooth_run(&mut pts, mesh, bvh);
+            }
+            let region = if chart[nb] == NONE { outside(nb) } else { NONE };
+            if let Some(s) = cx.src.supports.get(region as usize) {
+                lay_run(&mut pts, s, !smooth && cx.p.noise > 0.0);
             }
             let body = tri_body[groups[c][0] as usize] as usize;
             let mut ids = Vec::new();
@@ -692,6 +754,7 @@ fn trace(cx: &Ctx, g: &Geo, chart: &[u32], proxies: &[V3]) -> Option<(Vec<Chart>
                     pts: piece,
                     charts: [c as u32, chart[nb]],
                     smooth,
+                    region,
                 });
             }
             sides.extend(ids.iter().map(|&r| (r, false)));
@@ -702,6 +765,7 @@ fn trace(cx: &Ctx, g: &Geo, chart: &[u32], proxies: &[V3]) -> Option<(Vec<Chart>
             sides,
             poles: Vec::new(),
             fit_error: f64::INFINITY,
+            sag: f64::INFINITY,
         });
     }
     Some((charts, runs))
@@ -852,6 +916,30 @@ fn smooth_run(pts: &mut [V3], mesh: &Mesh, bvh: &Bvh) {
     }
 }
 
+/// Put a run that borders an analytic surface onto it, corners excepted
+/// (the next run shares them). Both faces are trimmed along the run, and the
+/// analytic one holds exactly the points on its surface. `relax` first evens
+/// out a crease traced through a scan's noise, which wanders along the
+/// surface from vertex to vertex.
+fn lay_run(pts: &mut [V3], s: &Surface, relax: bool) {
+    if pts.len() < 3 {
+        return;
+    }
+    let last = pts.len() - 1;
+    if relax {
+        for _ in 0..SMOOTH_PASSES {
+            let prev = pts.to_vec();
+            for k in 1..last {
+                let mid = scale(add(prev[k - 1], prev[k + 1]), 0.5);
+                pts[k] = s.project(scale(add(prev[k], mid), 0.5));
+            }
+        }
+    }
+    for p in &mut pts[1..last] {
+        *p = s.project(*p);
+    }
+}
+
 /// Fit each chart's surface to the input vertices on it and on the
 /// triangles around its edge, plus its boundary runs.
 fn fit_surfaces(
@@ -873,11 +961,24 @@ fn fit_surfaces(
             }
         }
     }
+    let mut probes: Vec<Vec<V3>> = vec![Vec::new(); n];
+    for (t, &c) in chart.iter().enumerate() {
+        if c != NONE {
+            let [p, q, r] = mesh.tri(t);
+            probes[c as usize].extend([
+                scale(add(add(p, q), r), 1.0 / 3.0),
+                scale(add(p, q), 0.5),
+                scale(add(q, r), 0.5),
+                scale(add(r, p), 0.5),
+            ]);
+        }
+    }
     let mut stack = Vec::new();
     let mut fitted: Vec<Vec<V3>> = vec![Vec::new(); n];
     // A neighbour's triangle tilted past this from a chart's mean normal would
     // fold its height field; decimated scan triangles reach far past the edge.
     let cos_ring = (RING_CONE * cx.p.cone_deg).to_radians().cos();
+    let cos_cone = cx.p.cone_deg.to_radians().cos();
     for &p in input.positions.iter().step_by(stride.max(1)) {
         let (_, t) = bvh.nearest(p, &mut stack);
         let Some(&own) = chart.get(t as usize).filter(|&&c| c != NONE) else {
@@ -906,10 +1007,24 @@ fn fit_surfaces(
             let step = pts.len().div_ceil(SURFACE_SAMPLES);
             pts = pts.into_iter().step_by(step).collect();
         }
-        for &(r, _) in &charts[c].sides {
-            pts.extend_from_slice(&runs[r as usize].pts);
-        }
         let nrm = proxies[c];
+        let step = TANGENT_STEP * bb[c].diag();
+        // Points the surface is held to: its boundaries with analytic faces.
+        let mut held = Vec::new();
+        for &(r, back) in &charts[c].sides {
+            let run = &runs[r as usize];
+            let Some(s) = cx.src.supports.get(run.region as usize) else {
+                pts.extend_from_slice(&run.pts);
+                continue;
+            };
+            held.extend_from_slice(&run.pts);
+            // Exact points set the slope at the boundary themselves, and a
+            // surface held to the neighbour past a jump in curvature (a
+            // plane running into a dome) misses the points just inside it.
+            if run.smooth && cx.p.noise > 0.0 {
+                tangent_samples(&run.pts, back, s, (nrm, cos_cone), step, &mut held);
+            }
+        }
         let helper = if nrm[0].abs() < 0.9 {
             [1.0, 0.0, 0.0]
         } else {
@@ -918,7 +1033,42 @@ fn fit_surfaces(
         let u = normalize(cross(nrm, helper)).unwrap_or([1.0, 0.0, 0.0]);
         let v = cross(nrm, u);
         let o = scale(add(bb[c].min, bb[c].max), 0.5);
-        (charts[c].poles, charts[c].fit_error) = fit_surface(&pts, o, u, v, nrm);
+        (charts[c].poles, charts[c].fit_error, charts[c].sag) =
+            fit_surface(&pts, &held, &probes[c], (o, u, v, nrm));
+    }
+}
+
+/// Points on the analytic surface `s` just past a boundary run of a chart
+/// facing along `facing`: rows `step` apart, away from the chart. `back` says
+/// the chart walks the run from its last point to its first.
+fn tangent_samples(
+    run: &[V3],
+    back: bool,
+    s: &Surface,
+    (facing, cos_cone): (V3, f64),
+    step: f64,
+    out: &mut Vec<V3>,
+) {
+    for k in 0..run.len() {
+        let (a, b) = (run[k.saturating_sub(1)], run[(k + 1).min(run.len() - 1)]);
+        let Some(mut n) = s.normal(run[k]) else {
+            continue;
+        };
+        if dot(n, facing) < 0.0 {
+            n = scale(n, -1.0);
+        }
+        // Past the chart's cone the neighbour is no height field over its plane.
+        if dot(n, facing) < cos_cone {
+            continue;
+        }
+        // A chart lies to the left of its boundary seen from outside.
+        let along = if back { sub(a, b) } else { sub(b, a) };
+        let Some(away) = normalize(cross(along, n)) else {
+            continue;
+        };
+        for j in 1..=TANGENT_ROWS {
+            out.push(s.project(add(run[k], scale(away, j as f64 * step))));
+        }
     }
 }
 
@@ -971,15 +1121,25 @@ fn cubic_weights(x: f64, k: usize) -> (usize, [f64; 4]) {
     )
 }
 
-/// A height field over the plane (o; u, v), fitted to `pts` as a smoothed
+/// Weight of a point the surface is held to against one it is fitted to: the
+/// face is trimmed along those points, and its neighbour across them is exact.
+const HELD_WEIGHT: f64 = 25.0;
+
+/// A height field over the plane (o; u, v), fitted to `pts` and `held` as a smoothed
 /// least-squares uniform cubic B-spline over the points' extent plus a
 /// margin, returned as its k × k poles (see `Chart::poles`) with the largest
-/// height of a point off it. The surface's first direction runs along the
-/// points' principal axis and the second across, so it faces along `n`.
-/// Empty when the points span no area.
-fn fit_surface(pts: &[V3], o: V3, u: V3, v: V3, n: V3) -> (Vec<V3>, f64) {
-    let (u, v) = principal_axes(pts, o, u, v);
-    let local: Vec<(f64, f64, f64)> = pts
+/// height of a point off it, and of a probe off it. The surface's first
+/// direction runs along the points' principal axis and the second across, so
+/// it faces along `n`. Empty when the points span no area.
+fn fit_surface(
+    pts: &[V3],
+    held: &[V3],
+    probes: &[V3],
+    (o, u, v, n): (V3, V3, V3, V3),
+) -> (Vec<V3>, f64, f64) {
+    let all: Vec<V3> = pts.iter().chain(held).copied().collect();
+    let (u, v) = principal_axes(&all, o, u, v);
+    let local: Vec<(f64, f64, f64)> = all
         .iter()
         .map(|&p| {
             let d = sub(p, o);
@@ -999,7 +1159,7 @@ fn fit_surface(pts: &[V3], o: V3, u: V3, v: V3, n: V3) -> (Vec<V3>, f64) {
         t1 = t1.max(t);
     }
     if !(s1 > s0 && t1 > t0) {
-        return (Vec::new(), f64::INFINITY);
+        return (Vec::new(), f64::INFINITY, f64::INFINITY);
     }
     let (ms, mt) = (SURFACE_MARGIN * (s1 - s0), SURFACE_MARGIN * (t1 - t0));
     let (s0, s1, t0, t1) = (s0 - ms, s1 + ms, t0 - mt, t1 + mt);
@@ -1013,7 +1173,8 @@ fn fit_surface(pts: &[V3], o: V3, u: V3, v: V3, n: V3) -> (Vec<V3>, f64) {
     let m = k * k;
     let mut a = vec![vec![0.0; m]; m];
     let mut r = vec![0.0; m];
-    for &(s, t, z) in &local {
+    for (i, &(s, t, z)) in local.iter().enumerate() {
+        let weight = if i < pts.len() { 1.0 } else { HELD_WEIGHT };
         let (i0, ws) = cubic_weights(xs(s), k);
         let (j0, wt) = cubic_weights(xt(t), k);
         let mut idx = [0usize; 16];
@@ -1025,9 +1186,9 @@ fn fit_surface(pts: &[V3], o: V3, u: V3, v: V3, n: V3) -> (Vec<V3>, f64) {
             }
         }
         for x in 0..16 {
-            r[idx[x]] += w[x] * z;
+            r[idx[x]] += weight * w[x] * z;
             for y in 0..16 {
-                a[idx[x]][idx[y]] += w[x] * w[y];
+                a[idx[x]][idx[y]] += weight * w[x] * w[y];
             }
         }
     }
@@ -1069,7 +1230,7 @@ fn fit_surface(pts: &[V3], o: V3, u: V3, v: V3, n: V3) -> (Vec<V3>, f64) {
         }
     }
     let Some(c) = crate::fit::solve(a, r) else {
-        return (Vec::new(), f64::INFINITY);
+        return (Vec::new(), f64::INFINITY, f64::INFINITY);
     };
     let height = |s: f64, t: f64| {
         let (i0, ws) = cubic_weights(xs(s), k);
@@ -1101,7 +1262,14 @@ fn fit_surface(pts: &[V3], o: V3, u: V3, v: V3, n: V3) -> (Vec<V3>, f64) {
         .iter()
         .map(|&(s, t, z)| (height(s, t) - z).abs())
         .fold(0.0, f64::max);
-    (poles, residual)
+    let sag = probes
+        .iter()
+        .map(|&p| {
+            let d = sub(p, o);
+            (height(dot(d, u), dot(d, v)) - dot(d, n)).abs()
+        })
+        .fold(0.0, f64::max);
+    (poles, residual, sag)
 }
 
 #[cfg(test)]
@@ -1134,6 +1302,8 @@ mod tests {
             mesh,
             topo: &topo,
             mask: &mask,
+            outside: &[],
+            supports: &[],
             tri_body: &tri_body,
             bvh: &bvh,
             input: mesh,

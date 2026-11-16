@@ -21,6 +21,7 @@ import {
 } from './analyticFns.js';
 import { filletBlends, findBlends } from './blendFns.js';
 import { type FreeformResult, buildFreeform, decodeCharts } from './freeformFns.js';
+import { type FreeformRegion, type MixedResult, buildMixed, decodeMixed } from './mixedFns.js';
 import { type Tier2Result, buildTier2 } from './tier2Fns.js';
 import { buildShape } from './buildFns.js';
 import { loadMeshEngine } from './engine.js';
@@ -199,7 +200,7 @@ export async function meshToSolid(
       }
       const surfaces: Surfaces = analytic.ok
         ? analytic
-        : freeformTier1(session, engineReport, analytic.reason);
+        : bsplineTier1(session, engineReport, analytic.reason);
       if (surfaces.ok) {
         let shape: Shape = surfaces.value.shape;
         let deviation = surfaces.value.deviation;
@@ -207,11 +208,17 @@ export async function meshToSolid(
         let code: string | undefined;
         let tier2: ConversionReport['tier2'];
         const warnings: string[] = [];
-        const freeform = surfaces.freeform;
-        if (freeform !== undefined) {
+        const { freeform, mixed } = surfaces;
+        if (mixed !== undefined) {
           warnings.push(
-            `rebuilt from ${freeform.faces} B-spline faces: no analytic rebuild (${freeform.analyticReason})`
+            `${mixed.regions.length} freeform ${mixed.regions.length === 1 ? 'region' : 'regions'} filled with ${mixed.freeformFaces} B-spline ${mixed.freeformFaces === 1 ? 'face' : 'faces'} beside ${mixed.analyticFaces} exact faces`
           );
+        } else if (freeform !== undefined) {
+          warnings.push(
+            `rebuilt from ${freeform.faces} B-spline faces: no analytic rebuild (${freeform.analyticReason}), and the analytic faces could not be kept (${freeform.mixedReason})`
+          );
+        }
+        if (mixed !== undefined || freeform !== undefined) {
           if (tier >= 2) {
             tier2 = { features: [], fallbackReason: 'B-spline faces have no feature program' };
           }
@@ -234,13 +241,15 @@ export async function meshToSolid(
         const faces = {
           triangles: triangles.length / 3,
           faces: getFaces(shape).length,
-          unified: freeform === undefined,
+          unified: freeform === undefined && mixed === undefined,
         };
         const timings = { engineMs, buildMs: performance.now() - buildStart };
         const tier1: ConversionReport['tier1'] =
-          freeform === undefined
-            ? { ...tier1Report, arrangement: analytic.ok ? analytic.value.stats : undefined }
-            : { ...tier1Report, freeform };
+          mixed !== undefined
+            ? { ...tier1Report, mixed }
+            : freeform !== undefined
+              ? { ...tier1Report, freeform }
+              : { ...tier1Report, arrangement: analytic.ok ? analytic.value.stats : undefined };
         const report = finishReport({ ...engineReport, deviation }, faces, timings, warnings, {
           tierReached,
           tier1,
@@ -299,18 +308,25 @@ const CAD_COVERAGE = 10;
  */
 const SCAN_COVERAGE = 3;
 
-/** How close exact surfaces must come to the mesh, scaled to the mesh's own sag. */
-function gatesFor(session: Tier1Session, engineReport: EngineReport): Gates {
+/**
+ * How close exact surfaces must come to the mesh, scaled to the mesh's own
+ * sag: `measuredSag`, the largest gap between a mesh triangle and the surface
+ * it is rebuilt from.
+ */
+function gatesFor(
+  session: Tier1Session,
+  engineReport: EngineReport,
+  measuredSag = session.sag
+): Gates {
   // Exact surfaces sit up to the mesh's sag away from it; our own
   // triangulation of the result adds its chord on the forward side.
   const tol = session.tolerance;
   const scan = engineReport.estimate.kind === 'scan';
-  const { bboxMin, bboxMax } = engineReport.input;
-  const diag = Math.hypot(...bboxMax.map((v, i) => v - (bboxMin[i] ?? 0)));
+  const diag = diagOf(engineReport);
   // A scan's facets are chords of its own triangles, cut again by decimation
   // within the tolerance. One region triangle far from its surface (a chord
   // across a crease) must not widen the gates for every piece.
-  const sag = scan ? Math.min(session.sag, 8 * engineReport.estimate.chordError) : session.sag;
+  const sag = scan ? Math.min(measuredSag, 8 * engineReport.estimate.chordError) : measuredSag;
   // The mesher rejects a deflection near float precision; planar results are exact at any.
   const triangulation = Math.max(sag / 2, 2 * tol, 1e-6 * diag);
   return {
@@ -363,25 +379,69 @@ function runTier1(session: Tier1Session, engineReport: EngineReport, gates: Gate
     : { ok: false, reason: `${plain.reason} (filleting the blends last: ${last.reason})` };
 }
 
+type Tier1Report = NonNullable<ConversionReport['tier1']>;
+
 type Surfaces =
   | {
       ok: true;
       value: { shape: Shape; deviation: ConversionReport['deviation'] };
-      freeform?: NonNullable<ConversionReport['tier1']>['freeform'];
+      mixed?: Tier1Report['mixed'];
+      freeform?: Tier1Report['freeform'];
     }
   | { ok: false; reason: string };
 
+function diagOf(engineReport: EngineReport): number {
+  const { bboxMin, bboxMax } = engineReport.input;
+  return Math.hypot(...bboxMax.map((v, i) => v - (bboxMin[i] ?? 0)));
+}
+
 /**
- * When no analytic surfaces rebuild the mesh, split each body into smooth
- * disc-shaped charts and rebuild it from one trimmed B-spline face per chart.
+ * How closely a B-spline face must follow the mesh: as loose as the analytic
+ * fits' chord cap, since a chart's face follows the mesh between its points
+ * about as closely as an analytic surface does.
  */
-function freeformTier1(
+function bsplineLimits(
+  session: Tier1Session,
+  engineReport: EngineReport
+): { maxDeviation: number; runTolerance: number; triangulation: number } {
+  const tol = session.tolerance;
+  const chord = engineReport.estimate.chordError;
+  const diag = diagOf(engineReport);
+  const runTolerance = Math.max(tol, chord);
+  return {
+    maxDeviation: Math.max(8 * chord, 20 * tol, 1e-3 * diag),
+    runTolerance,
+    // The measuring mesh's own chord adds to the deviation it reports; at
+    // half the mesh's noise or chord, a scan's report reads its noise.
+    triangulation: Math.max(runTolerance / 2, 1e-6 * diag),
+  };
+}
+
+/**
+ * When no analytic surfaces rebuild a closed mesh, rebuild it with B-spline
+ * faces: only where it is freeform if the rest has analytic faces to keep,
+ * else throughout.
+ */
+function bsplineTier1(
   session: Tier1Session,
   engineReport: EngineReport,
   analyticReason: string
 ): Surfaces {
-  // Faces sewn from charts only close a closed body.
+  // Sewn faces only close a closed body.
   if (session.body_closed.includes(0)) return { ok: false, reason: analyticReason };
+  let mixed: MixedResult;
+  try {
+    mixed = runMixed(session, engineReport);
+  } catch (e) {
+    mixed = { ok: false, reason: `the rebuild failed: ${message(e)}` };
+  }
+  if (mixed.ok) {
+    return {
+      ok: true,
+      value: mixed.value,
+      mixed: { ...mixed.value.stats, analyticReason },
+    };
+  }
   let built: FreeformResult;
   try {
     built = runFreeform(session, engineReport);
@@ -389,13 +449,73 @@ function freeformTier1(
     built = { ok: false, reason: `the B-spline rebuild failed: ${message(e)}` };
   }
   if (!built.ok) {
-    return { ok: false, reason: `${analyticReason}; no B-spline rebuild either: ${built.reason}` };
+    return {
+      ok: false,
+      reason: `${analyticReason}; no analytic faces kept beside freeform regions: ${mixed.reason}; no B-spline rebuild either: ${built.reason}`,
+    };
   }
   return {
     ok: true,
     value: built.value,
-    freeform: { ...built.value.stats, analyticReason },
+    freeform: { ...built.value.stats, analyticReason, mixedReason: mixed.reason },
   };
+}
+
+/**
+ * Largest curved chart of a freeform region as a share of its body's
+ * diagonal: one face for the whole region first, then smaller charts when
+ * one surface can't follow it.
+ */
+const MIXED_CHART_EXTENTS = [1, 0.5];
+
+/**
+ * Keep the analytic surfaces and fill the freeform regions between them with
+ * B-spline faces, under the analytic rebuild's own gates.
+ */
+function runMixed(session: Tier1Session, engineReport: EngineReport): MixedResult {
+  const scan = engineReport.estimate.kind === 'scan';
+  const limits = bsplineLimits(session, engineReport);
+  const reasons: string[] = [];
+  for (const extent of MIXED_CHART_EXTENTS) {
+    const packed = session.mixed(extent);
+    if (packed === undefined) return { ok: false, reason: session.mixed_reason };
+    let charts;
+    try {
+      charts = decodeMixed(packed);
+    } finally {
+      packed.free();
+    }
+    const gates = gatesFor(session, engineReport, session.mixed_sag);
+    const kept = new Set<number>();
+    session.mixed_kept.forEach((k, i) => {
+      if (k === 1) kept.add(i);
+    });
+    const seg: Segmentation = {
+      surfaces: decodeSurfaces(session.surface_kinds, session.surface_params),
+      bounds: boundsOf(session.surface_bounds),
+      tolerance: gates.tolerance,
+      unfitTriangles: 0,
+      unfitArea: 0,
+      nearest: (pts) => session.nearest_mixed(pts, scan),
+      bodiesOf: (pts) => session.bodies_of(pts),
+      bodyParent: session.body_parent,
+      bodyClosed: session.body_closed,
+      deviation: (p, i) => session.deviation(p, i),
+    };
+    const built = buildMixed(seg, charts, {
+      kept,
+      regions: JSON.parse(session.mixed_regions) as FreeformRegion[],
+      coverage: gates.coverage,
+      runTolerance: limits.runTolerance,
+      maxFit: limits.maxDeviation,
+      maxDeviation: gates.maxDeviation,
+      // Never coarser than the analytic gate measures at.
+      triangulation: Math.min(gates.triangulation, limits.triangulation),
+    });
+    if (built.ok) return built;
+    reasons.push(built.reason);
+  }
+  return { ok: false, reason: reasons.join('; with smaller charts: ') };
 }
 
 function runFreeform(session: Tier1Session, engineReport: EngineReport): FreeformResult {
@@ -409,14 +529,7 @@ function runFreeform(session: Tier1Session, engineReport: EngineReport): Freefor
   } finally {
     packed.free();
   }
-  const tol = session.tolerance;
-  const chord = engineReport.estimate.chordError;
-  const { bboxMin, bboxMax } = engineReport.input;
-  const diag = Math.hypot(...bboxMax.map((v, i) => v - (bboxMin[i] ?? 0)));
-  // As loose as the analytic fits' chord cap: a chart's face follows the mesh
-  // between its points about as closely as an analytic surface does.
-  const maxDeviation = Math.max(8 * chord, 20 * tol, 1e-3 * diag);
-  const runTolerance = Math.max(tol, chord);
+  const { maxDeviation, runTolerance, triangulation } = bsplineLimits(session, engineReport);
   return buildFreeform(
     charts,
     {
@@ -424,13 +537,7 @@ function runFreeform(session: Tier1Session, engineReport: EngineReport): Freefor
       bodyClosed: session.body_closed,
       deviation: (p, i) => session.deviation(p, i),
     },
-    {
-      runTolerance,
-      maxDeviation,
-      // The measuring mesh's own chord adds to the deviation it reports; at
-      // half the mesh's noise or chord, a scan's report reads its noise.
-      triangulation: Math.max(runTolerance / 2, 1e-6 * diag),
-    }
+    { runTolerance, maxDeviation, triangulation }
   );
 }
 

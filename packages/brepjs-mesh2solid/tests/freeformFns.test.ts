@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type PackedCharts, decodeCharts } from '../src/freeformFns.js';
+import { type PackedMixed, decodeMixed } from '../src/mixedFns.js';
 
 describe('decodeCharts', () => {
   it('reads each packed array once and splits it per run and chart', () => {
@@ -51,5 +52,31 @@ describe('decodeCharts', () => {
     expect(charts[1]?.poles).toHaveLength(16);
     expect(charts[1]?.poles[0]).toEqual([48, 49, 50]);
     expect(charts.map((c) => c.fitError)).toEqual([0.1, 0.2]);
+  });
+});
+
+describe('decodeMixed', () => {
+  it('reads what each run and chart borders beside the charts', () => {
+    const packed: PackedMixed = {
+      run_offsets: Uint32Array.from([0, 2, 4]),
+      run_points: Float64Array.from({ length: 12 }, (_, i) => i),
+      chart_bodies: Uint32Array.from([0]),
+      side_offsets: Uint32Array.from([0, 2]),
+      sides: Int32Array.from([0, 1]),
+      surface_offsets: Uint32Array.from([0, 16]),
+      surface_poles: Float64Array.from({ length: 48 }, (_, i) => i),
+      fit_errors: Float64Array.from([0.1]),
+      run_surfaces: Int32Array.from([3, -1]),
+      run_smooth: Uint8Array.from([1, 0]),
+      chart_regions: Uint32Array.from([0]),
+    };
+
+    const mixed = decodeMixed(packed);
+
+    expect(mixed.runs).toHaveLength(2);
+    expect(mixed.charts).toHaveLength(1);
+    expect(mixed.runSurfaces).toEqual([3, -1]);
+    expect(mixed.runSmooth).toEqual([true, false]);
+    expect(mixed.chartRegions).toEqual([0]);
   });
 });
