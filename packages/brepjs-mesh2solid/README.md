@@ -3,7 +3,7 @@
 > Experimental satellite package, published to npm. The API can change between minor versions.
 
 ```bash
-npm install brepjs-mesh2solid brepjs
+npm install brepjs-mesh2solid brepjs occt-wasm
 ```
 
 Turn a triangle mesh into a [brepjs](https://github.com/andymai/brepjs) B-Rep shape you can measure,
