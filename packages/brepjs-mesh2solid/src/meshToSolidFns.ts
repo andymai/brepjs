@@ -241,7 +241,7 @@ export async function meshToSolid(
         const faces = {
           triangles: triangles.length / 3,
           faces: getFaces(shape).length,
-          unified: freeform === undefined && mixed === undefined,
+          unified: freeform === undefined && surfaces.value.unified !== false,
         };
         const timings = { engineMs, buildMs: performance.now() - buildStart };
         const tier1: ConversionReport['tier1'] =
@@ -384,7 +384,7 @@ type Tier1Report = NonNullable<ConversionReport['tier1']>;
 type Surfaces =
   | {
       ok: true;
-      value: { shape: Shape; deviation: ConversionReport['deviation'] };
+      value: { shape: Shape; deviation: ConversionReport['deviation']; unified?: boolean };
       mixed?: Tier1Report['mixed'];
       freeform?: Tier1Report['freeform'];
     }
@@ -478,7 +478,10 @@ function runMixed(session: Tier1Session, engineReport: EngineReport): MixedResul
   const reasons: string[] = [];
   for (const extent of MIXED_CHART_EXTENTS) {
     const packed = session.mixed(extent);
-    if (packed === undefined) return { ok: false, reason: session.mixed_reason };
+    if (packed === undefined) {
+      reasons.push(session.mixed_reason);
+      break;
+    }
     let charts;
     try {
       charts = decodeMixed(packed);
@@ -511,9 +514,12 @@ function runMixed(session: Tier1Session, engineReport: EngineReport): MixedResul
       maxDeviation: gates.maxDeviation,
       // Never coarser than the analytic gate measures at.
       triangulation: Math.min(gates.triangulation, limits.triangulation),
+      maxClosedPatches: gates.maxClosedPatches,
     });
     if (built.ok) return built;
     reasons.push(built.reason);
+    // Smaller charts leave the kept surfaces and their arrangement as they are.
+    if (built.final === true) break;
   }
   return { ok: false, reason: reasons.join('; with smaller charts: ') };
 }

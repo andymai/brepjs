@@ -307,9 +307,12 @@ describe('mixed eval: exact faces beside a freeform region', () => {
   const sigma = 0.02;
   const runs: { name: string; seed?: number }[] = [
     ...MIXED_CORPUS.map((c) => ({ name: c.name })),
-    // The same part under different noise must come back with the same faces.
+    // The same part under different noise must come back with the same faces
+    // (checked seed against seed below, when both run).
     ...[1, 7].map((seed) => ({ name: 'plate with a hole and a boss', seed })),
   ];
+  /** Face kinds of the first scan of each part, for the next seed to match. */
+  const scanned = new Map<string, Record<string, number>>();
   for (const { name, seed } of runs) {
     it(seed === undefined ? name : `${name} (σ=${sigma} mm, seed ${seed})`, async () => {
       const c = MIXED_CORPUS.find((k) => k.name === name);
@@ -362,6 +365,10 @@ describe('mixed eval: exact faces beside a freeform region', () => {
         BSPLINE_SURFACE: mixed?.freeformFaces,
       });
       expect(mixed?.analyticFaces, summary).toBe(c.planes.length + c.cylinders.length);
+      if (scan) {
+        expect(kinds, `${summary}: against the seed before`).toEqual(scanned.get(name) ?? kinds);
+        scanned.set(name, kinds);
+      }
       expect(mixed?.freeformFaces, summary).toBeLessThanOrEqual(8);
       expect(r.tier2, summary).toEqual({
         features: [],

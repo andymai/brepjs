@@ -10,7 +10,7 @@ import {
   isSolid,
   isValid,
 } from 'brepjs';
-import { type Cutters, type Segmentation, arrange, deviationOf } from './analyticFns.js';
+import { type Cutters, type Segmentation, arrange, deviationOf, tryUnify } from './analyticFns.js';
 import {
   type FreeformCharts,
   type PackedCharts,
@@ -49,8 +49,16 @@ export function decodeMixed(p: PackedMixed): MixedCharts {
 
 type MixedReport = NonNullable<NonNullable<ConversionReport['tier1']>['mixed']>;
 
-/** One connected freeform region, as the engine measured it. */
-export type FreeformRegion = Omit<MixedReport['regions'][number], 'faces'>;
+type RegionReport = MixedReport['regions'][number];
+
+/**
+ * One connected freeform region, as the engine measured it. `fitError` and
+ * `sag` are null when one of its charts has no fitted surface.
+ */
+export type FreeformRegion = Omit<RegionReport, 'faces' | 'fitError' | 'sag'> & {
+  readonly fitError: number | null;
+  readonly sag: number | null;
+};
 
 export interface MixedOptions {
   /** The surfaces kept as exact faces. */
@@ -66,15 +74,26 @@ export interface MixedOptions {
   readonly maxDeviation: number;
   /** Chord tolerance for triangulating the result to measure that distance. */
   readonly triangulation: number;
+  /** Most sphere and torus patches the arrangement takes (see `AnalyticOptions`). */
+  readonly maxClosedPatches?: number | undefined;
 }
 
 export interface MixedOutcome {
   readonly shape: Solid | Compound;
   readonly stats: Omit<MixedReport, 'analyticReason'>;
   readonly deviation: ConversionReport['deviation'];
+  /** Every body came through the kernel's face unification as a valid solid. */
+  readonly unified: boolean;
 }
 
-export type MixedResult = { ok: true; value: MixedOutcome } | { ok: false; reason: string };
+export type MixedResult =
+  | { ok: true; value: MixedOutcome }
+  | {
+      ok: false;
+      reason: string;
+      /** The failure does not depend on how the freeform regions were charted. */
+      final?: true;
+    };
 
 /** Boundary curves reach this many run tolerances past where their analytic face ends. */
 const REACH = 8;
@@ -138,14 +157,20 @@ function boundaryCutters(c: MixedCharts, tolerance: number): Cutters {
  * same boundaries, and each body's faces are sewn into a solid.
  */
 export function buildMixed(seg: Segmentation, c: MixedCharts, opts: MixedOptions): MixedResult {
+  const regions: Omit<RegionReport, 'faces'>[] = [];
   for (const [i, region] of opts.regions.entries()) {
-    const worst = Math.max(region.fitError, region.sag);
+    const { fitError, sag } = region;
+    if (fitError === null || sag === null || !Number.isFinite(fitError) || !Number.isFinite(sag)) {
+      return { ok: false, reason: `no surface fits a chart of freeform region ${i}` };
+    }
+    const worst = Math.max(fitError, sag);
     if (!(worst <= opts.maxFit)) {
       return {
         ok: false,
         reason: `freeform region ${i} fits its points only within ${worst.toPrecision(3)} mm`,
       };
     }
+    regions.push({ ...region, fitError, sag });
   }
   const skip = new Set<number>();
   for (let i = 0; i < seg.surfaces.length; i++) if (!opts.kept.has(i)) skip.add(i);
@@ -153,11 +178,20 @@ export function buildMixed(seg: Segmentation, c: MixedCharts, opts: MixedOptions
   try {
     const arranged = arrange(
       seg,
-      { coverage: opts.coverage, maxUnfitArea: Infinity, skip },
+      {
+        coverage: opts.coverage,
+        maxUnfitArea: Infinity,
+        maxClosedPatches: opts.maxClosedPatches,
+        skip,
+      },
       owned,
       boundaryCutters(c, opts.runTolerance)
     );
-    if (!arranged.ok) return arranged;
+    if (!arranged.ok) {
+      return arranged.patches === true
+        ? { ok: false, reason: arranged.reason, final: true }
+        : { ok: false, reason: arranged.reason };
+    }
     const bodies = new Map<number, Face[]>();
     for (const [body, g] of arranged.groups) bodies.set(body, [...g.faces]);
     const regionFaces = opts.regions.map(() => 0);
@@ -188,15 +222,20 @@ export function buildMixed(seg: Segmentation, c: MixedCharts, opts: MixedOptions
     const hollow = cutCavities(solids, seg.bodyParent, owned);
     if (!hollow.ok) return hollow;
     const tops: Solid[] = [];
+    let unified = true;
     for (const [body, s] of solids) {
       if ((seg.bodyParent[body] ?? -1) >= 0) continue;
-      if (!isSolid(s) || !isValid(s)) return { ok: false, reason: `body ${body} is not valid` };
-      tops.push(s);
+      // The arrangement can leave one surface's piece in several faces.
+      const merged = tryUnify(s, owned);
+      const u = merged.solid;
+      unified &&= merged.unified;
+      if (!isSolid(u) || !isValid(u)) return { ok: false, reason: `body ${body} is not valid` };
+      tops.push(u);
     }
     const [first] = tops;
     if (first === undefined) return { ok: false, reason: 'no outer body was rebuilt' };
     const result: Solid | Compound = tops.length === 1 ? first : compound(tops);
-    if (result !== first) owned.push(result);
+    if (!owned.includes(result)) owned.push(result);
     const dev = deviationOf(result, seg.deviation, opts.triangulation);
     if (!(dev.max <= opts.maxDeviation && dev.reverseMax <= opts.maxDeviation)) {
       return {
@@ -212,7 +251,7 @@ export function buildMixed(seg: Segmentation, c: MixedCharts, opts: MixedOptions
       value: {
         shape: result,
         stats: {
-          regions: opts.regions.map((r, i) => ({ ...r, faces: regionFaces[i] ?? 0 })),
+          regions: regions.map((r, i) => ({ ...r, faces: regionFaces[i] ?? 0 })),
           analyticFaces: faces - c.charts.length,
           freeformFaces: c.charts.length,
           runs: c.runs.length,
@@ -220,6 +259,7 @@ export function buildMixed(seg: Segmentation, c: MixedCharts, opts: MixedOptions
           arrangement: arranged.stats,
         },
         deviation: dev,
+        unified,
       },
     };
   } finally {

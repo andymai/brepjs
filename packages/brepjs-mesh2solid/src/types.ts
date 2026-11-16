@@ -231,7 +231,8 @@ export interface ConversionReport {
     /**
      * True when the kernel's coplanar-face unification ran and its result passed validation (on a
      * mesh with no coplanar neighbors it merges nothing). False means the shape was kept as built:
-     * triangulated at tier 0, or sewn from B-spline faces (a freeform or mixed rebuild).
+     * triangulated at tier 0, or sewn from B-spline faces (a freeform rebuild, or a mixed one whose
+     * unified solid failed validation).
      */
     readonly unified: boolean;
   };

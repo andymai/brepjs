@@ -338,14 +338,24 @@ function bodySolid(
   return outwardSolid(faces, owned);
 }
 
-function unify(s: Solid, owned: Owned[]): Solid {
+/**
+ * `s` with each surface's adjoining faces merged into one, or `s` itself
+ * (`unified` false) when the kernel can't merge them into a valid solid.
+ */
+export function tryUnify(s: Solid, owned: Owned[]): { solid: Solid; unified: boolean } {
   const u = simplify(s);
-  if (!u.ok) return s;
+  if (!u.ok) return { solid: s, unified: false };
   // A kernel can hand back the same shape in a new wrapper; owning both would
   // free the result when `s` is released.
-  if (u.value.wrapped === s.wrapped) return s;
+  if (u.value.wrapped === s.wrapped) return { solid: s, unified: true };
   owned.push(u.value);
-  return isSolid(u.value) && isValid(u.value) ? u.value : s;
+  return isSolid(u.value) && isValid(u.value)
+    ? { solid: u.value, unified: true }
+    : { solid: s, unified: false };
+}
+
+function unify(s: Solid, owned: Owned[]): Solid {
+  return tryUnify(s, owned).solid;
 }
 
 export interface AnalyticOptions {
@@ -387,7 +397,12 @@ export type Arrangement =
       groups: PieceGroups;
       stats: { patches: number; pieces: number; kept: number };
     }
-  | { ok: false; reason: string };
+  | {
+      ok: false;
+      reason: string;
+      /** The failure came before the cutters ran, so other cutters would not change it. */
+      patches?: true;
+    };
 
 /**
  * Curves that cut the arrangement further, given each surface's patch: the
@@ -409,9 +424,14 @@ export function arrange(
   owned: Owned[],
   cutters?: Cutters
 ): Arrangement {
-  if (seg.surfaces.length === 0) return { ok: false, reason: 'no surfaces were fitted' };
+  if (seg.surfaces.length === 0)
+    return { ok: false, reason: 'no surfaces were fitted', patches: true };
   if (seg.unfitTriangles > 0 && seg.unfitArea > opts.maxUnfitArea) {
-    return { ok: false, reason: `${seg.unfitTriangles} triangles fit no analytic surface` };
+    return {
+      ok: false,
+      reason: `${seg.unfitTriangles} triangles fit no analytic surface`,
+      patches: true,
+    };
   }
   const closed = seg.surfaces.filter(
     (s, i) => (s.kind === 'sphere' || s.kind === 'torus') && opts.skip?.has(i) !== true
@@ -420,6 +440,7 @@ export function arrange(
     return {
       ok: false,
       reason: `${closed} sphere and torus patches are past the arrangement's ${opts.maxClosedPatches} (a freeform part)`,
+      patches: true,
     };
   }
   const all = seg.bounds.reduce<[Vec3, Vec3]>(
@@ -445,14 +466,25 @@ export function arrange(
     const b = seg.bounds[i];
     if (s === undefined || b === undefined || skip.has(i)) continue;
     const f = patch(s, b, margin, owned);
-    if (f === null)
-      return { ok: false, reason: `could not build a patch for surface ${i} (${s.kind})` };
+    if (f === null) {
+      return {
+        ok: false,
+        reason: `could not build a patch for surface ${i} (${s.kind})`,
+        patches: true,
+      };
+    }
     patches.set(i, f);
   }
   // One argument per patch: the general fuse intersects arguments with each other.
   const args = [...patches.values()].map((f) => keep(compound([f])));
   const fused = fuseAll(args, { unsafe: true });
-  if (!fused.ok) return { ok: false, reason: `surface arrangement failed: ${fused.error.message}` };
+  if (!fused.ok) {
+    return {
+      ok: false,
+      reason: `surface arrangement failed: ${fused.error.message}`,
+      patches: true,
+    };
+  }
   owned.push(fused.value);
   let arranged: AnyShape<Dimension> = fused.value;
   if (cutters !== undefined) {
@@ -524,7 +556,7 @@ export function buildAnalytic(seg: Segmentation, opts: AnalyticOptions): Analyti
   };
   try {
     const arranged = arrange(seg, opts, owned);
-    if (!arranged.ok) return arranged;
+    if (!arranged.ok) return { ok: false, reason: arranged.reason };
     const { groups, stats } = arranged;
     // A body with no pieces would vanish, and the distance check can't see it
     // when another body lies within the deviation limit.

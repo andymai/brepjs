@@ -117,7 +117,7 @@ A block with one sculpted face keeps its other faces exact:
    meets smoothly along that face's tangent.
 3. **Cuts** the arrangement of the exact surfaces along those boundaries, so the pieces under a
    freeform region drop out, and trims each B-spline face along the same boundaries.
-4. **Sews** the exact pieces and the B-spline faces into each body's solid, and checks it against
+4. **Sews** the exact pieces and the B-spline faces into each body's solid, unifies its faces, and checks it against
    the mesh in both directions with the analytic rebuild's own gate.
 
 In the eval a block with a sculpted top comes back as its 5 planes and 1 B-spline face, a plate with a
