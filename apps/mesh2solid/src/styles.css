@@ -348,7 +348,7 @@ nav.site .brand {
 
 .samples ul {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
   gap: 12px;
   list-style: none;
   margin: 12px 0 0;
@@ -389,7 +389,7 @@ button.sample .muted {
 
 .about {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
   gap: 24px;
   margin-top: 48px;
   padding-top: 24px;

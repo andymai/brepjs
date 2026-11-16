@@ -26,17 +26,37 @@ function parseSelectionsParam(raw: string | null): SharedSelection[] {
   return out;
 }
 
-// Whether the URL carries an explicit share payload (`?code=` or legacy
-// `#code/`). Shared link URLs always take precedence over local drafts —
-// the user picked them on purpose.
+// A program that another page of this site hands over (the mesh-to-solid
+// page). It comes through localStorage and not through the URL: a URL goes to
+// the server, and that page promises that the model stays in the browser.
+// The entry stays after the read, so a reload shows the same program.
+const HANDOFF_HASH = '#handoff';
+const HANDOFF_KEY = 'brepjs-playground-handoff';
+
+function readHandoff(): string | null {
+  try {
+    return localStorage.getItem(HANDOFF_KEY);
+  } catch {
+    return null;
+  }
+}
+
+// Whether the URL carries an explicit share payload (`?code=`, legacy
+// `#code/`, or a handoff). Shared link URLs always take precedence over local
+// drafts — the user picked them on purpose.
 export function hasShareParams(url: URL): boolean {
-  return url.searchParams.has('code') || url.hash.startsWith('#code/');
+  return url.searchParams.has('code') || url.hash.startsWith('#code/') || url.hash === HANDOFF_HASH;
 }
 
 // Reads `?code=` first; falls back to the legacy `#code/` hash format so links
 // shared before the format change still resolve. The optional `&sel=` carries
 // face/edge ids to pre-select after the first eval lands.
 export function decodeShare(url: URL): DecodedShare | null {
+  if (url.hash === HANDOFF_HASH) {
+    const text = readHandoff();
+    return text ? { code: text, legacy: false, selections: [] } : null;
+  }
+
   const selections = parseSelectionsParam(url.searchParams.get('sel'));
 
   const code = url.searchParams.get('code');

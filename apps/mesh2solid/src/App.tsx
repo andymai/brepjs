@@ -5,7 +5,7 @@ import { track } from './analytics.js';
 import { ConversionClient } from './client.js';
 import { count, length, size, stem, UNITS, unitLabel } from './format.js';
 import { Heatmap, RAMP, scaleFor } from './Heatmap.js';
-import { playgroundUrl } from './playground.js';
+import { handOffToPlayground, PLAYGROUND_HANDOFF_URL, toPlaygroundCode } from './playground.js';
 import type { Conversion } from './protocol.js';
 import { ReportPanel } from './ReportPanel.js';
 import { fetchSample, SAMPLES, type Sample } from './samples.js';
@@ -182,7 +182,7 @@ function Result({
   // A faceted result's edges are every triangle's; drawn, they hatch its curves black.
   const showEdges = result.report.tierReached > 0 || result.report.faces.faces <= 500;
   const playground = useMemo(
-    () => (result.code === null ? null : playgroundUrl(result.code)),
+    () => (result.code === null ? null : toPlaygroundCode(result.code)),
     [result]
   );
   return (
@@ -252,10 +252,13 @@ function Result({
             {playground !== null && (
               <a
                 className="button"
-                href={playground}
+                href={PLAYGROUND_HANDOFF_URL}
                 target="_blank"
                 rel="noopener"
-                onClick={() => track('m2s_open_playground')}
+                onClick={() => {
+                  handOffToPlayground(playground);
+                  track('m2s_open_playground');
+                }}
               >
                 Open in playground
               </a>

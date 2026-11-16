@@ -99,10 +99,10 @@ function obj(mesh: { positions: Float64Array; triangles: Uint32Array }): string 
 
 mkdirSync(out, { recursive: true });
 
-const bracket = named(CAD_CORPUS, 'L-bracket with two holes').build();
+using bracket = named(CAD_CORPUS, 'L-bracket with two holes').build();
 writeFileSync(resolve(out, 'bracket.stl'), await stlOf(bracket));
 
-const knob = named(SCAN_CORPUS, 'lobed knob').build();
+using knob = named(SCAN_CORPUS, 'lobed knob').build();
 const scan = scanLike(knob, { targetTriangles: 3000, sigma: 0.02, seed: 7 });
 writeFileSync(resolve(out, 'knob-scan.ply'), ply(weld(scan)));
 

@@ -14,6 +14,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer, { type Page } from 'puppeteer';
+import { HANDOFF_KEY, PLAYGROUND_HANDOFF_URL } from '../src/playground.js';
 import { SAMPLES } from '../src/samples.js';
 
 const args = process.argv.slice(2);
@@ -101,7 +102,7 @@ try {
   pass(`the page shows ${cards} samples`);
 
   if (shots !== null) mkdirSync(shots, { recursive: true });
-  const programs: { file: string; href: string }[] = [];
+  const programs: { file: string; code: string }[] = [];
   for (const sample of SAMPLES) {
     await clickButton(page, sample.title);
     await waitForResult(page);
@@ -118,13 +119,21 @@ try {
       await page.waitForSelector('.legend', { timeout: 10_000 });
       await clickButton(page, 'Solid');
     }
-    if (EXPECTED[sample.file] === 'Rebuilt as a feature program')
-      programs.push({
-        file: sample.file,
-        href: await page
-          .$eval('[aria-label="Downloads"] a.button', (a) => (a as HTMLAnchorElement).href)
-          .catch(() => fail(`${sample.file}: no playground link`)),
-      });
+    if (EXPECTED[sample.file] === 'Rebuilt as a feature program') {
+      // The link hands the program over through localStorage. Stop the new tab
+      // here, so the playground step can open its own.
+      const code = await page.evaluate((key) => {
+        const link = document.querySelector<HTMLAnchorElement>('[aria-label="Downloads"] a.button');
+        if (!link) return null;
+        link.addEventListener('click', (e) => e.preventDefault(), { once: true });
+        link.click();
+        return link.getAttribute('href') + '\n' + (localStorage.getItem(key) ?? '');
+      }, HANDOFF_KEY);
+      const [href, ...lines] = (code ?? '').split('\n');
+      if (href !== PLAYGROUND_HANDOFF_URL || lines.join('').trim() === '')
+        fail(`${sample.file}: the playground link hands over no program`);
+      programs.push({ file: sample.file, code: lines.join('\n') });
+    }
     if (shots !== null) {
       await page.addStyleTag({ content: '.view-toggle { visibility: hidden; }' });
       await sleep(1500);
@@ -164,9 +173,13 @@ try {
   for (const program of withPlayground ? programs : []) {
     const tab = await browser.newPage();
     await tab.setViewport({ width: 1280, height: 800 });
-    const link = new URL(program.href);
+    await tab.evaluateOnNewDocument(
+      (key, code) => localStorage.setItem(key, code),
+      HANDOFF_KEY,
+      program.code
+    );
     // A Vite server needs the slash after its base. Vercel serves both forms.
-    await tab.goto(`${playgroundOrigin}${link.pathname.replace(/\/?$/, '/')}${link.search}`, {
+    await tab.goto(`${playgroundOrigin}${PLAYGROUND_HANDOFF_URL.replace('#', '/#')}`, {
       waitUntil: 'domcontentloaded',
       timeout: 60_000,
     });
@@ -184,6 +197,9 @@ try {
         { timeout: 60_000 }
       )
       .catch(() => fail(`${program.file}: the playground did not run the generated program`));
+    // The program must not be in the address, which goes to the server.
+    if ((await tab.evaluate(() => location.search)) !== '')
+      fail(`${program.file}: the playground address holds the program`);
     if (shots !== null) {
       await sleep(1000);
       await tab.screenshot({

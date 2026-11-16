@@ -20,7 +20,6 @@
     "brepjs": "*",
     "brepjs-mesh2solid": "*",
     "brepjs-viewer": "*",
-    "lz-string": "1.5.0",
     "occt-wasm": "*",
     "posthog-js": "1.447.3",
     "react": "19.3.1",
