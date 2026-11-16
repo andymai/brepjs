@@ -1,0 +1,14 @@
+packages/brepjs-mesh2solid/README.md
+  h_b755e1950659f4 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0f3f494b94e8059043c5ed7673acc4c349b8da16",
+  "prompts": {},
+  "humans": {
+    "h_b755e1950659f4": {
+      "author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
