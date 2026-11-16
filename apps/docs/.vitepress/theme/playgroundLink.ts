@@ -24,6 +24,8 @@ function shouldDecorate(block: HTMLElement): boolean {
   if (!lang) return false;
   if (!['typescript', 'ts', 'javascript', 'js'].includes(lang)) return false;
   if (block.dataset.noPlayground === 'true') return false;
+  // An example page links to its own permalink, which is shorter than a code link.
+  if (block.closest('[data-no-playground]')) return false;
   const code = getCodeFromBlock(block);
   if (!code) return false;
   if (!/from\s+['"]brepjs(?:\/quick)?['"]/.test(code)) return false;

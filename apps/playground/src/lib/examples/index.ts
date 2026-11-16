@@ -5,6 +5,7 @@
  * single flat EXAMPLES list (for code that wants every example) plus a
  * CATEGORIES list (for the example picker's filter pills). Add a new category
  * by creating a file that exports an `Example[]` and adding an entry here.
+ * The order here is the order of the gallery, so the Showcase heroes lead.
  */
 export type { Example } from './types';
 
@@ -23,12 +24,12 @@ export interface ExampleCategory {
 }
 
 export const CATEGORIES: readonly ExampleCategory[] = [
+  { id: 'showcase', label: 'Showcase', examples: SHOWCASE_EXAMPLES },
   { id: 'basics', label: 'Basics', examples: BASIC_EXAMPLES },
   { id: 'mechanical', label: 'Mechanical', examples: MECHANICAL_EXAMPLES },
   { id: 'sheet-metal', label: 'Sheet Metal', examples: SHEET_METAL_EXAMPLES },
   { id: 'bim', label: 'BIM', examples: BIM_EXAMPLES },
   { id: 'families', label: 'Families', examples: FAMILIES_EXAMPLES },
-  { id: 'showcase', label: 'Showcase', examples: SHOWCASE_EXAMPLES },
 ];
 
 export const EXAMPLES: readonly Example[] = CATEGORIES.flatMap((c) => c.examples);

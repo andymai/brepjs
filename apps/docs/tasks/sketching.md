@@ -247,6 +247,12 @@ A self-intersecting wire produces an invalid face. The kernel will catch it and 
 
 `sketchCircle(10)` is _much_ better than building a circle from four arcs: fewer kernel calls, better tolerance, no chance of an open wire.
 
+## Examples
+
+These playground examples draw a 2D profile from lines and arcs, then extrude or revolve it.
+
+<RelatedExamples ids="gt2-pulley v-groove-slider-rail linear-bearing-block gridfinity-bin" />
+
 ## Next steps
 
 - [Lofts, Sweeps, Revolves](./lofts-sweeps): going from sketch to solid by means other than extrude

@@ -281,6 +281,12 @@ The result is a STEP file with one face per input triangle. Acceptable for low-r
 | `STEP_EXPORT_CRASHED` / `STL_EXPORT_CRASHED`                      | The shape contains geometry the writer cannot serialize                           |
 | `UNSUPPORTED_CAPABILITY` from `importIGES` / `exportIGES`         | The active kernel has no IGES translator (the default occt-wasm kernel); use STEP |
 
+## Examples
+
+These playground examples write a file that you can download: a DXF flat pattern or an IFC model.
+
+<RelatedExamples ids="sheet-metal-bracket sheet-metal-louvered-panel bim-round-trip office-building" />
+
 ## Next steps
 
 - [Healing & Sewing](../advanced/healing): preparing imports for further operations

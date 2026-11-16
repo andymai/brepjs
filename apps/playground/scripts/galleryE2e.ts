@@ -63,8 +63,8 @@ try {
 
   // 1. Toolbar button opens the gallery with one card per example.
   await page.evaluate(() => {
-    const el = [...document.querySelectorAll('button')].find(
-      (b) => b.textContent?.trim() === 'Examples'
+    const el = [...document.querySelectorAll('button')].find((b) =>
+      b.title.startsWith('Browse examples')
     );
     if (!el) throw new Error('Examples button not found');
     el.click();
@@ -124,16 +124,31 @@ try {
   await page.waitForSelector(gallerySel, { timeout: 5_000 });
   console.log('✓ /examples deep-link opens the gallery');
 
-  // 7. /examples/<id> deep-link focuses that card.
+  // 7. /examples/<id> is a permalink: it loads the example and keeps the gallery closed.
   await page.goto(`${baseUrl}/playground/examples/${firstExample.id}`, {
     waitUntil: 'domcontentloaded',
     timeout: 30_000,
   });
   await page.waitForFunction(engineReady, { timeout: 60_000 });
-  await page.waitForSelector(`${gallerySel} button[data-id="${firstExample.id}"]`, {
-    timeout: 5_000,
+  await sleep(500);
+  if (await page.$(gallerySel)) fail('an example permalink opened the gallery');
+  console.log(`✓ /examples/${firstExample.id} loads the example`);
+
+  // 8. A link to an example that does not exist opens the gallery.
+  await page.goto(`${baseUrl}/playground/examples/no-such-example`, {
+    waitUntil: 'domcontentloaded',
+    timeout: 30_000,
   });
-  console.log(`✓ /examples/${firstExample.id} deep-link focuses the card`);
+  await page.waitForFunction(engineReady, { timeout: 60_000 });
+  await page.waitForSelector(gallerySel, { timeout: 5_000 });
+  console.log('✓ an unknown example id opens the gallery');
+
+  // 9. Search finds an example by a function it imports.
+  await page.type(`${gallerySel} input[aria-label="Search examples"]`, 'loft');
+  await sleep(250);
+  const byApi = await page.$$eval(cardSel, (els) => els.length);
+  if (byApi < 1 || byApi >= EXAMPLES.length) fail(`search 'loft' gave ${byApi} cards`);
+  console.log(`✓ search 'loft' finds ${byApi} examples by import`);
 
   console.log('\nexample gallery e2e passed');
 } finally {

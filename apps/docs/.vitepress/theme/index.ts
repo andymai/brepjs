@@ -4,6 +4,9 @@ import { h } from 'vue';
 import Layout from './Layout.vue';
 import ContactForm from './components/ContactForm.vue';
 import MermaidDiagram from './components/MermaidDiagram.vue';
+import ExampleFigure from './components/ExampleFigure.vue';
+import ExampleIndex from './components/ExampleIndex.vue';
+import RelatedExamples from './components/RelatedExamples.vue';
 import { guardRouter } from './outsideDocs.js';
 import './custom.css';
 
@@ -83,6 +86,9 @@ const theme: Theme = {
   enhanceApp({ app, router }) {
     app.component('ContactForm', ContactForm);
     app.component('MermaidDiagram', MermaidDiagram);
+    app.component('ExampleFigure', ExampleFigure);
+    app.component('ExampleIndex', ExampleIndex);
+    app.component('RelatedExamples', RelatedExamples);
 
     // VitePress prerenders pages, so guard against SSR. inject() wraps
     // history.pushState — VitePress's own router uses it, so route changes

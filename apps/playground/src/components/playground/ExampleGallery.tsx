@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CATEGORIES, EXAMPLES, type Example } from '../../lib/examples';
+import { CATEGORIES, type Example } from '../../lib/examples';
+import { buildSearchIndex, searchExamples } from '../../lib/examples/search';
 
 interface Props {
   open: boolean;
@@ -11,18 +12,7 @@ interface Props {
 
 const THUMB_BASE = `${import.meta.env.BASE_URL}example-thumbs/`;
 const ALL = 'all';
-
-// Substring match over label (ranked first) then description. A content gallery
-// wants predictable hits — a subsequence matcher returns far too many false
-// positives over long descriptions. `q` is expected already lowercased.
-function matchScore(ex: Example, q: string): number | null {
-  if (!q) return 0;
-  const li = ex.label.toLowerCase().indexOf(q);
-  if (li !== -1) return li;
-  const di = ex.description.toLowerCase().indexOf(q);
-  if (di !== -1) return 1000 + di;
-  return null;
-}
+const SEARCH_INDEX = buildSearchIndex(CATEGORIES);
 
 export default function ExampleGallery({
   open,
@@ -84,30 +74,22 @@ export default function ExampleGallery({
     };
   }, [open, onClose]);
 
+  const hits = useMemo(() => searchExamples(SEARCH_INDEX, query), [query]);
+
   // Per-category match counts that respect the active query, so the rail tells
   // the user where their search lives.
   const counts = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const matches = (ex: Example) => !q || matchScore(ex, q) !== null;
-    const m: Record<string, number> = { [ALL]: EXAMPLES.filter(matches).length };
-    for (const c of CATEGORIES) m[c.id] = c.examples.filter(matches).length;
+    const m: Record<string, number> = { [ALL]: hits.length };
+    for (const c of CATEGORIES) m[c.id] = 0;
+    for (const hit of hits) m[hit.entry.categoryId] = (m[hit.entry.categoryId] ?? 0) + 1;
     return m;
-  }, [query]);
+  }, [hits]);
 
-  // Active set = category ∩ query, ranked by fuzzy score when searching.
-  const shown = useMemo(() => {
-    const inCat =
-      category === ALL
-        ? EXAMPLES
-        : (CATEGORIES.find((c) => c.id === category)?.examples ?? EXAMPLES);
-    const q = query.trim().toLowerCase();
-    if (!q) return [...inCat];
-    return inCat
-      .map((ex) => ({ ex, score: matchScore(ex, q) }))
-      .filter((x): x is { ex: Example; score: number } => x.score !== null)
-      .sort((a, b) => a.score - b.score)
-      .map((x) => x.ex);
-  }, [category, query]);
+  // Active set = category ∩ query, best match first when searching.
+  const shown = useMemo(
+    () => (category === ALL ? hits : hits.filter((hit) => hit.entry.categoryId === category)),
+    [category, hits]
+  );
 
   // Deep-linked focus (/examples/<id>): scroll the card into view and focus it.
   useEffect(() => {
@@ -192,7 +174,7 @@ export default function ExampleGallery({
               onChange={(e) => {
                 setQuery(e.target.value);
               }}
-              placeholder="Search examples…"
+              placeholder="Search by name or function (gear, loft, m6 screw)…"
               aria-label="Search examples"
               className="min-w-0 flex-1 bg-transparent text-sm text-gray-200 placeholder:text-gray-500 focus:outline-none"
             />
@@ -234,14 +216,16 @@ export default function ExampleGallery({
             // stops aspect-ratio thumbnails from resolving and collapses them.
             <div ref={gridRef} className="scrollbar-thin pb-safe min-h-0 flex-1 overflow-y-auto">
               <div className="grid grid-cols-2 content-start gap-3 p-3 sm:grid-cols-3 sm:p-4 lg:grid-cols-4 2xl:grid-cols-5">
-                {shown.map((ex) => (
+                {shown.map(({ entry, matchedApi }) => (
                   <ExampleCard
-                    key={ex.id}
-                    example={ex}
-                    focused={ex.id === focusedId}
+                    key={entry.example.id}
+                    example={entry.example}
+                    categoryLabel={category === ALL ? entry.categoryLabel : null}
+                    matchedApi={matchedApi}
+                    focused={entry.example.id === focusedId}
                     failedTurntables={failedTurntables}
-                    onSelect={() => onSelect(ex)}
-                    onFocus={() => onFocusExample?.(ex.id)}
+                    onSelect={() => onSelect(entry.example)}
+                    onFocus={() => onFocusExample?.(entry.example.id)}
                   />
                 ))}
               </div>
@@ -255,13 +239,25 @@ export default function ExampleGallery({
 
 interface CardProps {
   example: Example;
+  /** Shown only in the All view, where the rail does not name the category. */
+  categoryLabel: string | null;
+  /** Imported functions the query matched, so an API hit explains itself. */
+  matchedApi: readonly string[];
   focused: boolean;
   failedTurntables: { current: Set<string> };
   onSelect: () => void;
   onFocus: () => void;
 }
 
-function ExampleCard({ example, focused, failedTurntables, onSelect, onFocus }: CardProps) {
+function ExampleCard({
+  example,
+  categoryLabel,
+  matchedApi,
+  focused,
+  failedTurntables,
+  onSelect,
+  onFocus,
+}: CardProps) {
   const [hovered, setHovered] = useState(false);
   // Turntable assets may not exist for every example; fall back to the static
   // thumbnail on the first load error so the grid never breaks. Seed from the
@@ -317,6 +313,23 @@ function ExampleCard({ example, focused, failedTurntables, onSelect, onFocus }: 
         <span className="line-clamp-2 text-xs leading-snug text-gray-500">
           {example.description}
         </span>
+        {(categoryLabel !== null || matchedApi.length > 0) && (
+          <span className="mt-1 flex flex-wrap gap-1">
+            {categoryLabel !== null && (
+              <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                {categoryLabel}
+              </span>
+            )}
+            {matchedApi.slice(0, 3).map((name) => (
+              <span
+                key={name}
+                className="rounded bg-teal-primary/15 px-1.5 py-0.5 font-mono text-[10px] text-teal-light"
+              >
+                {name}()
+              </span>
+            ))}
+          </span>
+        )}
       </div>
     </button>
   );
