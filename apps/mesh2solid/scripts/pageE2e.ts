@@ -182,7 +182,7 @@ try {
     const tab = await browser.newPage();
     await tab.setViewport({ width: 1280, height: 800 });
     const id = program.href.split('#handoff/')[1] ?? '';
-    await tab.evaluateOnNewDocument(
+    const seed = await tab.evaluateOnNewDocument(
       (key, code) => localStorage.setItem(key, code),
       HANDOFF_KEY + id,
       program.code
@@ -192,6 +192,8 @@ try {
       waitUntil: 'domcontentloaded',
       timeout: 60_000,
     });
+    // The seed is for the first load only. A reload must read what is in storage.
+    await tab.removeScriptToEvaluateOnNewDocument(seed.identifier);
     // The loading overlay goes when the engine is ready. The status bar shows
     // a time in milliseconds only after a run that made a shape.
     await tab.waitForFunction(() => !document.querySelector('.absolute.inset-0.z-50'), {
