@@ -38,15 +38,19 @@ export const presets = {
   Large: { width: 120, depth: 50, thickness: 10 },
 };
 
+// A page builds the part again for each change, so each shape that is not the result is released.
 export default (p = params.values) => {
-  const plate = drawRoundedRectangle(p.width, p.depth, p.corner)
+  using plate = drawRoundedRectangle(p.width, p.depth, p.corner)
     .sketchOnPlane('XY')
     .extrude(p.thickness);
   const radius = clearanceRadius(p.bolt);
   const holeX = p.width / 2 - p.inset;
   const hole = (x: number) => drawCircle(radius).sketchOnPlane('XY', [x, 0]).extrude(p.thickness);
+  using left = hole(-holeX);
+  using right = hole(holeX);
 
-  const drilledLeft = cut(plate, hole(-holeX));
+  const drilledLeft = cut(plate, left);
   if (!drilledLeft.ok) return drilledLeft;
-  return cut(drilledLeft.value, hole(holeX));
+  using half = drilledLeft.value;
+  return cut(half, right);
 };

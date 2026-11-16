@@ -137,6 +137,8 @@ A value that does not fit its declaration, or a build that fails, leaves the las
 
 `brep publish` verifies the part at its defaults first and writes nothing when the part is not `ok`. It writes into an empty directory or over an earlier publish, and it needs `--force` for a directory that holds other files.
 
+The page builds the part again for each change. Release each shape that is not the result (`using plate = ...`), or the memory of the page grows with each build.
+
 A published part can import `brepjs` and its own files. An import of another package stops the publish with `PUBLISH_UNSUPPORTED_IMPORT`. The page uses the brepjs and the kernel that ship with `brepjs-cad`. The folder is about 23 MB, and 21 MB of that is the kernel.
 
 ## Snapshots & the preview server

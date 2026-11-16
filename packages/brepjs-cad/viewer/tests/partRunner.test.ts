@@ -96,6 +96,14 @@ describe('createPartRunner', () => {
     expect(shapes[1]?.disposed).not.toHaveBeenCalled();
   });
 
+  it('keeps a shape that the part returns again', async () => {
+    const cached = makeShape();
+    const runner = createPartRunner(makeBrepjs(), { default: () => cached });
+    await runner.build({});
+    await runner.build({});
+    expect(cached.disposed).not.toHaveBeenCalled();
+  });
+
   it('unwraps a Result and a fluent wrapper', async () => {
     const shape = makeShape();
     const viaResult = createPartRunner(makeBrepjs(), {

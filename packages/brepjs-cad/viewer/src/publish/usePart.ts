@@ -75,9 +75,11 @@ export function usePart(manifest: PartManifest | null) {
   const requestBuild = useCallback(
     (input: ParamInput, immediate = false) => {
       window.clearTimeout(timer.current);
+      // Reserved now, not when the delay ends: a reply to an older build that lands during the
+      // delay must not replace the values the visitor just set.
+      const id = nextId.current++;
+      latest.current = id;
       const run = () => {
-        const id = nextId.current++;
-        latest.current = id;
         send({ type: 'build', id, input });
       };
       inputRef.current = input;

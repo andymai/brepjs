@@ -132,7 +132,8 @@ export function createPartRunner(bk: BrepjsForPart, mod: PartModule) {
         dispose(shape);
         throw toPartError('mesh failed', e);
       }
-      dispose(current);
+      // A part can cache its shape and return it again for the same values.
+      if (current !== shape) dispose(current);
       current = shape;
       return { ...model, values: values ?? {} };
     },

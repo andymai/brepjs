@@ -70,12 +70,29 @@ interface Collected {
   readonly imports: Map<string, string>;
 }
 
+// `import(path)` with a computed path names a file that this pass cannot find or copy.
+function hasComputedImport(ts: typeof TS, file: string, text: string): boolean {
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.ES2022, false);
+  const visit = (node: TS.Node): boolean =>
+    (ts.isCallExpression(node) &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+      !(node.arguments[0] !== undefined && ts.isStringLiteralLike(node.arguments[0]))) ||
+    (ts.forEachChild(node, visit) ?? false);
+  return visit(source);
+}
+
 function collect(ts: typeof TS, entry: string): Map<string, Collected> {
   const seen = new Map<string, Collected>();
   const queue = [entry];
   for (let file = queue.pop(); file !== undefined; file = queue.pop()) {
     if (seen.has(file)) continue;
     const text = readFileSync(file, 'utf8');
+    if (hasComputedImport(ts, file, text)) {
+      throw new PublishError(
+        'PUBLISH_UNSUPPORTED_IMPORT',
+        `${file} has an import() whose path is not a string literal. A published part needs each import path in the source.`
+      );
+    }
     const imports = new Map<string, string>();
     for (const { fileName: specifier } of ts.preProcessFile(text, true, true).importedFiles) {
       if (specifier === BREPJS) continue;
@@ -169,6 +186,17 @@ export async function collectPartFiles(entryPath: string, brepjsUrl: string): Pr
   const collected = collect(ts, entry);
   const root = commonDir([...collected.keys()]);
   const outPathOf = (source: string) => jsPath(posix(relative(root, source)));
+  const byOutPath = new Map<string, string>();
+  for (const source of collected.keys()) {
+    const other = byOutPath.get(outPathOf(source));
+    if (other !== undefined) {
+      throw new PublishError(
+        'PUBLISH_PATH_COLLISION',
+        `${other} and ${source} both become ${outPathOf(source)} on the page. Rename one of them.`
+      );
+    }
+    byOutPath.set(outPathOf(source), source);
+  }
 
   const files: PartFile[] = [];
   for (const [source, { text, imports }] of collected) {

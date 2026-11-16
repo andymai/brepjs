@@ -49,11 +49,22 @@ function toolVersion(): string {
   return pkg.version ?? '0.0.0';
 }
 
+function isEarlierPublish(outDir: string): boolean {
+  try {
+    const manifest = JSON.parse(readFileSync(join(outDir, MANIFEST), 'utf8')) as {
+      generator?: { name?: unknown };
+    };
+    return manifest.generator?.name === 'brepjs-cad';
+  } catch {
+    return false;
+  }
+}
+
 // An existing directory is safe to write into when it is empty or holds an earlier publish.
 function occupiedBy(outDir: string): string | undefined {
   if (!existsSync(outDir)) return undefined;
   const entries = readdirSync(outDir);
-  if (entries.length === 0 || entries.includes(MANIFEST)) return undefined;
+  if (entries.length === 0 || isEarlierPublish(outDir)) return undefined;
   return entries[0];
 }
 

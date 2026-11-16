@@ -65,6 +65,14 @@ describe.skipIf(!runtimeBuilt)('publishPart', () => {
     expect(readFileSync(join(out, 'notes.txt'), 'utf8')).toBe('keep me');
   }, 60000);
 
+  it('refuses a directory with a part.json from another tool', async () => {
+    writeFileSync(join(out, 'part.json'), JSON.stringify({ name: 'theirs' }));
+    writeFileSync(join(out, 'index.html'), '<p>theirs</p>');
+    const result = await publishPart(fix('paramBox.brep.ts'), out);
+    expect(result.errors[0]?.code).toBe('PUBLISH_OUT_NOT_EMPTY');
+    expect(readFileSync(join(out, 'index.html'), 'utf8')).toBe('<p>theirs</p>');
+  }, 60000);
+
   it('writes into such a directory with force', async () => {
     writeFileSync(join(out, 'notes.txt'), 'keep me');
     const result = await publishPart(fix('paramBox.brep.ts'), out, { force: true });

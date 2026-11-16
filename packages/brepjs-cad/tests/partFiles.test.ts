@@ -101,6 +101,43 @@ describe('collectPartFiles', () => {
     await expect(collectPartFiles(entry, '../brepjs.js')).rejects.toBeInstanceOf(PublishError);
   });
 
+  it('rejects an import() with a computed path', async () => {
+    write('lib/shape.ts', 'export const size = 1;\n');
+    const entry = write(
+      'part.brep.ts',
+      "const path = './lib/shape.js';\nexport default async () => (await import(path)).size;\n"
+    );
+    await expect(collectPartFiles(entry, '../brepjs.js')).rejects.toMatchObject({
+      code: 'PUBLISH_UNSUPPORTED_IMPORT',
+      message: expect.stringContaining('not a string literal') as string,
+    });
+  });
+
+  it('follows an import() with a literal path', async () => {
+    write('lib/shape.ts', 'export const size = 1;\n');
+    const entry = write(
+      'part.brep.ts',
+      "export default async () => (await import('./lib/shape')).size;\n"
+    );
+    const part = await collectPartFiles(entry, '../brepjs.js');
+    expect(part.files.map((f) => f.outPath)).toEqual(['lib/shape.js', 'part.brep.js']);
+    expect(part.files.find((f) => f.outPath === part.entry)?.js).toContain(
+      'import("./lib/shape.js")'
+    );
+  });
+
+  it('rejects two files that become the same page file', async () => {
+    write('shape.ts', 'export const a = 1;\n');
+    write('shape.mjs', 'export const b = 2;\n');
+    const entry = write(
+      'part.brep.ts',
+      "import { a } from './shape.ts';\nimport { b } from './shape.mjs';\nexport default () => a + b;\n"
+    );
+    await expect(collectPartFiles(entry, '../brepjs.js')).rejects.toMatchObject({
+      code: 'PUBLISH_PATH_COLLISION',
+    });
+  });
+
   it('rejects a relative import with no source file', async () => {
     const entry = write(
       'part.brep.ts',
