@@ -24,8 +24,18 @@ import {
 // Basic transforms
 // ---------------------------------------------------------------------------
 
-/** Translate a shape by a vector. Returns a new shape. */
+/**
+ * Translate a shape by a vector. Returns a new shape.
+ *
+ * A translation does not change the geometry of a shape. On a kernel that can
+ * place one geometry at many locations, the result shares the geometry of the
+ * source ({@link locate}): the move costs a constant time, and the mesher
+ * makes one mesh for all moved copies of a shape.
+ */
 export function translate<T extends AnyShape<Dimension>>(shape: T, v: Vec3): T {
+  if (getKernel().capabilities.placementSharesGeometry) {
+    return locate(shape, { type: 'translate', v });
+  }
   const inputFaceHashes = collectInputFaceHashes([shape]);
   const { shape: resultShape, evolution } = getKernel().translateWithHistory(
     shape.wrapped,
@@ -40,13 +50,20 @@ export function translate<T extends AnyShape<Dimension>>(shape: T, v: Vec3): T {
   return result;
 }
 
-/** Rotate a shape around an axis. Angle is in degrees. Returns a new shape. */
+/**
+ * Rotate a shape around an axis. Angle is in degrees. Returns a new shape.
+ * As {@link translate}, the result shares the geometry of the source where the
+ * kernel can place one geometry at many locations.
+ */
 export function rotate<T extends AnyShape<Dimension>>(
   shape: T,
   angle: number,
   position: Vec3 = [0, 0, 0],
   direction: Vec3 = [0, 0, 1]
 ): T {
+  if (getKernel().capabilities.placementSharesGeometry) {
+    return locate(shape, { type: 'rotate', angle, axis: direction, center: position });
+  }
   const inputFaceHashes = collectInputFaceHashes([shape]);
   const { shape: resultShape, evolution } = getKernel().rotateWithHistory(
     shape.wrapped,
@@ -341,18 +358,16 @@ export function composeTransforms(ops: readonly TransformOp[]): ComposedTransfor
 }
 
 /**
- * Placement-only rigid move (translate / rotate) via the kernel's cheap location
- * re-tag — an O(1) `TopLoc_Location` swap on occt-wasm ≥3.6.0, falling back to a
- * copying transform on kernels without it. Unlike `translate` / `rotate` (which
- * deep-copy through the history-tracking path), `locate` shares the source
- * geometry and only re-tags its placement, then re-keys face metadata
- * (tags/colors) onto the moved faces so it survives — the same metadata
- * guarantee `translate` gives, at location-swap cost. For per-position placement
- * of one cached cell (template instancing), this is the move without the copy.
+ * A rigid move (translate, rotate, or a list of both) as a new location on the
+ * same geometry: an O(1) `TopLoc_Location` swap on occt-wasm >= 3.6.0, and a
+ * copying transform on a kernel without it. The result shares the geometry of
+ * the source, so many placements of one shape cost one mesh. Face metadata
+ * (tags, colors) is put on the moved faces again, so it survives the move.
+ * On occt-wasm, `translate` and `rotate` are this function with one op.
  *
  * Accepts a single op or an ordered list (applied first-to-last, e.g. rotate
- * then translate). Non-rigid ops (`scale`) aren't a placement and don't belong
- * here — use `applyMatrix` for those.
+ * then translate). Non-rigid ops (`scale`) are not a placement: use
+ * `applyMatrix` for those.
  * A pre-composed transform remains caller-owned; this function never cleans it up.
  */
 export function locate<T extends AnyShape<Dimension>>(

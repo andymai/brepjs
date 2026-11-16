@@ -136,10 +136,10 @@ export function transformCopy<T extends AnyShape<Dimension>>(
 }
 
 /**
- * Placement-only rigid move (translate / rotate) via the kernel's cheap location
- * re-tag — O(1) on occt-wasm ≥3.6.0, falling back to a copy elsewhere. Same
- * face-metadata guarantee as `translate`, at location-swap cost. Ideal for
- * placing one cached cell at N positions without paying for N deep copies.
+ * A rigid move (translate, rotate, or a list of both) as a new location on the
+ * same geometry: O(1) on occt-wasm >= 3.6.0, a copy elsewhere. On occt-wasm, `translate`
+ * and `rotate` are this function with one op. Use it to apply several ops in one
+ * move, or a transform that you composed once for many placements.
  * A supplied pre-composed transform remains caller-owned and must be cleaned up.
  */
 export function locate<T extends AnyShape<Dimension>>(

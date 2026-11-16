@@ -10,6 +10,7 @@ import {
 import {
   box,
   exportSTEPConfigured,
+  getBounds,
   getSolids,
   importSTEP,
   isOk,
@@ -116,7 +117,7 @@ describe('exportSTEPConfigured', () => {
       expect(largestStepCoordinate(step)).toBeCloseTo(10 / 25.4, 9);
     });
 
-    it('converts several shapes into one file', (ctx) => {
+    it('converts several shapes into one file', async (ctx) => {
       skipIfDiverges(ctx, 'stepConfigFns.units');
       using a = box(10, 10, 10);
       using b = box(10, 10, 10, { at: [25, 5, 5] });
@@ -124,7 +125,14 @@ describe('exportSTEPConfigured', () => {
         exportSTEPConfigured([{ shape: a }, { shape: b }], { unit: 'mm', modelUnit: 'cm' })
       );
       expect(step).not.toContain(INCH_UNIT);
-      expect(largestStepCoordinate(step)).toBeCloseTo(300, 9);
+      // A moved shape can be in the file as its geometry and a placement, so
+      // the largest number in the text is not the largest coordinate. Read the
+      // file back and measure it.
+      using back = unwrap(await importSTEP(new Blob([step])));
+      const bounds = getBounds(back);
+      expect(bounds.xMax).toBeCloseTo(300, 6);
+      expect(bounds.yMax).toBeCloseTo(100, 6);
+      expect(unwrap(measureVolume(back as Shape3D))).toBeCloseTo(2_000_000, 0);
     });
 
     it('honours units for named and colored parts', (ctx) => {
