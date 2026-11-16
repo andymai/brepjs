@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.194.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.193.0...brepjs-cad-v0.194.0) (2026-11-16)
+
+
+### Features
+
+* **brepjs-cad:** publish a part as a static page with brep publish ([#2714](https://github.com/andymai/brepjs/issues/2714)) ([499df91](https://github.com/andymai/brepjs/commit/499df91bae352e4346f5af2bbf263a32f8dda367))
+
 ## [0.193.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.192.5...brepjs-cad-v0.193.0) (2026-11-16)
 
 
