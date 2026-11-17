@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.194.1](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.194.0...brepjs-cad-v0.194.1) (2026-11-17)
+
+
+### Bug Fixes
+
+* **brepjs-cad:** accept a part that uses using in brep verify --check ([#2720](https://github.com/andymai/brepjs/issues/2720)) ([01bb3cc](https://github.com/andymai/brepjs/commit/01bb3ccba5b1a9dd6bb4d6be0fc3c305585a134f))
+
 ## [0.194.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.193.0...brepjs-cad-v0.194.0) (2026-11-16)
 
 
