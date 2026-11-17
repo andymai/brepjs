@@ -48,6 +48,13 @@ export interface KernelCapabilities {
    * copy the geometry on each move leave it unset.
    */
   readonly placementSharesGeometry?: boolean | undefined;
+  /**
+   * `importSTL` returns the bodies of the mesh: a solid per closed body, a
+   * shell per open one, and a face per triangle that joins no other. The STL
+   * importer uses that result as it is. Kernels that return the facets as a
+   * compound of loose faces, for the importer to sew, leave it unset.
+   */
+  readonly stlImportReturnsBodies?: boolean | undefined;
 }
 
 /** Default for an exact B-rep kernel (OCCT family, brepkit). */

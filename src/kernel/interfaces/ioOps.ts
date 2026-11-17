@@ -32,11 +32,14 @@ export interface KernelIOOps {
   exportOBJ(shape: KernelShape, tolerance: number): ArrayBuffer;
   /** Export shape to PLY format (binary). Returns binary data. */
   exportPLY(shape: KernelShape, tolerance: number): ArrayBuffer;
-  /** Import from 3MF format. Returns solid shapes. */
+  /** Import from 3MF format. Returns a shape per object, as `importOBJ` returns the bodies of a mesh. */
   import3MF(data: ArrayBuffer): KernelShape[];
-  /** Import from OBJ format. Returns a solid shape. */
+  /**
+   * Import from OBJ format. Returns one body on its own and several as a compound:
+   * a solid per closed body, a shell per open one, a face per loose triangle.
+   */
   importOBJ(data: ArrayBuffer): KernelShape;
-  /** Import from GLB format. Returns a solid shape. */
+  /** Import from GLB format. Returns the bodies of the mesh, as `importOBJ` does. */
   importGLB(data: ArrayBuffer): KernelShape;
 
   // --- Serialization ---

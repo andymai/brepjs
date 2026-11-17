@@ -2,12 +2,10 @@
  * 3MF import: parses a 3MF ZIP archive and builds one shape per placed object via sewing.
  */
 
-import { getKernel } from '@/kernel/index.js';
 import type { UnknownDimShape } from '@/core/shapeTypes.js';
-import { castResultShape } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { ioError, BrepErrorCode } from '@/core/errors.js';
-import { sewMeshToSolid } from './ioUtils.js';
+import { indexedMeshToSolid } from './ioUtils.js';
 import { colorShape } from '@/topology/metadata/colorFns.js';
 import { makeCompound } from '@/topology/solidBuilders.js';
 
@@ -510,36 +508,7 @@ function findDominantColor(
 // ---------------------------------------------------------------------------
 
 function buildSolidFromMesh(mesh: ParsedMesh): Result<UnknownDimShape> {
-  const kernel = getKernel();
-  const triangles: Array<[Vec3, Vec3, Vec3]> = [];
-  for (const [v1, v2, v3] of mesh.triangles) {
-    const va = mesh.vertices[v1];
-    const vb = mesh.vertices[v2];
-    const vc = mesh.vertices[v3];
-    if (!va || !vb || !vc) continue;
-    triangles.push([va, vb, vc]);
-  }
-
-  // Where sewing keeps orientation, an object's triangles become what the same
-  // triangles do through STL and OBJ: a solid per closed body, a shell per open
-  // one, and each sealed cavity cut from the body around it.
-  if (kernel.capabilities.sewKeepsOrientation === true) {
-    return sewMeshToSolid(triangles, BrepErrorCode.THREEMF_IMPORT_FAILED);
-  }
-
-  // Elsewhere buildSolidFromFaces (indexed mesh) avoids building individual
-  // face objects and sewing them, which can introduce volume errors in some
-  // backends.
-  const points = mesh.vertices.map(([x, y, z]) => ({ x, y, z }));
-  const faces = mesh.triangles as Array<readonly [number, number, number]>;
-
-  try {
-    const solid = kernel.buildSolidFromFaces(points, faces, 1e-6);
-    return ok(castResultShape(solid));
-  } catch {
-    // Fallback: sew the triangles as vertex triples
-    return sewMeshToSolid(triangles, BrepErrorCode.THREEMF_IMPORT_FAILED);
-  }
+  return indexedMeshToSolid(mesh.vertices, mesh.triangles, BrepErrorCode.THREEMF_IMPORT_FAILED);
 }
 
 /** One shape per mesh; several are grouped into a compound that takes ownership of them. */

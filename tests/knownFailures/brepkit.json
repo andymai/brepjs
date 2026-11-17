@@ -64,20 +64,11 @@
       ]
     },
     "tests/importFns.test.ts": {
-      "tracking": "andymai/brepkit#2375",
+      "tracking": "andymai/brepkit#2638",
       "tests": [
-        "importSTL > closes a body that sits beside a loose triangle",
-        "importSTL > imports an open mesh as a sewn shell",
-        "importSTL > imports disjoint closed bodies as a compound of solids",
         "importSTL > keeps a sealed cavity hollow",
-        "importSTL > keeps an island inside a cavity as a body of its own",
-        "importSTL > keeps an open body as a shell beside the closed ones",
-        "importSTL > keeps an outward-facing part inside another as its own body"
+        "importSTL > keeps an island inside a cavity as a body of its own"
       ]
-    },
-    "tests/objImport.test.ts": {
-      "tracking": "andymai/brepkit#2375",
-      "tests": ["importOBJ > imports disjoint closed bodies as a compound of solids"]
     },
     "tests/playgroundExamplesBim.test.ts": {
       "tracking": "andymai/brepkit#2372, andymai/brepkit#2396, andymai/brepkit#2502",

@@ -100,7 +100,9 @@ export async function importSTL(blob: Blob): Promise<Result<UnknownDimShape>> {
       return err(ioError('STL_IMPORT_FAILED', 'Failed to create solid from STL mesh'));
     }
     const shape = castResultShape(raw);
-    if (isSolid(shape)) return ok(shape);
+    if (isSolid(shape) || getKernel().capabilities.stlImportReturnsBodies === true) {
+      return ok(shape);
+    }
     using facets = shape;
     const faces = getFaces(facets).map((f) => f.wrapped);
     const mesh = sewableTopology(stlTrianglePositions(data));

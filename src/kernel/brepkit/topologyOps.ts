@@ -54,7 +54,13 @@ function iterCompound(bk: BrepkitKernel, h: number, type: ShapeType): KernelShap
   if (type === 'solid') {
     return toArray(bk.getCompoundSolids(h)).flatMap((id) => solidPieces(bk, solidHandle(id)));
   }
-  if (type === 'face' || type === 'edge' || type === 'vertex' || type === 'wire') {
+  if (
+    type === 'shell' ||
+    type === 'face' ||
+    type === 'edge' ||
+    type === 'vertex' ||
+    type === 'wire'
+  ) {
     const solids = toArray(bk.getCompoundSolids(h)).map(solidHandle);
     return solids.flatMap((s) => iterShapes(bk, s, type));
   }

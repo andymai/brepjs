@@ -133,7 +133,10 @@ export interface BrepkitAdapter
 export class BrepkitAdapter {
   readonly oc: KernelInstance;
   readonly kernelId = 'brepkit';
-  readonly capabilities: KernelCapabilities = EXACT_BREP_CAPABILITIES;
+  readonly capabilities: KernelCapabilities = {
+    ...EXACT_BREP_CAPABILITIES,
+    stlImportReturnsBodies: true,
+  };
 
   /** The underlying brepkit WASM kernel instance (typed). */
   private readonly bk: BrepkitKernel;

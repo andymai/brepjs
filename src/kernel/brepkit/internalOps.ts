@@ -24,7 +24,8 @@ import {
   unwrap,
   DEFAULT_DEFLECTION,
 } from './helpers.js';
-import { iterShapes } from './topologyOps.js';
+import { iterShapes, sew } from './topologyOps.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import { vec3At, wasmIndex } from '@/utils/vec3.js';
 
 /** Apply a 4x4 row-major matrix to a shape (copy + transform). */
@@ -49,6 +50,8 @@ export function applyMatrix(bk: BrepkitKernel, shape: KernelShape, matrix: numbe
       bk.transformFace(copy, matrix);
       return faceHandle(copy);
     }
+    case 'shell':
+      return moveShell(bk, h.id, matrix);
     case 'wire': {
       if (typeof bk.copyWire !== 'function' || typeof bk.transformWire !== 'function') {
         throw new Error(
@@ -69,22 +72,8 @@ export function applyMatrix(bk: BrepkitKernel, shape: KernelShape, matrix: numbe
       bk.transformEdge(copy, matrix);
       return edgeHandle(copy);
     }
-    case 'vertex': {
-      // A vertex has no surface to offset, just a point to move. It reaches
-      // here through the compound branch below: the public `compound()`
-      // accepts vertices, so a synthetic compound can hold them, and without
-      // this arm transforming such a compound throws.
-      const p = bk.getVertexPosition(h.id);
-      const m = matrix;
-      const [x, y, z] = [p[0] ?? 0, p[1] ?? 0, p[2] ?? 0];
-      return vertexHandle(
-        bk.makeVertex(
-          (m[0] ?? 0) * x + (m[1] ?? 0) * y + (m[2] ?? 0) * z + (m[3] ?? 0),
-          (m[4] ?? 0) * x + (m[5] ?? 0) * y + (m[6] ?? 0) * z + (m[7] ?? 0),
-          (m[8] ?? 0) * x + (m[9] ?? 0) * y + (m[10] ?? 0) * z + (m[11] ?? 0)
-        )
-      );
-    }
+    case 'vertex':
+      return moveVertex(bk, h.id, matrix);
     case 'compound': {
       // A compound is either a real brepkit compound (all-solid children, held
       // in the arena) or a JS-side synthetic one holding wires/faces/edges;
@@ -106,6 +95,41 @@ export function applyMatrix(bk: BrepkitKernel, shape: KernelShape, matrix: numbe
     default:
       throw new Error(`brepkit: applyMatrix does not support '${h.type}' shapes`);
   }
+}
+
+/**
+ * A vertex has no surface to offset, just a point to move. It reaches
+ * `applyMatrix` through the compound branch: the public `compound()` accepts
+ * vertices, so a synthetic compound can hold them, and without this arm
+ * transforming such a compound throws.
+ */
+function moveVertex(bk: BrepkitKernel, vertexId: number, m: number[]): KernelShape {
+  const p = bk.getVertexPosition(vertexId);
+  const [x, y, z] = [p[0] ?? 0, p[1] ?? 0, p[2] ?? 0];
+  return vertexHandle(
+    bk.makeVertex(
+      (m[0] ?? 0) * x + (m[1] ?? 0) * y + (m[2] ?? 0) * z + (m[3] ?? 0),
+      (m[4] ?? 0) * x + (m[5] ?? 0) * y + (m[6] ?? 0) * z + (m[7] ?? 0),
+      (m[8] ?? 0) * x + (m[9] ?? 0) * y + (m[10] ?? 0) * z + (m[11] ?? 0)
+    )
+  );
+}
+
+/**
+ * brepkit has no shell copy, and `solidFromShell` refuses an open shell, so
+ * move each face and weld the moved faces into a shell again.
+ */
+function moveShell(bk: BrepkitKernel, shellId: number, matrix: number[]): KernelShape {
+  const faceIds = toArray(bk.getShellFaces(shellId));
+  if (faceIds.length < 2) {
+    throw new UnsupportedKernelOperationError(
+      'brepkit: moving a shell of one face is not supported, because brepkit cannot sew one face'
+    );
+  }
+  return sew(
+    bk,
+    faceIds.map((id) => applyMatrix(bk, faceHandle(id), matrix))
+  );
 }
 
 /** Check if we need to transform from default placement (origin, +Z). */
