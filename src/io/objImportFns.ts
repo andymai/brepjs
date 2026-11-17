@@ -9,7 +9,7 @@
 import type { UnknownDimShape } from '@/core/shapeTypes.js';
 import { type Result, err } from '@/core/result.js';
 import { ioError, BrepErrorCode } from '@/core/errors.js';
-import { sewMeshToSolid } from './ioUtils.js';
+import { indexedMeshToSolid } from './ioUtils.js';
 
 // ---------------------------------------------------------------------------
 // Parsing helpers
@@ -88,20 +88,12 @@ function buildSolidFromMesh(
   faces: Array<number[]>
 ): Result<UnknownDimShape> {
   // Fan-triangulate n-gon faces (indices are already resolved to 0-based)
-  const triangles: Array<
-    [[number, number, number], [number, number, number], [number, number, number]]
-  > = [];
-
+  const triangles: Array<[number, number, number]> = [];
   for (const face of faces) {
     for (let i = 1; i < face.length - 1; i++) {
-      const va = vertices[face[0] ?? -1];
-      const vb = vertices[face[i] ?? -1];
-      const vc = vertices[face[i + 1] ?? -1];
-      if (!va || !vb || !vc) continue;
-
-      triangles.push([va, vb, vc]);
+      triangles.push([face[0] ?? -1, face[i] ?? -1, face[i + 1] ?? -1]);
     }
   }
 
-  return sewMeshToSolid(triangles, BrepErrorCode.OBJ_IMPORT_FAILED);
+  return indexedMeshToSolid(vertices, triangles, BrepErrorCode.OBJ_IMPORT_FAILED);
 }

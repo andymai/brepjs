@@ -9,7 +9,7 @@ import type { UnknownDimShape } from '@/core/shapeTypes.js';
 import { castResultShape, isSolid } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { ioError } from '@/core/errors.js';
-import { getFaces } from '@/topology/topologyQueryFns.js';
+import { getFaces, subShapeCount } from '@/topology/topologyQueryFns.js';
 import { makeCompound } from '@/topology/solidBuilders.js';
 import { igesUnsupportedError } from './igesSupport.js';
 import { sewFacesIntoSolids, sewableTopology } from './ioUtils.js';
@@ -100,7 +100,8 @@ export async function importSTL(blob: Blob): Promise<Result<UnknownDimShape>> {
       return err(ioError('STL_IMPORT_FAILED', 'Failed to create solid from STL mesh'));
     }
     const shape = castResultShape(raw);
-    if (isSolid(shape)) return ok(shape);
+    // Some kernels read an STL straight into its bodies; others return loose facets to sew.
+    if (isSolid(shape) || subShapeCount(shape, 'shell') > 0) return ok(shape);
     using facets = shape;
     const faces = getFaces(facets).map((f) => f.wrapped);
     const mesh = sewableTopology(stlTrianglePositions(data));

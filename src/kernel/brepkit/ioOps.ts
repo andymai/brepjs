@@ -9,6 +9,7 @@ import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import {
   type BrepkitHandle,
   compoundHandle,
+  shellHandle,
   solidHandle,
   unwrapSolidOrThrow,
   unwrapSolidsForExport,
@@ -24,9 +25,28 @@ import {
   DEFAULT_STL_ANGULAR_TOLERANCE,
   DEFAULT_STL_TOLERANCE,
 } from '@/kernel/stlBuilder.js';
+import { makeCompound } from './constructionOps.js';
 import { mesh } from './meshOps.js';
 import { mergeIgesDocuments } from './igesMerge.js';
 import { mergeStepDocuments } from './stepMerge.js';
+
+/** The bodies of a mesh as an `import*Parts` binding returns them. */
+interface MeshParts {
+  solids: number[];
+  shells: number[];
+}
+
+function partsShape(bk: BrepkitKernel, parts: MeshParts): KernelShape {
+  const bodies = [...parts.solids.map(solidHandle), ...parts.shells.map(shellHandle)];
+  const [first] = bodies;
+  if (first === undefined) throw new Error('brepkit: the mesh has no body');
+  return bodies.length === 1 ? first : makeCompound(bk, bodies);
+}
+
+/** One body on its own, several as a compound: a solid per closed body, a shell per open one. */
+export function meshPartsShape(bk: BrepkitKernel, json: string): KernelShape {
+  return partsShape(bk, JSON.parse(json) as MeshParts);
+}
 
 export function exportSTEP(bk: BrepkitKernel, shapes: KernelShape[]): string {
   if (shapes.length === 0) return '';
@@ -64,8 +84,8 @@ export function importSTEP(bk: BrepkitKernel, data: string | ArrayBuffer): Kerne
 
 export function importSTL(bk: BrepkitKernel, data: string | ArrayBuffer): KernelShape {
   const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data);
-  const id: number = bk.importStl(bytes);
-  return solidHandle(id);
+  if (typeof bk.importStlParts === 'function') return meshPartsShape(bk, bk.importStlParts(bytes));
+  return solidHandle(bk.importStl(bytes));
 }
 
 export function exportIGES(bk: BrepkitKernel, shapes: KernelShape[]): string {
@@ -119,18 +139,24 @@ export function exportPLY(bk: BrepkitKernel, shape: KernelShape, tolerance: numb
 }
 
 export function import3MF(bk: BrepkitKernel, data: ArrayBuffer): KernelShape[] {
-  const result = toArray(bk.import3mf(new Uint8Array(data)));
-  return result.map((id) => solidHandle(id));
+  const bytes = new Uint8Array(data);
+  if (typeof bk.import3mfParts === 'function') {
+    const objects = JSON.parse(bk.import3mfParts(bytes)) as MeshParts[];
+    return objects.map((parts) => partsShape(bk, parts));
+  }
+  return toArray(bk.import3mf(bytes)).map(solidHandle);
 }
 
 export function importOBJ(bk: BrepkitKernel, data: ArrayBuffer): KernelShape {
-  const result = bk.importObj(new Uint8Array(data));
-  return solidHandle(result);
+  const bytes = new Uint8Array(data);
+  if (typeof bk.importObjParts === 'function') return meshPartsShape(bk, bk.importObjParts(bytes));
+  return solidHandle(bk.importObj(bytes));
 }
 
 export function importGLB(bk: BrepkitKernel, data: ArrayBuffer): KernelShape {
-  const result = bk.importGlb(new Uint8Array(data));
-  return solidHandle(result);
+  const bytes = new Uint8Array(data);
+  if (typeof bk.importGlbParts === 'function') return meshPartsShape(bk, bk.importGlbParts(bytes));
+  return solidHandle(bk.importGlb(bytes));
 }
 
 export function toBREP(bk: BrepkitKernel, shape: KernelShape): string {

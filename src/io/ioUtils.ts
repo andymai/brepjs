@@ -338,3 +338,40 @@ export function sewMeshToSolid(
     for (const triFace of triFaces) kernel.dispose(triFace);
   }
 }
+
+/**
+ * The bodies of an indexed triangle mesh, as {@link sewMeshToSolid} builds
+ * them: a solid per closed body, a shell per open one, and each sealed cavity
+ * cut from the body around it. A triangle that names a missing vertex is
+ * skipped.
+ *
+ * Where sewing keeps orientation, the triangles are sewn. Elsewhere the kernel
+ * builds the bodies from the indexed mesh (`buildSolidFromFaces`), which
+ * avoids building a face per triangle and sewing them, as that can give volume
+ * errors there. Sewing is the fallback.
+ */
+export function indexedMeshToSolid(
+  vertices: Vec3[],
+  indices: ReadonlyArray<readonly [number, number, number]>,
+  errorCode: string
+): Result<UnknownDimShape> {
+  const valid: Array<readonly [number, number, number]> = [];
+  const triangles: Array<[Vec3, Vec3, Vec3]> = [];
+  for (const triangle of indices) {
+    const [va, vb, vc] = triangle.map((i) => vertices[i]);
+    if (!va || !vb || !vc) continue;
+    valid.push(triangle);
+    triangles.push([va, vb, vc]);
+  }
+
+  const kernel = getKernel();
+  if (kernel.capabilities.sewKeepsOrientation !== true) {
+    const points = vertices.map(([x, y, z]) => ({ x, y, z }));
+    try {
+      return ok(castResultShape(kernel.buildSolidFromFaces(points, valid, 1e-6)));
+    } catch {
+      // sew the triangles instead
+    }
+  }
+  return sewMeshToSolid(triangles, errorCode);
+}

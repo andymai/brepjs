@@ -850,22 +850,17 @@ export interface BrepkitKernel {
     auxWeights: Float64Array | number[]
   ): number;
 
-  /** @unwired */
   import3mfParts(data: Uint8Array | number[]): string;
 
-  /** @unwired */
   importGlbParts(data: Uint8Array | number[]): string;
 
-  /** @unwired */
   importIndexedMeshParts(
     positions: Float64Array | number[],
     indices: Uint32Array | number[]
   ): string;
 
-  /** @unwired */
   importObjParts(data: Uint8Array | number[]): string;
 
-  /** @unwired */
   importStlParts(data: Uint8Array | number[]): string;
 
   intersectWithOptions(a: number, b: number, simplify: boolean): number;

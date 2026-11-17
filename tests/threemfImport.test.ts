@@ -1,6 +1,5 @@
 import { describe, expect, it, beforeAll, vi } from 'vitest';
 import { currentKernel, initKernel } from './setup.js';
-import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   box,
   exportThreeMF,
@@ -279,8 +278,7 @@ describe('importThreeMF', () => {
     expect(bounds.zMax).toBeCloseTo(10, 6);
   });
 
-  it('imports an object holding several closed bodies as a solid per body', async (ctx) => {
-    skipIfDiverges(ctx, 'threemfImport.bodiesWithinObject');
+  it('imports an object holding several closed bodies as a solid per body', async () => {
     const xml = model(
       [meshObject(1, [boxMesh(10), boxMesh(10, 10, [20, 0, 0])])],
       ['<item objectid="1" />']
@@ -291,8 +289,7 @@ describe('importThreeMF', () => {
     expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(2000, 3);
   });
 
-  it('keeps a sealed cavity inside an object hollow', async (ctx) => {
-    skipIfDiverges(ctx, 'threemfImport.bodiesWithinObject');
+  it('keeps a sealed cavity inside an object hollow', async () => {
     const xml = model(
       [meshObject(1, [boxMesh(20), boxMesh(10, 10, [5, 5, 5], true)])],
       ['<item objectid="1" />']
@@ -304,8 +301,7 @@ describe('importThreeMF', () => {
     expect(getShells(imported)).toHaveLength(2);
   });
 
-  it('keeps an open body beside a closed one in the same object as a shell', async (ctx) => {
-    skipIfDiverges(ctx, 'threemfImport.bodiesWithinObject');
+  it('keeps an open body beside a closed one in the same object as a shell', async () => {
     const xml = model([meshObject(1, [boxMesh(10), sheetMesh(50)])], ['<item objectid="1" />']);
     using imported = unwrap(await importThreeMF(modelZip(xml)));
     const solids = getSolids(imported);
@@ -315,8 +311,7 @@ describe('importThreeMF', () => {
     expect(getFaces(imported)).toHaveLength(14);
   });
 
-  it('repairs the winding of bodies that share an object', async (ctx) => {
-    skipIfDiverges(ctx, 'threemfImport.bodiesWithinObject');
+  it('repairs the winding of bodies that share an object', async () => {
     const flipped = boxMesh(10, 10, [20, 0, 0]);
     const [a, b, c] = flipped.triangles[0] ?? [0, 0, 0];
     flipped.triangles[0] = [a, c, b];

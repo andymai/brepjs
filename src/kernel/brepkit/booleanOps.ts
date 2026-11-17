@@ -31,6 +31,7 @@ import {
 import { extractPlaneFromFace } from './internalOps.js';
 import { iterShapes } from './topologyOps.js';
 import { isValid as _isValid } from './repairOps.js';
+import { meshPartsShape } from './ioOps.js';
 import { wasmIndex } from '@/utils/vec3.js';
 
 // brepkit throws when intersect/cut produces an empty result (disjoint inputs,
@@ -534,8 +535,10 @@ export function buildSolidFromFaces(
     indices[i * 3 + 1] = f[1];
     indices[i * 3 + 2] = f[2];
   }
-  const id = bk.importIndexedMesh(positions, indices);
-  return solidHandle(id);
+  if (typeof bk.importIndexedMeshParts === 'function') {
+    return meshPartsShape(bk, bk.importIndexedMeshParts(positions, indices));
+  }
+  return solidHandle(bk.importIndexedMesh(positions, indices));
 }
 
 /** Co-located factory: returns the boolean+hull slice of {@link KernelAdapter} bound to `bk`. */
