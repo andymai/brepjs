@@ -104,7 +104,7 @@ It scopes the spec, designs the build sequence, authors the `.brep.ts`, verifies
 
 ## The `.brep.ts` contract
 
-A model is a TypeScript module whose **default export is a zero-argument function** returning a shape (or a `Result<shape>`):
+A model is a TypeScript module whose **default export is a function** returning a shape (or a `Result<shape>`). The CLI can call it with no argument:
 
 <!-- @no-test -->
 
@@ -127,6 +127,23 @@ export const expected = { volume: 8000, tolerancePct: 1 };
 export default () => box(40, 20, 10, { centered: true });
 ```
 
+To let a caller change a dimension, declare it with `defineParams` and take the values as the argument. `brep verify --param width=60` then builds the part at that size, and `brep publish` makes a page with one control for each parameter:
+
+<!-- @no-test -->
+
+```ts
+// bracket.brep.ts
+import { box, defineParams } from 'brepjs';
+
+export const params = defineParams({
+  width: { type: 'number', default: 40, min: 20, max: 120, unit: 'mm' },
+});
+export const expected = (p = params.values) => ({ volume: p.width * 20 * 10, tolerancePct: 1 });
+export default (p = params.values) => box(p.width, 20, 10, { centered: true });
+```
+
+See [Publish a Part as a Page](./publish) for the full path.
+
 Author parts in an ESM context (the CLI's default). A CommonJS project needs `"type": "module"` in `package.json`, or name the file `.mts`.
 
 ## Quickstart
@@ -141,6 +158,9 @@ npx -y -p brepjs-cad brep verify bracket/bracket.brep.ts --check --json report.j
 # review it visually, then export the validated STEP
 npx -y -p brepjs-cad brep verify bracket/bracket.brep.ts --snapshot shots/
 npx -y -p brepjs-cad brep verify bracket/bracket.brep.ts --step bracket.step
+
+# or publish it as a static page that a person can open with no install
+npx -y -p brepjs-cad brep publish bracket/bracket.brep.ts --out site
 ```
 
 The command exits non-zero whenever the report is not `ok`, so it drops straight into CI or an agent loop.
@@ -149,5 +169,6 @@ The command exits non-zero whenever the report is not `ok`, so it drops straight
 
 - [The Verify Loop](./the-loop): the author → verify → repair workflow and how to read the report
 - [CLI Reference](./cli): every subcommand, flag, and exit code
+- [Publish a Part as a Page](./publish): declare parameters, then publish a page with sliders and downloads
 - [Examples](./examples): the example gallery the skill draws on
 - [Eval & Scorecard](./eval): how the skill measures itself

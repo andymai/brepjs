@@ -170,7 +170,7 @@ npm i -D brepjs-cad
 
 After you install the skill, ask Claude for a part in plain English. You can also start the pipeline directly with `/brepjs:cad "a 40×20×10 mm bracket with two M4 holes"`.
 
-`brepjs-cad` bundles its own `brepjs` + `occt-wasm`, so it runs in an empty directory. In a brepjs project, it prefers your installed versions, so the parts that it checks match what you ship. A model is a module. Its default export is a function with no arguments, and that function returns a shape:
+`brepjs-cad` bundles its own `brepjs` + `occt-wasm`, so it runs in an empty directory. In a brepjs project, it prefers your installed versions, so the parts that it checks match what you ship. A model is a module. Its default export is a function that returns a shape:
 
 ```typescript
 // bracket.brep.ts
@@ -182,6 +182,24 @@ export default () => box(40, 20, 10, { centered: true });
 ```bash
 npx -y -p brepjs-cad brep verify bracket.brep.ts --check --step bracket.step --json report.json
 ```
+
+A part can declare its parameters with `defineParams`. Then `--param` builds it at a different size, and `brep publish` writes a static page with one slider for each parameter and STEP, 3MF and STL downloads. A person opens that page with no install:
+
+```typescript
+// plate.brep.ts
+import { box, defineParams } from 'brepjs';
+export const params = defineParams({
+  width: { type: 'number', default: 40, min: 20, max: 120, unit: 'mm' },
+});
+export default (p = params.values) => box(p.width, 20, 10, { centered: true });
+```
+
+```bash
+npx -y -p brepjs-cad brep verify plate.brep.ts --param width=80
+npx -y -p brepjs-cad brep publish plate.brep.ts --out site
+```
+
+See [Publish a Part as a Page](https://brepjs.dev/agent/publish).
 
 The command exits non-zero unless the report is `ok` (valid **and** every declared dimension within tolerance). Thus you can put it directly into CI or an agent loop. For agents that use MCP, the package also ships a stdio MCP server (`brep-mcp`). It gives the same build-and-check step as a `run_program` tool. See the [**Authoring with AI**](https://brepjs.dev/agent/overview) guide for the full loop, the CLI reference, the MCP server, examples, and the measurement eval.
 
