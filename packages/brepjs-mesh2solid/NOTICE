@@ -13,6 +13,9 @@ Algorithms are clean-room implementations of published methods:
   by Ear Clipping", Geometric Tools, 2002).
 - Closest point on triangle: Ericson, "Real-Time Collision Detection", 2005,
   section 5.1.5.
+- Exact squares for the correctly rounded hypotenuse: Dekker, "A Floating-Point
+  Technique for Extending the Available Precision", Numerische Mathematik 18,
+  1971.
 
 The WebAssembly binary also contains these Rust crates, each used under the
 license named (for dual- or multi-licensed crates, the option elected here):

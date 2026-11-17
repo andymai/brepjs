@@ -7,7 +7,7 @@
 //! primitive it is. A Levenberg-Marquardt pass on point distances refines the
 //! result, so the approximate mesh normals only have to seed it.
 
-use crate::math::{add, cross, dot, fit_plane, norm, normalize, scale, sub, sym_eigen, V3};
+use crate::math::{add, cross, dot, fit_plane, hypot, norm, normalize, scale, sub, sym_eigen, V3};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Surface {
@@ -87,7 +87,7 @@ impl Surface {
             }
             Surface::Torus { c, a, major, minor } => {
                 let (h, rho) = radial(p, c, a);
-                (rho - major).hypot(h) - minor
+                hypot(rho - major, h) - minor
             }
         }
     }
@@ -212,33 +212,57 @@ pub fn plane(pts: &[V3]) -> Option<Surface> {
 
 /// Solve a small dense system by Gaussian elimination with partial pivoting.
 pub(crate) fn solve(mut m: Vec<Vec<f64>>, mut r: Vec<f64>) -> Option<Vec<f64>> {
+    let mut x = vec![0.0; r.len()];
+    solve_rows(&mut m, &mut r, &mut x).then_some(x)
+}
+
+/// `solve` on the leading `r.len()` columns of as many rows, in place: the
+/// solution goes to `x`, and `false` means the system is singular.
+fn solve_rows<R: AsRef<[f64]> + AsMut<[f64]> + Clone>(
+    m: &mut [R],
+    r: &mut [f64],
+    x: &mut [f64],
+) -> bool {
     let n = r.len();
-    let scale_ref = m.iter().flatten().map(|x| x.abs()).fold(0.0, f64::max);
+    let scale_ref = m
+        .iter()
+        .flat_map(|row| &row.as_ref()[..n])
+        .map(|v| v.abs())
+        .fold(0.0, f64::max);
     if scale_ref <= 0.0 {
-        return None;
+        return false;
     }
     for col in 0..n {
-        let piv = (col..n).max_by(|&a, &b| m[a][col].abs().total_cmp(&m[b][col].abs()))?;
-        if m[piv][col].abs() < 1e-14 * scale_ref {
-            return None;
+        let Some(piv) = (col..n).max_by(|&a, &b| {
+            m[a].as_ref()[col]
+                .abs()
+                .total_cmp(&m[b].as_ref()[col].abs())
+        }) else {
+            return false;
+        };
+        if m[piv].as_ref()[col].abs() < 1e-14 * scale_ref {
+            return false;
         }
         m.swap(col, piv);
         r.swap(col, piv);
         let pivot_row = m[col].clone();
+        let pivot_row = &pivot_row.as_ref()[..n];
         for row in col + 1..n {
-            let f = m[row][col] / pivot_row[col];
-            for (cell, &p) in m[row].iter_mut().zip(pivot_row.iter()).skip(col) {
+            let cells = &mut m[row].as_mut()[..n];
+            let f = cells[col] / pivot_row[col];
+            for (cell, &p) in cells.iter_mut().zip(pivot_row.iter()).skip(col) {
                 *cell -= f * p;
             }
             r[row] -= f * r[col];
         }
     }
-    let mut x = vec![0.0; n];
+    x.fill(0.0);
     for row in (0..n).rev() {
-        let s: f64 = (row + 1..n).map(|k| m[row][k] * x[k]).sum();
-        x[row] = (r[row] - s) / m[row][row];
+        let cells = m[row].as_ref();
+        let s: f64 = (row + 1..n).map(|k| cells[k] * x[k]).sum();
+        x[row] = (r[row] - s) / cells[row];
     }
-    Some(x)
+    true
 }
 
 /// Point closest (least squares) to all normal lines, with its RMS distance.
@@ -545,6 +569,32 @@ fn perturbed(s: &Surface, k: usize, eps: f64) -> Surface {
     }
 }
 
+/// The most parameters a surface has (a torus).
+const MAX_DOF: usize = 7;
+
+/// `s.signed_distance` of each point, with the cone's angle terms worked out
+/// once: they are most of the cost of a cone's distance.
+fn signed_distances(s: &Surface, pts: &[V3], out: &mut [f64]) {
+    match *s {
+        Surface::Cone {
+            apex,
+            a,
+            half_angle,
+        } => {
+            let (cos, sin) = (half_angle.cos(), half_angle.sin());
+            for (d, &p) in out.iter_mut().zip(pts) {
+                let (h, rho) = radial(p, apex, a);
+                *d = rho * cos - h * sin;
+            }
+        }
+        _ => {
+            for (d, &p) in out.iter_mut().zip(pts) {
+                *d = s.signed_distance(p);
+            }
+        }
+    }
+}
+
 fn dof(s: &Surface) -> usize {
     match s {
         Surface::Plane { .. } => 3,
@@ -569,51 +619,64 @@ fn refine_for(s: Surface, pts: &[V3], max_iters: usize) -> Surface {
         return s;
     }
     let scale_ref = crate::math::Bbox::of(pts).diag().max(1e-9);
+    let n = pts.len();
     let mut cur = s;
     let mut lambda = 1e-3;
-    let mut cost: f64 = pts.iter().map(|&p| cur.signed_distance(p).powi(2)).sum();
     let k = dof(&cur);
+    let mut base = vec![0.0; n];
+    let mut trial = vec![0.0; n];
+    let mut cols = vec![0.0; k * n];
+    signed_distances(&cur, pts, &mut base);
+    let mut cost: f64 = base.iter().map(|d| d.powi(2)).sum();
     for _ in 0..max_iters {
         let eps = 1e-7 * scale_ref;
-        let base: Vec<f64> = pts.iter().map(|&p| cur.signed_distance(p)).collect();
-        let cols: Vec<Vec<f64>> = (0..k)
-            .map(|j| {
-                let sj = perturbed(&cur, j, eps);
-                pts.iter()
-                    .zip(&base)
-                    .map(|(&p, &b)| (sj.signed_distance(p) - b) / eps)
-                    .collect()
-            })
-            .collect();
-        let mut jtj = vec![vec![0.0; k]; k];
-        let mut jtr = vec![0.0; k];
-        for i in 0..pts.len() {
-            for a in 0..k {
-                jtr[a] -= cols[a][i] * base[i];
-                for b in 0..k {
-                    jtj[a][b] += cols[a][i] * cols[b][i];
+        for (j, col) in cols.chunks_exact_mut(n).enumerate() {
+            signed_distances(&perturbed(&cur, j, eps), pts, col);
+            for (c, &b) in col.iter_mut().zip(&base) {
+                *c = (*c - b) / eps;
+            }
+        }
+        let mut jtj = [[0.0; MAX_DOF]; MAX_DOF];
+        let mut jtr = [0.0; MAX_DOF];
+        for a in 0..k {
+            let col_a = &cols[a * n..(a + 1) * n];
+            for (&ca, &d) in col_a.iter().zip(&base) {
+                jtr[a] -= ca * d;
+            }
+            for b in a..k {
+                let col_b = &cols[b * n..(b + 1) * n];
+                let mut sum = 0.0;
+                for (&ca, &cb) in col_a.iter().zip(col_b) {
+                    sum += ca * cb;
                 }
+                jtj[a][b] = sum;
+                jtj[b][a] = sum;
             }
         }
         let mut improved = false;
         for _ in 0..8 {
-            let mut m = jtj.clone();
-            for (d, row) in m.iter_mut().enumerate() {
+            let mut m = jtj;
+            for (d, row) in m.iter_mut().enumerate().take(k) {
                 row[d] += lambda * (jtj[d][d].max(1e-12));
             }
-            let Some(step) = solve(m, jtr.clone()) else {
+            let mut rhs = jtr;
+            let mut step = [0.0; MAX_DOF];
+            if !solve_rows(&mut m[..k], &mut rhs[..k], &mut step[..k]) {
                 lambda *= 10.0;
                 continue;
-            };
+            }
             let mut cand = cur;
-            for (j, &sj) in step.iter().enumerate() {
+            for (j, &sj) in step[..k].iter().enumerate() {
                 cand = perturbed(&cand, j, sj);
             }
-            let c2: f64 = pts.iter().map(|&p| cand.signed_distance(p).powi(2)).sum();
+            signed_distances(&cand, pts, &mut trial);
+            let c2: f64 = trial.iter().map(|d| d.powi(2)).sum();
             if c2.is_finite() && c2 < cost {
                 let gain = cost - c2;
                 cur = cand;
                 cost = c2;
+                // The accepted step's distances are the next iteration's.
+                std::mem::swap(&mut base, &mut trial);
                 lambda = (lambda * 0.3).max(1e-12);
                 improved = gain > 1e-15 * (1.0 + cost);
                 break;
@@ -743,6 +806,210 @@ mod tests {
         for (p, n) in pts.iter_mut().zip(nrm.iter_mut()) {
             *p = add(*p, [rnd() * amp, rnd() * amp, rnd() * amp]);
             *n = normalize(add(*n, [rnd() * 0.05, rnd() * 0.05, rnd() * 0.05])).unwrap();
+        }
+    }
+
+    /// `solve` as plain elimination on its own copies.
+    fn solve_plain(mut m: Vec<Vec<f64>>, mut r: Vec<f64>) -> Option<Vec<f64>> {
+        let n = r.len();
+        let scale_ref = m.iter().flatten().map(|x| x.abs()).fold(0.0, f64::max);
+        if scale_ref <= 0.0 {
+            return None;
+        }
+        for col in 0..n {
+            let piv = (col..n).max_by(|&a, &b| m[a][col].abs().total_cmp(&m[b][col].abs()))?;
+            if m[piv][col].abs() < 1e-14 * scale_ref {
+                return None;
+            }
+            m.swap(col, piv);
+            r.swap(col, piv);
+            let pivot_row = m[col].clone();
+            for row in col + 1..n {
+                let f = m[row][col] / pivot_row[col];
+                for (cell, &p) in m[row].iter_mut().zip(pivot_row.iter()).skip(col) {
+                    *cell -= f * p;
+                }
+                r[row] -= f * r[col];
+            }
+        }
+        let mut x = vec![0.0; n];
+        for row in (0..n).rev() {
+            let s: f64 = (row + 1..n).map(|k| m[row][k] * x[k]).sum();
+            x[row] = (r[row] - s) / m[row][row];
+        }
+        Some(x)
+    }
+
+    /// `refine_for` written out one distance at a time: every distance from
+    /// `signed_distance`, the whole of JᵀJ summed, nothing carried over
+    /// between iterations.
+    fn refine_plain(s: Surface, pts: &[V3], max_iters: usize) -> Surface {
+        if pts.len() < dof(&s) + 1 {
+            return s;
+        }
+        let scale_ref = crate::math::Bbox::of(pts).diag().max(1e-9);
+        let mut cur = s;
+        let mut lambda = 1e-3;
+        let mut cost: f64 = pts.iter().map(|&p| cur.signed_distance(p).powi(2)).sum();
+        let k = dof(&cur);
+        for _ in 0..max_iters {
+            let eps = 1e-7 * scale_ref;
+            let base: Vec<f64> = pts.iter().map(|&p| cur.signed_distance(p)).collect();
+            let cols: Vec<Vec<f64>> = (0..k)
+                .map(|j| {
+                    let sj = perturbed(&cur, j, eps);
+                    pts.iter()
+                        .zip(&base)
+                        .map(|(&p, &b)| (sj.signed_distance(p) - b) / eps)
+                        .collect()
+                })
+                .collect();
+            let mut jtj = vec![vec![0.0; k]; k];
+            let mut jtr = vec![0.0; k];
+            for i in 0..pts.len() {
+                for a in 0..k {
+                    jtr[a] -= cols[a][i] * base[i];
+                    for b in 0..k {
+                        jtj[a][b] += cols[a][i] * cols[b][i];
+                    }
+                }
+            }
+            let mut improved = false;
+            for _ in 0..8 {
+                let mut m = jtj.clone();
+                for (d, row) in m.iter_mut().enumerate() {
+                    row[d] += lambda * (jtj[d][d].max(1e-12));
+                }
+                let Some(step) = solve_plain(m, jtr.clone()) else {
+                    lambda *= 10.0;
+                    continue;
+                };
+                let mut cand = cur;
+                for (j, &sj) in step.iter().enumerate() {
+                    cand = perturbed(&cand, j, sj);
+                }
+                let c2: f64 = pts.iter().map(|&p| cand.signed_distance(p).powi(2)).sum();
+                if c2.is_finite() && c2 < cost {
+                    let gain = cost - c2;
+                    cur = cand;
+                    cost = c2;
+                    lambda = (lambda * 0.3).max(1e-12);
+                    improved = gain > 1e-15 * (1.0 + cost);
+                    break;
+                }
+                lambda *= 10.0;
+            }
+            if !improved {
+                break;
+            }
+        }
+        cur
+    }
+
+    fn bits(s: &Surface) -> Vec<u64> {
+        pack(s).iter().map(|v| v.to_bits()).collect()
+    }
+
+    #[test]
+    fn refinement_matches_the_plain_formulation_bit_for_bit() {
+        let a = normalize([0.3, -0.2, 1.0]).unwrap();
+        let truths = [
+            Surface::Cylinder {
+                o: [1.0, 2.0, 3.0],
+                a,
+                r: 4.0,
+            },
+            Surface::Sphere {
+                c: [-2.0, 1.0, 0.5],
+                r: 6.0,
+            },
+            Surface::Cone {
+                apex: [0.5, -1.0, 2.0],
+                a,
+                half_angle: 0.4,
+            },
+            Surface::Torus {
+                c: [1.0, 1.0, -1.0],
+                a,
+                major: 9.0,
+                minor: 2.0,
+            },
+        ];
+        let mut runs = 0;
+        for (t, truth) in truths.iter().enumerate() {
+            for (amp, steps) in [(0.0, 3), (1e-4, 6), (0.05, 9)] {
+                let (mut pts, mut nrm) = match truth {
+                    Surface::Sphere { .. } => sample(truth, steps, 0.1, 1.3, -0.4, 0.9),
+                    Surface::Cone { .. } => sample(truth, steps, 0.0, 1.5, 3.0, 8.0),
+                    Surface::Torus { .. } => sample(truth, steps, 0.2, 1.1, -0.5, 1.2),
+                    _ => sample(truth, steps, 0.0, 1.5, -2.0, 5.0),
+                };
+                noisy(&mut pts, &mut nrm, amp);
+                // Each kind is started on its own data and on every other
+                // kind's, where the fit runs out its iterations or its steps.
+                let mut starts: Vec<Surface> = revolution_candidates(&pts, &nrm);
+                starts.extend(
+                    truths
+                        .iter()
+                        .enumerate()
+                        .map(|(k, s)| perturbed(s, k + t, 0.03)),
+                );
+                starts.push(Surface::Plane {
+                    n: a,
+                    d: dot(a, pts[0]),
+                });
+                for start in starts {
+                    for iters in [20, 60] {
+                        let got = refine_for(start, &pts, iters);
+                        let plain = refine_plain(start, &pts, iters);
+                        assert_eq!(bits(&got), bits(&plain), "{start:?} on {truth:?}");
+                        runs += 1;
+                    }
+                }
+            }
+        }
+        assert!(runs > 100, "only {runs} fits compared");
+    }
+
+    #[test]
+    fn solving_in_place_matches_solving_copies() {
+        let mut s = 11u64;
+        let mut rnd = || {
+            s ^= s << 13;
+            s ^= s >> 7;
+            s ^= s << 17;
+            (s >> 11) as f64 / (1u64 << 53) as f64 - 0.5
+        };
+        for round in 0..500 {
+            let n = 1 + round % MAX_DOF;
+            let mut m = vec![vec![0.0; n]; n];
+            for row in m.iter_mut() {
+                for cell in row.iter_mut() {
+                    *cell = rnd();
+                }
+            }
+            if round % 7 == 0 && n > 1 {
+                m[n - 1] = m[0].clone();
+            }
+            let r: Vec<f64> = (0..n).map(|_| rnd()).collect();
+            let plain = solve_plain(m.clone(), r.clone());
+            let mut fixed = [[0.0; MAX_DOF]; MAX_DOF];
+            let mut rhs = [0.0; MAX_DOF];
+            for i in 0..n {
+                fixed[i][..n].copy_from_slice(&m[i]);
+                rhs[i] = r[i];
+            }
+            let mut x = [0.0; MAX_DOF];
+            let solved = solve_rows(&mut fixed[..n], &mut rhs[..n], &mut x[..n]);
+            let as_bits = |v: &[f64]| v.iter().map(|x| x.to_bits()).collect::<Vec<_>>();
+            assert_eq!(solved, plain.is_some());
+            assert_eq!(
+                solve(m, r).map(|v| as_bits(&v)),
+                plain.as_deref().map(as_bits)
+            );
+            if let Some(plain) = plain {
+                assert_eq!(as_bits(&x[..n]), as_bits(&plain));
+            }
         }
     }
 

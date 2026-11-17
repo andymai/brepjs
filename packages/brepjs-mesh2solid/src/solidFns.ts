@@ -15,7 +15,6 @@ import {
   getSolids,
   isShell,
   isSolid,
-  measureVolume,
   sewShells,
   solidFromShell,
 } from 'brepjs';
@@ -28,9 +27,16 @@ export type Owned = { [Symbol.dispose](): void };
 
 export type Built = { ok: true; value: Solid } | { ok: false; reason: string };
 
+/**
+ * The solid's signed volume, from the kernel alone: `measureVolume` also
+ * integrates the center of mass, which takes as long again on B-spline faces.
+ */
 export function volumeOf(s: Solid): number {
-  const v = measureVolume(s);
-  return v.ok ? v.value : Number.NaN;
+  try {
+    return getKernel().volume(s.wrapped);
+  } catch {
+    return Number.NaN;
+  }
 }
 
 /**
@@ -83,15 +89,16 @@ function closeShell(faces: Face[], owned: Owned[], tolerance: number | undefined
 export function outwardSolid(faces: Face[], owned: Owned[], tolerance?: number): Built {
   let solid = closeShell(faces, owned, tolerance);
   if (!solid.ok) return solid;
+  let volume = volumeOf(solid.value);
   // Sewing orients the shell after whichever face came first; turn it outward.
-  if (volumeOf(solid.value) < 0) {
+  if (volume < 0) {
     const flipped = faces.map((f) => flipFaceOrientation(f));
     owned.push(...flipped);
     solid = closeShell(flipped, owned, tolerance);
     if (!solid.ok) return solid;
+    volume = volumeOf(solid.value);
   }
-  if (!(volumeOf(solid.value) > 0))
-    return { ok: false, reason: 'rebuilt solid has no positive volume' };
+  if (!(volume > 0)) return { ok: false, reason: 'rebuilt solid has no positive volume' };
   return solid;
 }
 
