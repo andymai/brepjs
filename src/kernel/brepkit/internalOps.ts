@@ -25,6 +25,7 @@ import {
   DEFAULT_DEFLECTION,
 } from './helpers.js';
 import { iterShapes, sew } from './topologyOps.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import { vec3At, wasmIndex } from '@/utils/vec3.js';
 
 /** Apply a 4x4 row-major matrix to a shape (copy + transform). */
@@ -119,10 +120,16 @@ function moveVertex(bk: BrepkitKernel, vertexId: number, m: number[]): KernelSha
  * move each face and weld the moved faces into a shell again.
  */
 function moveShell(bk: BrepkitKernel, shellId: number, matrix: number[]): KernelShape {
-  const faces = toArray(bk.getShellFaces(shellId)).map((id) =>
-    applyMatrix(bk, faceHandle(id), matrix)
+  const faceIds = toArray(bk.getShellFaces(shellId));
+  if (faceIds.length < 2) {
+    throw new UnsupportedKernelOperationError(
+      'brepkit: moving a shell of one face is not supported, because brepkit cannot sew one face'
+    );
+  }
+  return sew(
+    bk,
+    faceIds.map((id) => applyMatrix(bk, faceHandle(id), matrix))
   );
-  return sew(bk, faces);
 }
 
 /** Check if we need to transform from default placement (origin, +Z). */

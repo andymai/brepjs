@@ -21,6 +21,7 @@ import {
   importSTL,
   isCompound,
   isErr,
+  isFace,
   isOk,
   isShape3D,
   isShell,
@@ -340,6 +341,35 @@ describe('importSTL', () => {
     const bounds = getBounds(movedMixed);
     expect(bounds.zMin).toBeCloseTo(5, 6);
     expect(bounds.zMax).toBeCloseTo(55, 6);
+  });
+
+  it('imports a loose triangle as a face that moves, alone and beside a closed body', async (ctx) => {
+    skipIfDiverges(ctx, 'importFns.stlImport');
+    const triangle = (z: number): string =>
+      [
+        'facet normal 0 0 1',
+        'outer loop',
+        `vertex 0 0 ${z}`,
+        `vertex 1 0 ${z}`,
+        `vertex 1 1 ${z}`,
+        'endloop',
+        'endfacet',
+        '',
+      ].join('\n');
+
+    using lone = unwrap(await importSTL(new Blob([`solid t\n${triangle(0)}endsolid t\n`])));
+    expect(isFace(lone)).toBe(true);
+    using movedLone = translate(lone, [5, 0, 0]);
+    expect(getBounds(movedLone).xMin).toBeCloseTo(5, 6);
+
+    using closed = box(10, 10, 10);
+    const ascii = await unwrap(exportSTL(closed, { binary: false })).text();
+    const endsolid = ascii.lastIndexOf('endsolid');
+    const combined = ascii.slice(0, endsolid) + triangle(50) + ascii.slice(endsolid);
+    using mixed = unwrap(await importSTL(new Blob([combined])));
+    using movedMixed = translate(mixed, [0, 0, 5]);
+    expect(getFaces(movedMixed)).toHaveLength(13);
+    expect(getBounds(movedMixed).zMax).toBeCloseTo(55, 6);
   });
 
   it('closes a body that sits beside a loose triangle', async (ctx) => {

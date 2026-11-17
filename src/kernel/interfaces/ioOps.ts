@@ -36,7 +36,7 @@ export interface KernelIOOps {
   import3MF(data: ArrayBuffer): KernelShape[];
   /**
    * Import from OBJ format. Returns one body on its own and several as a compound:
-   * a solid per closed body, a shell per open one.
+   * a solid per closed body, a shell per open one, a face per loose triangle.
    */
   importOBJ(data: ArrayBuffer): KernelShape;
   /** Import from GLB format. Returns the bodies of the mesh, as `importOBJ` does. */

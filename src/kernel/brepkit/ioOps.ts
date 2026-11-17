@@ -9,6 +9,7 @@ import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import {
   type BrepkitHandle,
   compoundHandle,
+  faceHandle,
   shellHandle,
   solidHandle,
   unwrapSolidOrThrow,
@@ -36,8 +37,19 @@ interface MeshParts {
   shells: number[];
 }
 
+/**
+ * A face that joins no other comes back as a face, as brepjs's own sewing and
+ * occt-wasm return it. brepkit cannot rebuild a shell of one face, so such a
+ * shell could not move.
+ */
+function openBody(bk: BrepkitKernel, shellId: number): BrepkitHandle {
+  const faces = toArray(bk.getShellFaces(shellId));
+  const [face] = faces;
+  return faces.length === 1 && face !== undefined ? faceHandle(face) : shellHandle(shellId);
+}
+
 function partsShape(bk: BrepkitKernel, parts: MeshParts): KernelShape {
-  const bodies = [...parts.solids.map(solidHandle), ...parts.shells.map(shellHandle)];
+  const bodies = [...parts.solids.map(solidHandle), ...parts.shells.map((id) => openBody(bk, id))];
   const [first] = bodies;
   if (first === undefined) throw new Error('brepkit: the mesh has no body');
   return bodies.length === 1 ? first : makeCompound(bk, bodies);
