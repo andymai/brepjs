@@ -375,21 +375,276 @@ mod tests {
         }
     }
 
-    /// Is `r` the double nearest `√(x² + y²)`? Exact, in integers, for
-    /// positive normal numbers whose exponents are within 8 of each other.
+    /// `v << shift` as little-endian 64-bit limbs.
+    fn wide(v: u128, shift: usize) -> Vec<u64> {
+        let mut limbs = vec![0u64; shift / 64 + 4];
+        let (at, bits) = (shift / 64, shift % 64);
+        let parts = [v as u64, (v >> 64) as u64];
+        for (i, part) in parts.into_iter().enumerate() {
+            limbs[at + i] |= part << bits;
+            if bits > 0 {
+                limbs[at + i + 1] |= part >> (64 - bits);
+            }
+        }
+        limbs
+    }
+
+    fn plus(a: &[u64], b: &[u64]) -> Vec<u64> {
+        let mut out = Vec::new();
+        let mut carry = 0u128;
+        for i in 0..a.len().max(b.len()) + 1 {
+            let sum = carry
+                + u128::from(a.get(i).copied().unwrap_or(0))
+                + u128::from(b.get(i).copied().unwrap_or(0));
+            out.push(sum as u64);
+            carry = sum >> 64;
+        }
+        out
+    }
+
+    fn at_most(a: &[u64], b: &[u64]) -> bool {
+        for i in (0..a.len().max(b.len())).rev() {
+            let (x, y) = (
+                a.get(i).copied().unwrap_or(0),
+                b.get(i).copied().unwrap_or(0),
+            );
+            if x != y {
+                return x < y;
+            }
+        }
+        true
+    }
+
+    /// Is `r` the double nearest `√(x² + y²)`? Exact, in integers of any
+    /// length, for positive normal numbers: it shares no arithmetic with
+    /// `rounded_hypot`.
     fn is_nearest_root(x: f64, y: f64, r: f64) -> bool {
         let parts = |v: f64| {
             let b = v.to_bits();
-            (((b << 12 >> 12) | 1 << 52) as u128, (b >> 52) as i32)
+            assert!(b >> 52 > 0 && b >> 52 < 0x7ff, "{v:e} is not normal");
+            (((b << 12 >> 12) | 1 << 52) as u128, (b >> 52) as usize)
         };
         let ((mx, ex), (my, ey), (mr, er)) = (parts(x), parts(y), parts(r));
         let low = ex.min(ey).min(er);
-        // Four times the sum of squares, against the squares of the two
-        // points halfway to `r`'s neighbours, all in the same unit.
-        let sum = ((mx * mx) << (2 * (ex - low) + 2)) + ((my * my) << (2 * (ey - low) + 2));
-        let below = (2 * mr - 1).pow(2) << (2 * (er - low));
-        let above = (2 * mr + 1).pow(2) << (2 * (er - low));
-        below <= sum && sum <= above
+        // Sixteen times the sum of squares, against the squares of the two
+        // points halfway to `r`'s neighbours, all in the same unit. Below a
+        // power of two the neighbour is half as far.
+        let sum = plus(
+            &wide(mx * mx, 2 * (ex - low) + 4),
+            &wide(my * my, 2 * (ey - low) + 4),
+        );
+        let down = if mr == 1 << 52 { 1 } else { 2 };
+        let below = wide((4 * mr - down).pow(2), 2 * (er - low));
+        let above = wide((4 * mr + 2).pow(2), 2 * (er - low));
+        at_most(&below, &sum) && at_most(&sum, &above)
+    }
+
+    #[test]
+    fn the_oracle_tells_a_neighbour_from_the_nearest() {
+        for (x, y) in [(3.0, 4.0), (1.0, 1.0), (1e80, 3e-70), (5.5e-99, 7.25e-99)] {
+            let exact = if x == 3.0 { 5.0 } else { f64::hypot(x, y) };
+            let (up, down) = (
+                f64::from_bits(exact.to_bits() + 1),
+                f64::from_bits(exact.to_bits() - 1),
+            );
+            let near = [down, exact, up].map(|r| is_nearest_root(x, y, r));
+            assert_eq!(near.iter().filter(|&&n| n).count(), 1, "{x:e} {y:e}");
+        }
+        assert!(is_nearest_root(3.0, 4.0, 5.0));
+        // √(1 + 2⁻⁵⁴) is nearer to 1 than to the next double.
+        let tiny = f64::from_bits((1023 - 27) << 52);
+        assert!(is_nearest_root(1.0, tiny, 1.0));
+        assert!(!is_nearest_root(
+            1.0,
+            tiny,
+            f64::from_bits(1.0f64.to_bits() + 1)
+        ));
+    }
+
+    /// The largest and smallest binary exponents the fast path of
+    /// `rounded_hypot` takes (inputs between 1e-100 and 1e100).
+    const FAST_EXPONENTS: (i64, i64) = (-332, 331);
+
+    #[test]
+    fn hypot_rounds_to_nearest_at_every_exponent_gap() {
+        let mut s = 0x9e3779b97f4a7c15u64;
+        let mut next = move || {
+            s ^= s << 13;
+            s ^= s >> 7;
+            s ^= s << 17;
+            s
+        };
+        let (low, high) = FAST_EXPONENTS;
+        let widest = (high - low) as u64;
+        let mut checked = 0u64;
+        let mut near_the_edge = 0u64;
+        for gap in 0..=widest {
+            // Up to about 27 bits apart the smaller square can still move
+            // the root across a rounding boundary.
+            let rounds = if (20..=32).contains(&gap) {
+                20_000
+            } else {
+                300
+            };
+            for round in 0..rounds {
+                let mantissa = |bits: u64| match round % 4 {
+                    0 => bits & (0xf << 48) | 1 << (bits % 48),
+                    1 => bits & (0xfff << 40),
+                    _ => bits << 12 >> 12,
+                };
+                let top = low + gap as i64 + (next() % (widest - gap + 1)) as i64;
+                let big = f64::from_bits(((1023 + top) as u64) << 52 | mantissa(next()));
+                let small = f64::from_bits(((1023 + top) as u64 - gap) << 52 | mantissa(next()));
+                let (x, y) = if round % 2 == 0 {
+                    (big, -small)
+                } else {
+                    (small, big)
+                };
+                let Some(r) = rounded_hypot(x, y) else {
+                    continue;
+                };
+                assert!(
+                    is_nearest_root(big, small, r),
+                    "gap {gap}: hypot({x:e}, {y:e}) = {r:e}"
+                );
+                checked += 1;
+                near_the_edge += u64::from((26..=28).contains(&gap));
+            }
+        }
+        assert!(checked > 440_000, "only {checked} checked");
+        assert!(
+            near_the_edge > 59_000,
+            "only {near_the_edge} at 26 to 28 bits"
+        );
+    }
+
+    #[test]
+    fn hypot_rounds_to_nearest_beside_a_halfway_root() {
+        let mut s = 0xd1b54a32d192ed03u64;
+        let mut next = move || {
+            s ^= s << 13;
+            s ^= s >> 7;
+            s ^= s << 17;
+            s
+        };
+        // With x an integer of 53 bits and y² = x + ¼, the root is x + ½:
+        // halfway to the next double, with y 26 bits below x. Scaling y
+        // moves the root off halfway by a chosen share of an ulp, and far
+        // enough takes it to the next halfway point or under the first.
+        let nudges: [f64; 9] = [0.0, 1e-9, 3e-7, 6e-7, 1.5e-6, 1e-4, 1e-2, 0.3, 0.8];
+        let (mut settled, mut undecided) = (0u64, 0u64);
+        for _ in 0..20_000 {
+            let int = (1u64 << 52 | next() >> 12) as f64;
+            let scale = f64::from_bits((1023 - 300 + next() % 560) << 52);
+            for nudge in nudges {
+                for side in [-1.0, 1.0] {
+                    let x = int * scale;
+                    let y = (int + 0.25).sqrt() * (1.0 + side * nudge) * scale;
+                    match rounded_hypot(x, y) {
+                        Some(r) => {
+                            assert!(
+                                is_nearest_root(x, y, r),
+                                "hypot({x:e}, {y:e}) = {r:e} (nudge {nudge})"
+                            );
+                            settled += 1;
+                        }
+                        None => undecided += 1,
+                    }
+                }
+            }
+        }
+        // The exact family, and the nudges under a millionth of an ulp.
+        assert!(undecided > 100_000, "only {undecided} undecided");
+        assert!(settled > 200_000, "only {settled} settled");
+    }
+
+    #[test]
+    fn hypot_takes_its_fast_path_only_inside_its_limits() {
+        let step = |v: f64, by: i64| f64::from_bits((v.to_bits() as i64 + by) as u64);
+        let others = |v: f64| [v, v * 1.5, v * 8192.0, v * 1.9e8, 1.0, step(1e100, -1)];
+        let mut inside = 0;
+        // The smaller input must be above 1e-100.
+        for by in -3..=3 {
+            let small = step(1e-100, by);
+            for big in others(small) {
+                let r = rounded_hypot(small, -big);
+                if by <= 0 {
+                    assert_eq!(r, None, "{small:e} is under the limit");
+                } else if let Some(r) = r {
+                    assert!(is_nearest_root(big, small, r), "hypot({small:e}, {big:e})");
+                    inside += 1;
+                }
+            }
+        }
+        // The larger input must be below 1e100.
+        for by in -3..=3 {
+            let big = step(1e100, by);
+            for small in [
+                big,
+                big / 1.5,
+                big / 8192.0,
+                big / 1.9e8,
+                1.0,
+                step(1e-100, 1),
+            ] {
+                let r = rounded_hypot(-big, small);
+                if by >= 0 {
+                    assert_eq!(r, None, "{big:e} is over the limit");
+                } else if let Some(r) = r {
+                    assert!(is_nearest_root(big, small, r), "hypot({big:e}, {small:e})");
+                    inside += 1;
+                }
+            }
+        }
+        assert!(inside >= 30, "only {inside} inside the limits settled");
+
+        // Equal inputs.
+        let mut bits = 0x3ff0_0000_0000_0001u64;
+        for _ in 0..50_000 {
+            bits = bits
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            let exponent = (1023 + FAST_EXPONENTS.0) as u64 + (bits >> 40) % 660;
+            let x = f64::from_bits(exponent << 52 | bits >> 12);
+            if let Some(r) = rounded_hypot(x, x) {
+                assert!(is_nearest_root(x, x, r), "hypot({x:e}, {x:e}) = {r:e}");
+                inside += 1;
+            }
+        }
+        assert!(inside > 45_000);
+
+        // A zero leaves the other input, whatever its size.
+        let subnormal = f64::from_bits(12345);
+        for x in [
+            0.0,
+            subnormal,
+            f64::MIN_POSITIVE,
+            1e-200,
+            2.5,
+            1e200,
+            f64::MAX,
+        ] {
+            for zero in [0.0, -0.0] {
+                assert_eq!(rounded_hypot(-x, zero).map(f64::to_bits), Some(x.to_bits()));
+                assert_eq!(rounded_hypot(zero, x).map(f64::to_bits), Some(x.to_bits()));
+            }
+        }
+        // Subnormal, infinite and NaN inputs go to `f64::hypot`.
+        for x in [
+            subnormal,
+            f64::MIN_POSITIVE,
+            1e-200,
+            1e200,
+            f64::INFINITY,
+            f64::NAN,
+        ] {
+            for y in [subnormal, 1.0, 1e-99, 1e99, x] {
+                assert_eq!(rounded_hypot(x, y), None, "{x:e} {y:e}");
+                assert_eq!(rounded_hypot(y, -x), None, "{y:e} {x:e}");
+            }
+        }
+        assert_eq!(rounded_hypot(f64::INFINITY, 0.0), None);
+        assert_eq!(rounded_hypot(0.0, f64::NAN), None);
     }
 
     #[test]
@@ -419,7 +674,6 @@ mod tests {
                 continue;
             };
             settled += 1;
-            assert_eq!(r.to_bits(), hypot(x, y).to_bits());
             assert!(
                 is_nearest_root(x.abs(), y.abs(), r),
                 "hypot({x:e}, {y:e}) = {r:e}"
