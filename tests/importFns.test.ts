@@ -301,6 +301,47 @@ describe('importSTL', () => {
     expect(getFaces(imported)).toHaveLength(14);
   });
 
+  it('moves an imported open mesh, alone and beside a closed body', async (ctx) => {
+    skipIfDiverges(ctx, 'importFns.stlImport');
+    const sheet = (z: number): string =>
+      [
+        'facet normal 0 0 1',
+        'outer loop',
+        `vertex 0 0 ${z}`,
+        `vertex 1 0 ${z}`,
+        `vertex 1 1 ${z}`,
+        'endloop',
+        'endfacet',
+        'facet normal 0 0 1',
+        'outer loop',
+        `vertex 0 0 ${z}`,
+        `vertex 1 1 ${z}`,
+        `vertex 0 1 ${z}`,
+        'endloop',
+        'endfacet',
+        '',
+      ].join('\n');
+
+    using lone = unwrap(await importSTL(new Blob([`solid sheet\n${sheet(0)}endsolid sheet\n`])));
+    using movedLone = translate(lone, [5, 0, 0]);
+    expect(isShell(movedLone)).toBe(true);
+    if (!isShell(movedLone)) return;
+    expect(getBounds(movedLone).xMin).toBeCloseTo(5, 6);
+    expect(unwrap(measureArea(movedLone))).toBeCloseTo(1, 6);
+
+    using closed = box(10, 10, 10);
+    const ascii = await unwrap(exportSTL(closed, { binary: false })).text();
+    const endsolid = ascii.lastIndexOf('endsolid');
+    const combined = ascii.slice(0, endsolid) + sheet(50) + ascii.slice(endsolid);
+    using mixed = unwrap(await importSTL(new Blob([combined])));
+    using movedMixed = translate(mixed, [0, 0, 5]);
+    expect(getShells(movedMixed)).toHaveLength(2);
+    expect(unwrap(measureVolume(getSolids(movedMixed)[0] as Shape3D))).toBeCloseTo(1000, 3);
+    const bounds = getBounds(movedMixed);
+    expect(bounds.zMin).toBeCloseTo(5, 6);
+    expect(bounds.zMax).toBeCloseTo(55, 6);
+  });
+
   it('closes a body that sits beside a loose triangle', async (ctx) => {
     skipIfDiverges(ctx, 'importFns.stlImport');
     using closed = box(10, 10, 10);

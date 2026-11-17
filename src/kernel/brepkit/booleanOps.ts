@@ -535,10 +535,11 @@ export function buildSolidFromFaces(
     indices[i * 3 + 1] = f[1];
     indices[i * 3 + 2] = f[2];
   }
+  const indexList = Array.from(indices);
   if (typeof bk.importIndexedMeshParts === 'function') {
-    return meshPartsShape(bk, bk.importIndexedMeshParts(positions, indices));
+    return meshPartsShape(bk, bk.importIndexedMeshParts(positions, indexList));
   }
-  return solidHandle(bk.importIndexedMesh(positions, indices));
+  return solidHandle(bk.importIndexedMesh(positions, indexList));
 }
 
 /** Co-located factory: returns the boolean+hull slice of {@link KernelAdapter} bound to `bk`. */
