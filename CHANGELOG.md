@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.28.3](https://github.com/andymai/brepjs/compare/brepjs-v20.28.2...brepjs-v20.28.3) (2026-11-17)
+
+
+### Bug Fixes
+
+* **brepkit:** import each body of a mesh as its own solid or shell ([#2728](https://github.com/andymai/brepjs/issues/2728)) ([26c687c](https://github.com/andymai/brepjs/commit/26c687c86bdf85fde5a40cee50e4a07cc144e329))
+
 ## [20.28.2](https://github.com/andymai/brepjs/compare/brepjs-v20.28.1...brepjs-v20.28.2) (2026-11-16)
 
 
