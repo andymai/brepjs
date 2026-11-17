@@ -121,6 +121,9 @@ function jsxCompilerOptions(partPath: string): ts.CompilerOptions {
 
 const COMPILER_OPTIONS: ts.CompilerOptions = {
   target: ts.ScriptTarget.ES2022,
+  // The ES2022 default set, plus the `Disposable` types: a part releases a shape with `using`,
+  // and the ES2022 set alone has no type for it.
+  lib: ['lib.es2022.full.d.ts', 'lib.esnext.disposable.d.ts'],
   module: ts.ModuleKind.ESNext,
   moduleResolution: ts.ModuleResolutionKind.Bundler,
   strict: true,

@@ -33,6 +33,8 @@ function tsconfigTemplate(): string {
     {
       compilerOptions: {
         target: 'ES2022',
+        // `using` needs the Disposable types, which the ES2022 default set does not have.
+        lib: ['ES2022', 'DOM', 'DOM.Iterable', 'ESNext.Disposable'],
         module: 'ESNext',
         moduleResolution: 'bundler',
         strict: true,
@@ -42,7 +44,7 @@ function tsconfigTemplate(): string {
       include: ['*.brep.ts'],
     },
     null,
-    2,
+    2
   )}\n`;
 }
 
