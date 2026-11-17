@@ -6,6 +6,6 @@
   "packages/brepjs-bim": "0.27.1",
   "packages/brepjs-sheetmetal": "0.5.0",
   "packages/brepjs-families": "0.14.0",
-  "packages/brepjs-mesh2solid": "0.3.0",
+  "packages/brepjs-mesh2solid": "0.3.1",
   "packages/create-brepjs": "0.4.3"
 }

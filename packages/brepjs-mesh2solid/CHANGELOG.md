@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/andymai/brepjs/compare/brepjs-mesh2solid-v0.3.0...brepjs-mesh2solid-v0.3.1) (2026-11-17)
+
+
+### Performance Improvements
+
+* **mesh2solid:** cut wasted work out of the surface fits ([#2725](https://github.com/andymai/brepjs/issues/2725)) ([6befb01](https://github.com/andymai/brepjs/commit/6befb01735408e351f0c8bff8368f8e8ec670064))
+
 ## [0.3.0](https://github.com/andymai/brepjs/compare/brepjs-mesh2solid-v0.2.0...brepjs-mesh2solid-v0.3.0) (2026-11-16)
 
 
