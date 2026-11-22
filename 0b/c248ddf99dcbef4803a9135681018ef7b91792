@@ -1,0 +1,21 @@
+package-lock.json
+  s_f5ebe617f2ec28::t_fe7b707c7595a6 54,11538-11540,15149,15368
+package.json
+  s_f5ebe617f2ec28::t_834c204cac4845 286
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0bc248ddf99dcbef4803a9135681018ef7b91792",
+  "prompts": {},
+  "sessions": {
+    "s_f5ebe617f2ec28": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8396284b-762e-44ab-b73b-9e1a9761418f",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
