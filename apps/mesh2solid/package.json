@@ -21,7 +21,7 @@
     "brepjs-mesh2solid": "*",
     "brepjs-viewer": "*",
     "occt-wasm": "*",
-    "posthog-js": "1.447.3",
+    "posthog-js": "1.450.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "three": "0.187.0"
@@ -30,7 +30,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@types/three": "0.187.0",
-    "@vitejs/plugin-react": "6.2.1",
+    "@vitejs/plugin-react": "6.3.0",
     "typescript": "6.0.3"
   }
 }
