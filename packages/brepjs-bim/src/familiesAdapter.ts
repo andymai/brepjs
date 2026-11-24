@@ -1609,7 +1609,7 @@ function projectFamiliesToBim(
         return err(
           specError(
             'FAMILIES_EARTHWORKS_EVALUATOR_REQUIRED',
-            `familiesToBim: Earthworks Fill '${el.keyPath}' needs bodyEvaluator to materialize its exact Product Body`
+            `familiesToBim: Earthworks Fill '${el.keyPath}' needs bodyEvaluator to materialize its exact Body`
           )
         );
       }

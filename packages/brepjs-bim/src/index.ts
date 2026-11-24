@@ -31,6 +31,7 @@ export type { FrameInput, RigidFrame, Mat4x4 } from './placementFrame.js';
 export {
   frameFromPlacement,
   frameFromMatrix,
+  decomposeFrame,
   frameMul,
   frameInverse,
   translationFrame,

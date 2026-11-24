@@ -1,3 +1,4 @@
+import { wallOpeningFrame, slabOpeningFrame } from '../elementFns/openingFrames.js';
 import { realizeFlights, bindFlightItems } from './flightBody.js';
 import { stairFlightToSolid } from '../elementFns/stairFns.js';
 import { rampFlightToSolid } from '../elementFns/rampFns.js';
@@ -1079,7 +1080,7 @@ export class BimModel {
       }
       if (target.representation !== 'BODY') {
         return err(
-          specError('BODY_UNSUPPORTED_CATEGORY', `Cannot replace a ${target.category} Product Body`)
+          specError('BODY_UNSUPPORTED_CATEGORY', `Cannot replace a ${target.category} Body`)
         );
       }
       const prepared = this.#prepareBody(command, input.body);
@@ -1593,6 +1594,10 @@ export class BimModel {
           );
         const host = wallOpeningSolid(wall.geometry);
         if (!host.ok) return host;
+        if (!this.isRecipeQuantityEligible(wall.localId))
+          return err(
+            specError('BODY_OPENING_REQUIRES_RECIPE', 'Cutting this Wall needs its original recipe')
+          );
         const keyCheck = this.#checkOpeningKeys(identity);
         if (!keyCheck.ok) return keyCheck;
         if (snapshot.offsetAlongWall + snapshot.width > wall.spec.length) {
@@ -1610,6 +1615,12 @@ export class BimModel {
           offsetFromFloor: snapshot.offsetFromFloor,
         };
 
+        const openingPlacement = capturePlacement({
+          kind: 'LOCAL_FRAME',
+          frame: wallOpeningFrame(openingSpec, wallThickness),
+          relativeTo: wall.localId,
+        });
+        if (!openingPlacement.ok) return openingPlacement;
         const cutResult = cutOpeningSolid({
           host: host.value,
           makeTool: () => openingToSolid(openingSpec, wallThickness),
@@ -1624,7 +1635,7 @@ export class BimModel {
             category: 'OPENING',
             representation: 'NONE',
             reason: 'OPENING_REFERENCE',
-            placement: null,
+            placement: openingPlacement.value,
             spec: openingSpec,
             geometry: null,
           },
@@ -1769,6 +1780,12 @@ export class BimModel {
         offsetY: snapshot.offsetY,
       };
 
+      const openingPlacement = capturePlacement({
+        kind: 'LOCAL_FRAME',
+        frame: slabOpeningFrame(openingSpec),
+        relativeTo: slab.localId,
+      });
+      if (!openingPlacement.ok) return openingPlacement;
       const cutResult = cutOpeningSolid({
         host: slab.geometry.solids[0],
         makeTool: () => slabOpeningToSolid(openingSpec, thickness),
@@ -1783,7 +1800,7 @@ export class BimModel {
           category: 'OPENING',
           representation: 'NONE',
           reason: 'OPENING_REFERENCE',
-          placement: null,
+          placement: openingPlacement.value,
           spec: openingSpec,
           geometry: null,
         },

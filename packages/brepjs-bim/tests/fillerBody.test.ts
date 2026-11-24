@@ -1,3 +1,4 @@
+import { frameMul, frameFromPlacement, decomposeFrame } from '../src/placementFrame.js';
 import { elementBounds, elementMaterialVolume } from '../src/elementFns/placedGeometry.js';
 import { box, clone, unwrap } from 'brepjs';
 import { expect, it, vi } from 'vitest';
@@ -151,3 +152,45 @@ it('rejects unsupported Opening definitions and nonphysical Body classifications
   expect(model.getAllElements()).toEqual(initial);
   expect(model.getAllRelationships()).toEqual(relationships);
 });
+
+it.each(['DOOR', 'WINDOW'] as const)(
+  'places a cut-in %s upright on its translated, rotated host',
+  (category) => {
+    using model = new BimModel();
+    const wallId = unwrap(
+      model.addWall({
+        ...OPENING_WALL,
+        length: 6000,
+        height: 3000,
+        thickness: 200,
+        origin: [5000, 3000, 0],
+        axisX: [0, 1, 0],
+      })
+    );
+    const spec = { ...DOOR, width: 900, height: 2100, offsetAlongWall: 550, wallLocalId: wallId };
+    const id = unwrap(
+      category === 'DOOR' ? model.addDoorAndCutWall(spec) : model.addWindowAndCutWall(spec)
+    );
+    const filler = model.getElement(id);
+    if (filler?.placement?.kind !== 'LOCAL_FRAME' || filler.placement.relativeTo === undefined)
+      throw new Error('Missing filler placement');
+    const opening = model.getElement(filler.placement.relativeTo);
+    const wall = model.getElement(wallId);
+    if (opening?.placement?.kind !== 'LOCAL_FRAME' || wall?.placement?.kind !== 'LOCAL_FRAME')
+      throw new Error('Missing Opening or Wall frame');
+    expect(opening.placement.relativeTo).toBe(wallId);
+    const parent = unwrap(
+      frameMul(
+        unwrap(frameFromPlacement(wall.placement.frame)),
+        unwrap(frameFromPlacement(opening.placement.frame))
+      )
+    );
+    const b = unwrap(
+      elementBounds(filler, { kind: 'PLACED', tag: 'World', parentFrame: decomposeFrame(parent) })
+    ).bounds;
+    const actual = [b.xMin, b.xMax, b.yMin, b.yMax, b.zMin, b.zMax];
+    [4800, 4900, 3550, 4450, 0, 2100].forEach((value, i) =>
+      expect(actual[i]).toBeCloseTo(value, 4)
+    );
+  }
+);

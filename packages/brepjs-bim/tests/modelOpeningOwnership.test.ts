@@ -145,21 +145,18 @@ it.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)(
       );
       expect(model.getAllRelationships()).toEqual(relationships);
       expect(old.disposed).toBe(true);
-      if (kind === 'PARAMETRIC') {
-        const windowId = brepjs.unwrap(
-          model.addWindowAndCutWall({ ...WINDOW, wallLocalId: wallId })
-        );
-        expect(brepjs.getKernel().volume(singletonWallSolid(model, wallId).wrapped)).toBeCloseTo(
-          53,
-          7
-        );
-        expect(model.getElement(windowId)).toMatchObject({
-          category: 'WINDOW',
-          spec: { materialName: 'Glass' },
-        });
-        expect(model.getAllRelationships()).toEqual(expect.arrayContaining(relationships));
-        expect(model.getElement(doorId)).toBe(door);
-      }
+      expect(model.addWindowAndCutWall({ ...WINDOW, wallLocalId: wallId })).toMatchObject({
+        ok: false,
+        error: {
+          code:
+            kind === 'PARAMETRIC'
+              ? 'BODY_OPENING_REQUIRES_RECIPE'
+              : 'AUTHORITATIVE_WALL_BODY_IMMUTABLE',
+        },
+      });
+      expect(cut).not.toHaveBeenCalled();
+      expect(model.getAllRelationships()).toEqual(relationships);
+      expect(singletonWallSolid(model, wallId)).toBe(copied);
     } finally {
       model[Symbol.dispose]();
     }

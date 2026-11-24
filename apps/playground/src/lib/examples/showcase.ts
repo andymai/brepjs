@@ -2171,7 +2171,7 @@ export default present(
     label: 'Office Building',
     description:
       'A steel-framed office building of seven storeys as a BIM model. Each column, beam, slab, wall, stair, door and curtain wall is a typed element in a storey, so the kernel takes off the steel and the concrete, and the Files button saves the IFC file. The steel sections, the planning grid, the storey height, the slab depth, the stair and the facade module are published figures. The core layout, the foundations and the roof are a display model.',
-    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+    code: `import { BimModel, placedSolids, toIfc, frameFromPlacement, frameMul, decomposeFrame } from 'brepjs-bim';
 import { compound, measureVolume, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
@@ -2351,13 +2351,22 @@ function assemble(model: BimModel, owned: Body[], storeys: number, cutaway: bool
       const { origin, axisX, axisZ } = element.placement.frame;
       const facade = { origin: [origin[0], origin[1], origin[2] + elevation] as P3, axisX, axisZ };
       list = model.getChildren(p.id).flatMap(child => unwrap(placedSolids(child, { parentFrame: facade })));
+    } else if (element.category === 'DOOR') {
+      const openingId = element.placement.kind === 'LOCAL_FRAME' ? element.placement.relativeTo : undefined;
+      const opening = openingId === undefined ? undefined : elements.get(openingId);
+      const reference = opening?.placement;
+      const wall = reference?.kind === 'LOCAL_FRAME' && reference.relativeTo !== undefined ? elements.get(reference.relativeTo) : undefined;
+      if (reference?.kind !== 'LOCAL_FRAME' || wall?.placement?.kind !== 'LOCAL_FRAME') throw new Error('Missing door opening or host pose');
+      const host = unwrap(frameMul(unwrap(frameFromPlacement(storey)), unwrap(frameFromPlacement(wall.placement.frame))));
+      const parent = unwrap(frameMul(host, unwrap(frameFromPlacement(reference.frame))));
+      list = unwrap(placedSolids(element, { parentFrame: decomposeFrame(parent) }));
     } else {
       list = unwrap(placedSolids(element, { parentFrame: storey }));
     }
     owned.push(...list);
     solids += list.length;
     if (p.tone === 'steel') steelKg += list.reduce((sum, s) => sum + unwrap(measureVolume(s)), 0) * STEEL;
-    else if (p.tone !== 'glass') concreteM3 += list.reduce((sum, s) => sum + unwrap(measureVolume(s)), 0) / 1e9;
+    else if (p.tone !== 'glass' && element.category !== 'DOOR') concreteM3 += list.reduce((sum, s) => sum + unwrap(measureVolume(s)), 0) / 1e9;
     if (p.hidden) continue;
     // A curtain wall gives its glass panes first, then its mullions and transoms.
     if (p.tone === 'glass') { groups.glass.push(...list.slice(0, p.panes)); groups.frame.push(...list.slice(p.panes)); }

@@ -347,6 +347,8 @@ declare function frameFromMatrix(input: unknown): Result<RigidFrame, BimError>;
 
 declare function frameFromPlacement(input: unknown): Result<RigidFrame, BimError>;
 
+declare function decomposeFrame(frame: RigidFrame): FrameInput;
+
 declare function rotationFrame(angleDeg: number, axis?: unknown, at?: unknown): Result<RigidFrame, BimError>;
 
 declare const IDENTITY_FRAME: RigidFrame;

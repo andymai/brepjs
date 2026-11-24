@@ -1099,6 +1099,10 @@ async function serializeIfc(
     const openingElement = elements.find((el) => el.localId === rel.openingLocalId);
     if (openingElement === undefined || openingElement.category !== 'OPENING') continue;
     if (!isWallOpening(openingElement.spec)) continue;
+    if (openingElement.placement?.kind !== 'LOCAL_FRAME')
+      return err(
+        ifcError('PLACEMENT_REFERENCE_UNRESOLVED', 'Opening export requires a local frame')
+      );
     if (wallElement.spec === null)
       return err(
         ifcError(
@@ -1114,6 +1118,7 @@ async function serializeIfc(
       w,
       openingElement.guid,
       openingElement.spec,
+      openingElement.placement.frame,
       wallElement.spec,
       wallPlacementId,
       referenceContextId,
@@ -1139,6 +1144,10 @@ async function serializeIfc(
     const openingElement = elements.find((el) => el.localId === rel.openingLocalId);
     if (openingElement === undefined || openingElement.category !== 'OPENING') continue;
     if (!isSlabOpening(openingElement.spec)) continue;
+    if (openingElement.placement?.kind !== 'LOCAL_FRAME')
+      return err(
+        ifcError('PLACEMENT_REFERENCE_UNRESOLVED', 'Opening export requires a local frame')
+      );
 
     if (slabElement.spec === null)
       return err(
@@ -1150,6 +1159,7 @@ async function serializeIfc(
       w,
       openingElement.guid,
       openingElement.spec,
+      openingElement.placement.frame,
       slabElement.spec,
       slabPlacementId,
       alreadyCut ? (referenceContextId ?? geomSubContextId) : geomSubContextId,

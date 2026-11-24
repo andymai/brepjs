@@ -264,10 +264,10 @@ function wallModel({ doorOpen = 50, windowOpen = 25, length = 4500 }: WallParams
     // The wall. Its thickness goes to the left of axisX, so a wall along +Y is thick toward -X.
     const wall = put('wall', model.addWall({ length, height: HEIGHT, thickness: T, origin: [0, 0, 0], axisX: Y, axisZ: Z, materialName: 'Brick', materialLayers: LAYERS, layerSetName: 'Cavity wall', isExternal: true, loadBearing: true }));
     // The door and the window name their host wall. The model cuts a void for each, and the IFC file relates
-    // wall, void and filling. A door and a window have no solid of their own in this library.
+    // wall, void and filling. The view below uses detailed frame, leaf and glazing proxies for both fillers.
     const doorAt = 550, windowAt = length - WINDOW.opening[0]! - 550;
-    put('frame', model.addDoorAndCutWall({ wallLocalId: wall, width: DOOR.opening[0]!, height: DOOR.opening[1]!, offsetAlongWall: doorAt, offsetFromFloor: 0, materialName: 'Timber', isExternal: true }));
-    put('frame', model.addWindowAndCutWall({ wallLocalId: wall, width: WINDOW.opening[0]!, height: WINDOW.opening[1]!, offsetAlongWall: windowAt, offsetFromFloor: WINDOW.sill, materialName: 'Timber', isExternal: true }));
+    model.placeIn(unwrap(model.addDoorAndCutWall({ wallLocalId: wall, width: DOOR.opening[0]!, height: DOOR.opening[1]!, offsetAlongWall: doorAt, offsetFromFloor: 0, materialName: 'Timber', isExternal: true })), storey);
+    model.placeIn(unwrap(model.addWindowAndCutWall({ wallLocalId: wall, width: WINDOW.opening[0]!, height: WINDOW.opening[1]!, offsetAlongWall: windowAt, offsetFromFloor: WINDOW.sill, materialName: 'Timber', isExternal: true })), storey);
 
     // A lintel over each opening carries the wall. It bears 150 mm on each side.
     const lintelDepth = LINTEL.courses * COURSE;
@@ -884,7 +884,7 @@ function studio({ roofLift = 0, pitch = MIN_PITCH, length = 6000 }: StudioParams
     ] as const;
     for (const o of openings) {
       const spec = { wallLocalId: hosts[o.host], width: o.width, height: o.height, offsetAlongWall: o.at, offsetFromFloor: o.sill, isExternal: true };
-      put('frame', o.door ? model.addDoorAndCutWall({ ...spec, materialName: 'Timber' }) : model.addWindowAndCutWall({ ...spec, materialName: 'Timber' }));
+      model.placeIn(unwrap(o.door ? model.addDoorAndCutWall({ ...spec, materialName: 'Timber' }) : model.addWindowAndCutWall({ ...spec, materialName: 'Timber' })), storey);
     }
 
     // A gable roof on the wall heads. Its base is at z = H, and it goes past the walls at the eaves and the verges.
@@ -1099,7 +1099,7 @@ function stairCore({ storeys = 2, storeyHeight = 3600, width = MIN_WIDTH }: Stai
       put('landing', model.addSlab({ length: across, width: landing, thickness: SLAB, origin: [0, foot - landing, z + H - SLAB], axisX: X, axisZ: Z, predefinedType: 'LANDING', ...concrete }));
     }
 
-    const kit = { model, put, own, levels, H, W, across, run, foot, landing, far, rise, n };
+    const kit = { model, storey, put, own, levels, H, W, across, run, foot, landing, far, rise, n };
     enclose(kit);
     guard(kit);
 
@@ -1132,13 +1132,13 @@ function stairCore({ storeys = 2, storeyHeight = 3600, width = MIN_WIDTH }: Stai
 }
 
 type Kit = {
-  model: BimModel; put: (tone: Tone, made: ReturnType<BimModel['addStair']>) => Id; own: <T extends { delete(): void }>(s: T) => T;
+  model: BimModel; storey: Id; put: (tone: Tone, made: ReturnType<BimModel['addStair']>) => Id; own: <T extends { delete(): void }>(s: T) => T;
   levels: number; H: number; W: number; across: number; run: number; foot: number; landing: number; far: number; rise: number; n: number;
 };
 
 // The core: a ground slab, the wall behind the stair and a door from each floor landing. The other three sides
 // stay open in this model.
-function enclose({ model, put, own, levels, H, across, foot, landing, far }: Kit): void {
+function enclose({ model, storey, put, own, levels, H, across, foot, landing, far }: Kit): void {
   const one = (shape: Parameters<typeof getSolids>[0]): Body => unwrap(clone(getSolids(own(shape))[0]!)) as Body;
   const y0 = foot - landing, length = far - y0;
   put('ground', model.addSlab({ length: across + WALL + 300, width: length + 600, thickness: 250, origin: [-WALL, y0 - 300, -250], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Concrete' }));
@@ -1146,7 +1146,7 @@ function enclose({ model, put, own, levels, H, across, foot, landing, far }: Kit
   const wall = put('wall', model.addWall({ length, height: levels * H + DOOR.height + 300, thickness: WALL, origin: [0, y0, 0], axisX: Y, axisZ: Z, materialName: 'Concrete', loadBearing: true }));
   for (let level = 0; level <= levels; level++) {
     const z = level * H, at = 150, d0 = -WALL + 40, d1 = d0 + 100, jamb = 45, head = 45;
-    put('frame', model.addDoorAndCutWall({ wallLocalId: wall, width: DOOR.width, height: DOOR.height, offsetAlongWall: at, offsetFromFloor: z, materialName: 'Steel', fireRating: 'FD30' }));
+    model.placeIn(unwrap(model.addDoorAndCutWall({ wallLocalId: wall, width: DOOR.width, height: DOOR.height, offsetAlongWall: at, offsetFromFloor: z, materialName: 'Steel', fireRating: 'FD30' })), storey);
     const block = (u0: number, u1: number, x0: number, x1: number, z0: number, z1: number): Body => box(x1 - x0, u1 - u0, z1 - z0, { at: [(x0 + x1) / 2, y0 + at + (u0 + u1) / 2, z + (z0 + z1) / 2] });
     const w = DOOR.width, h = DOOR.height;
     put('frame', model.addProxy({ name: 'Door frame', solid: one(unwrap(fuseAll([own(block(0, jamb, d0, d1, 0, h)), own(block(w - jamb, w, d0, d1, 0, h)), own(block(jamb, w - jamb, d0, d1, h - head, h))]))), materialName: 'Steel' }));
@@ -1451,10 +1451,10 @@ function floor({ lift = 4800, height = 2700, cutaway = true }: SpaceParams = {})
   const window = { width: 1800, height: 1500, offsetFromFloor: 900, wallLocalId: facade, materialName: 'Aluminium' };
   const door = { width: 900, height: 2100, offsetFromFloor: 0, materialName: 'Timber' };
   const lights = [600, 2700, 4800, 8500];
-  for (const y of lights) put('glass', model.addWindowAndCutWall({ ...window, offsetAlongWall: y }));
-  put('wood', model.addDoorAndCutWall({ ...door, wallLocalId: cross, offsetAlongWall: 3300 }));
-  put('wood', model.addDoorAndCutWall({ ...door, wallLocalId: aisle, offsetAlongWall: 5900 }));
-  put('wood', model.addDoorAndCutWall({ ...door, wallLocalId: aisle, offsetAlongWall: 7600 }));
+  for (const y of lights) model.placeIn(unwrap(model.addWindowAndCutWall({ ...window, offsetAlongWall: y })), storey);
+  model.placeIn(unwrap(model.addDoorAndCutWall({ ...door, wallLocalId: cross, offsetAlongWall: 3300 })), storey);
+  model.placeIn(unwrap(model.addDoorAndCutWall({ ...door, wallLocalId: aisle, offsetAlongWall: 5900 })), storey);
+  model.placeIn(unwrap(model.addDoorAndCutWall({ ...door, wallLocalId: aisle, offsetAlongWall: 7600 })), storey);
 
   // Glass, window boards and the furniture are proxies: plain solids with a name. The IFC writer gives each
   // door and window a panel of its own, in the 100 mm of its wall that is farthest from the wall axis.
@@ -1865,7 +1865,7 @@ function block({ storeys = 2, stray = true, georeference = false }: CheckParams 
     const tall = GRID.storey - SLAB.depth - IPE300.overallDepth;
     for (const y of ys.slice(0, -1)) {
       const wall = put(level, 'wall', model.addWall({ length: GRID.y - 200, height: tall, thickness: 200, origin: [100, y + 100, 0], axisX: Y, axisZ: Z, materialName: 'Blockwork', isExternal: true }));
-      put(level, 'glass', model.addWindowAndCutWall({ wallLocalId: wall, width: 3000, height: 1500, offsetAlongWall: 1400, offsetFromFloor: 900, materialName: 'Aluminium' }));
+      model.placeIn(unwrap(model.addWindowAndCutWall({ wallLocalId: wall, width: 3000, height: 1500, offsetAlongWall: 1400, offsetFromFloor: 900, materialName: 'Aluminium' })), levels[level] as Id);
       pane(level, [20, y + 1500, 900], [50, y + 4500, 2400]);
     }
   }
@@ -2046,28 +2046,28 @@ function riverside({ offices = 2, declared = false, roof = false }: BlockParams 
   // A window at y in the front wall and in the back wall, with its glass and its sill. The back wall runs toward
   // -Y. The IFC writer gives each door and window a panel in the inner 100 mm of its wall: the proxies stay out of it.
   const lights = (y: number): void => {
-    put('glass', model.addWindowAndCutWall({ ...pane, wallLocalId: front, offsetAlongWall: y }));
-    put('glass', model.addWindowAndCutWall({ ...pane, wallLocalId: back, offsetAlongWall: LENGTH - y - pane.width }));
+    model.placeIn(unwrap(model.addWindowAndCutWall({ ...pane, wallLocalId: front, offsetAlongWall: y })), storey);
+    model.placeIn(unwrap(model.addWindowAndCutWall({ ...pane, wallLocalId: back, offsetAlongWall: LENGTH - y - pane.width })), storey);
     fill('glass', 'Glazing', [DEPTH - 165, y, 950], [DEPTH - 135, y + pane.width, 2250]);
     fill('glass', 'Glazing', [135, y, 950], [165, y + pane.width, 2250]);
     fill('slab', 'Sill', [DEPTH - OUTER + 100, y, 900], [DEPTH + 60, y + pane.width, 950]);
     fill('slab', 'Sill', [-60, y, 900], [OUTER - 100, y + pane.width, 950]);
   };
   room('Lobby', OUTER, LOBBY);
-  put('door', model.addDoorAndCutWall({ ...door, width: 1000, wallLocalId: front, offsetAlongWall: OUTER + 850 }));
+  model.placeIn(unwrap(model.addDoorAndCutWall({ ...door, width: 1000, wallLocalId: front, offsetAlongWall: OUTER + 850 })), storey);
   fill('door', 'Door leaf', [DEPTH - 170, OUTER + 850, 0], [DEPTH - 120, OUTER + 1850, 2100]);
   fill('slab', 'Step', [DEPTH, OUTER + 650, -250], [DEPTH + 600, OUTER + 2050, -20]);
   put('roof', model.addSlab({ length: DEPTH + 2400, width: LENGTH + 2000, thickness: 150, origin: [-1000, -1000, -400], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Paving' }));
   for (let k = 0; k < offices; k++) {
     const y = OUTER + LOBBY + k * (INNER + OFFICE);
     const partition = put('wall', model.addWall({ length: inside, height: HEIGHT.wall, thickness: INNER, origin: [OUTER, y, 0], axisX: X, axisZ: Z, materialName: 'Plasterboard', isExternal: false }));
-    put('door', model.addDoorAndCutWall({ ...door, wallLocalId: partition, offsetAlongWall: 4500 }));
+    model.placeIn(unwrap(model.addDoorAndCutWall({ ...door, wallLocalId: partition, offsetAlongWall: 4500 })), storey);
     room('Office 0' + (k + 1), y + INNER, OFFICE);
     lights(y + INNER + 500);
     lights(y + INNER + 2350);
   }
   for (const [wall, y] of [[south, 135], [north, LENGTH - 165]] as const) {
-    put('glass', model.addWindowAndCutWall({ ...pane, wallLocalId: wall, offsetAlongWall: (inside - pane.width) / 2 }));
+    model.placeIn(unwrap(model.addWindowAndCutWall({ ...pane, wallLocalId: wall, offsetAlongWall: (inside - pane.width) / 2 })), storey);
     fill('glass', 'Glazing', [DEPTH / 2 - pane.width / 2, y, 950], [DEPTH / 2 + pane.width / 2, y + 30, 2250]);
     fill('slab', 'Sill', [DEPTH / 2 - pane.width / 2, y < OUTER ? -60 : LENGTH - OUTER + 100, 900], [DEPTH / 2 + pane.width / 2, y < OUTER ? OUTER - 100 : LENGTH + 60, 950]);
   }
@@ -2228,13 +2228,13 @@ function pavilion(pitch: number) {
   // The openings: a door and a window in the front, and a window in each end. A door or a window has no body
   // in the source model. The writer gives each one a panel in the inner 100 mm of its wall, so the file has four
   // more bodies than the source view. The leaf and the glass are proxies in the outer part of each opening.
-  put('door', model.addDoorAndCutWall({ wallLocalId: face, width: 1000, height: 2100, offsetAlongWall: 900, offsetFromFloor: 0, materialName: 'Timber' }));
+  model.placeIn(unwrap(model.addDoorAndCutWall({ wallLocalId: face, width: 1000, height: 2100, offsetAlongWall: 900, offsetFromFloor: 0, materialName: 'Timber' })), storey);
   fill('door', 'Door leaf', [A - 70, 900, 0], [A - 20, 1900, 2100]);
-  put('glass', model.addWindowAndCutWall({ wallLocalId: face, width: 1800, height: 1200, offsetAlongWall: 3000, offsetFromFloor: 900, materialName: 'Aluminium' }));
+  model.placeIn(unwrap(model.addWindowAndCutWall({ wallLocalId: face, width: 1800, height: 1200, offsetAlongWall: 3000, offsetFromFloor: 900, materialName: 'Aluminium' })), storey);
   fill('glass', 'Glazing', [A - 60, 3000, 900], [A - 30, 4800, 2100]);
   const side = (A - 2 * T - 1500) / 2;
   for (const [id, y] of [[south, 40], [north, B - 70]] as const) {
-    put('glass', model.addWindowAndCutWall({ wallLocalId: id, width: 1500, height: 1200, offsetAlongWall: side, offsetFromFloor: 900, materialName: 'Aluminium' }));
+    model.placeIn(unwrap(model.addWindowAndCutWall({ wallLocalId: id, width: 1500, height: 1200, offsetAlongWall: side, offsetFromFloor: 900, materialName: 'Aluminium' })), storey);
     fill('glass', 'Glazing', [T + side, y, 900], [T + side + 1500, y + 30, 2100]);
   }
   // The porch: three round posts with a square beam, a guard rail, and two steps up to the deck.
@@ -2513,11 +2513,11 @@ function shell(model: BimModel, storeys: number) {
         // The distance along a wall is from its own start: the north and the west wall run backward.
         const offsetAlongWall = o.side === 'south' ? o.at - inset : o.side === 'north' ? PLAN.x - inset - o.at - o.width : PLAN.y - inset - t - o.at - o.width;
         const hole = { wallLocalId: ids[o.side], width: o.width, height: o.height, offsetAlongWall, offsetFromFloor: o.sill, isExternal: true };
-        put(at, o.door ? model.addDoorAndCutWall({ ...hole, materialName: 'Timber door' }) : model.addWindowAndCutWall({ ...hole, materialName: 'Glazing' }));
+        model.placeIn(unwrap(o.door ? model.addDoorAndCutWall({ ...hole, materialName: 'Timber door' }) : model.addWindowAndCutWall({ ...hole, materialName: 'Glazing' })), levels[at]!);
       });
     }
     const spine = put(at, model.addWall({ ...spineWall, height: STOREY, origin: [SPINE.x + SPINE.width, WALL, 0] }));
-    put(at, model.addDoorAndCutWall({ wallLocalId: spine, width: 4 * CO.x + 10, height: 28 * CO.z, offsetAlongWall: 4250, offsetFromFloor: 0, materialName: 'Timber door' }));
+    model.placeIn(unwrap(model.addDoorAndCutWall({ wallLocalId: spine, width: 4 * CO.x + 10, height: 28 * CO.z, offsetAlongWall: 4250, offsetFromFloor: 0, materialName: 'Timber door' })), levels[at]!);
 
     // The stair to the next floor: one straight flight along the spine wall.
     if (at < storeys - 1) {

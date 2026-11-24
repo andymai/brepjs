@@ -8,7 +8,14 @@ export type ElementFields = {
 }[BimCategory];
 
 export function retainedSolids(element: ElementFields): readonly ValidSolid[] {
-  return element.representation === 'BODY' ? element.geometry.solids : [];
+  switch (element.representation) {
+    case 'BODY':
+      return element.geometry.solids;
+    case 'NONE':
+      return [];
+    default:
+      throw new Error('Unsupported element representation', { cause: element satisfies never });
+  }
 }
 
 /** Snapshot ownership-bearing descriptors only; never freeze or clone native handles. */
