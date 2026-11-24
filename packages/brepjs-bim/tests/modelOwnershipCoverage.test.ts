@@ -217,8 +217,7 @@ it.each(creators)(
     if (element === null) throw new Error('Missing created element');
     expect(Object.isFrozen(element)).toBe(true);
     let items: readonly ValidSolid[];
-    if (element.category === 'WALL' || element.category === 'RAILING')
-      items = element.geometry.solids;
+    if (element.representation === 'BODY') items = element.geometry.solids;
     else if (element.category === 'CURTAIN_WALL') {
       expect(Object.isFrozen(element.geometry)).toBe(true);
       expect(Object.isFrozen(element.geometry.panels)).toBe(true);
