@@ -32,7 +32,7 @@ it('reports post-release failure as COMMITTED, attempts every old item once, and
     const first = box(1, 1, 1);
     const second = box(1, 1, 1);
     unwrap(
-      model.replaceProductBody({
+      model.replaceBody({
         localId: id,
         body: { kind: 'PARAMETRIC', solids: [first, second] },
       })
@@ -65,14 +65,14 @@ it('reports post-release failure as COMMITTED, attempts every old item once, and
     const secondAttempt = vi.spyOn(second, Symbol.dispose).mockImplementation(secondRelease);
     const nextAttempt = vi.spyOn(next, Symbol.dispose);
     const receipt = unwrap(
-      model.replaceProductBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [next] } })
+      model.replaceBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [next] } })
     );
     expect(receipt).toMatchObject({
       kind: 'COMMITTED',
       localId: id,
       cleanup: {
         kind: 'FAILED',
-        diagnostics: [{ operation: 'replaceProductBody', localId: id, itemIndex: 0, cause }],
+        diagnostics: [{ operation: 'replaceBody', localId: id, itemIndex: 0, cause }],
       },
     });
     expect(callbackRead).toBe(model.getElement(id)?.geometry);
@@ -116,12 +116,12 @@ it('retains responsibility for a live uncertain retirement and never readopts or
   try {
     const next = box(2, 2, 2);
     const receipt = unwrap(
-      model.replaceProductBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [next] } })
+      model.replaceBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [next] } })
     );
     expect(receipt.cleanup.kind).toBe('FAILED');
     expect(uncertain.disposed).toBe(false);
     expect(
-      model.replaceProductBody({
+      model.replaceBody({
         localId: id,
         body: { kind: 'AUTHORITATIVE', solids: [uncertain] },
       })
@@ -137,7 +137,7 @@ it('retains responsibility for a live uncertain retirement and never readopts or
     model[Symbol.dispose]();
     expect(attempt).toHaveBeenCalledTimes(1);
     expect(model.getGeometryCleanupDiagnostics()).toMatchObject([
-      { operation: 'replaceProductBody', localId: id, itemIndex: 0, cause },
+      { operation: 'replaceBody', localId: id, itemIndex: 0, cause },
     ]);
     if (baseline !== null) expect(nativeShapeCount()).toBe(baseline + 1);
   } finally {

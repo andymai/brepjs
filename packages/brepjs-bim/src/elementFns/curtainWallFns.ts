@@ -11,8 +11,8 @@ import {
   uncertainGeneratedResources,
   type GeneratedResource,
 } from '../geometryGeneration.js';
-import { cleanupOwnedResources, cleanupReport } from '../productBodyCleanup.js';
-import { wrappedResourceObject } from '../types/productBody.js';
+import { cleanupOwnedResources, cleanupReport } from '../bodyCleanup.js';
+import { wrappedResourceObject } from '../types/body.js';
 
 interface CurtainGenerationScope {
   itemIndex: number;

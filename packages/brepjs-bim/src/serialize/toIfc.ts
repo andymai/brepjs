@@ -142,32 +142,32 @@ import {
   type ValidationReport,
   type ValidationIssue,
 } from '../validation/severity.js';
-import { bodySolids, measureProductBodyMaterial } from '../types/productBody.js';
-import type { NonEmpty } from '../types/productBody.js';
-import { preflightProductBody } from './productBodyPreflight.js';
+import { bodySolids, measureBodyMaterial } from '../types/body.js';
+import type { NonEmpty } from '../types/body.js';
+import { preflightBody } from './bodyPreflight.js';
 import { deriveWallQuantities } from './wallQuantities.js';
 import {
-  writeProductBodyGeometry,
+  writeBodyGeometry,
   writeBodyPlacement,
   type PreparedTessellation,
 } from '../ifc-writer/tessellationWriter.js';
 
-type ProductBodyElement = Extract<AnyBimElement, { representation: 'BODY' }>;
+type BodyElement = Extract<AnyBimElement, { representation: 'BODY' }>;
 
-interface PreflightedProductElement<E extends ProductBodyElement> {
+interface PreflightedProductElement<E extends BodyElement> {
   readonly element: E;
   readonly frame: FrameInput;
   readonly items: NonEmpty<PreparedTessellation>;
 }
 
-function preflightProductBodies<E extends ProductBodyElement>(
+function preflightBodies<E extends BodyElement>(
   elements: readonly E[]
 ): Result<readonly PreflightedProductElement<E>[], BimError> {
   const preflighted: PreflightedProductElement<E>[] = [];
   for (const element of elements) {
     const frame = localPlacementFrame(element.placement);
     if (!frame.ok) return frame;
-    const prepared = preflightProductBody({
+    const prepared = preflightBody({
       localId: element.localId,
       solids: bodySolids(element.geometry),
     });
@@ -184,26 +184,26 @@ function preflightProductBodies<E extends ProductBodyElement>(
 /** Use analytic parameters only while model ownership still binds them to this Body. */
 function writeRetainedBody(
   writer: IfcWriter,
-  element: ProductBodyElement,
+  element: BodyElement,
   contextId: number,
   parentId: number | null
 ) {
   const frame = localPlacementFrame(element.placement);
   if (!frame.ok) return frame;
-  const prepared = preflightProductBody({
+  const prepared = preflightBody({
     localId: element.localId,
     solids: element.geometry.solids,
   });
   if (!prepared.ok) return prepared;
-  return ok(writeProductBodyGeometry(writer, frame.value, prepared.value, contextId, parentId));
+  return ok(writeBodyGeometry(writer, frame.value, prepared.value, contextId, parentId));
 }
 
 function writeMaterialQuantities(
-  element: ProductBodyElement,
+  element: BodyElement,
   issues: ValidationIssue[],
   write: (netVolumeM3: number) => void
 ): void {
-  const measured = measureProductBodyMaterial(element.geometry.solids);
+  const measured = measureBodyMaterial(element.geometry.solids);
   if (measured.ok) write(measured.value / 1_000_000_000);
   else
     issues.push(
@@ -270,9 +270,9 @@ async function serializeIfc(
     const parent = placement.relativeTo;
     if (parent === undefined) continue;
     const isChild =
-      (element.category === 'MEMBER' || element.category === 'PLATE') &&
       element.spec !== null &&
-      model.getElement(parent)?.category === 'CURTAIN_WALL';
+      model.getElement(parent)?.category === 'CURTAIN_WALL' &&
+      model.getChildren(parent).some((child) => child.localId === element.localId);
     const isFiller = relationships.some(
       (r) =>
         r.kind === 'FILLS_OPENING' &&
@@ -289,17 +289,17 @@ async function serializeIfc(
         )
       );
   }
-  const standaloneMember = elements.find(
+  const unsupportedStandalone = elements.find(
     (element) =>
       (element.category === 'MEMBER' || element.category === 'PLATE') && element.spec === null
   );
-  if (standaloneMember) {
+  if (unsupportedStandalone) {
     return err(
       ifcError(
         'IFC_UNSUPPORTED_CLASSIFICATION',
-        `Standalone ${standaloneMember.category} export has no qualified IFC encoding`,
+        `Standalone ${unsupportedStandalone.category} export has no qualified IFC encoding`,
         undefined,
-        { localId: standaloneMember.localId, category: standaloneMember.category }
+        { localId: unsupportedStandalone.localId, category: unsupportedStandalone.category }
       )
     );
   }
@@ -339,9 +339,9 @@ async function serializeIfc(
   const zones = model.getZones();
   const systems = model.getSystems();
 
-  const preflightedWallsResult = preflightProductBodies(walls);
+  const preflightedWallsResult = preflightBodies(walls);
   if (!preflightedWallsResult.ok) return err(preflightedWallsResult.error);
-  const preflightedRailingsResult = preflightProductBodies(railings);
+  const preflightedRailingsResult = preflightBodies(railings);
   if (!preflightedRailingsResult.ok) return err(preflightedRailingsResult.error);
   const preflightedWalls = preflightedWallsResult.value;
   const preflightedRailings = preflightedRailingsResult.value;
@@ -495,7 +495,7 @@ async function serializeIfc(
       solids: bodySolids(wall.geometry),
     });
 
-    const { localPlacementId, productDefinitionShapeId, bodyItemIds } = writeProductBodyGeometry(
+    const { localPlacementId, productDefinitionShapeId, bodyItemIds } = writeBodyGeometry(
       w,
       preflighted.frame,
       preflighted.items,
@@ -1022,7 +1022,7 @@ async function serializeIfc(
     const containingId = findContainerOf(railing.localId, relationships);
     const storeyPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const { localPlacementId, productDefinitionShapeId, bodyItemIds } = writeProductBodyGeometry(
+    const { localPlacementId, productDefinitionShapeId, bodyItemIds } = writeBodyGeometry(
       w,
       preflighted.frame,
       preflighted.items,

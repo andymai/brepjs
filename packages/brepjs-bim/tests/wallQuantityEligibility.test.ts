@@ -3,7 +3,7 @@ import { box, getKernel, unwrap } from 'brepjs';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { readPsets } from '../src/import/dataRead.js';
 import { SpfReader } from '../src/import/spfReader.js';
-import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
+import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
 import { toIfcValidated } from '../src/serialize/toIfc.js';
 import {
   bodyExchangeFixture,
@@ -19,7 +19,7 @@ beforeAll(async () => {
 }, 30_000);
 
 afterEach(() => {
-  setProductBodyTestHooksForTesting(null);
+  setBodyTestHooksForTesting(null);
   vi.restoreAllMocks();
 });
 
@@ -34,7 +34,7 @@ describe('Wall quantity eligibility', () => {
         const wall = model.getElement(fixture.localId);
         if (wall?.category !== 'WALL') throw new Error('Missing Wall');
         let measurements = 0;
-        setProductBodyTestHooksForTesting({
+        setBodyTestHooksForTesting({
           before: ({ step }) => {
             if (step === 'measure') measurements++;
           },
@@ -83,7 +83,7 @@ describe('Wall quantity eligibility', () => {
         const wall = model.getElement(fixture.localId);
         if (wall?.category !== 'WALL') throw new Error('Missing Wall');
         let measurements = 0;
-        setProductBodyTestHooksForTesting({
+        setBodyTestHooksForTesting({
           before: ({ step }) => {
             if (step === 'measure') measurements++;
           },
@@ -131,7 +131,7 @@ describe('Wall quantity eligibility', () => {
         using model = fixture.model;
         const replacement = box(length, 100, 500);
         unwrap(
-          model.replaceProductBody({
+          model.replaceBody({
             localId: fixture.localId,
             body: { kind: 'PARAMETRIC', solids: [replacement] },
           })

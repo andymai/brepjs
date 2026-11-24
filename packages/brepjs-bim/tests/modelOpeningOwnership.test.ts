@@ -11,7 +11,7 @@ import {
   openingHost,
   singletonWallSolid,
 } from './helpers/openingFixture.js';
-import type { ProductBody } from '../src/types/productBody.js';
+import type { Body } from '../src/types/body.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -134,7 +134,7 @@ it.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)(
       const copied = brepjs.unwrap(brepjs.clone(old));
       const cut = vi.spyOn(brepjs, 'cut');
       expect(
-        model.replaceProductBody({ localId: wallId, body: { kind, solids: [copied] } })
+        model.replaceBody({ localId: wallId, body: { kind, solids: [copied] } })
       ).toMatchObject({ ok: true, value: { kind: 'COMMITTED', localId: wallId } });
       expect(cut).not.toHaveBeenCalled();
       expect(singletonWallSolid(model, wallId)).toBe(copied);
@@ -260,7 +260,7 @@ it('cuts a singleton recipe Wall and commits door identities, material and owner
 });
 
 const unsupportedBodies: ReadonlyArray<{
-  kind: ProductBody['kind'];
+  kind: Body['kind'];
   multiple: boolean;
   code: string;
 }> = [
@@ -279,8 +279,8 @@ for (const method of ['addDoorAndCutWall', 'addWindowAndCutWall'] as const) {
         const id = brepjs.unwrap(model.addWall(OPENING_WALL));
         const supportedId = brepjs.unwrap(model.addWall(OPENING_WALL));
         const first = brepjs.box(10, 1, 6);
-        const solids: ProductBody['solids'] = multiple ? [first, brepjs.box(1, 1, 1)] : [first];
-        brepjs.unwrap(model.replaceProductBody({ localId: id, body: { kind, solids } }));
+        const solids: Body['solids'] = multiple ? [first, brepjs.box(1, 1, 1)] : [first];
+        brepjs.unwrap(model.replaceBody({ localId: id, body: { kind, solids } }));
         const before = model.getAllElements();
         const relationships = model.getAllRelationships();
         const nativeBefore = arena();

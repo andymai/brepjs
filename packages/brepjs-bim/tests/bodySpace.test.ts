@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { box, getKernel } from 'brepjs';
-import { productBodyBounds } from '../src/types/productBody.js';
+import { bodyBounds } from '../src/types/body.js';
 import { IDENTITY_FRAME } from '../src/placementFrame.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
@@ -31,13 +31,13 @@ it.each([
   const shapeType = vi.spyOn(kernel, 'shapeType');
   const locate = vi.spyOn(kernel, 'locate');
   const release = vi.spyOn(solid, Symbol.dispose);
-  const result: unknown = Reflect.apply(productBodyBounds, undefined, [
+  const result: unknown = Reflect.apply(bodyBounds, undefined, [
     { kind: 'AUTHORITATIVE', solids: [solid] },
     space,
   ]);
   expect(result).toMatchObject({
     ok: false,
-    error: { operation: 'productBodyBounds', code: 'BODY_INVALID_SPACE' },
+    error: { operation: 'bodyBounds', code: 'BODY_INVALID_SPACE' },
   });
   expect(shapeType).not.toHaveBeenCalled();
   expect(locate).not.toHaveBeenCalled();

@@ -1,8 +1,8 @@
 import { GeometryCleanupError } from 'brepjs';
 import { z } from 'zod';
 import type { BimError } from './errors/bimError.js';
-import type { GeometryCleanupDiagnostic } from './productBodyCleanup.js';
-import type { ProductBodyOperation } from './types/productBody.js';
+import type { GeometryCleanupDiagnostic } from './bodyCleanup.js';
+import type { BodyOperation } from './types/body.js';
 
 const diagnosticSchema = z.object({
   operation: z.string(),
@@ -19,12 +19,12 @@ const failedCleanup = z.object({
 const errorMetadata = z.object({ cleanup: z.unknown().optional() });
 const cleanupAttempt = Symbol('geometryCleanupAttempt');
 const bodyOperation = z.enum([
-  'validateProductBody',
-  'copyProductBody',
-  'transformProductBody',
-  'productBodyBounds',
-  'measureProductBodyMaterial',
-] satisfies readonly ProductBodyOperation[]);
+  'validateBody',
+  'copyBody',
+  'transformBody',
+  'bodyBounds',
+  'measureBodyMaterial',
+] satisfies readonly BodyOperation[]);
 
 function attemptIdentity(source: object): object {
   const identity = cleanupAttempt in source ? source[cleanupAttempt] : source;

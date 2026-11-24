@@ -3,8 +3,8 @@ import { DisposalScope, getBounds, getKernel, measureVolume, unwrap } from 'brep
 import { makeLocalIdCounter } from '../src/identity/localId.js';
 import { newIfcGuid } from '../src/identity/ifcGuid.js';
 import { placedSolids } from '../src/elementFns/placedGeometry.js';
-import { validateProductBody } from '../src/types/productBody.js';
-import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
+import { validateBody } from '../src/types/body.js';
+import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
 import { createOverlapFixture } from './helpers/nativeBodyFixture.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
@@ -18,7 +18,7 @@ beforeAll(async () => {
 const parentFrame = { origin: [0, 20, 0], axisX: [0, 1, 0], axisZ: [0, 0, 1] } satisfies FrameInput;
 const ids = makeLocalIdCounter();
 afterEach(() => {
-  setProductBodyTestHooksForTesting(null);
+  setBodyTestHooksForTesting(null);
   vi.restoreAllMocks();
 });
 
@@ -29,7 +29,7 @@ for (const category of ['WALL', 'RAILING'] as const) {
       {
         using scope = new DisposalScope();
         const { a, b } = createOverlapFixture(scope);
-        const geometry = unwrap(validateProductBody({ kind, solids: [a, b] }));
+        const geometry = unwrap(validateBody({ kind, solids: [a, b] }));
         const element: BimElement<typeof category> = {
           guid: newIfcGuid(),
           localId: ids.next(),
@@ -78,7 +78,7 @@ for (const category of ['WALL', 'RAILING'] as const) {
     it('uses shared partial-output cleanup and rejects invalid frames before allocation', () => {
       using scope = new DisposalScope();
       const { a, b } = createOverlapFixture(scope);
-      const geometry = unwrap(validateProductBody({ kind, solids: [a, b] }));
+      const geometry = unwrap(validateBody({ kind, solids: [a, b] }));
       const element: BimElement<typeof category> = {
         guid: newIfcGuid(),
         localId: ids.next(),
@@ -113,7 +113,7 @@ for (const category of ['WALL', 'RAILING'] as const) {
       });
       expect(locate).not.toHaveBeenCalled();
       const releases: ReturnType<typeof vi.spyOn>[] = [];
-      setProductBodyTestHooksForTesting({
+      setBodyTestHooksForTesting({
         afterAllocate({ solid, itemIndex }) {
           releases.push(vi.spyOn(solid, Symbol.dispose));
           if (itemIndex === 1) throw new Error('later placement failure');
@@ -122,7 +122,7 @@ for (const category of ['WALL', 'RAILING'] as const) {
       const live = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
       expect(placedSolids(element, { parentFrame })).toMatchObject({
         ok: false,
-        error: { operation: 'transformProductBody', itemIndex: 1 },
+        error: { operation: 'transformBody', itemIndex: 1 },
       });
       expect(releases).toHaveLength(2);
       releases.forEach((release) => expect(release).toHaveBeenCalledTimes(1));

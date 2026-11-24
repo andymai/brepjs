@@ -8,7 +8,7 @@ export interface BodyNativeEvent {
   readonly itemIndex: number;
 }
 
-export interface ProductBodyTestHooks {
+export interface BodyTestHooks {
   readonly before?: (event: BodyNativeEvent) => Result<void, BimError> | void;
   /** Called only after the new handle has been registered for failure cleanup. */
   readonly afterAllocate?: (
@@ -18,13 +18,13 @@ export interface ProductBodyTestHooks {
   readonly bounds?: typeof getBounds;
 }
 
-let hooks: ProductBodyTestHooks | null = null;
+let hooks: BodyTestHooks | null = null;
 
 /** Package-internal seam. Tests keep native geometry real and reset after each case. */
-export function setProductBodyTestHooksForTesting(value: ProductBodyTestHooks | null): void {
+export function setBodyTestHooksForTesting(value: BodyTestHooks | null): void {
   hooks = value;
 }
 
-export function productBodyTestHooks(): ProductBodyTestHooks | null {
+export function bodyTestHooks(): BodyTestHooks | null {
   return hooks;
 }

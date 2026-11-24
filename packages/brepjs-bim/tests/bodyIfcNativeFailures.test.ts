@@ -4,7 +4,7 @@ import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { fromIfc } from '../src/import/fromIfc.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { disposeImportedModel } from '../src/import/importedModel.js';
-import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
+import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
 import { setGeometryReadTestHooksForTesting } from '../src/import/geometryRead.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 import { IFC_BODY_META, bodyExchangeFixture } from './helpers/ifcBodyFixture.js';
@@ -13,7 +13,7 @@ beforeAll(async () => {
   await initKernel();
 }, 30_000);
 afterEach(() => {
-  setProductBodyTestHooksForTesting(null);
+  setBodyTestHooksForTesting(null);
   setGeometryReadTestHooksForTesting(null);
   vi.restoreAllMocks();
 });
@@ -44,7 +44,7 @@ it.each(['fuseAll', 'volume'] as const)(
           releases.push(vi.spyOn(solid, Symbol.dispose));
         },
       });
-      setProductBodyTestHooksForTesting({
+      setBodyTestHooksForTesting({
         afterAllocate: ({ solid }) => {
           temporaryReleases.push(vi.spyOn(solid, Symbol.dispose));
         },
@@ -104,7 +104,7 @@ for (const primaryFailure of [false, true]) {
               releases.push(vi.spyOn(solid, Symbol.dispose));
             },
           });
-          setProductBodyTestHooksForTesting({
+          setBodyTestHooksForTesting({
             before: ({ step }) => {
               if (primaryFailure && step === 'measure') throw primaryCause;
             },

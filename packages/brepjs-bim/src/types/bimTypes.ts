@@ -23,7 +23,7 @@ import type {
   EarthworksFillSpec,
 } from '../specs/infrastructureSpec.js';
 import type { PlacementDefinition } from './placementDefinition.js';
-import type { ProductBody } from './productBody.js';
+import type { Body } from './body.js';
 
 export const bodyClassifications = [
   'WALL',
@@ -92,73 +92,47 @@ export interface CurtainComponentSpec {
   readonly size: readonly [number, number, number];
 }
 
-export type BimSpecFor<C extends BimCategory> = C extends 'MEMBER' | 'PLATE'
-  ? CurtainComponentSpec
-  : C extends 'WALL'
-    ? WallSpec
-    : C extends 'SLAB'
-      ? SlabSpec
-      : C extends 'BEAM'
-        ? BeamSpec
-        : C extends 'COLUMN'
-          ? ColumnSpec
-          : C extends 'OPENING'
-            ? OpeningSpec
-            : C extends 'DOOR'
-              ? Omit<DoorSpec, 'wallLocalId' | 'offsetFromFloor' | 'offsetAlongWall'>
-              : C extends 'WINDOW'
-                ? Omit<WindowSpec, 'wallLocalId' | 'offsetFromFloor' | 'offsetAlongWall'>
-                : C extends 'PROXY'
-                  ? Omit<ProxySpec, 'solid'>
-                  : C extends 'SPACE'
-                    ? SpaceSpec
-                    : C extends 'ROOF'
-                      ? RoofSpec
-                      : C extends 'CURTAIN_WALL'
-                        ? CurtainWallSpec
-                        : C extends 'FOOTING'
-                          ? FootingSpec
-                          : C extends 'PILE'
-                            ? PileSpec
-                            : C extends 'STAIR'
-                              ? StairSpec
-                              : C extends 'RAMP'
-                                ? RampSpec
-                                : C extends 'RAILING'
-                                  ? RailingSpec
-                                  : C extends 'COVERING'
-                                    ? CoveringSpec
-                                    : C extends 'ELEMENT_ASSEMBLY'
-                                      ? ElementAssemblySpec
-                                      : C extends 'ZONE'
-                                        ? ZoneSpec
-                                        : C extends 'SYSTEM'
-                                          ? SystemSpec
-                                          : C extends 'PROJECT'
-                                            ? ProjectSpec
-                                            : C extends 'SITE'
-                                              ? SiteSpec
-                                              : C extends 'BRIDGE'
-                                                ? BridgeSpec
-                                                : C extends 'BRIDGE_PART'
-                                                  ? BridgePartSpec
-                                                  : C extends 'EARTHWORKS_FILL'
-                                                    ? Omit<EarthworksFillSpec, 'solid'>
-                                                    : C extends 'BUILDING'
-                                                      ? BuildingSpec
-                                                      : C extends 'STOREY'
-                                                        ? StoreySpec
-                                                        : never;
+interface ClassificationSpecs {
+  WALL: WallSpec;
+  SLAB: SlabSpec;
+  BEAM: BeamSpec;
+  COLUMN: ColumnSpec;
+  OPENING: OpeningSpec;
+  DOOR: Omit<DoorSpec, 'wallLocalId' | 'offsetFromFloor' | 'offsetAlongWall'>;
+  WINDOW: Omit<WindowSpec, 'wallLocalId' | 'offsetFromFloor' | 'offsetAlongWall'>;
+  PROXY: Omit<ProxySpec, 'solid'>;
+  SPACE: SpaceSpec;
+  ROOF: RoofSpec;
+  CURTAIN_WALL: CurtainWallSpec;
+  FOOTING: FootingSpec;
+  PILE: PileSpec;
+  STAIR: StairSpec;
+  RAMP: RampSpec;
+  RAILING: RailingSpec;
+  COVERING: CoveringSpec;
+  ELEMENT_ASSEMBLY: ElementAssemblySpec;
+  ZONE: ZoneSpec;
+  SYSTEM: SystemSpec;
+  PROJECT: ProjectSpec;
+  SITE: SiteSpec;
+  BRIDGE: BridgeSpec;
+  BRIDGE_PART: BridgePartSpec;
+  EARTHWORKS_FILL: Omit<EarthworksFillSpec, 'solid'>;
+  BUILDING: BuildingSpec;
+  STOREY: StoreySpec;
+  MEMBER: CurtainComponentSpec;
+  PLATE: CurtainComponentSpec;
+}
 
-export type BimGeometryFor<C extends BimCategory> = C extends BodyClassification
-  ? ProductBody
-  : null;
+export type BimSpecFor<C extends BimCategory> = ClassificationSpecs[C];
+
+export type BimGeometryFor<C extends BimCategory> = C extends BodyClassification ? Body : null;
 
 type BodySpec<C extends BimCategory> =
-  BimGeometryFor<C> extends ProductBody ? BimSpecFor<C> | null : BimSpecFor<C>;
+  BimGeometryFor<C> extends Body ? BimSpecFor<C> | null : BimSpecFor<C>;
 
 type RecordGeometry<C extends BimCategory> =
-  BimGeometryFor<C> extends ProductBody
+  BimGeometryFor<C> extends Body
     ? {
         readonly representation: 'BODY';
         readonly placement: PlacementDefinition;

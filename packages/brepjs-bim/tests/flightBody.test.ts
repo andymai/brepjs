@@ -5,7 +5,7 @@ import { toIfc } from '../src/serialize/toIfc.js';
 import { bodyRecordContract } from './helpers/bodyRecordContract.js';
 import { currentKernel } from '../../../tests/setup.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
-import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
+import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
 const meta = { applicationName: 'Flight test', applicationVersion: '1' };
 const frame = { origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1] } as const;
 for (const category of ['STAIR', 'RAMP'] as const) {
@@ -55,7 +55,7 @@ for (const category of ['STAIR', 'RAMP'] as const) {
         const [first, ...rest] = solids;
         if (!first) throw new Error('Missing replacement');
         unwrap(
-          model.replaceProductBody({
+          model.replaceBody({
             localId: id,
             body: { kind: 'AUTHORITATIVE', solids: [first, ...rest] },
           })
@@ -71,7 +71,7 @@ for (const category of ['STAIR', 'RAMP'] as const) {
     using model = new BimModel();
     const baseline = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
     let transforms = 0;
-    setProductBodyTestHooksForTesting({
+    setBodyTestHooksForTesting({
       before({ step }) {
         if (step === 'transform' && ++transforms === 2) throw new Error('later flight failed');
       },
@@ -79,7 +79,7 @@ for (const category of ['STAIR', 'RAMP'] as const) {
     try {
       expect(addTwo(model).ok).toBe(false);
     } finally {
-      setProductBodyTestHooksForTesting(null);
+      setBodyTestHooksForTesting(null);
     }
     expect(model.getAllElements()).toHaveLength(0);
     if (baseline !== null) expect(nativeShapeCount()).toBe(baseline);

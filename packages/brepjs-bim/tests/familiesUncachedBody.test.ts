@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { csg, getKernel, unwrap } from 'brepjs';
 import * as brepjs from 'brepjs';
-import { prepareCivilProductBody } from '../src/familiesProductBody.js';
+import { prepareCivilBody } from '../src/familiesBody.js';
 import { IDENTITY_FRAME } from '../src/placementFrame.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
@@ -39,7 +39,7 @@ it('releases copied children when a later authored item copy cast fails', () => 
   });
   try {
     expect(
-      prepareCivilProductBody({
+      prepareCivilBody({
         element,
         category: 'RAILING',
         evaluator,
@@ -92,7 +92,7 @@ it('releases wrapped and unwrapped children when later authored item wrapping fa
   });
   try {
     expect(
-      prepareCivilProductBody({
+      prepareCivilBody({
         element,
         category: 'RAILING',
         evaluator,
@@ -148,7 +148,7 @@ it.each(['before', 'after'] as const)(
     });
     try {
       expect(
-        prepareCivilProductBody({
+        prepareCivilBody({
           element,
           category: 'RAILING',
           evaluator,

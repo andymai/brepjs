@@ -28,7 +28,7 @@ import { fromIfc } from '../src/import/fromIfc.js';
 import { disposeImportedModel } from '../src/import/importedModel.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { recordIfcBodyFixture } from './helpers/ifcBodyFixture.js';
-import { bodySolids } from '../src/types/productBody.js';
+import { bodySolids } from '../src/types/body.js';
 import type { BimCategory } from '../src/types/bimTypes.js';
 
 beforeAll(async () => {

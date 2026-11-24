@@ -21,7 +21,7 @@ import { familiesToBim } from '../src/familiesAdapter.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 import { checkReferentialIntegrity } from '../src/validation/referentialIntegrity.js';
-import { bodySolids } from '../src/types/productBody.js';
+import { bodySolids } from '../src/types/body.js';
 import { BimModel } from '../src/model/bimModel.js';
 
 beforeAll(async () => {
@@ -662,12 +662,12 @@ describe('archetype routing', () => {
     );
     using evaluator = new csg.Evaluator();
     const volumesByWall = new Map<
-      Parameters<BimModel['replaceProductBody']>[0]['localId'],
+      Parameters<BimModel['replaceBody']>[0]['localId'],
       readonly [number, number]
     >();
     // eslint-disable-next-line @typescript-eslint/unbound-method -- Invoked below with the explicit model receiver via .call().
-    const replace = BimModel.prototype.replaceProductBody;
-    vi.spyOn(BimModel.prototype, 'replaceProductBody').mockImplementation(function (
+    const replace = BimModel.prototype.replaceBody;
+    vi.spyOn(BimModel.prototype, 'replaceBody').mockImplementation(function (
       this: BimModel,
       input
     ) {

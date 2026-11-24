@@ -249,7 +249,7 @@ it('composes the parent once and replaces one child without changing its sibling
   expect(world.yMax).toBeCloseTo(700 + local.xMax);
   expect(world.zMin).toBeCloseTo(100 + local.zMin);
   unwrap(
-    model.replaceProductBody({
+    model.replaceBody({
       localId: child.localId,
       body: { kind: 'AUTHORITATIVE', solids: [box(1, 2, 3), box(2, 3, 4)] },
     })
@@ -262,4 +262,37 @@ it('composes the parent once and replaces one child without changing its sibling
   expect(text.match(/=IFCPLATE\(/g)).toHaveLength(4);
   expect(text.match(/=IFCMEMBER\(/g)).toHaveLength(6);
   expect(text.match(/=IFCTRIANGULATEDFACESET\(/g)).toHaveLength(2);
+});
+
+it('adopts direct Plate bodies through the shared model', () => {
+  using model = new BimModel();
+  const id = unwrap(
+    model.addAuthoredBody({
+      category: 'PLATE',
+      placement: { kind: 'LOCAL_FRAME', frame: SPEC },
+      solids: [box(1, 1, 1), box(2, 2, 2)],
+    })
+  );
+  const plate = model.getElement(id);
+  if (!plate) throw new Error('Missing Plate');
+  expect(unwrap(elementMaterialVolume(plate))).toBeCloseTo(8);
+});
+
+it('keeps decomposition independent of the authored local frame', () => {
+  using model = new BimModel();
+  const parent = unwrap(model.addCurtainWall({ ...SPEC, origin: [1000, 0, 0] }));
+  const id = unwrap(
+    model.addAuthoredBody({
+      category: 'PLATE',
+      placement: { kind: 'LOCAL_FRAME', frame: SPEC },
+      solids: [box(1, 2, 3)],
+    })
+  );
+  const record = model.getElement(id);
+  if (!record) throw new Error('Missing plate');
+  const before = unwrap(elementBounds(record, { kind: 'PLACED', tag: 'parent' }));
+  model.aggregate(parent, id);
+  expect(model.getChildren(parent)).toContain(record);
+  expect(model.getElement(id)).toBe(record);
+  expect(unwrap(elementBounds(record, { kind: 'PLACED', tag: 'parent' }))).toEqual(before);
 });

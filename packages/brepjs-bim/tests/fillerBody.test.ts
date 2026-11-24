@@ -64,3 +64,22 @@ it('keeps both caller handles and old host when combined filler adoption fails',
   expect(model.getAllRelationships()).toEqual(relationships);
   expect(release).not.toHaveBeenCalled();
 });
+
+it('keeps arbitrary replacement material under a slab Opening on reload', async () => {
+  using model = new BimModel();
+  unwrap(model.init({ name: 'Replacement slab' }));
+  const id = unwrap(model.addSlab({ ...OPENING_WALL, width: 10, predefinedType: 'FLOOR' }));
+  unwrap(model.addSlabOpening({ slabLocalId: id, offsetX: 1, offsetY: 1, sizeX: 2, sizeY: 3 }));
+  unwrap(
+    model.replaceBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [box(10, 10, 2)] } })
+  );
+  const bytes = unwrap(await toIfc(model, meta));
+  expect(new TextDecoder().decode(bytes)).toContain("'Reference'");
+  const imported = unwrap(await fromIfc(bytes));
+  try {
+    const slab = imported.elements.find((el) => el.guid === model.getElement(id)?.guid);
+    expect(slab?.geometry.volumeMm3).toBeCloseTo(200);
+  } finally {
+    disposeImportedModel(imported);
+  }
+});

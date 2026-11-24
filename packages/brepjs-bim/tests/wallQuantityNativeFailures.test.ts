@@ -3,8 +3,8 @@ import { getKernel, unwrap, type ValidSolid } from 'brepjs';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { readPsets } from '../src/import/dataRead.js';
 import { SpfReader } from '../src/import/spfReader.js';
-import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
-import { copyProductBody } from '../src/types/productBody.js';
+import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
+import { copyBody } from '../src/types/body.js';
 import { toIfcValidated } from '../src/serialize/toIfc.js';
 import {
   bodyExchangeFixture,
@@ -19,7 +19,7 @@ beforeAll(async () => {
   await initKernel();
 }, 30_000);
 afterEach(() => {
-  setProductBodyTestHooksForTesting(null);
+  setBodyTestHooksForTesting(null);
   vi.restoreAllMocks();
 });
 
@@ -50,7 +50,7 @@ for (const authority of ['PARAMETRIC', 'AUTHORITATIVE'] as const) {
         const cause = new Error(`native ${method} failure`);
         let failures = 0;
         let measurements = 0;
-        setProductBodyTestHooksForTesting({
+        setBodyTestHooksForTesting({
           before: ({ step }) => {
             if (step === 'measure') measurements++;
             if (step === (method === 'fuseAll' ? 'union' : 'measure')) {
@@ -128,8 +128,8 @@ for (const primaryFailure of [false, true]) {
           if (container?.kind !== 'CONTAINED_IN') throw new Error('Missing containment');
           const laterId = unwrap(model.addWall({ ...wall.spec, origin: [4000, 2000, 3000] }));
           model.placeIn(laterId, container.relatingStructure);
-          const copied = unwrap(copyProductBody(wall.geometry));
-          unwrap(model.replaceProductBody({ localId: laterId, body: copied }));
+          const copied = unwrap(copyBody(wall.geometry));
+          unwrap(model.replaceBody({ localId: laterId, body: copied }));
           const laterWall = model.getElement(laterId);
           if (laterWall?.category !== 'WALL') throw new Error('Missing later Wall');
           const inputs = [...fixture.solids, ...copied.solids];
@@ -139,7 +139,7 @@ for (const primaryFailure of [false, true]) {
           const primaryCause = new Error('union measurement failed');
           let allocations = 0;
           let measurements = 0;
-          setProductBodyTestHooksForTesting({
+          setBodyTestHooksForTesting({
             before: ({ step }) => {
               if (step !== 'measure') return;
               measurements++;
@@ -198,7 +198,7 @@ for (const primaryFailure of [false, true]) {
                       kind: 'FAILED',
                       diagnostics: [
                         {
-                          operation: 'measureProductBodyMaterial',
+                          operation: 'measureBodyMaterial',
                           itemIndex: 0,
                           resourceKind: 'SHAPE',
                           cause: cleanupCause,

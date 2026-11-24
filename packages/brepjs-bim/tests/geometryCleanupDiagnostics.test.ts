@@ -3,8 +3,8 @@ import * as brepjs from 'brepjs';
 import { BimModel } from '../src/model/bimModel.js';
 import { geometryError } from '../src/errors/bimError.js';
 import { reportedGeometryCleanup } from '../src/geometryCleanupDiagnostics.js';
-import { cleanupOwnedResources, cleanupReport } from '../src/productBodyCleanup.js';
-import { transformProductBody, validateProductBody } from '../src/types/productBody.js';
+import { cleanupOwnedResources, cleanupReport } from '../src/bodyCleanup.js';
+import { transformBody, validateBody } from '../src/types/body.js';
 import { IDENTITY_FRAME } from '../src/placementFrame.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
@@ -184,7 +184,7 @@ it.each(['before', 'after'] as const)(
       const face = fixtureFaces[0];
       if (face === undefined) throw new Error('Expected fixture face');
       brepjs.tagFaces(b, [face], 'retained');
-      const body = brepjs.unwrap(validateProductBody({ kind: 'AUTHORITATIVE', solids: [a, b] }));
+      const body = brepjs.unwrap(validateBody({ kind: 'AUTHORITATIVE', solids: [a, b] }));
       const live = arena();
       const kernel = brepjs.getKernel();
       const release = kernel.dispose.bind(kernel);
@@ -199,7 +199,7 @@ it.each(['before', 'after'] as const)(
         release(raw);
       });
       try {
-        const result = transformProductBody(body, IDENTITY_FRAME);
+        const result = transformBody(body, IDENTITY_FRAME);
         if (result.ok) throw new Error('Expected native metadata cleanup failure');
         expect(failed).toHaveLength(expectedFaceReleases);
         const firstReport = cleanupReport(reportedGeometryCleanup(result.error, 'forwardOne'));
@@ -217,9 +217,7 @@ it.each(['before', 'after'] as const)(
         expect(
           diagnostics.every(
             (entry) =>
-              entry.cause === cause &&
-              entry.itemIndex === 1 &&
-              entry.operation === 'transformProductBody'
+              entry.cause === cause && entry.itemIndex === 1 && entry.operation === 'transformBody'
           )
         ).toBe(true);
         expect(diagnostics.every(Object.isFrozen)).toBe(true);

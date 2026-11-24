@@ -8,18 +8,18 @@ import {
   cleanupReport,
   type CleanupReport,
   type OwnedBodyResource,
-} from './productBodyCleanup.js';
+} from './bodyCleanup.js';
 import {
   bodySolids,
-  copyProductBody,
-  disposeProductBody,
-  transformProductBody,
-  validateProductBody,
-  type ProductBody,
-} from './types/productBody.js';
+  copyBody,
+  disposeBody,
+  transformBody,
+  validateBody,
+  type Body,
+} from './types/body.js';
 import { frameInverse, type RigidFrame } from './placementFrame.js';
 
-export interface CivilProductBodyInput {
+export interface CivilBodyInput {
   readonly element: ResolvedElement;
   readonly category: 'WALL' | 'RAILING';
   readonly evaluator: csg.Evaluator;
@@ -30,12 +30,12 @@ export interface CivilProductBodyInput {
  * Borrow evaluator parents, then copy and inverse-localize in item order.
  * Every successful result is AUTHORITATIVE and caller-owned until COMMITTED.
  */
-export function prepareCivilProductBody(
-  input: CivilProductBodyInput
-): Result<Extract<ProductBody, { kind: 'AUTHORITATIVE' }>, BimError> {
+export function prepareCivilBody(
+  input: CivilBodyInput
+): Result<Extract<Body, { kind: 'AUTHORITATIVE' }>, BimError> {
   const extracted: OwnedBodyResource[] = [];
   const prepared = prepareItems(input, extracted);
-  const cleanup = cleanupOwnedResources(extracted, { operation: 'prepareCivilProductBody' });
+  const cleanup = cleanupOwnedResources(extracted, { operation: 'prepareCivilBody' });
   if (cleanup.kind === 'COMPLETE') return prepared;
   if (!prepared.ok)
     return err({
@@ -43,14 +43,14 @@ export function prepareCivilProductBody(
       metadata: {
         ...prepared.error.metadata,
         cleanup: cleanupReport([
-          ...reportedGeometryCleanup(prepared.error, 'prepareCivilProductBody'),
+          ...reportedGeometryCleanup(prepared.error, 'prepareCivilBody'),
           ...cleanup.diagnostics,
         ]),
       },
     });
-  const outputCleanup = disposeProductBody(prepared.value);
+  const outputCleanup = disposeBody(prepared.value);
   return err(
-    productBodyError(
+    bodyError(
       input,
       'FAMILIES_PRODUCT_BODY_CLEANUP_FAILED',
       'extracted Body item cleanup failed before adoption',
@@ -62,13 +62,13 @@ export function prepareCivilProductBody(
 }
 
 function prepareItems(
-  input: CivilProductBodyInput,
+  input: CivilBodyInput,
   extracted: OwnedBodyResource[]
-): Result<Extract<ProductBody, { kind: 'AUTHORITATIVE' }>, BimError> {
+): Result<Extract<Body, { kind: 'AUTHORITATIVE' }>, BimError> {
   const inverse = frameInverse(input.productWorldFrame);
   if (!inverse.ok)
     return err(
-      productBodyError(
+      bodyError(
         input,
         'FAMILIES_PRODUCT_BODY_LOCALIZE_FAILED',
         'invalid Product frame',
@@ -78,13 +78,11 @@ function prepareItems(
   const evaluated = evaluateBody(input, extracted);
   if (!evaluated.ok) return evaluated;
   if (evaluated.value.length === 0)
-    return err(
-      productBodyError(input, 'FAMILIES_PRODUCT_BODY_EMPTY', 'evaluated to no solid Body items')
-    );
-  const borrowed = validateProductBody({ kind: 'AUTHORITATIVE', solids: evaluated.value });
+    return err(bodyError(input, 'FAMILIES_PRODUCT_BODY_EMPTY', 'evaluated to no solid Body items'));
+  const borrowed = validateBody({ kind: 'AUTHORITATIVE', solids: evaluated.value });
   if (!borrowed.ok)
     return err(
-      productBodyError(
+      bodyError(
         input,
         'FAMILIES_PRODUCT_BODY_INVALID',
         'evaluated Body contains an invalid item',
@@ -93,10 +91,10 @@ function prepareItems(
       )
     );
 
-  const copied = copyProductBody(borrowed.value);
+  const copied = copyBody(borrowed.value);
   if (!copied.ok)
     return err(
-      productBodyError(
+      bodyError(
         input,
         'FAMILIES_PRODUCT_BODY_COPY_FAILED',
         'authored Body could not be copied',
@@ -104,13 +102,13 @@ function prepareItems(
         copied.error.itemIndex
       )
     );
-  const localized = transformProductBody(copied.value, inverse.value);
+  const localized = transformBody(copied.value, inverse.value);
   // Shared operations own their outputs on failure. Only these successful copies
   // remain ours; failed releases are reported and never retried.
-  const copyCleanup = disposeProductBody(copied.value);
+  const copyCleanup = disposeBody(copied.value);
   if (!localized.ok)
     return err(
-      productBodyError(
+      bodyError(
         input,
         'FAMILIES_PRODUCT_BODY_LOCALIZE_FAILED',
         'authored Body could not be moved into the Product-local frame',
@@ -120,9 +118,9 @@ function prepareItems(
       )
     );
   if (copyCleanup.kind === 'FAILED') {
-    const outputCleanup = disposeProductBody(localized.value);
+    const outputCleanup = disposeBody(localized.value);
     return err(
-      productBodyError(
+      bodyError(
         input,
         'FAMILIES_PRODUCT_BODY_CLEANUP_FAILED',
         'temporary Body cleanup failed before adoption',
@@ -136,14 +134,14 @@ function prepareItems(
 }
 
 function evaluateBody(
-  input: CivilProductBodyInput,
+  input: CivilBodyInput,
   extracted: OwnedBodyResource[]
 ): Result<readonly Solid[], BimError> {
   try {
     const evaluated = input.evaluator.evaluate(input.element.geometry);
     if (!evaluated.ok)
       return err(
-        productBodyError(
+        bodyError(
           input,
           'FAMILIES_PRODUCT_BODY_EVALUATION_FAILED',
           `authored Body evaluation failed: ${evaluated.error.message}`,
@@ -158,7 +156,7 @@ function evaluateBody(
     return ok(children);
   } catch (cause) {
     return err(
-      productBodyError(
+      bodyError(
         input,
         'FAMILIES_PRODUCT_BODY_EVALUATION_FAILED',
         'authored Body evaluation threw',
@@ -168,8 +166,8 @@ function evaluateBody(
   }
 }
 
-function productBodyError(
-  input: CivilProductBodyInput,
+function bodyError(
+  input: CivilBodyInput,
   code: string,
   detail: string,
   cause?: unknown,
@@ -188,7 +186,7 @@ function productBodyError(
       category: input.category,
       ...(itemIndex === undefined ? {} : { itemIndex }),
       cleanup: cleanupReport([
-        ...reportedGeometryCleanup(error, 'prepareCivilProductBody'),
+        ...reportedGeometryCleanup(error, 'prepareCivilBody'),
         ...reports.flatMap((report) => (report.kind === 'FAILED' ? report.diagnostics : [])),
       ]),
     },

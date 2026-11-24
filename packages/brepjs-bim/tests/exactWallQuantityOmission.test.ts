@@ -5,8 +5,8 @@ import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { toIfcValidated } from '../src/serialize/toIfc.js';
 import { SpfReader } from '../src/import/spfReader.js';
 import { readPsets } from '../src/import/dataRead.js';
-import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
-import { measureProductBodyMaterial } from '../src/types/productBody.js';
+import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
+import { measureBodyMaterial } from '../src/types/body.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 import {
   bodyExchangeFixture,
@@ -21,7 +21,7 @@ beforeAll(async () => {
 }, 30_000);
 
 afterEach(() => {
-  setProductBodyTestHooksForTesting(null);
+  setBodyTestHooksForTesting(null);
   vi.restoreAllMocks();
 });
 
@@ -41,7 +41,7 @@ describe('Wall quantity omission', () => {
         message: 'injected quantity measurement failure',
       } as const;
       let measurements = 0;
-      setProductBodyTestHooksForTesting({
+      setBodyTestHooksForTesting({
         measure: () => {
           measurements++;
           return err(cause);
@@ -111,7 +111,7 @@ describe('Wall quantity omission', () => {
           } as const;
           const thrown = new Error('injected shared measurement throw');
           let measurements = 0;
-          setProductBodyTestHooksForTesting({
+          setBodyTestHooksForTesting({
             measure: () => {
               measurements++;
               if (failure.failure === 'Result error') return err(cause);
@@ -145,7 +145,7 @@ describe('Wall quantity omission', () => {
           ]);
           expect(measurements).toBe(1);
           expect(exported.report.issues.filter(({ severity }) => severity === 'error')).toEqual([]);
-          const required = measureProductBodyMaterial(wall.geometry.solids);
+          const required = measureBodyMaterial(wall.geometry.solids);
           expect(required).toMatchObject({
             ok: false,
             error: { code: failure.code, cleanup: { kind: 'COMPLETE' } },

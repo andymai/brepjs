@@ -73,7 +73,7 @@ it('invalidates slab swept geometry for coincident and repartitioned replacement
   const slab = model.getSlabs()[0];
   if (!slab) throw new Error('Missing slab');
   unwrap(
-    model.replaceProductBody({
+    model.replaceBody({
       localId: id,
       body: { kind: 'AUTHORITATIVE', solids: [unwrap(clone(slab.geometry.solids[0]))] },
     })
@@ -83,7 +83,7 @@ it('invalidates slab swept geometry for coincident and repartitioned replacement
   expect(coincident.match(/IFCTRIANGULATEDFACESET\(/g)).toHaveLength(1);
   const half = box(5, 10, 10);
   unwrap(
-    model.replaceProductBody({
+    model.replaceBody({
       localId: id,
       body: { kind: 'AUTHORITATIVE', solids: [half, translate(half, [5, 0, 0])] },
     })

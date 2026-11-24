@@ -10,7 +10,7 @@ import {
   validSolid,
   type ValidSolid,
 } from 'brepjs';
-import { validateProductBody } from '../src/types/productBody.js';
+import { validateBody } from '../src/types/body.js';
 import { BimModel } from '../src/model/bimModel.js';
 import type { WallSpec } from '../src/specs/wallSpec.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
@@ -72,7 +72,7 @@ it('rejects a later Body item wrapping the exact same native object without rele
     expect(fixture.alias === first).toBe(false);
     expect(fixture.alias.wrapped === first.wrapped).toBe(true);
     expect(
-      validateProductBody({ kind: 'AUTHORITATIVE', solids: [first, sibling, fixture.alias] })
+      validateBody({ kind: 'AUTHORITATIVE', solids: [first, sibling, fixture.alias] })
     ).toMatchObject({
       ok: false,
       error: { code: 'BODY_DUPLICATE_ITEM', itemIndex: 2 },
@@ -160,7 +160,7 @@ it.each(['before', 'after'] as const)(
       try {
         const next = box(2, 2, 2);
         const receipt = unwrap(
-          model.replaceProductBody({
+          model.replaceBody({
             localId: id,
             body: { kind: 'AUTHORITATIVE', solids: [next] },
           })
@@ -188,7 +188,7 @@ it.each(['before', 'after'] as const)(
           },
         };
         expect(
-          model.replaceProductBody({
+          model.replaceBody({
             localId: id,
             body: { kind: 'AUTHORITATIVE', solids: [fixture.alias] },
           })
@@ -240,7 +240,7 @@ it('reports a later item resource-access failure without committing or releasing
     });
     const live = arena();
     expect(
-      model.replaceProductBody({
+      model.replaceBody({
         localId: id,
         body: { kind: 'AUTHORITATIVE', solids: [first, second] },
       })
@@ -271,7 +271,7 @@ it.each(['target Body', 'Proxy', 'EarthworksFill'] as const)(
       if (ownerKind === 'target Body') {
         const first = box(1, 1, 1);
         unwrap(
-          model.replaceProductBody({
+          model.replaceBody({
             localId: id,
             body: { kind: 'PARAMETRIC', solids: [first, source] },
           })
@@ -291,7 +291,7 @@ it.each(['target Body', 'Proxy', 'EarthworksFill'] as const)(
       const relationships = model.getAllRelationships();
       const live = arena();
       expect(
-        model.replaceProductBody({
+        model.replaceBody({
           localId: id,
           body: { kind: 'AUTHORITATIVE', solids: [sibling, fixture.alias] },
         })
@@ -329,15 +329,15 @@ it('accepts independent clone and placement owners that remain natively usable a
     // Legacy OCCT shares topology even though each wrapper owns a separate native handle.
     if (currentKernel === 'occt')
       expect(getKernel().isSame(source.wrapped, independent.wrapped)).toBe(true);
-    expect(
-      validateProductBody({ kind: 'AUTHORITATIVE', solids: [source, independent, placed] }).ok
-    ).toBe(true);
+    expect(validateBody({ kind: 'AUTHORITATIVE', solids: [source, independent, placed] }).ok).toBe(
+      true
+    );
     unwrap(model.addProxy({ name: 'Clone', solid: independent }));
     unwrap(model.addEarthworksFill({ name: 'Placement', solid: placed, materialName: 'Test' }));
     const replacement = box(3, 3, 3);
     expect(
       unwrap(
-        model.replaceProductBody({
+        model.replaceBody({
           localId: id,
           body: { kind: 'AUTHORITATIVE', solids: [replacement] },
         })
@@ -377,7 +377,7 @@ it('captures resource identity before publishing the replacement and rejects ret
       reentrant = model.addProxy({ name: 'Retiring alias', solid: fixture.alias });
     });
     const receipt = unwrap(
-      model.replaceProductBody({
+      model.replaceBody({
         localId: id,
         body: { kind: 'AUTHORITATIVE', solids: [next] },
       })

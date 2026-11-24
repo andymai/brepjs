@@ -68,17 +68,17 @@ import { footingToSolid, pileToSolid } from '../elementFns/foundationFns.js';
 import { railingToSolid } from '../elementFns/railingFns.js';
 import { coveringToSolid } from '../elementFns/coveringFns.js';
 import {
-  snapshotProductBodyInput,
-  validateProductBody,
+  snapshotBodyInput,
+  validateBody,
   wrappedResourceObject,
-  type ProductBody,
+  type Body,
   type NonEmpty,
-} from '../types/productBody.js';
+} from '../types/body.js';
 import {
   cleanupReport,
   type CleanupReport,
   type GeometryCleanupDiagnostic,
-} from '../productBodyCleanup.js';
+} from '../bodyCleanup.js';
 import { protectElement, retainedSolids, type ElementFields } from './modelGeometry.js';
 import { reportedGeometryCleanup } from '../geometryCleanupDiagnostics.js';
 import { uncertainGeneratedResources } from '../geometryGeneration.js';
@@ -143,7 +143,7 @@ export interface OpeningIdentityOptions extends ElementIdentityOptions {
   readonly solids?: NonEmpty<ValidSolid>;
 }
 
-function wallOpeningSolid(body: ProductBody): Result<ValidSolid, BimError> {
+function wallOpeningSolid(body: Body): Result<ValidSolid, BimError> {
   if (body.kind === 'AUTHORITATIVE') {
     return err(
       specError(
@@ -1026,7 +1026,7 @@ export class BimModel {
   addAuthoredBody(input: {
     readonly category: BodyClassification;
     readonly placement: PlacementDefinition;
-    readonly solids: Extract<ProductBody, { kind: 'AUTHORITATIVE' }>['solids'];
+    readonly solids: Extract<Body, { kind: 'AUTHORITATIVE' }>['solids'];
     readonly stableKey?: string;
     readonly metadata?: Readonly<{ name?: string; description?: string }>;
     readonly openingLocalId?: LocalId;
@@ -1067,11 +1067,11 @@ export class BimModel {
   }
 
   /** Ownership transfers only on COMMITTED, including when retirement reports failure. */
-  replaceProductBody(input: {
+  replaceBody(input: {
     readonly localId: LocalId;
-    readonly body: ProductBody;
+    readonly body: Body;
   }): Result<BodyCommitReceipt, BimError> {
-    const result = this.#mutate('replaceProductBody', (command) => {
+    const result = this.#mutate('replaceBody', (command) => {
       const { localId } = input;
       const target = this.#elements.get(localId);
       if (target === undefined) {
@@ -1488,7 +1488,7 @@ export class BimModel {
     command: ModelCommand,
     spec: { width: number; height: number },
     solids?: NonEmpty<ValidSolid>
-  ): Result<ProductBody, BimError> {
+  ): Result<Body, BimError> {
     if (solids !== undefined) return ok({ kind: 'AUTHORITATIVE', solids });
     if (![spec.width, spec.height].every((n) => Number.isFinite(n) && n > 0))
       return err(specError('INVALID_PANEL', 'Panel dimensions must be positive'));
@@ -1809,7 +1809,7 @@ export class BimModel {
     this.#ownGenerated(command, [newGeometry]);
     const prepared = protectElement({
       ...host,
-      geometry: { kind: 'PARAMETRIC', solids: [newGeometry] } satisfies ProductBody,
+      geometry: { kind: 'PARAMETRIC', solids: [newGeometry] } satisfies Body,
     });
     if (!prepared.ok) throw new RejectedModelCommand(prepared.error);
     this.#stageElement(command, prepared.value);
@@ -2128,12 +2128,12 @@ export class BimModel {
     return [...this.#relationships.values()];
   }
 
-  #prepareBody(command: ModelCommand, input: ProductBody): Result<ProductBody, BimError> {
-    const captured = snapshotProductBodyInput(input);
+  #prepareBody(command: ModelCommand, input: Body): Result<Body, BimError> {
+    const captured = snapshotBodyInput(input);
     if (!captured.ok) return captured;
     for (const [itemIndex, solid] of captured.value.solids.entries())
       this.#requireUnowned(command, solid, itemIndex);
-    return validateProductBody(captured.value);
+    return validateBody(captured.value);
   }
 
   #makeElement(command: ModelCommand, fields: ElementFields, stableKey?: string): LocalId {

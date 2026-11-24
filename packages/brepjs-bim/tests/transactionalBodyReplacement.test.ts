@@ -2,7 +2,7 @@ import type { WallSpec } from '../src/specs/wallSpec.js';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { box, unwrap } from 'brepjs';
 import { BimModel } from '../src/model/bimModel.js';
-import { bodySolids } from '../src/types/productBody.js';
+import { bodySolids } from '../src/types/body.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 
@@ -58,7 +58,7 @@ it.each(['before', 'after'] as const)(
     });
     try {
       expect(
-        model.replaceProductBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [next] } })
+        model.replaceBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [next] } })
       ).toMatchObject({
         ok: true,
         value: { kind: 'COMMITTED', localId: id, cleanup: { kind: 'FAILED' } },
@@ -71,7 +71,7 @@ it.each(['before', 'after'] as const)(
       expect(model.getSurfaceStyle(id)).toBeNull();
       expect(model.isRecipeQuantityEligible(id)).toBe(false);
       expect(model.getGeometryCleanupDiagnostics()).toMatchObject([
-        { operation: 'replaceProductBody', localId: id, itemIndex: 0, cause },
+        { operation: 'replaceBody', localId: id, itemIndex: 0, cause },
       ]);
       if (point === 'before')
         expect(model.addProxy({ name: 'uncertain alias', solid: old })).toMatchObject({

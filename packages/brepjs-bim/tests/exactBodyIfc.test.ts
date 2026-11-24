@@ -4,9 +4,9 @@ import { initKernel } from '../../../tests/setup.js';
 import { makeLocalIdCounter } from '../src/identity/localId.js';
 import { IfcWriter, type IfcWriterApiForTesting } from '../src/ifc-writer/ifcWriter.js';
 import { prepareTessellation } from '../src/ifc-writer/tessellationWriter.js';
-import { preflightProductBody } from '../src/serialize/productBodyPreflight.js';
+import { preflightBody } from '../src/serialize/bodyPreflight.js';
 import { deriveWallQuantities } from '../src/serialize/wallQuantities.js';
-import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
+import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
 import type { WallSpec } from '../src/specs/wallSpec.js';
 
 beforeAll(async () => {
@@ -14,7 +14,7 @@ beforeAll(async () => {
 }, 30_000);
 
 afterEach(() => {
-  setProductBodyTestHooksForTesting(null);
+  setBodyTestHooksForTesting(null);
   vi.restoreAllMocks();
 });
 
@@ -32,7 +32,7 @@ describe('exact Product Body IFC preparation', () => {
   it('reports the failed later item without disposing borrowed source solids', () => {
     using first = box(100, 100, 100);
     using second = box(50, 50, 50);
-    const result = preflightProductBody({
+    const result = preflightBody({
       localId: makeLocalIdCounter().next(),
       solids: [first, second],
       prepareItem: (solid) =>
@@ -56,7 +56,7 @@ describe('Wall Body quantities', () => {
     using source = box(100, 100, 100);
     using second = translate(source, [50, 0, 0]);
     const unionReleases: ReturnType<typeof vi.fn>[] = [];
-    setProductBodyTestHooksForTesting({
+    setBodyTestHooksForTesting({
       afterAllocate: ({ solid }) => {
         unionReleases.push(vi.spyOn(solid, Symbol.dispose));
       },
@@ -76,7 +76,7 @@ describe('Wall Body quantities', () => {
     using first = box(100, 100, 100);
     using second = box(100, 100, 100);
     const unionReleases: ReturnType<typeof vi.fn>[] = [];
-    setProductBodyTestHooksForTesting({
+    setBodyTestHooksForTesting({
       afterAllocate: ({ solid }) => {
         unionReleases.push(vi.spyOn(solid, Symbol.dispose));
       },
@@ -108,7 +108,7 @@ describe('Wall Body quantities', () => {
 
   it('maps a thrown singleton measurement to the omission error', () => {
     using solid = box(100, 100, 100);
-    setProductBodyTestHooksForTesting({
+    setBodyTestHooksForTesting({
       measure: () => {
         throw new Error('injected singleton measurement failure');
       },

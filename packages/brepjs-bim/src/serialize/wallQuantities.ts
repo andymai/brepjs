@@ -1,7 +1,7 @@
 import { err, ok, type Result, type ValidSolid } from 'brepjs';
 import { ifcError, type BimError } from '../errors/bimError.js';
 import type { WallSpec } from '../specs/wallSpec.js';
-import { measureProductBodyMaterial, type NonEmpty } from '../types/productBody.js';
+import { measureBodyMaterial, type NonEmpty } from '../types/body.js';
 import { toIfcLengthM } from '../units/units.js';
 
 interface WallQuantityValues {
@@ -20,7 +20,7 @@ export function deriveWallQuantities(
   input: WallQuantityInput
 ): Result<WallQuantityValues, BimError> {
   try {
-    const measured = measureProductBodyMaterial(input.solids);
+    const measured = measureBodyMaterial(input.solids);
     if (!measured.ok) return wallVolumeError(measured.error);
     return ok({
       ...(input.spec && {

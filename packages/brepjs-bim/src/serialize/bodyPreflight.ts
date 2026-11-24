@@ -1,33 +1,31 @@
 import { err, ok, type Result, type ValidSolid } from 'brepjs';
 import { ifcError, type BimError } from '../errors/bimError.js';
 import type { LocalId } from '../identity/localId.js';
-import type { NonEmpty } from '../types/productBody.js';
+import type { NonEmpty } from '../types/body.js';
 import {
   prepareTessellation,
   type PreparedTessellation,
   type TessellationPreparation,
 } from '../ifc-writer/tessellationWriter.js';
 
-export type ProductBodyItemPreparer = (solid: ValidSolid) => TessellationPreparation;
+export type BodyItemPreparer = (solid: ValidSolid) => TessellationPreparation;
 
-let testItemPreparer: ProductBodyItemPreparer | null = null;
+let testItemPreparer: BodyItemPreparer | null = null;
 
 /** Package-internal deterministic failure seam for serialization cleanup tests. */
-export function setProductBodyItemPreparerForTesting(
-  prepareItem: ProductBodyItemPreparer | null
-): void {
+export function setBodyItemPreparerForTesting(prepareItem: BodyItemPreparer | null): void {
   testItemPreparer = prepareItem;
 }
 
-export interface ProductBodyPreflightInput {
+export interface BodyPreflightInput {
   readonly localId: LocalId;
   readonly solids: NonEmpty<ValidSolid>;
-  readonly prepareItem?: ProductBodyItemPreparer | undefined;
+  readonly prepareItem?: BodyItemPreparer | undefined;
 }
 
 /** Prepares every retained Body item without writing IFC lines. Source solids remain borrowed. */
-export function preflightProductBody(
-  input: ProductBodyPreflightInput
+export function preflightBody(
+  input: BodyPreflightInput
 ): Result<NonEmpty<PreparedTessellation>, BimError> {
   const prepareItem = input.prepareItem ?? testItemPreparer ?? prepareTessellation;
   const failed = (itemIndex: number, reason: string, cause: unknown) =>

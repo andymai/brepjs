@@ -1,11 +1,7 @@
 import { flightItems } from '../model/flightBody.js';
 import { frameInverse } from '../placementFrame.js';
-import {
-  disposeProductBody,
-  transformProductBody,
-  type ProductBody,
-} from '../types/productBody.js';
-import { preflightProductBody } from '../serialize/productBodyPreflight.js';
+import { disposeBody, transformBody, type Body } from '../types/body.js';
+import { preflightBody } from '../serialize/bodyPreflight.js';
 import type { LocalId } from '../identity/localId.js';
 import { ok, err } from 'brepjs';
 import * as WebIFC from 'web-ifc';
@@ -20,7 +16,7 @@ import type { RampSpec } from '../specs/rampSpec.js';
 import type { BimError } from '../errors/bimError.js';
 import { specError } from '../errors/bimError.js';
 
-function prepareFlight(body: ProductBody, localId: LocalId, index: number, properties: object) {
+function prepareFlight(body: Body, localId: LocalId, index: number, properties: object) {
   const bindings = flightItems(body);
   if (!bindings.ok) return bindings;
   const binding = bindings.value[index];
@@ -36,10 +32,10 @@ function prepareFlight(body: ProductBody, localId: LocalId, index: number, prope
     return err(specError('FLIGHT_ASSOCIATION_REQUIRED', 'Flight Body item is unavailable'));
   const inverse = frameInverse(binding.item.frame);
   if (!inverse.ok) return inverse;
-  const local = transformProductBody({ kind: body.kind, solids: [solid] }, inverse.value);
+  const local = transformBody({ kind: body.kind, solids: [solid] }, inverse.value);
   if (!local.ok) return local;
-  const prepared = preflightProductBody({ localId, solids: local.value.solids });
-  const cleanup = disposeProductBody(local.value);
+  const prepared = preflightBody({ localId, solids: local.value.solids });
+  const cleanup = disposeBody(local.value);
   if (cleanup.kind === 'FAILED')
     return err(
       specError(
@@ -323,7 +319,7 @@ export function writeStairAssembly(
   w: IfcWriter,
   spec: StairSpec,
   stairKey: string,
-  body: ProductBody,
+  body: Body,
   localId: LocalId,
   assemblyGuid: string,
   ownerHistoryId: number,
@@ -428,7 +424,7 @@ export function writeRampAssembly(
   w: IfcWriter,
   spec: RampSpec,
   rampKey: string,
-  body: ProductBody,
+  body: Body,
   localId: LocalId,
   assemblyGuid: string,
   ownerHistoryId: number,

@@ -1,7 +1,7 @@
 import { err, ok, type Result, type ValidSolid } from 'brepjs';
 import { specError, type BimError } from '../errors/bimError.js';
 import { frameFromPlacement, type FrameInput, type RigidFrame } from '../placementFrame.js';
-import { transformProductBody, type ProductBody, type NonEmpty } from '../types/productBody.js';
+import { transformBody, type Body, type NonEmpty } from '../types/body.js';
 import type { LocalId } from '../identity/localId.js';
 
 interface FlightItem {
@@ -15,7 +15,7 @@ interface FlightBinding {
   readonly item: FlightItem;
 }
 
-const bindings = new WeakMap<ProductBody, readonly FlightBinding[]>();
+const bindings = new WeakMap<Body, readonly FlightBinding[]>();
 
 /** During recipe authoring each flight contributes one item in assembly coordinates. */
 export function realizeFlights<T extends FrameInput>(
@@ -31,7 +31,7 @@ export function realizeFlights<T extends FrameInput>(
     const local = build(flight);
     if (!local.ok) return local;
     own([local.value.solid]);
-    const positioned = transformProductBody(
+    const positioned = transformBody(
       { kind: 'PARAMETRIC', solids: [local.value.solid] },
       frame.value
     );
@@ -46,18 +46,14 @@ export function realizeFlights<T extends FrameInput>(
   return ok({ solids: [first, ...rest], items });
 }
 
-export function bindFlightItems(
-  body: ProductBody,
-  localId: LocalId,
-  items: readonly FlightItem[]
-): void {
+export function bindFlightItems(body: Body, localId: LocalId, items: readonly FlightItem[]): void {
   bindings.set(
     body,
     Object.freeze(items.map((item) => Object.freeze({ key: `${localId}:${item.index}`, item })))
   );
 }
 
-export function flightItems(body: ProductBody) {
+export function flightItems(body: Body) {
   const items = bindings.get(body);
   return items
     ? ok(items)

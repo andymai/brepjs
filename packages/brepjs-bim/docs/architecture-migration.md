@@ -24,6 +24,8 @@ Establish the common operations on Wall and Railing first. Review direct Member 
 
 The step-2 check measures extension cost and Body behavior before the document cutover. Full document-owned parent-chain resolution follows in step 3; end-to-end IFC and semantic checks follow in step 4 after review of the Deferred ADRs. Preserve existing export/import regressions at every step. The maintainer [confirmed this division of acceptance in the step-0 review](https://github.com/andymai/brepjs/pull/2313#issuecomment-5670327868).
 
+Every material-bearing class must accept direct solids. Test the own-only queries on NONE, explicit curtain-child traversal, atomic assembly rollback, generated flight export and stale flight bindings. Check that a replacement exports its retained items even when its shape coincides with a recipe. Test standalone filler insertion separately from the atomic host cut. Preserve existing IFC, Families and IDS regressions and independently validate both IFC fixtures.
+
 ### Integration scenarios
 
 The stages below identify when the checks apply. Later exchange and Families requirements remain review drafts under their Deferred ADRs.

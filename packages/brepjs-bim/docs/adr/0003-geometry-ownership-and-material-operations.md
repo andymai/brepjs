@@ -82,3 +82,7 @@ Both can report plausible but incorrect material quantities. An explicit unavail
 [overlap-test]: https://github.com/andymai/brepjs/blob/4602096ebc3c9ea0263d5b2a1b7d3b6dee24c466/packages/brepjs-bim/tests/exactProductBodyTakeover.test.ts#L326
 [compound]: https://github.com/andymai/brepjs/blob/4602096ebc3c9ea0263d5b2a1b7d3b6dee24c466/src/csg/evaluators/compound.ts#L10
 [arena-tests]: https://github.com/andymai/brepjs/blob/4602096ebc3c9ea0263d5b2a1b7d3b6dee24c466/tests/wasmArenaDisposal.test.ts#L1
+
+## Step-2 acceptance
+
+Stage generated flight items, assembly children, placements and relationships on the existing model transaction. Rejection releases generated handles and leaves caller-owned inputs with the caller. A successful replacement transfers its inputs even if retiring old handles reports a cleanup failure. Bounds cover all retained items and volume measures their occupied union. A persistent copy or ownership failure on a supported backend blocks acceptance.

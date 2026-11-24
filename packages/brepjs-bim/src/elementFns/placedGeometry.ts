@@ -3,11 +3,7 @@ import type { AnyBimElement } from '../types/bimTypes.js';
 import { geometryError, type BimError } from '../errors/bimError.js';
 import { localPlacementFrame } from '../types/placementDefinition.js';
 import { frameFromPlacement, frameMul, type FrameInput } from '../placementFrame.js';
-import {
-  transformProductBody,
-  productBodyBounds,
-  measureProductBodyMaterial,
-} from '../types/productBody.js';
+import { transformBody, bodyBounds, measureBodyMaterial } from '../types/body.js';
 
 export interface PlacedSolidsOptions {
   readonly parentFrame?: FrameInput | undefined;
@@ -42,12 +38,12 @@ export function placedSolids(
   if (el.representation === 'NONE') return absent(el);
   const frame = placedFrame(el, options);
   if (!frame.ok) return frame;
-  const transformed = transformProductBody(el.geometry, frame.value);
+  const transformed = transformBody(el.geometry, frame.value);
   return transformed.ok ? ok(transformed.value.solids) : transformed;
 }
 
 export function elementMaterialVolume(el: AnyBimElement) {
-  return el.representation === 'BODY' ? measureProductBodyMaterial(el.geometry.solids) : absent(el);
+  return el.representation === 'BODY' ? measureBodyMaterial(el.geometry.solids) : absent(el);
 }
 
 export function elementBounds(
@@ -55,9 +51,9 @@ export function elementBounds(
   space: { kind: 'LOCAL' } | ({ kind: 'PLACED'; tag: string } & PlacedSolidsOptions)
 ) {
   if (el.representation === 'NONE') return absent(el);
-  if (space.kind === 'LOCAL') return productBodyBounds(el.geometry, space);
+  if (space.kind === 'LOCAL') return bodyBounds(el.geometry, space);
   const frame = placedFrame(el, space);
   return frame.ok
-    ? productBodyBounds(el.geometry, { kind: 'RESOLVED', tag: space.tag, frame: frame.value })
+    ? bodyBounds(el.geometry, { kind: 'RESOLVED', tag: space.tag, frame: frame.value })
     : frame;
 }

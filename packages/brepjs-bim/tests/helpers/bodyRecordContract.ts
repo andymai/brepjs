@@ -7,9 +7,9 @@ import {
   elementMaterialVolume,
 } from '../../src/elementFns/placedGeometry.js';
 import { BimModel } from '../../src/model/bimModel.js';
-import { setProductBodyTestHooksForTesting } from '../../src/productBodyTestHooks.js';
+import { setBodyTestHooksForTesting } from '../../src/bodyTestHooks.js';
 import type { BodyClassification } from '../../src/types/bimTypes.js';
-import { measureProductBodyMaterial, type NonEmpty } from '../../src/types/productBody.js';
+import { measureBodyMaterial, type NonEmpty } from '../../src/types/body.js';
 import { nativeShapeCount } from './nativeArena.js';
 
 beforeAll(async () => {
@@ -68,7 +68,7 @@ export function bodyRecordContract(category: BodyClassification) {
         references[0] = 'changed';
         parameters.offset = 0;
         unwrap(
-          model.replaceProductBody({
+          model.replaceBody({
             localId: id,
             body: { kind: 'AUTHORITATIVE', solids: [box(2, 2, 2)] },
           })
@@ -105,7 +105,7 @@ export function bodyRecordContract(category: BodyClassification) {
         model[Symbol.dispose]();
         const [copy] = output;
         if (!copy) throw new Error('Missing independent copy');
-        expect(unwrap(measureProductBodyMaterial([copy]))).toBeCloseTo(60);
+        expect(unwrap(measureBodyMaterial([copy]))).toBeCloseTo(60);
       } finally {
         output.forEach((item) => item[Symbol.dispose]());
       }
@@ -149,7 +149,7 @@ export function bodyRecordContract(category: BodyClassification) {
           model.addAuthoredBody({ category, placement: record.placement, solids })
         ).toMatchObject({ ok: false, error: { code: 'BODY_OWNERSHIP_CONFLICT' } });
         if (offset !== null) {
-          setProductBodyTestHooksForTesting({
+          setBodyTestHooksForTesting({
             before({ step, itemIndex }) {
               if (step === 'union') throw new Error('union failed');
               if (step === 'transform' && itemIndex === 1) throw new Error('second transform');
@@ -159,7 +159,7 @@ export function bodyRecordContract(category: BodyClassification) {
             expect(placedSolids(record).ok).toBe(false);
             expect(elementMaterialVolume(record).ok).toBe(false);
           } finally {
-            setProductBodyTestHooksForTesting(null);
+            setBodyTestHooksForTesting(null);
           }
         }
         const output = unwrap(placedSolids(record));
@@ -168,7 +168,7 @@ export function bodyRecordContract(category: BodyClassification) {
           const replacement = translate(fresh, [2, 0, 0]);
           const releaseReplacement = vi.spyOn(replacement, Symbol.dispose);
           unwrap(
-            model.replaceProductBody({
+            model.replaceBody({
               localId: id,
               body: { kind: 'AUTHORITATIVE', solids: [replacement] },
             })

@@ -7,11 +7,7 @@ import * as WebIFC from 'web-ifc';
 import { BimModel } from '../../src/model/bimModel.js';
 import type { WallSpec } from '../../src/specs/wallSpec.js';
 import type { SpfReader } from '../../src/import/spfReader.js';
-import {
-  disposeProductBody,
-  type ProductBody,
-  type NonEmpty,
-} from '../../src/types/productBody.js';
+import { disposeBody, type Body, type NonEmpty } from '../../src/types/body.js';
 import { DOOR, WINDOW, OPENING_WALL, singletonWallSolid } from './openingFixture.js';
 import { currentKernel } from '../../../../tests/setup.js';
 
@@ -20,7 +16,7 @@ export type BodyLayout = 'singleton' | 'disconnected' | 'overlapping';
 
 export function bodyExchangeFixture(
   category: 'WALL' | 'RAILING',
-  authority: ProductBody['kind'],
+  authority: Body['kind'],
   layout: BodyLayout
 ) {
   const model = new BimModel();
@@ -70,8 +66,8 @@ export function bodyExchangeFixture(
             ),
           ];
     const body = { kind: authority, solids };
-    const adopted = model.replaceProductBody({ localId, body });
-    if (!adopted.ok) disposeProductBody(body);
+    const adopted = model.replaceBody({ localId, body });
+    if (!adopted.ok) disposeBody(body);
     unwrap(adopted);
     const styled = layout !== 'singleton';
     if (styled)
@@ -128,7 +124,7 @@ function offsetBox(length: number, offset: number): ValidSolid {
 
 /** Reuses ticket05's already-cut host and keeps its opening/filler records. */
 export function retainedOpeningFixture(
-  authority: ProductBody['kind'],
+  authority: Body['kind'],
   fillerKind: 'DOOR' | 'WINDOW' = 'DOOR',
   layout: 'disconnected' | 'aperture' = 'disconnected'
 ) {
@@ -168,8 +164,8 @@ export function retainedOpeningFixture(
       ),
     ];
     const body = { kind: authority, solids };
-    const replaced = model.replaceProductBody({ localId: wallId, body });
-    if (!replaced.ok) disposeProductBody(body);
+    const replaced = model.replaceBody({ localId: wallId, body });
+    if (!replaced.ok) disposeBody(body);
     unwrap(replaced);
     const opening = model.getAllElements().find((element) => element.category === 'OPENING');
     const wall = model.getElement(wallId);

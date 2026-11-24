@@ -1,4 +1,4 @@
-import { bodySolids } from '../src/types/productBody.js';
+import { bodySolids } from '../src/types/body.js';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { csg, getBounds, getKernel, unwrap, type Bounds3D } from 'brepjs';
 import {
@@ -240,15 +240,16 @@ describe('retained Families Body placement and openings', () => {
       expect(getKernel().volume(bodySolids(expected.geometry)[0].wrapped)).toBeCloseTo(53, 8);
       const inputs = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
       // eslint-disable-next-line @typescript-eslint/unbound-method -- Invoked below with the explicit model receiver via .call().
-      const replace = BimModel.prototype.replaceProductBody;
-      const replacement = vi
-        .spyOn(BimModel.prototype, 'replaceProductBody')
-        .mockImplementation(function (this: BimModel, input) {
-          const candidate = this.getElement(input.localId);
-          if (candidate?.category !== 'WALL') throw new Error('Missing post-opening candidate');
-          expect(getKernel().volume(bodySolids(candidate.geometry)[0].wrapped)).toBeCloseTo(53, 8);
-          return replace.call(this, input);
-        });
+      const replace = BimModel.prototype.replaceBody;
+      const replacement = vi.spyOn(BimModel.prototype, 'replaceBody').mockImplementation(function (
+        this: BimModel,
+        input
+      ) {
+        const candidate = this.getElement(input.localId);
+        if (candidate?.category !== 'WALL') throw new Error('Missing post-opening candidate');
+        expect(getKernel().volume(bodySolids(candidate.geometry)[0].wrapped)).toBeCloseTo(53, 8);
+        return replace.call(this, input);
+      });
       const { model, idByKeyPath } = unwrap(
         familiesToBim(root, { project: BODY_PROJECT, bodyEvaluator: evaluator })
       );

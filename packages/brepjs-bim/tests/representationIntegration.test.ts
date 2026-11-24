@@ -3,7 +3,7 @@ import { expect, it } from 'vitest';
 import { currentKernel } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
 import { placedSolids } from '../src/elementFns/placedGeometry.js';
-import { measureProductBodyMaterial } from '../src/types/productBody.js';
+import { measureBodyMaterial } from '../src/types/body.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { bodyRecordContract } from './helpers/bodyRecordContract.js';
 bodyRecordContract('WALL');
@@ -26,7 +26,7 @@ it.each(['GRID_REFERENCE', 'LINEAR_REFERENCE'] as const)(
     references[0] = 'unrelated';
     parameters.offset = 64;
     unwrap(
-      model.replaceProductBody({
+      model.replaceBody({
         localId: id,
         body: { kind: 'AUTHORITATIVE', solids: [box(3, 3, 3)] },
       })
@@ -34,7 +34,7 @@ it.each(['GRID_REFERENCE', 'LINEAR_REFERENCE'] as const)(
     const record = model.getElement(id);
     if (record?.representation !== 'BODY') throw new Error('Missing Body');
     expect(record.placement).toEqual({ kind, references: ['datum-1'], parameters: { offset: 21 } });
-    expect(unwrap(measureProductBodyMaterial(record.geometry.solids))).toBeCloseTo(27, 6);
+    expect(unwrap(measureBodyMaterial(record.geometry.solids))).toBeCloseTo(27, 6);
     const failure = { ok: false, error: { code: 'PLACEMENT_REFERENCE_UNRESOLVED' } };
     expect(placedSolids(record)).toMatchObject(failure);
     expect(await toIfc(model, { applicationName: 'Test', applicationVersion: '1' })).toMatchObject(

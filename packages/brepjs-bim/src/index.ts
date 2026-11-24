@@ -8,23 +8,23 @@ export type { BimTreeNode, BimTreeSummary } from './model/treeSummary.js';
 export { placedSolids, elementBounds, elementMaterialVolume } from './elementFns/placedGeometry.js';
 export {
   bodySolids,
-  validateProductBody,
-  copyProductBody,
-  transformProductBody,
-  productBodyBounds,
-  measureProductBodyMaterial,
-  disposeProductBody,
-} from './types/productBody.js';
+  validateBody,
+  copyBody,
+  transformBody,
+  bodyBounds,
+  measureBodyMaterial,
+  disposeBody,
+} from './types/body.js';
 export type {
   NonEmpty,
-  ProductBody,
-  ProductBodyError,
-  ProductBodyOperation,
-  ProductBodyBounds,
-  ProductBodySpace,
+  Body,
+  BodyError,
+  BodyOperation,
+  BodyBounds,
+  BodySpace,
   CleanupReport,
   GeometryCleanupDiagnostic,
-} from './types/productBody.js';
+} from './types/body.js';
 export type { PlacementDefinition } from './types/placementDefinition.js';
 export type { PlacedSolidsOptions } from './elementFns/placedGeometry.js';
 export type { FrameInput, RigidFrame, Mat4x4 } from './placementFrame.js';
