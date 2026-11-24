@@ -477,7 +477,7 @@ describe('familiesToBim rotation fold — civil spatial nodes', () => {
     expect(fill).toBeDefined();
     if (fill === undefined) throw new Error('Expected a projected Earthworks Fill');
     // Rotation preserves volume; the stored (parent-local) body is intact.
-    expect(unwrap(measureVolume(fill.geometry))).toBeCloseTo(sourceVolume, 3);
+    expect(unwrap(measureVolume(fill.geometry.solids[0]))).toBeCloseTo(sourceVolume, 3);
 
     // Reconstruct the world body through the rotated parent frame; bounds match
     // the world-baked source, proving the applyMatrix localization is exact.

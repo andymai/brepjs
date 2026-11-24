@@ -1,5 +1,6 @@
 import { box, DisposalScope, getEdges, getFaces, polygon, sewShells, unwrap } from 'brepjs';
 import { expect, it } from 'vitest';
+import { currentKernel } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
 import { placedSolids } from '../src/elementFns/placedGeometry.js';
 import { measureProductBodyMaterial } from '../src/types/productBody.js';
@@ -54,11 +55,24 @@ it('rejects faces, open shells, edges and raw meshes before any item transfers',
     ])
   );
   using scope = new DisposalScope();
-  const faces = getFaces(first).map((f) => scope.register(f));
-  const openShell = scope.register(unwrap(sewShells(faces.slice(0, 3))));
+  // Manifold has no B-rep sewing operation with which to construct an open shell.
+  const openShells =
+    currentKernel === 'manifold'
+      ? []
+      : [
+          scope.register(
+            unwrap(
+              sewShells(
+                getFaces(first)
+                  .map((f) => scope.register(f))
+                  .slice(0, 3)
+              )
+            )
+          ),
+        ];
   const [edge] = getEdges(face).map((e) => scope.register(e));
   if (!edge) throw new Error('Missing edge');
-  for (const input of [face, openShell, edge, { vertices: [0, 0, 0], indices: [0] }]) {
+  for (const input of [face, ...openShells, edge, { vertices: [0, 0, 0], indices: [0] }]) {
     const result: unknown = Reflect.apply(model.addAuthoredBody.bind(model), model, [
       {
         category: 'RAILING',

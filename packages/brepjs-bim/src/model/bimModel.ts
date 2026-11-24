@@ -509,9 +509,21 @@ export class BimModel {
           specError('EARTHWORKS_FILL_NO_GEOMETRY', 'EarthworksFillSpec.solid is required')
         );
       }
+      const { solid, ...metadata } = snapshot;
+      const placement = capturePlacement({
+        kind: 'LOCAL_FRAME',
+        frame: { origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1] },
+      });
+      if (!placement.ok) return placement;
       const id = this.#makeElement(
         command,
-        { category: 'EARTHWORKS_FILL', spec: snapshot, geometry: snapshot.solid },
+        {
+          category: 'EARTHWORKS_FILL',
+          representation: 'BODY',
+          placement: placement.value,
+          spec: captureRecipe(metadata),
+          geometry: { kind: 'AUTHORITATIVE', solids: [solid] },
+        },
         identity?.stableKey
       );
       this.#associateMaterial(command, id, snapshot);
@@ -607,16 +619,24 @@ export class BimModel {
 
   addSlab(spec: SlabSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
     return this.#create('addSlab', (command) => {
-      const snapshot = Object.freeze({ ...spec });
+      const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
       const keyCheck = this.#checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
+      const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
+      if (!placement.ok) return placement;
       const geomResult = slabToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
       this.#ownGenerated(command, [geomResult.value]);
       const id = this.#makeElement(
         command,
-        { category: 'SLAB', spec: snapshot, geometry: geomResult.value },
+        {
+          category: 'SLAB',
+          spec: snapshot,
+          representation: 'BODY',
+          placement: placement.value,
+          geometry: { kind: 'PARAMETRIC', solids: [geomResult.value] },
+        },
         identity?.stableKey
       );
       this.#associateMaterial(command, id, snapshot);
@@ -627,16 +647,24 @@ export class BimModel {
 
   addBeam(spec: BeamSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
     return this.#create('addBeam', (command) => {
-      const snapshot = Object.freeze({ ...spec });
+      const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
       const keyCheck = this.#checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
+      const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
+      if (!placement.ok) return placement;
       const geomResult = beamToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
       this.#ownGenerated(command, [geomResult.value]);
       const id = this.#makeElement(
         command,
-        { category: 'BEAM', spec: snapshot, geometry: geomResult.value },
+        {
+          category: 'BEAM',
+          spec: snapshot,
+          representation: 'BODY',
+          placement: placement.value,
+          geometry: { kind: 'PARAMETRIC', solids: [geomResult.value] },
+        },
         identity?.stableKey
       );
       this.#associateMaterial(command, id, snapshot);
@@ -647,16 +675,24 @@ export class BimModel {
 
   addColumn(spec: ColumnSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
     return this.#create('addColumn', (command) => {
-      const snapshot = Object.freeze({ ...spec });
+      const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
       const keyCheck = this.#checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
+      const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
+      if (!placement.ok) return placement;
       const geomResult = columnToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
       this.#ownGenerated(command, [geomResult.value]);
       const id = this.#makeElement(
         command,
-        { category: 'COLUMN', spec: snapshot, geometry: geomResult.value },
+        {
+          category: 'COLUMN',
+          spec: snapshot,
+          representation: 'BODY',
+          placement: placement.value,
+          geometry: { kind: 'PARAMETRIC', solids: [geomResult.value] },
+        },
         identity?.stableKey
       );
       this.#associateMaterial(command, id, snapshot);
@@ -667,16 +703,24 @@ export class BimModel {
 
   addSpace(spec: SpaceSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
     return this.#create('addSpace', (command) => {
-      const snapshot = Object.freeze({ ...spec });
+      const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
       const keyCheck = this.#checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
+      const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
+      if (!placement.ok) return placement;
       const geomResult = spaceToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
       this.#ownGenerated(command, [geomResult.value]);
       const id = this.#makeElement(
         command,
-        { category: 'SPACE', spec: snapshot, geometry: geomResult.value },
+        {
+          category: 'SPACE',
+          spec: snapshot,
+          representation: 'BODY',
+          placement: placement.value,
+          geometry: { kind: 'PARAMETRIC', solids: [geomResult.value] },
+        },
         identity?.stableKey
       );
       this.#associateMaterial(command, id, snapshot);
@@ -687,16 +731,24 @@ export class BimModel {
 
   addRoof(spec: RoofSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
     return this.#create('addRoof', (command) => {
-      const snapshot = Object.freeze({ ...spec });
+      const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
       const keyCheck = this.#checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
+      const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
+      if (!placement.ok) return placement;
       const geomResult = roofToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
       this.#ownGenerated(command, [geomResult.value]);
       const id = this.#makeElement(
         command,
-        { category: 'ROOF', spec: snapshot, geometry: geomResult.value },
+        {
+          category: 'ROOF',
+          spec: snapshot,
+          representation: 'BODY',
+          placement: placement.value,
+          geometry: { kind: 'PARAMETRIC', solids: [geomResult.value] },
+        },
         identity?.stableKey
       );
       this.#associateMaterial(command, id, snapshot);
@@ -733,16 +785,24 @@ export class BimModel {
 
   addFooting(spec: FootingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
     return this.#create('addFooting', (command) => {
-      const snapshot = Object.freeze({ ...spec });
+      const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
       const keyCheck = this.#checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
+      const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
+      if (!placement.ok) return placement;
       const geomResult = footingToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
       this.#ownGenerated(command, [geomResult.value]);
       const id = this.#makeElement(
         command,
-        { category: 'FOOTING', spec: snapshot, geometry: geomResult.value },
+        {
+          category: 'FOOTING',
+          spec: snapshot,
+          representation: 'BODY',
+          placement: placement.value,
+          geometry: { kind: 'PARAMETRIC', solids: [geomResult.value] },
+        },
         identity?.stableKey
       );
       this.#associateMaterial(command, id, snapshot);
@@ -753,16 +813,24 @@ export class BimModel {
 
   addPile(spec: PileSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
     return this.#create('addPile', (command) => {
-      const snapshot = Object.freeze({ ...spec });
+      const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
       const keyCheck = this.#checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
+      const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
+      if (!placement.ok) return placement;
       const geomResult = pileToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
       this.#ownGenerated(command, [geomResult.value]);
       const id = this.#makeElement(
         command,
-        { category: 'PILE', spec: snapshot, geometry: geomResult.value },
+        {
+          category: 'PILE',
+          spec: snapshot,
+          representation: 'BODY',
+          placement: placement.value,
+          geometry: { kind: 'PARAMETRIC', solids: [geomResult.value] },
+        },
         identity?.stableKey
       );
       this.#associateMaterial(command, id, snapshot);
@@ -920,16 +988,24 @@ export class BimModel {
     options?: ElementIdentityOptions
   ): Result<LocalId, BimError> {
     return this.#create('addCovering', (command) => {
-      const snapshot = Object.freeze({ ...spec });
+      const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
       const keyCheck = this.#checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
+      const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
+      if (!placement.ok) return placement;
       const geomResult = coveringToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
       this.#ownGenerated(command, [geomResult.value]);
       const id = this.#makeElement(
         command,
-        { category: 'COVERING', spec: snapshot, geometry: geomResult.value },
+        {
+          category: 'COVERING',
+          spec: snapshot,
+          representation: 'BODY',
+          placement: placement.value,
+          geometry: { kind: 'PARAMETRIC', solids: [geomResult.value] },
+        },
         identity?.stableKey
       );
       this.#associateMaterial(command, id, snapshot);
@@ -1214,9 +1290,21 @@ export class BimModel {
       if (snapshot.solid === null || snapshot.solid === undefined) {
         return err(specError('PROXY_NO_GEOMETRY', 'ProxySpec.solid is required'));
       }
+      const { solid, ...metadata } = snapshot;
+      const placement = capturePlacement({
+        kind: 'LOCAL_FRAME',
+        frame: { origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1] },
+      });
+      if (!placement.ok) return placement;
       const id = this.#makeElement(
         command,
-        { category: 'PROXY', spec: snapshot, geometry: snapshot.solid },
+        {
+          category: 'PROXY',
+          representation: 'BODY',
+          placement: placement.value,
+          spec: captureRecipe(metadata),
+          geometry: { kind: 'AUTHORITATIVE', solids: [solid] },
+        },
         identity?.stableKey
       );
       if (snapshot.materialName !== undefined) {
@@ -1282,7 +1370,7 @@ export class BimModel {
         hostKind: 'WALL',
       });
       if (!cutResult.ok) return err(cutResult.error);
-      this.#replaceWallGeometry(command, wall, cutResult.value);
+      this.#replaceCutBody(command, wall, cutResult.value);
 
       const openingId = this.#makeElement(
         command,
@@ -1371,7 +1459,7 @@ export class BimModel {
         hostKind: 'WALL',
       });
       if (!cutResult.ok) return err(cutResult.error);
-      this.#replaceWallGeometry(command, wall, cutResult.value);
+      this.#replaceCutBody(command, wall, cutResult.value);
 
       const openingId = this.#makeElement(
         command,
@@ -1429,6 +1517,16 @@ export class BimModel {
           )
         );
       }
+      if (
+        slab.spec === null ||
+        slab.geometry.kind !== 'PARAMETRIC' ||
+        !this.isRecipeQuantityEligible(slab.localId)
+      ) {
+        return err(
+          specError('BODY_OPENING_REQUIRES_RECIPE', 'Cutting this Slab needs its original recipe')
+        );
+      }
+      const thickness = slab.spec.thickness;
       if (snapshot.offsetX + snapshot.sizeX > slab.spec.length) {
         return err(
           specError(
@@ -1479,12 +1577,12 @@ export class BimModel {
       };
 
       const cutResult = cutOpeningSolid({
-        host: slab.geometry,
-        makeTool: () => slabOpeningToSolid(openingSpec, slab.spec.thickness),
+        host: slab.geometry.solids[0],
+        makeTool: () => slabOpeningToSolid(openingSpec, thickness),
         hostKind: 'SLAB',
       });
       if (!cutResult.ok) return err(cutResult.error);
-      this.#replaceSlabGeometry(command, slab, cutResult.value);
+      this.#replaceCutBody(command, slab, cutResult.value);
 
       const openingId = this.#makeElement(
         command,
@@ -1503,32 +1601,20 @@ export class BimModel {
     });
   }
 
-  #replaceWallGeometry(
+  #replaceCutBody(
     command: ModelCommand,
-    wall: BimElement<'WALL'>,
+    host: BimElement<'WALL'> | BimElement<'SLAB'>,
     newGeometry: ValidSolid
   ): void {
     this.#ownGenerated(command, [newGeometry]);
     const prepared = protectElement({
-      ...wall,
+      ...host,
       geometry: { kind: 'PARAMETRIC', solids: [newGeometry] } satisfies ProductBody,
     });
     if (!prepared.ok) throw new RejectedModelCommand(prepared.error);
     this.#stageElement(command, prepared.value);
-    command.retired.push(...this.#prepareRetirement(wall));
+    command.retired.push(...this.#prepareRetirement(host));
     // Opening edits preserve the existing recipe eligibility, never restore it.
-  }
-
-  #replaceSlabGeometry(
-    command: ModelCommand,
-    slab: BimElement<'SLAB'>,
-    newGeometry: ValidSolid
-  ): void {
-    this.#ownGenerated(command, [newGeometry]);
-    const prepared = protectElement({ ...slab, geometry: newGeometry });
-    if (!prepared.ok) throw new RejectedModelCommand(prepared.error);
-    this.#stageElement(command, prepared.value);
-    command.retired.push(...this.#prepareRetirement(slab));
   }
 
   getDoors(): BimElement<'DOOR'>[] {
@@ -1846,9 +1932,6 @@ export class BimModel {
         specError('DUPLICATE_STABLE_KEY', `BimModel: duplicate stableKey '${stableKey}'`)
       );
     }
-    if (fields.category === 'PROXY' || fields.category === 'EARTHWORKS_FILL') {
-      this.#requireUnowned(command, fields.geometry, 0);
-    }
     const localId = command.counter.next();
     const guid = deriveIfcGuidSync(
       stableKey !== undefined
@@ -1883,4 +1966,18 @@ export class BimModel {
     else command.relationships.push(rel);
     return localId;
   }
+}
+
+/** Geometry encoders may reuse these recipe parameters while the original Body is retained. */
+function captureRecipe<T extends object>(spec: T): T {
+  const copy = structuredClone(spec);
+  function freeze(value: object): void {
+    const children: unknown[] = Object.values(value);
+    Object.freeze(value);
+    for (const child of children) {
+      if (child !== null && typeof child === 'object' && !Object.isFrozen(child)) freeze(child);
+    }
+  }
+  freeze(copy);
+  return copy;
 }

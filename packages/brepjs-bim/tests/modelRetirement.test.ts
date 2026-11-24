@@ -203,10 +203,10 @@ it('keeps a successful LocalId outcome and diagnostics when retiring a slab open
     const id = unwrap(model.addSlab({ ...WALL, length: 10, width: 10, predefinedType: 'FLOOR' }));
     const before = model.getElement(id);
     if (before?.category !== 'SLAB') throw new Error('Expected Slab');
-    const release = before.geometry[Symbol.dispose].bind(before.geometry);
+    const release = before.geometry.solids[0][Symbol.dispose].bind(before.geometry.solids[0]);
     let callbackRelationships: unknown;
     const cause = new Error('Old slab release');
-    const attempt = vi.spyOn(before.geometry, Symbol.dispose).mockImplementation(() => {
+    const attempt = vi.spyOn(before.geometry.solids[0], Symbol.dispose).mockImplementation(() => {
       callbackRelationships = model.getAllRelationships();
       release();
       throw cause;
@@ -221,8 +221,10 @@ it('keeps a successful LocalId outcome and diagnostics when retiring a slab open
     ]);
     const after = model.getElement(id);
     if (after?.category !== 'SLAB') throw new Error('Expected Slab');
-    expect(after.geometry === before.geometry).toBe(false);
-    expect(model.addProxy({ name: 'Borrowed slab', solid: after.geometry })).toMatchObject({
+    expect(after.geometry.solids[0] === before.geometry.solids[0]).toBe(false);
+    expect(
+      model.addProxy({ name: 'Borrowed slab', solid: after.geometry.solids[0] })
+    ).toMatchObject({
       ok: false,
       error: { code: 'BODY_OWNERSHIP_CONFLICT' },
     });

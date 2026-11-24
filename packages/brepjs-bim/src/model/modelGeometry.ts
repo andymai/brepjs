@@ -15,7 +15,7 @@ export function retainedSolids(element: ElementFields): readonly ValidSolid[] {
     case 'CURTAIN_WALL':
       return [...element.geometry.panels, ...element.geometry.mullions].map(({ solid }) => solid);
     default:
-      return element.geometry === null ? [] : [element.geometry];
+      return [];
   }
 }
 
@@ -34,12 +34,6 @@ export function protectElement(element: AnyBimElement): Result<AnyBimElement, Bi
   if (element.representation === 'BODY') {
     const body = validateProductBody(element.geometry);
     return body.ok ? ok(Object.freeze({ ...element, geometry: body.value })) : body;
-  }
-  // These adders accept opaque caller-owned handles. isValidSolid alone assumes
-  // a Solid already; use the complete native-solid boundary before transfer.
-  if (element.category === 'PROXY' || element.category === 'EARTHWORKS_FILL') {
-    const body = validateProductBody({ kind: 'AUTHORITATIVE', solids: [element.geometry] });
-    return body.ok ? ok(Object.freeze(element)) : body;
   }
   let itemIndex = 0;
   for (const solid of retainedSolids(element)) {

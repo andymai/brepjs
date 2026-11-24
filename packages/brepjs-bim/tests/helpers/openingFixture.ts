@@ -45,7 +45,7 @@ export function openingHost(model: BimModel, kind: OpeningCommand) {
     toolPrefix: kind === 'Slab' ? 'SLAB_OPENING' : 'OPENING',
     solid() {
       const host = model.getElement(hostId);
-      if (host?.category === 'SLAB') return host.geometry;
+      if (host?.category === 'SLAB') return host.geometry.solids[0];
       return singletonWallSolid(model, hostId);
     },
     open() {

@@ -1,6 +1,6 @@
 import { box, getBounds, translate, unwrap, type ValidSolid } from 'brepjs';
-import { describe, expect, it, vi } from 'vitest';
-import { currentKernel } from '../../../../tests/setup.js';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { currentKernel, initKernel } from '../../../../tests/setup.js';
 import { placedSolids } from '../../src/elementFns/placedGeometry.js';
 import { BimModel } from '../../src/model/bimModel.js';
 import { setProductBodyTestHooksForTesting } from '../../src/productBodyTestHooks.js';
@@ -11,6 +11,10 @@ import {
   type NonEmpty,
 } from '../../src/types/productBody.js';
 import { nativeShapeCount } from './nativeArena.js';
+
+beforeAll(async () => {
+  await initKernel();
+}, 30000);
 
 const frame = { origin: [1000, 2000, 3000], axisX: [0, 1, 0], axisZ: [0, 0, 1] } as const;
 const cases = [

@@ -489,7 +489,7 @@ describe('BimModel.addSlab', () => {
     unwrap(model.addSlab(SLAB_SPEC));
     unwrap(model.addSlab({ ...SLAB_SPEC, predefinedType: 'ROOF' }));
     const slabs = model.getSlabs();
-    expect(slabs.map((s) => s.spec.predefinedType).sort()).toEqual(['FLOOR', 'ROOF']);
+    expect(slabs.map((s) => s.spec?.predefinedType).sort()).toEqual(['FLOOR', 'ROOF']);
   });
 
   it('volume of stored slab geometry matches dimensions', () => {
@@ -498,7 +498,7 @@ describe('BimModel.addSlab', () => {
     if (!result.ok) throw new Error(result.error.message);
     const slab = model.getSlabs()[0];
     if (!slab) throw new Error('Expected one slab');
-    const vol = unwrap(measureVolume(slab.geometry));
+    const vol = unwrap(measureVolume(slab.geometry.solids[0]));
     expect(vol).toBeCloseTo(5000 * 4000 * 200, -2);
   });
 
@@ -509,7 +509,7 @@ describe('BimModel.addSlab', () => {
     const slab = model.getSlabs()[0];
     if (!slab) throw new Error('Expected one slab');
     model[Symbol.dispose]();
-    expect(slab.geometry.disposed).toBe(true);
+    expect(slab.geometry.solids[0].disposed).toBe(true);
   });
 
   it('emits an ASSOCIATES_MATERIAL relationship', () => {
@@ -544,7 +544,7 @@ describe('BimModel.addSlabOpening (M6)', () => {
   function slabVolume(model: BimModel): number {
     const slab = model.getSlabs()[0];
     if (!slab) throw new Error('Expected one slab');
-    return unwrap(measureVolume(slab.geometry));
+    return unwrap(measureVolume(slab.geometry.solids[0]));
   }
 
   it('adds a slab opening and creates VOIDS_SLAB rel', () => {
@@ -731,7 +731,7 @@ describe('BimModel.addBeam (M7)', () => {
     if (!result.ok) throw new Error(result.error.message);
     const beam = model.getBeams()[0];
     if (!beam) throw new Error('Expected one beam');
-    const vol = unwrap(measureVolume(beam.geometry));
+    const vol = unwrap(measureVolume(beam.geometry.solids[0]));
     expect(vol).toBeCloseTo(200 * 400 * 5000, -2);
   });
 
@@ -742,7 +742,7 @@ describe('BimModel.addBeam (M7)', () => {
     const beam = model.getBeams()[0];
     if (!beam) throw new Error('Expected one beam');
     model[Symbol.dispose]();
-    expect(beam.geometry.disposed).toBe(true);
+    expect(beam.geometry.solids[0].disposed).toBe(true);
   });
 
   it('emits an ASSOCIATES_MATERIAL relationship', () => {
@@ -785,7 +785,7 @@ describe('BimModel.addColumn (M7)', () => {
     if (!result.ok) throw new Error(result.error.message);
     const column = model.getColumns()[0];
     if (!column) throw new Error('Expected one column');
-    const vol = unwrap(measureVolume(column.geometry));
+    const vol = unwrap(measureVolume(column.geometry.solids[0]));
     const nominal = Math.PI * 200 * 200 * 3000;
     expect(vol).toBeGreaterThan(nominal * 0.99);
     expect(vol).toBeLessThan(nominal * 1.01);
@@ -798,7 +798,7 @@ describe('BimModel.addColumn (M7)', () => {
     const column = model.getColumns()[0];
     if (!column) throw new Error('Expected one column');
     model[Symbol.dispose]();
-    expect(column.geometry.disposed).toBe(true);
+    expect(column.geometry.solids[0].disposed).toBe(true);
   });
 });
 

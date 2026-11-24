@@ -89,18 +89,6 @@ export function placedSolids(
   const checked = validatePlacements(el, parentFrame);
   if (!checked.ok) return checked;
   switch (el.category) {
-    case 'SLAB':
-    case 'BEAM':
-    case 'COLUMN':
-    case 'SPACE':
-    case 'ROOF':
-    case 'FOOTING':
-    case 'PILE':
-    case 'COVERING': {
-      const placed = placeWithinParent(el.geometry, el.spec, parentFrame);
-      if (!placed.ok) return placed;
-      return ok([placed.value]);
-    }
     case 'STAIR': {
       const out: ValidSolid[] = [];
       for (const flight of el.spec.flights) {
@@ -138,18 +126,6 @@ export function placedSolids(
         out.push(placed.value);
       }
       return ok(out);
-    }
-    case 'PROXY':
-    case 'EARTHWORKS_FILL': {
-      // No frame on either body spec: identity mints a caller-owned copy, then
-      // parentFrame (when supplied) takes the parent-local body into world space.
-      const placed = placeWithinParent(
-        el.geometry,
-        { origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1] },
-        parentFrame
-      );
-      if (!placed.ok) return placed;
-      return ok([placed.value]);
     }
     case 'CURTAIN_WALL': {
       const out: ValidSolid[] = [];

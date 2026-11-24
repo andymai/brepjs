@@ -64,7 +64,7 @@ export function writeBridgePart(
 export function writeEarthworksFillEntity(
   w: IfcWriter,
   guid: IfcGuid,
-  spec: EarthworksFillSpec,
+  spec: Pick<EarthworksFillSpec, 'name' | 'predefinedType'>,
   ownerHistoryId: number,
   localPlacementId: number,
   productDefinitionShapeId: number

@@ -132,7 +132,9 @@ it.each(['Proxy', 'EarthworksFill'] as const)(
         )
       );
       expect(adoptedId).toBe(Number(wallId) + 2);
-      expect(model.getElement(adoptedId)?.geometry).toBe(independent);
+      const adopted = model.getElement(adoptedId);
+      if (adopted?.representation !== 'BODY') throw new Error('Expected a retained Body');
+      expect(adopted.geometry.solids[0]).toBe(independent);
     }
     expectArena(baseline);
   }

@@ -93,16 +93,7 @@ describe('BimModel.replaceProductBody', () => {
 
   it('rejects missing and unsupported targets without taking caller inputs', () => {
     using model = new BimModel();
-    const slabId = required(
-      model.addSlab({
-        length: 1_000,
-        width: 500,
-        thickness: 100,
-        ...FRAME,
-        predefinedType: 'FLOOR',
-        materialName: 'Concrete',
-      })
-    );
+    const projectId = required(model.init({ name: 'Project without geometry' }));
     using missingInput = box(10, 10, 10);
     using categoryInput = box(20, 20, 20);
 
@@ -114,7 +105,7 @@ describe('BimModel.replaceProductBody', () => {
       },
     });
     const wrongCategory = model.replaceProductBody({
-      localId: slabId,
+      localId: projectId,
       body: {
         kind: 'AUTHORITATIVE',
         solids: [categoryInput],

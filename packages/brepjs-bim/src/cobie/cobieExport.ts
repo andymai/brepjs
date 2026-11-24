@@ -71,7 +71,7 @@ function categoryLabel(category: BimCategory): string {
 
 /** Extracts a predefinedType from an element spec, defaulting to NOTDEFINED. */
 function predefinedTypeOf(el: AnyBimElement): string {
-  const spec = el.spec as { predefinedType?: string | undefined };
+  const spec = (el.spec ?? {}) as { predefinedType?: string | undefined };
   const pred = spec.predefinedType;
   return pred !== undefined && pred.length > 0 ? pred : 'NOTDEFINED';
 }
@@ -175,14 +175,14 @@ function deriveSpaces(
   for (const space of model.getSpaces()) {
     const containerId = containerOf.get(space.localId);
     const container = containerId !== undefined ? elementById.get(containerId) : undefined;
-    const floorName = container?.category === 'STOREY' ? container.spec.name : '';
+    const floorName = container?.category === 'STOREY' ? (container.spec?.name ?? '') : '';
     spaces.push({
-      name: space.spec.name,
+      name: space.spec?.name ?? space.guid,
       createdBy: '',
-      category: space.spec.predefinedType ?? '',
+      category: space.spec?.predefinedType ?? '',
       floorName,
-      description: space.spec.longName ?? '',
-      roomTag: space.spec.name,
+      description: space.spec?.longName ?? '',
+      roomTag: space.spec?.name ?? space.guid,
       externalIdentifier: space.guid,
     });
   }
@@ -227,7 +227,7 @@ function deriveComponentsAndTypes(
       const name = componentName(el, category, i);
       const containerId = containerOf.get(el.localId);
       const container = containerId !== undefined ? elementById.get(containerId) : undefined;
-      const space = container?.category === 'SPACE' ? container.spec.name : '';
+      const space = container?.category === 'SPACE' ? (container.spec?.name ?? '') : '';
       component.push({
         name,
         createdBy: '',
@@ -244,7 +244,7 @@ function deriveComponentsAndTypes(
 
 /** Component display name, preferring a spec-supplied name, else `Label N`. */
 function componentName(el: AnyBimElement, category: BimCategory, index: number): string {
-  const spec = el.spec as { name?: string | undefined };
+  const spec = (el.spec ?? {}) as { name?: string | undefined };
   const specName = spec.name;
   if (specName !== undefined && specName.length > 0) return specName;
   return `${categoryLabel(category)} ${index + 1}`;
@@ -300,7 +300,7 @@ function deriveSystems(
 }
 
 function groupName(el: AnyBimElement): string {
-  const spec = el.spec as { name?: string | undefined };
+  const spec = (el.spec ?? {}) as { name?: string | undefined };
   return spec.name ?? '';
 }
 
@@ -315,7 +315,7 @@ function firstGroupMemberName(
     for (const memberId of rel.memberLocalIds) {
       const member = elementById.get(memberId);
       if (member?.category === ofCategory) {
-        const spec = member.spec as { name?: string | undefined };
+        const spec = (member.spec ?? {}) as { name?: string | undefined };
         return spec.name ?? '';
       }
     }
@@ -334,7 +334,7 @@ function groupMemberNames(
     for (const memberId of rel.memberLocalIds) {
       const member = elementById.get(memberId);
       if (member === undefined) continue;
-      const spec = member.spec as { name?: string | undefined };
+      const spec = (member.spec ?? {}) as { name?: string | undefined };
       if (spec.name !== undefined && spec.name.length > 0) names.push(spec.name);
     }
   }
@@ -362,7 +362,7 @@ function deriveAttributes(
   }
 
   for (const el of elements) {
-    const spec = el.spec as {
+    const spec = (el.spec ?? {}) as {
       customProperties?:
         Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
       name?: string | undefined;

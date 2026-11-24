@@ -83,7 +83,9 @@ it.each(['Proxy', 'Fill'] as const)(
         command({ name: 'Valid', materialName: 'Test', solid: valid }, { stableKey: 'retry-solid' })
       );
       expect(retry).toBe(existing + 1);
-      expect(model.getElement(retry)?.geometry).toBe(valid);
+      const adopted = model.getElement(retry);
+      if (adopted?.representation !== 'BODY') throw new Error('Expected a retained Body');
+      expect(adopted.geometry.solids[0]).toBe(valid);
     }
     expectArena(baseline);
   }
@@ -146,8 +148,9 @@ it('snapshots caller ownership descriptors without freezing the caller or clonin
   spec.solid = second;
   const element = model.getElement(id);
   if (element?.category !== 'PROXY') throw new Error('Expected Proxy');
-  expect(element.geometry).toBe(first);
-  expect(element.spec.solid).toBe(first);
+  expect(element.geometry.solids[0]).toBe(first);
+  if (element.spec === null) throw new Error('Missing Proxy metadata');
+  expect(element.spec).not.toHaveProperty('solid');
   expect(Reflect.set(element.spec, 'solid', second)).toBe(false);
   expect(Object.isFrozen(spec)).toBe(false);
   model[Symbol.dispose]();
@@ -229,8 +232,7 @@ it.each(creators)(
         expect(Reflect.set(part.origin, 0, 999)).toBe(false);
       }
       items = parts.map(({ solid }) => solid);
-    } else if (element.geometry !== null) items = [element.geometry];
-    else throw new Error('Expected retained geometry');
+    } else throw new Error('Expected retained geometry');
     const attempts = items.map((solid) => vi.spyOn(solid, Symbol.dispose));
     for (const item of items) {
       expect(

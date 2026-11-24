@@ -1,4 +1,3 @@
-import type { ValidSolid } from 'brepjs';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import type { LocalId } from '../identity/localId.js';
 import type { WallSpec } from '../specs/wallSpec.js';
@@ -27,26 +26,31 @@ import type {
 import type { PlacementDefinition } from './placementDefinition.js';
 import type { ProductBody } from './productBody.js';
 
-export const bodyClassifications = ['WALL', 'RAILING', 'MEMBER'] as const;
+export const bodyClassifications = [
+  'WALL',
+  'RAILING',
+  'MEMBER',
+  'SLAB',
+  'ROOF',
+  'SPACE',
+  'COVERING',
+  'BEAM',
+  'COLUMN',
+  'FOOTING',
+  'PILE',
+  'PROXY',
+  'EARTHWORKS_FILL',
+] as const;
 export type BodyClassification = (typeof bodyClassifications)[number];
 
 export type BimCategory =
   | BodyClassification
-  | 'SLAB'
-  | 'BEAM'
-  | 'COLUMN'
   | 'OPENING'
   | 'DOOR'
   | 'WINDOW'
-  | 'PROXY'
-  | 'SPACE'
-  | 'ROOF'
   | 'CURTAIN_WALL'
-  | 'FOOTING'
-  | 'PILE'
   | 'STAIR'
   | 'RAMP'
-  | 'COVERING'
   | 'ELEMENT_ASSEMBLY'
   | 'ZONE'
   | 'SYSTEM'
@@ -54,7 +58,6 @@ export type BimCategory =
   | 'SITE'
   | 'BRIDGE'
   | 'BRIDGE_PART'
-  | 'EARTHWORKS_FILL'
   | 'BUILDING'
   | 'STOREY';
 
@@ -99,7 +102,7 @@ export type BimSpecFor<C extends BimCategory> = C extends 'WALL'
             : C extends 'WINDOW'
               ? WindowSpec
               : C extends 'PROXY'
-                ? ProxySpec
+                ? Omit<ProxySpec, 'solid'>
                 : C extends 'SPACE'
                   ? SpaceSpec
                   : C extends 'ROOF'
@@ -133,7 +136,7 @@ export type BimSpecFor<C extends BimCategory> = C extends 'WALL'
                                               : C extends 'BRIDGE_PART'
                                                 ? BridgePartSpec
                                                 : C extends 'EARTHWORKS_FILL'
-                                                  ? EarthworksFillSpec
+                                                  ? Omit<EarthworksFillSpec, 'solid'>
                                                   : C extends 'BUILDING'
                                                     ? BuildingSpec
                                                     : C extends 'STOREY'
@@ -144,19 +147,7 @@ export type BimGeometryFor<C extends BimCategory> = C extends 'CURTAIN_WALL'
   ? CurtainWallGrid
   : C extends BodyClassification
     ? ProductBody
-    : C extends
-          | 'SLAB'
-          | 'BEAM'
-          | 'COLUMN'
-          | 'PROXY'
-          | 'EARTHWORKS_FILL'
-          | 'SPACE'
-          | 'ROOF'
-          | 'FOOTING'
-          | 'PILE'
-          | 'COVERING'
-      ? ValidSolid
-      : null;
+    : null;
 
 type BodySpec<C extends BimCategory> =
   BimGeometryFor<C> extends ProductBody ? BimSpecFor<C> | null : BimSpecFor<C>;

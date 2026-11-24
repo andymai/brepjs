@@ -49,7 +49,6 @@ import {
   writeBridgePart,
   writeEarthworksFillEntity,
 } from '../ifc-writer/infrastructureWriter.js';
-import { writeTessellatedProductGeometry } from '../ifc-writer/tessellatedProductWriter.js';
 import {
   writeZoneEntity,
   writeSystemEntity,
@@ -105,14 +104,14 @@ import {
   writeDoorCommonPset,
   writeWindowCommonPset,
 } from '../ifc-writer/openingWriter.js';
-import { writeProxyGeometry, writeProxyEntity } from '../ifc-writer/proxyWriter.js';
+import { writeProxyEntity } from '../ifc-writer/proxyWriter.js';
 import { writeIfcType } from '../ifc-writer/typeWriter.js';
 import type { IfcTypeName } from '../ifc-writer/typeWriter.js';
 import { toIfcLengthM } from '../units/units.js';
 import { checkGeometryValidity } from '../validation/geometryValidity.js';
 import type { BimError } from '../errors/bimError.js';
 import { ifcError } from '../errors/bimError.js';
-import type { Result, ValidSolid } from 'brepjs';
+import type { Result } from 'brepjs';
 import { err, ok } from 'brepjs';
 import type { LocalId } from '../identity/localId.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
@@ -137,7 +136,7 @@ import {
   type ValidationReport,
   type ValidationIssue,
 } from '../validation/severity.js';
-import { bodySolids } from '../types/productBody.js';
+import { bodySolids, measureProductBodyMaterial } from '../types/productBody.js';
 import type { NonEmpty } from '../types/productBody.js';
 import { preflightProductBody } from './productBodyPreflight.js';
 import { deriveWallQuantities } from './wallQuantities.js';
@@ -173,6 +172,42 @@ function preflightProductBodies<E extends ProductBodyElement>(
     });
   }
   return ok(preflighted);
+}
+
+/** Use analytic parameters only while model ownership still binds them to this Body. */
+function writeRetainedBody(
+  writer: IfcWriter,
+  element: ProductBodyElement,
+  contextId: number,
+  parentId: number | null
+) {
+  const frame = localPlacementFrame(element.placement);
+  if (!frame.ok) return frame;
+  const prepared = preflightProductBody({
+    localId: element.localId,
+    solids: element.geometry.solids,
+  });
+  if (!prepared.ok) return prepared;
+  return ok(writeProductBodyGeometry(writer, frame.value, prepared.value, contextId, parentId));
+}
+
+function writeMaterialQuantities(
+  element: ProductBodyElement,
+  issues: ValidationIssue[],
+  write: (netVolumeM3: number) => void
+): void {
+  const measured = measureProductBodyMaterial(element.geometry.solids);
+  if (measured.ok) write(measured.value / 1_000_000_000);
+  else
+    issues.push(
+      issue(
+        'warning',
+        'BODY_QUANTITY_OMITTED',
+        'Could not measure the retained material',
+        element.localId,
+        { guid: element.guid, cause: measured.error }
+      )
+    );
 }
 
 export async function toIfc(
@@ -460,35 +495,38 @@ async function serializeIfc(
     const containingId = findContainerOf(slab.localId, relationships);
     const storeyPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const { localPlacementId, productDefinitionShapeId } = writeSlabGeometry(
-      w,
-      slab.spec,
-      geomSubContextId,
-      storeyPlacementId
-    );
+    const geometry =
+      slab.spec !== null && model.isRecipeQuantityEligible(slab.localId)
+        ? ok(writeSlabGeometry(w, slab.spec, geomSubContextId, storeyPlacementId))
+        : writeRetainedBody(w, slab, geomSubContextId, storeyPlacementId);
+    if (!geometry.ok) return geometry;
+    const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const slabExpressId = writeSlabEntity(
       w,
       slab.guid,
       `Slab ${i + 1}`,
-      slab.spec.predefinedType,
+      slab.spec?.predefinedType ?? 'NOTDEFINED',
       ownerHistoryId,
       localPlacementId,
       productDefinitionShapeId
     );
     idMap.set(slab.localId, slabExpressId);
     placementMap.set(slab.localId, localPlacementId);
-    writeSlabCommonPset(w, ownerHistoryId, slabExpressId, slab.spec);
-    writeManufacturerPset(w, ownerHistoryId, slabExpressId, slab.spec);
-    if (slab.spec.customProperties !== undefined) {
-      writeCustomPsets(w, ownerHistoryId, slabExpressId, slab.spec.customProperties);
+    if (slab.spec !== null) writeSlabCommonPset(w, ownerHistoryId, slabExpressId, slab.spec);
+    if (slab.spec !== null) writeManufacturerPset(w, ownerHistoryId, slabExpressId, slab.spec);
+    if (slab.spec?.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, slabExpressId, slab.spec?.customProperties);
     }
-    writeSlabBaseQuantities(
-      w,
-      ownerHistoryId,
-      slabExpressId,
-      slab.spec,
-      openingsBySlab.get(slab.localId) ?? [],
-      densityByElement.get(slab.localId)
+    writeMaterialQuantities(slab, issues, (netM3) =>
+      writeSlabBaseQuantities(
+        w,
+        ownerHistoryId,
+        slabExpressId,
+        model.isRecipeQuantityEligible(slab.localId) ? slab.spec : null,
+        netM3,
+        openingsBySlab.get(slab.localId) ?? [],
+        densityByElement.get(slab.localId)
+      )
     );
   }
 
@@ -496,83 +534,98 @@ async function serializeIfc(
     const containingId = findContainerOf(beam.localId, relationships);
     const storeyPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const { localPlacementId, productDefinitionShapeId } = writeBeamGeometry(
-      w,
-      beam.spec,
-      geomSubContextId,
-      storeyPlacementId
-    );
+    const geometry =
+      beam.spec !== null && model.isRecipeQuantityEligible(beam.localId)
+        ? ok(writeBeamGeometry(w, beam.spec, geomSubContextId, storeyPlacementId))
+        : writeRetainedBody(w, beam, geomSubContextId, storeyPlacementId);
+    if (!geometry.ok) return geometry;
+    const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const beamExpressId = writeBeamEntity(
       w,
       beam.guid,
       `Beam ${i + 1}`,
-      beam.spec.predefinedType ?? 'NOTDEFINED',
+      beam.spec?.predefinedType ?? 'NOTDEFINED',
       ownerHistoryId,
       localPlacementId,
       productDefinitionShapeId
     );
     idMap.set(beam.localId, beamExpressId);
     placementMap.set(beam.localId, localPlacementId);
-    writeBeamCommonPset(w, ownerHistoryId, beamExpressId, beam.spec);
-    writeManufacturerPset(w, ownerHistoryId, beamExpressId, beam.spec);
-    if (beam.spec.customProperties !== undefined) {
-      writeCustomPsets(w, ownerHistoryId, beamExpressId, beam.spec.customProperties);
+    if (beam.spec !== null) writeBeamCommonPset(w, ownerHistoryId, beamExpressId, beam.spec);
+    if (beam.spec !== null) writeManufacturerPset(w, ownerHistoryId, beamExpressId, beam.spec);
+    if (beam.spec?.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, beamExpressId, beam.spec?.customProperties);
     }
-    writeBeamBaseQuantities(w, ownerHistoryId, beamExpressId, beam.spec);
+    writeMaterialQuantities(beam, issues, (netM3) =>
+      writeBeamBaseQuantities(
+        w,
+        ownerHistoryId,
+        beamExpressId,
+        model.isRecipeQuantityEligible(beam.localId) ? beam.spec : null,
+        netM3
+      )
+    );
   }
 
   for (const [i, column] of columns.entries()) {
     const containingId = findContainerOf(column.localId, relationships);
     const storeyPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const { localPlacementId, productDefinitionShapeId } = writeColumnGeometry(
-      w,
-      column.spec,
-      geomSubContextId,
-      storeyPlacementId
-    );
+    const geometry =
+      column.spec !== null && model.isRecipeQuantityEligible(column.localId)
+        ? ok(writeColumnGeometry(w, column.spec, geomSubContextId, storeyPlacementId))
+        : writeRetainedBody(w, column, geomSubContextId, storeyPlacementId);
+    if (!geometry.ok) return geometry;
+    const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const columnExpressId = writeColumnEntity(
       w,
       column.guid,
       `Column ${i + 1}`,
-      column.spec.predefinedType ?? 'NOTDEFINED',
+      column.spec?.predefinedType ?? 'NOTDEFINED',
       ownerHistoryId,
       localPlacementId,
       productDefinitionShapeId
     );
     idMap.set(column.localId, columnExpressId);
     placementMap.set(column.localId, localPlacementId);
-    writeColumnCommonPset(w, ownerHistoryId, columnExpressId, column.spec);
-    writeManufacturerPset(w, ownerHistoryId, columnExpressId, column.spec);
-    if (column.spec.customProperties !== undefined) {
-      writeCustomPsets(w, ownerHistoryId, columnExpressId, column.spec.customProperties);
+    if (column.spec !== null)
+      writeColumnCommonPset(w, ownerHistoryId, columnExpressId, column.spec);
+    if (column.spec !== null)
+      writeManufacturerPset(w, ownerHistoryId, columnExpressId, column.spec);
+    if (column.spec?.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, columnExpressId, column.spec?.customProperties);
     }
-    writeColumnBaseQuantities(w, ownerHistoryId, columnExpressId, column.spec);
+    writeMaterialQuantities(column, issues, (netM3) =>
+      writeColumnBaseQuantities(
+        w,
+        ownerHistoryId,
+        columnExpressId,
+        model.isRecipeQuantityEligible(column.localId) ? column.spec : null,
+        netM3
+      )
+    );
   }
 
   for (const [i, proxy] of proxies.entries()) {
     const containingId = findContainerOf(proxy.localId, relationships);
     const storeyPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const { localPlacementId, productDefinitionShapeId } = writeProxyGeometry(
-      w,
-      proxy.spec,
-      geomSubContextId,
-      storeyPlacementId
-    );
+    const geometry = writeRetainedBody(w, proxy, geomSubContextId, storeyPlacementId);
+    if (!geometry.ok) return geometry;
+    const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const proxyExpressId = writeProxyEntity(
       w,
       proxy.guid,
-      proxy.spec.name || `Proxy ${i + 1}`,
-      proxy.spec.predefinedType ?? 'NOTDEFINED',
+      proxy.spec?.name || `Proxy ${i + 1}`,
+      proxy.spec?.predefinedType ?? 'NOTDEFINED',
       ownerHistoryId,
       localPlacementId,
       productDefinitionShapeId
     );
     idMap.set(proxy.localId, proxyExpressId);
     placementMap.set(proxy.localId, localPlacementId);
-    if (proxy.spec.customProperties !== undefined) {
-      writeCustomPsets(w, ownerHistoryId, proxyExpressId, proxy.spec.customProperties);
+    if (proxy.spec?.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, proxyExpressId, proxy.spec?.customProperties);
     }
   }
 
@@ -580,24 +633,21 @@ async function serializeIfc(
     const containingId = findContainerOf(fill.localId, relationships);
     const parentPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const { localPlacementId, productDefinitionShapeId } = writeTessellatedProductGeometry(
-      w,
-      fill.geometry,
-      geomSubContextId,
-      parentPlacementId
-    );
+    const geometry = writeRetainedBody(w, fill, geomSubContextId, parentPlacementId);
+    if (!geometry.ok) return geometry;
+    const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const expressId = writeEarthworksFillEntity(
       w,
       fill.guid,
-      fill.spec,
+      fill.spec ?? { name: 'Earthworks Fill' },
       ownerHistoryId,
       localPlacementId,
       productDefinitionShapeId
     );
     idMap.set(fill.localId, expressId);
     placementMap.set(fill.localId, localPlacementId);
-    if (fill.spec.customProperties !== undefined) {
-      writeCustomPsets(w, ownerHistoryId, expressId, fill.spec.customProperties);
+    if (fill.spec?.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, expressId, fill.spec?.customProperties);
     }
   }
 
@@ -605,62 +655,77 @@ async function serializeIfc(
     const containingId = findContainerOf(space.localId, relationships);
     const storeyPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const { localPlacementId, productDefinitionShapeId } = writeSpaceGeometry(
-      w,
-      space.spec,
-      geomSubContextId,
-      storeyPlacementId
-    );
+    const geometry =
+      space.spec !== null && model.isRecipeQuantityEligible(space.localId)
+        ? ok(writeSpaceGeometry(w, space.spec, geomSubContextId, storeyPlacementId))
+        : writeRetainedBody(w, space, geomSubContextId, storeyPlacementId);
+    if (!geometry.ok) return geometry;
+    const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const spaceExpressId = writeSpaceEntity(
       w,
       space.guid,
-      space.spec.name || `Space ${i + 1}`,
-      space.spec.longName ?? null,
-      space.spec.predefinedType ?? 'NOTDEFINED',
+      space.spec?.name || `Space ${i + 1}`,
+      space.spec?.longName ?? null,
+      space.spec?.predefinedType ?? 'NOTDEFINED',
       ownerHistoryId,
       localPlacementId,
       productDefinitionShapeId
     );
     idMap.set(space.localId, spaceExpressId);
     placementMap.set(space.localId, localPlacementId);
-    writeSpaceCommonPset(w, ownerHistoryId, spaceExpressId, space.spec);
-    if (space.spec.customProperties !== undefined) {
-      writeCustomPsets(w, ownerHistoryId, spaceExpressId, space.spec.customProperties);
+    if (space.spec !== null) writeSpaceCommonPset(w, ownerHistoryId, spaceExpressId, space.spec);
+    if (space.spec?.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, spaceExpressId, space.spec?.customProperties);
     }
-    writeSpaceBaseQuantities(w, ownerHistoryId, spaceExpressId, space.spec);
+    writeMaterialQuantities(space, issues, (netM3) =>
+      writeSpaceBaseQuantities(
+        w,
+        ownerHistoryId,
+        spaceExpressId,
+        model.isRecipeQuantityEligible(space.localId) ? space.spec : null,
+        netM3
+      )
+    );
   }
 
   for (const [i, roof] of roofs.entries()) {
     const containingId = findContainerOf(roof.localId, relationships);
     const storeyPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const { localPlacementId, productDefinitionShapeId, usedFallback } = writeRoofGeometry(
-      w,
-      roof.spec,
-      roof.geometry,
-      geomSubContextId,
-      storeyPlacementId
-    );
-    if (usedFallback) {
-      console.warn(`Roof ${i + 1} tessellation failed; IFC body is a degenerate fallback.`);
-    }
+    const geometry =
+      roof.spec !== null &&
+      model.isRecipeQuantityEligible(roof.localId) &&
+      roof.spec?.pitch === undefined
+        ? ok(
+            writeRoofGeometry(
+              w,
+              roof.spec,
+              roof.geometry.solids[0],
+              geomSubContextId,
+              storeyPlacementId
+            )
+          )
+        : writeRetainedBody(w, roof, geomSubContextId, storeyPlacementId);
+    if (!geometry.ok) return geometry;
+    const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const roofExpressId = writeRoofEntity(
       w,
       roof.guid,
       `Roof ${i + 1}`,
-      roof.spec.predefinedType,
+      roof.spec?.predefinedType ?? 'NOTDEFINED',
       ownerHistoryId,
       localPlacementId,
       productDefinitionShapeId
     );
     idMap.set(roof.localId, roofExpressId);
     placementMap.set(roof.localId, localPlacementId);
-    writeRoofCommonPset(w, ownerHistoryId, roofExpressId, roof.spec);
-    writeManufacturerPset(w, ownerHistoryId, roofExpressId, roof.spec);
-    if (roof.spec.customProperties !== undefined) {
-      writeCustomPsets(w, ownerHistoryId, roofExpressId, roof.spec.customProperties);
+    if (roof.spec !== null) writeRoofCommonPset(w, ownerHistoryId, roofExpressId, roof.spec);
+    if (roof.spec !== null) writeManufacturerPset(w, ownerHistoryId, roofExpressId, roof.spec);
+    if (roof.spec?.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, roofExpressId, roof.spec?.customProperties);
     }
-    writeRoofBaseQuantities(w, ownerHistoryId, roofExpressId, roof.spec);
+    if (roof.spec !== null && model.isRecipeQuantityEligible(roof.localId))
+      writeRoofBaseQuantities(w, ownerHistoryId, roofExpressId, roof.spec);
   }
 
   for (const [i, curtainWall] of curtainWalls.entries()) {
@@ -691,57 +756,74 @@ async function serializeIfc(
     const containingId = findContainerOf(footing.localId, relationships);
     const storeyPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const { localPlacementId, productDefinitionShapeId } = writeFootingGeometry(
-      w,
-      footing.spec,
-      geomSubContextId,
-      storeyPlacementId
-    );
+    const geometry =
+      footing.spec !== null && model.isRecipeQuantityEligible(footing.localId)
+        ? ok(writeFootingGeometry(w, footing.spec, geomSubContextId, storeyPlacementId))
+        : writeRetainedBody(w, footing, geomSubContextId, storeyPlacementId);
+    if (!geometry.ok) return geometry;
+    const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const footingExpressId = writeFootingEntity(
       w,
       footing.guid,
       `Footing ${i + 1}`,
-      footing.spec.predefinedType ?? 'NOTDEFINED',
+      footing.spec?.predefinedType ?? 'NOTDEFINED',
       ownerHistoryId,
       localPlacementId,
       productDefinitionShapeId
     );
     idMap.set(footing.localId, footingExpressId);
     placementMap.set(footing.localId, localPlacementId);
-    writeFootingCommonPset(w, ownerHistoryId, footingExpressId, footing.spec);
-    if (footing.spec.customProperties !== undefined) {
-      writeCustomPsets(w, ownerHistoryId, footingExpressId, footing.spec.customProperties);
+    if (footing.spec !== null)
+      writeFootingCommonPset(w, ownerHistoryId, footingExpressId, footing.spec);
+    if (footing.spec?.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, footingExpressId, footing.spec?.customProperties);
     }
-    writeFootingBaseQuantities(w, ownerHistoryId, footingExpressId, footing.spec);
+    writeMaterialQuantities(footing, issues, (netM3) =>
+      writeFootingBaseQuantities(
+        w,
+        ownerHistoryId,
+        footingExpressId,
+        model.isRecipeQuantityEligible(footing.localId) ? footing.spec : null,
+        netM3
+      )
+    );
   }
 
   for (const [i, pile] of piles.entries()) {
     const containingId = findContainerOf(pile.localId, relationships);
     const storeyPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const { localPlacementId, productDefinitionShapeId } = writePileGeometry(
-      w,
-      pile.spec,
-      geomSubContextId,
-      storeyPlacementId
-    );
+    const geometry =
+      pile.spec !== null && model.isRecipeQuantityEligible(pile.localId)
+        ? ok(writePileGeometry(w, pile.spec, geomSubContextId, storeyPlacementId))
+        : writeRetainedBody(w, pile, geomSubContextId, storeyPlacementId);
+    if (!geometry.ok) return geometry;
+    const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const pileExpressId = writePileEntity(
       w,
       pile.guid,
       `Pile ${i + 1}`,
-      pile.spec.predefinedType ?? 'NOTDEFINED',
-      pile.spec.constructionType ?? null,
+      pile.spec?.predefinedType ?? 'NOTDEFINED',
+      pile.spec?.constructionType ?? null,
       ownerHistoryId,
       localPlacementId,
       productDefinitionShapeId
     );
     idMap.set(pile.localId, pileExpressId);
     placementMap.set(pile.localId, localPlacementId);
-    writePileCommonPset(w, ownerHistoryId, pileExpressId, pile.spec);
-    if (pile.spec.customProperties !== undefined) {
-      writeCustomPsets(w, ownerHistoryId, pileExpressId, pile.spec.customProperties);
+    if (pile.spec !== null) writePileCommonPset(w, ownerHistoryId, pileExpressId, pile.spec);
+    if (pile.spec?.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, pileExpressId, pile.spec?.customProperties);
     }
-    writePileBaseQuantities(w, ownerHistoryId, pileExpressId, pile.spec);
+    writeMaterialQuantities(pile, issues, (netM3) =>
+      writePileBaseQuantities(
+        w,
+        ownerHistoryId,
+        pileExpressId,
+        model.isRecipeQuantityEligible(pile.localId) ? pile.spec : null,
+        netM3
+      )
+    );
   }
 
   for (const [i, assembly] of assemblies.entries()) {
@@ -858,29 +940,33 @@ async function serializeIfc(
     const containingId = findContainerOf(covering.localId, relationships);
     const storeyPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const { localPlacementId, productDefinitionShapeId, bodyItemId } = writeCoveringGeometry(
-      w,
-      covering.spec,
-      geomSubContextId,
-      storeyPlacementId
-    );
+    const geometry =
+      covering.spec !== null && model.isRecipeQuantityEligible(covering.localId)
+        ? ok(writeCoveringGeometry(w, covering.spec, geomSubContextId, storeyPlacementId))
+        : writeRetainedBody(w, covering, geomSubContextId, storeyPlacementId);
+    if (!geometry.ok) return geometry;
+    const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const coveringExpressId = writeCoveringEntity(
       w,
       covering.guid,
       `Covering ${i + 1}`,
-      covering.spec.predefinedType ?? 'NOTDEFINED',
+      covering.spec?.predefinedType ?? 'NOTDEFINED',
       ownerHistoryId,
       localPlacementId,
       productDefinitionShapeId
     );
     idMap.set(covering.localId, coveringExpressId);
     placementMap.set(covering.localId, localPlacementId);
-    writeCoveringCommonPset(w, ownerHistoryId, coveringExpressId, covering.spec);
-    writeManufacturerPset(w, ownerHistoryId, coveringExpressId, covering.spec);
-    if (covering.spec.customProperties !== undefined) {
-      writeCustomPsets(w, ownerHistoryId, coveringExpressId, covering.spec.customProperties);
+    if (covering.spec !== null)
+      writeCoveringCommonPset(w, ownerHistoryId, coveringExpressId, covering.spec);
+    if (covering.spec !== null)
+      writeManufacturerPset(w, ownerHistoryId, coveringExpressId, covering.spec);
+    if (covering.spec?.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, coveringExpressId, covering.spec?.customProperties);
     }
-    applySurfaceStyle(w, model, covering.localId, bodyItemId);
+    const items =
+      'bodyItemIds' in geometry.value ? geometry.value.bodyItemIds : [geometry.value.bodyItemId];
+    for (const item of items) applySurfaceStyle(w, model, covering.localId, item);
   }
 
   const openingPlacementMap = new Map<LocalId, number>();
@@ -942,6 +1028,10 @@ async function serializeIfc(
     if (openingElement === undefined || openingElement.category !== 'OPENING') continue;
     if (!isSlabOpening(openingElement.spec)) continue;
 
+    if (slabElement.spec === null)
+      return err(
+        ifcError('OPENING_HOST_RECIPE_REQUIRED', 'Slab opening requires retained thickness')
+      );
     const { openingEntityId } = writeSlabOpeningGeometry(
       w,
       openingElement.guid,
@@ -1217,16 +1307,16 @@ function writeTypeLayer(
 ): void {
   const groups: ReadonlyArray<readonly [IfcTypeName, string, readonly TypeOccurrence[]]> = [
     ['IFCWALLTYPE', 'WALL', toOccurrences(model.getWalls(), () => 'NOTDEFINED')],
-    ['IFCSLABTYPE', 'SLAB', toOccurrences(model.getSlabs(), (s) => s.predefinedType)],
-    ['IFCBEAMTYPE', 'BEAM', toOccurrences(model.getBeams(), (s) => s.predefinedType)],
-    ['IFCCOLUMNTYPE', 'COLUMN', toOccurrences(model.getColumns(), (s) => s.predefinedType)],
+    ['IFCSLABTYPE', 'SLAB', toOccurrences(model.getSlabs(), (s) => s?.predefinedType)],
+    ['IFCBEAMTYPE', 'BEAM', toOccurrences(model.getBeams(), (s) => s?.predefinedType)],
+    ['IFCCOLUMNTYPE', 'COLUMN', toOccurrences(model.getColumns(), (s) => s?.predefinedType)],
     ['IFCDOORTYPE', 'DOOR', toOccurrences(model.getDoors(), () => 'NOTDEFINED')],
     ['IFCWINDOWTYPE', 'WINDOW', toOccurrences(model.getWindows(), () => 'NOTDEFINED')],
-    ['IFCSPACETYPE', 'SPACE', toOccurrences(model.getSpaces(), (s) => s.predefinedType)],
-    ['IFCFOOTINGTYPE', 'FOOTING', toOccurrences(model.getFootings(), (s) => s.predefinedType)],
-    ['IFCPILETYPE', 'PILE', toOccurrences(model.getPiles(), (s) => s.predefinedType)],
+    ['IFCSPACETYPE', 'SPACE', toOccurrences(model.getSpaces(), (s) => s?.predefinedType)],
+    ['IFCFOOTINGTYPE', 'FOOTING', toOccurrences(model.getFootings(), (s) => s?.predefinedType)],
+    ['IFCPILETYPE', 'PILE', toOccurrences(model.getPiles(), (s) => s?.predefinedType)],
     ['IFCRAILINGTYPE', 'RAILING', toOccurrences(model.getRailings(), (s) => s?.predefinedType)],
-    ['IFCCOVERINGTYPE', 'COVERING', toOccurrences(model.getCoverings(), (s) => s.predefinedType)],
+    ['IFCCOVERINGTYPE', 'COVERING', toOccurrences(model.getCoverings(), (s) => s?.predefinedType)],
   ];
 
   // Model-scope (project GlobalId) mixed into type/rel GUID keys so type objects
@@ -1257,7 +1347,7 @@ function writeTypeLayer(
   for (const roof of model.getRoofs()) {
     const expressId = idMap.get(roof.localId);
     if (expressId === undefined) continue;
-    const pred = roof.spec.predefinedType;
+    const pred = roof.spec?.predefinedType ?? 'NOTDEFINED';
     const list = roofByPredefined.get(pred) ?? [];
     list.push(expressId);
     roofByPredefined.set(pred, list);
@@ -1343,25 +1433,6 @@ export async function toIfcValidated(
  */
 function collectGeometryIssues(model: BimModel): ValidationReport {
   const issues: ValidationIssue[] = [];
-  const groups: ReadonlyArray<readonly [string, ReadonlyArray<{ geometry: ValidSolid }>]> = [
-    ['Slab', model.getSlabs()],
-    ['Beam', model.getBeams()],
-    ['Column', model.getColumns()],
-    ['Proxy', model.getProxies()],
-    ['Earthworks Fill', model.getEarthworksFills()],
-    ['Space', model.getSpaces()],
-    ['Roof', model.getRoofs()],
-    ['Footing', model.getFootings()],
-    ['Pile', model.getPiles()],
-    ['Covering', model.getCoverings()],
-  ];
-  for (const [label, elements] of groups) {
-    elements.forEach((el, index) => {
-      const report = checkGeometryValidity(el.geometry, `${label} ${index + 1}`);
-      issues.push(...report.issues);
-    });
-  }
-
   for (const element of model.getAllElements()) {
     if (element.representation !== 'BODY') continue;
     bodySolids(element.geometry).forEach((solid, itemIndex) => {

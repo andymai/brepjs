@@ -158,7 +158,7 @@ describe('placedSolids', () => {
       })
     );
     const beam = required(m.getBeams()[0], 'beam');
-    const local = beam.geometry;
+    const local = beam.geometry.solids[0];
     const placed = unwrap(placedSolids(beam));
     expect(placed.length).toBe(1);
     const localCoM = unwrap(measureVolumeProps(local)).centerOfMass;

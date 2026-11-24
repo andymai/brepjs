@@ -104,7 +104,9 @@ it('rejects borrowed Body handles in either adoption direction without consuming
       body: { kind: 'AUTHORITATIVE', solids: [independent] },
     })
   ).toMatchObject({ ok: false, error: { code: 'BODY_OWNERSHIP_CONFLICT' } });
-  expect(model.getElement(proxy)?.geometry).toBe(independent);
+  const adopted = model.getElement(proxy);
+  if (adopted?.representation !== 'BODY') throw new Error('Expected a retained Body');
+  expect(adopted.geometry.solids[0]).toBe(independent);
   expect(borrowed.disposed).toBe(false);
   expect(independent.disposed).toBe(false);
 });
