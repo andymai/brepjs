@@ -140,15 +140,10 @@ describe('IR drift gate: profile+extrude vs *ToSolid', () => {
         axisZ: [0, 0, 1],
       })
     );
-    // Mirror the spec convention in IR: extrude along +Z, then rotate +90
-    // about Y so the beam length runs along +X.
-    const ir = unwrap(
-      ev.evaluate(
-        csg.rotate(csg.extrude(csg.asymmetricIProfile(profile), [0, 0, 5000]), 90, {
-          axis: [0, 1, 0],
-        })
-      )
-    );
+    // Stand the section upright in XZ, then turn its width from +X to +Y.
+    const upright = csg.rotate(csg.asymmetricIProfile(profile), 90, { axis: [1, 0, 0] });
+    const section = csg.rotate(upright, 90, { axis: [0, 0, 1] });
+    const ir = unwrap(ev.evaluate(csg.extrude(section, [5000, 0, 0])));
     expectCoincident(ir, beam, 1e-6);
   });
 });
