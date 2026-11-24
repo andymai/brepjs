@@ -2352,7 +2352,7 @@ function takeoff({ storeys = 2, cutaway = true }: TakeoffParams = {}) {
     // Masonry is ordered by number. Net volume / leaf thickness = net face area, and each unit covers its face and one joint.
     const units = (material: string, unit: { length: number; width: number; height: number; joint: number }) => {
       const net = (rows.get('WALL|' + material)?.m3 ?? 0) / (unit.width / 1000);
-      const gross = model.getWalls().filter((w) => w.spec.materialName === material).reduce((sum, w) => sum + (w.spec.length * w.spec.height) / 1e6, 0);
+      const gross = model.getWalls().reduce((sum, w) => w.spec?.materialName === material ? sum + (w.spec.length * w.spec.height) / 1e6 : sum, 0);
       const perM2 = 1e6 / ((unit.length + unit.joint) * (unit.height + unit.joint));
       return { gross, net, perM2, count: Math.ceil(net * perM2) };
     };
@@ -2827,6 +2827,7 @@ function flat({ zoneBy = 'use', volumes = false, cutHeight = 1200 }: FlatParams 
     const floors: Record<string, Body[]> = {}, area = new Map<string, number>(), zoneArea = new Map<string, number>();
     console.log('room                use          air        area m2  volume m3');
     for (const el of model.getSpaces()) {
+      if (!el.spec) continue;
       const [solid] = unwrap(placedSolids(el));
       if (!solid) continue;
       own(solid);
@@ -3137,7 +3138,7 @@ function finishes({ peel = 450, rise = 300 }: FinishParams = {}) {
       if (!seen) continue;
       for (const solid of unwrap(placedSolids(el))) {
         own(solid);
-        if (el.category === 'COVERING') {
+        if (el.category === 'COVERING' && el.spec) {
           const { predefinedType: type = 'COVERING', materialName: material, thickness } = el.spec;
           const row = rows.get(material) ?? { type, material, thickness, m2: 0 };
           row.m2 += unwrap(measureVolume(solid)) / thickness / 1e6;

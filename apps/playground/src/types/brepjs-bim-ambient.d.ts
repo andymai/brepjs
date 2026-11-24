@@ -308,6 +308,8 @@ type PlacementDefinition = {
     readonly parameters: Readonly<Record<string, number>>;
 };
 
+type Vec3 = readonly [number, number, number];
+
 type Mat4x4 = readonly [
     number,
     number,
@@ -734,6 +736,8 @@ type Profile = CoreProfile | ExtendedProfile;
 declare function isExtendedProfile(profile: Profile): profile is ExtendedProfile;
 
 declare function parseProfile(input: unknown): Result<Profile, BimError>;
+
+type Pt2 = readonly [number, number];
 
 interface LShapeProfile {
     readonly kind: 'L_SHAPE';
@@ -1288,6 +1292,11 @@ interface LocalIdCounter {
 
 declare function makeLocalIdCounter(start?: number): LocalIdCounter;
 
+interface ModelAccessor {
+    getAllElements(): readonly AnyBimElement[];
+    getAllRelationships(): readonly BimRelationship[];
+}
+
 interface ModelGraph {
     readonly elements: readonly AnyBimElement[];
     readonly relationships: readonly BimRelationship[];
@@ -1606,6 +1615,20 @@ declare function writeMaterialSimple(w: IfcWriter, guid: IfcGuid, ownerHistoryId
  */
 declare function writeClassificationRefs(w: IfcWriter, ownerHistoryId: number, refs: ReadonlyMap<ClassificationRef, readonly number[]>): void;
 
+interface SingleValueTemplate {
+    readonly name: string;
+    readonly measureType: PsetMeasureType;
+    readonly kind: 'single';
+}
+
+interface EnumeratedValueTemplate {
+    readonly name: string;
+    readonly measureType: PsetMeasureType;
+    readonly kind: 'enumerated';
+    /** Legal values for the enumeration, in canonical IFC order. */
+    readonly enumValues: readonly string[];
+}
+
 /**
  * IFC measure types used by the standard Pset_*Common property sets.
  * Each maps to a web-ifc defined-type constant via {@link webIfcConstantFor}.
@@ -1801,6 +1824,47 @@ interface StoreySpec {
     readonly elevation: number;
 }
 
+type BodyClassification = (typeof bodyClassifications)[number];
+
+declare const bodyClassifications: readonly ["WALL", "RAILING", "MEMBER", "PLATE", "DOOR", "WINDOW", "STAIR", "RAMP", "SLAB", "ROOF", "SPACE", "COVERING", "BEAM", "COLUMN", "FOOTING", "PILE", "PROXY", "EARTHWORKS_FILL"];
+
+interface ClassificationSpecs {
+    WALL: WallSpec;
+    SLAB: SlabSpec;
+    BEAM: BeamSpec;
+    COLUMN: ColumnSpec;
+    OPENING: OpeningSpec;
+    DOOR: Omit<DoorSpec, 'wallLocalId' | 'offsetFromFloor' | 'offsetAlongWall'>;
+    WINDOW: Omit<WindowSpec, 'wallLocalId' | 'offsetFromFloor' | 'offsetAlongWall'>;
+    PROXY: Omit<ProxySpec, 'solid'>;
+    SPACE: SpaceSpec;
+    ROOF: RoofSpec;
+    CURTAIN_WALL: CurtainWallSpec;
+    FOOTING: FootingSpec;
+    PILE: PileSpec;
+    STAIR: StairSpec;
+    RAMP: RampSpec;
+    RAILING: RailingSpec;
+    COVERING: CoveringSpec;
+    ELEMENT_ASSEMBLY: ElementAssemblySpec;
+    ZONE: ZoneSpec;
+    SYSTEM: SystemSpec;
+    PROJECT: ProjectSpec;
+    SITE: SiteSpec;
+    BRIDGE: BridgeSpec;
+    BRIDGE_PART: BridgePartSpec;
+    EARTHWORKS_FILL: Omit<EarthworksFillSpec, 'solid'>;
+    BUILDING: BuildingSpec;
+    STOREY: StoreySpec;
+    MEMBER: CurtainComponentSpec;
+    PLATE: CurtainComponentSpec;
+}
+
+interface CurtainComponentSpec {
+    readonly name: string;
+    readonly size: readonly [number, number, number];
+}
+
 type BimCategory = BodyClassification | 'OPENING' | 'CURTAIN_WALL' | 'ELEMENT_ASSEMBLY' | 'ZONE' | 'SYSTEM' | 'PROJECT' | 'SITE' | 'BRIDGE' | 'BRIDGE_PART' | 'BUILDING' | 'STOREY';
 
 type WallOpeningSpec = {
@@ -1828,6 +1892,22 @@ declare function isSlabOpening(spec: OpeningSpec): spec is SlabOpeningSpec;
 type AnyBimElement = {
     [C in BimCategory]: BimElement<C>;
 }[BimCategory];
+
+interface AggregatesRel {
+    readonly kind: 'AGGREGATES';
+    readonly guid: IfcGuid;
+    readonly localId: LocalId;
+    readonly relatingObject: LocalId;
+    readonly relatedObjects: readonly LocalId[];
+}
+
+interface ContainedInRel {
+    readonly kind: 'CONTAINED_IN';
+    readonly guid: IfcGuid;
+    readonly localId: LocalId;
+    readonly relatingStructure: LocalId;
+    readonly relatedElements: readonly LocalId[];
+}
 
 interface AssociatesMaterialRel {
     readonly kind: 'ASSOCIATES_MATERIAL';
@@ -2526,6 +2606,23 @@ interface SiteSpec extends SpatialPlacementSpec {
     readonly description?: string;
     readonly compositionType?: IfcElementCompositionType | undefined;
 }
+
+type RecordGeometry<C extends BimCategory> = BimGeometryFor<C> extends Body ? {
+    readonly representation: 'BODY';
+    readonly placement: PlacementDefinition;
+    readonly geometry: BimGeometryFor<C>;
+} : {
+    readonly representation: 'NONE';
+    readonly reason: 'ASSEMBLY' | 'OPENING_REFERENCE' | 'SPATIAL' | 'GROUP';
+    readonly geometry: null;
+    readonly placement: PlacementDefinition | null;
+};
+
+type BimGeometryFor<C extends BimCategory> = C extends BodyClassification ? Body : null;
+
+type BodySpec<C extends BimCategory> = BimGeometryFor<C> extends Body ? BimSpecFor<C> | null : BimSpecFor<C>;
+
+type BimSpecFor<C extends BimCategory> = ClassificationSpecs[C];
 
 type BimElement<C extends BimCategory> = RecordGeometry<C> & {
     readonly metadata?: Readonly<{

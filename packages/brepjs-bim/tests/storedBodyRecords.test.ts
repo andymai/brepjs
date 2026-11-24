@@ -1,5 +1,6 @@
 import { bodyRecordContract } from './helpers/bodyRecordContract.js';
 for (const category of [
+  'PLATE',
   'SLAB',
   'ROOF',
   'SPACE',

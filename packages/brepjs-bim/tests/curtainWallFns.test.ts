@@ -6,7 +6,8 @@ import {
 import { BimModel } from '../src/model/bimModel.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initKernel } from '../../../tests/setup.js';
+import { currentKernel, initKernel } from '../../../tests/setup.js';
+import { nativeShapeCount } from './helpers/nativeArena.js';
 import { box, measureVolume, unwrap } from 'brepjs';
 import * as WebIFC from 'web-ifc';
 import { parseCurtainWallSpec } from '../src/specs/curtainWallSpec.js';
@@ -264,20 +265,6 @@ it('composes the parent once and replaces one child without changing its sibling
   expect(text.match(/=IFCTRIANGULATEDFACESET\(/g)).toHaveLength(2);
 });
 
-it('adopts direct Plate bodies through the shared model', () => {
-  using model = new BimModel();
-  const id = unwrap(
-    model.addAuthoredBody({
-      category: 'PLATE',
-      placement: { kind: 'LOCAL_FRAME', frame: SPEC },
-      solids: [box(1, 1, 1), box(2, 2, 2)],
-    })
-  );
-  const plate = model.getElement(id);
-  if (!plate) throw new Error('Missing Plate');
-  expect(unwrap(elementMaterialVolume(plate))).toBeCloseTo(8);
-});
-
 it('keeps decomposition independent of the authored local frame', () => {
   using model = new BimModel();
   const parent = unwrap(model.addCurtainWall({ ...SPEC, origin: [1000, 0, 0] }));
@@ -295,4 +282,26 @@ it('keeps decomposition independent of the authored local frame', () => {
   expect(model.getChildren(parent)).toContain(record);
   expect(model.getElement(id)).toBe(record);
   expect(unwrap(elementBounds(record, { kind: 'PLACED', tag: 'parent' }))).toEqual(before);
+});
+
+it('rolls back all generated children on a late stable-key collision', () => {
+  using model = new BimModel();
+  const existing = unwrap(
+    model.addAuthoredBody({
+      category: 'PLATE',
+      stableKey: 'grid/MEMBER/4',
+      placement: { kind: 'LOCAL_FRAME', frame: SPEC },
+      solids: [box(1, 2, 3)],
+    })
+  );
+  const record = model.getElement(existing);
+  const baseline = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
+  expect(model.addCurtainWall(SPEC, { stableKey: 'grid' })).toMatchObject({
+    ok: false,
+    error: { code: 'DUPLICATE_STABLE_KEY' },
+  });
+  expect(model.getAllElements()).toEqual([record]);
+  expect(model.getAllRelationships()).toHaveLength(0);
+  if (baseline !== null) expect(nativeShapeCount()).toBe(baseline);
+  expect(model.addCurtainWall(SPEC, { stableKey: 'another' }).ok).toBe(true);
 });
