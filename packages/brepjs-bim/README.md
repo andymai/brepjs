@@ -38,9 +38,9 @@ installs the complete collection atomically. `Err` leaves the model and caller o
 unchanged. `Ok` returns a `COMMITTED` receipt and transfers every supplied handle, even when
 `receipt.cleanup.kind === 'FAILED'` reports a failed release of the superseded Body. Do not
 retry an uncertain release or dispose transferred handles. Parametric Bodies may be replaced by
-either authority; authoritative Bodies may only be replaced by authoritative Bodies. Add wall
-openings before installing an authoritative Body: later `addDoorAndCutWall()` and `addWindowAndCutWall()` return
-`AUTHORITATIVE_WALL_BODY_IMMUTABLE`.
+either authority; authoritative Bodies may only be replaced by authoritative Bodies. Cut recipe openings before replacing the host Body. Replacing even a singleton with another
+`PARAMETRIC` Body invalidates the wall dimensions used by the cut. The command rejects the edit
+and preserves the replacement and existing relationships.
 
 Civil-semantic Families Wall/Railing routes require an evaluator and retain the authored Body as
 `AUTHORITATIVE`, including when it coincides with the nominal recipe. The adapter copies borrowed

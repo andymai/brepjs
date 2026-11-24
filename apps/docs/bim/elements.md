@@ -51,7 +51,9 @@ Element geometry is **unplaced template geometry**. `origin` / `axisX` / `axisZ`
 
 Use `model.replaceBody({ localId, body: { kind: 'AUTHORITATIVE', solids } })` to install the complete Body atomically. An error transfers nothing and leaves model state unchanged. Success returns a `COMMITTED` receipt and transfers all supplied solids to the model. Inspect its `cleanup` report separately: a failed release of the old Body does not undo the commit or return ownership of the new Body. Do not retry uncertain releases. An authoritative Body cannot revert to parametric authority.
 
-Register wall openings before installing an authoritative Body. Later `addDoorAndCutWall()` and `addWindowAndCutWall()` calls return `AUTHORITATIVE_WALL_BODY_IMMUTABLE`. Existing opening relationships survive replacement, and the retained Body must already contain their geometry.
+Cut recipe openings before replacing the host Body. A singleton `PARAMETRIC` replacement returns `BODY_OPENING_REQUIRES_RECIPE` on a subsequent recipe cut. An authoritative host returns `AUTHORITATIVE_WALL_BODY_IMMUTABLE` when its recipe is present. Existing Opening relationships survive replacement.
+
+A cut-in Door or Window uses its Opening as its placement parent. The Opening carries a local frame relative to the host. To query the filler in world coordinates, compose the host’s world frame with the Opening frame and supply the result as `parentFrame`.
 
 Retained Wall apertures export as IFC `Reference` geometry with void and fill relationships. IfcOpenShell 0.8.5 still subtracts Reference openings by default, even with a separate Reference context. If a replacement Body adds material inside a retained opening, readers using that engine can remove the added material.
 
