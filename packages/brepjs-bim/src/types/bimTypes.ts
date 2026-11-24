@@ -27,7 +27,7 @@ import type {
 import type { PlacementDefinition } from './placementDefinition.js';
 import type { ProductBody } from './productBody.js';
 
-export const bodyClassifications = ['WALL', 'RAILING'] as const;
+export const bodyClassifications = ['WALL', 'RAILING', 'MEMBER'] as const;
 export type BodyClassification = (typeof bodyClassifications)[number];
 
 export type BimCategory =

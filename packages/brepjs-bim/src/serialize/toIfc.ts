@@ -211,6 +211,19 @@ async function serializeIfc(
     );
   }
 
+  const elements = model.getAllElements();
+  const standaloneMember = elements.find((element) => element.category === 'MEMBER');
+  if (standaloneMember) {
+    return err(
+      ifcError(
+        'IFC_UNSUPPORTED_CLASSIFICATION',
+        'Standalone Member export has no qualified IFC encoding',
+        undefined,
+        { localId: standaloneMember.localId, category: standaloneMember.category }
+      )
+    );
+  }
+
   const authorName = [meta.author?.givenName, meta.author?.familyName]
     .filter((p): p is string => Boolean(p))
     .join(' ');
@@ -223,7 +236,6 @@ async function serializeIfc(
   // Scope writer-minted GUIDs (psets/quantities/rels) to this model.
   w.setModelScope(project.guid);
 
-  const elements = model.getAllElements();
   const relationships = model.getAllRelationships();
   const walls = model.getWalls();
   const slabs = model.getSlabs();
