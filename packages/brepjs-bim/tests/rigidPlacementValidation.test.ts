@@ -40,7 +40,7 @@ it('retains and exports the canonical basis for accepted drift on the unrotated 
   );
   using model = projected.model;
   const wall = model.getWalls()[0];
-  if (!wall) throw new Error('Expected wall');
+  if (!wall?.spec) throw new Error('Expected wall');
   expect(wall.spec.axisX[2]).toBeCloseTo(-1e-6, 12);
   expect(wall.spec.axisZ[0]).toBeCloseTo(1e-6, 12);
   expect(wall.spec.origin).toEqual([0, 0, 0]);
@@ -94,7 +94,9 @@ it('rejects an invalid parent or element frame before any native placement alloc
   });
   expect(locate).not.toHaveBeenCalled();
   expect(transform).not.toHaveBeenCalled();
-  expect(placedSolids({ ...el, spec: { ...el.spec, ...invalid } })).toMatchObject({
+  expect(
+    placedSolids({ ...el, placement: { kind: 'LOCAL_FRAME' as const, frame: invalid } })
+  ).toMatchObject({
     ok: false,
     error: { code: 'INVALID_RIGID_FRAME' },
   });
@@ -105,7 +107,10 @@ it('rejects an invalid parent or element frame before any native placement alloc
     axisZ: [0, 0, 1],
   } satisfies FrameInput;
   expect(
-    placedSolids({ ...el, spec: { ...el.spec, ...extreme } }, { parentFrame: extreme })
+    placedSolids(
+      { ...el, placement: { kind: 'LOCAL_FRAME' as const, frame: extreme } },
+      { parentFrame: extreme }
+    )
   ).toMatchObject({ ok: false, error: { code: 'INVALID_RIGID_FRAME' } });
   expect(transform).not.toHaveBeenCalled();
   for (const solid of el.geometry.solids) {

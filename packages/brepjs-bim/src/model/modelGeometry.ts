@@ -5,15 +5,13 @@ import type { AnyBimElement, BimCategory, BimElement } from '../types/bimTypes.j
 import { validateProductBody } from '../types/productBody.js';
 
 export type ElementFields = {
-  [C in BimCategory]: Pick<BimElement<C>, 'category' | 'spec' | 'geometry'>;
+  [C in BimCategory]: Omit<BimElement<C>, 'guid' | 'localId'>;
 }[BimCategory];
 
 /** Transitional enumeration of current record storage. Step 2 converges these forms. */
 export function retainedSolids(element: ElementFields): readonly ValidSolid[] {
+  if (element.representation === 'BODY') return element.geometry.solids;
   switch (element.category) {
-    case 'WALL':
-    case 'RAILING':
-      return element.geometry.solids;
     case 'CURTAIN_WALL':
       return [...element.geometry.panels, ...element.geometry.mullions].map(({ solid }) => solid);
     default:
@@ -33,7 +31,7 @@ function protectComponent(component: CurtainWallComponent): CurtainWallComponent
 
 /** Snapshot ownership-bearing descriptors only; never freeze or clone native handles. */
 export function protectElement(element: AnyBimElement): Result<AnyBimElement, BimError> {
-  if (element.category === 'WALL' || element.category === 'RAILING') {
+  if (element.representation === 'BODY') {
     const body = validateProductBody(element.geometry);
     return body.ok ? ok(Object.freeze({ ...element, geometry: body.value })) : body;
   }

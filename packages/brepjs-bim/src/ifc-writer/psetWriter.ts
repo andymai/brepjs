@@ -380,16 +380,16 @@ export function writeWallBodyQuantities(
   ownerHistoryId: number,
   wallExpressId: number,
   values: {
-    readonly lengthM: number;
-    readonly widthM: number;
-    readonly heightM: number;
+    readonly lengthM?: number;
+    readonly widthM?: number;
+    readonly heightM?: number;
     readonly netVolumeM3: number;
   }
 ): void {
   const qtyIds = [
-    writeQtyLength(w, 'Length', values.lengthM),
-    writeQtyLength(w, 'Width', values.widthM),
-    writeQtyLength(w, 'Height', values.heightM),
+    ...(values.lengthM === undefined ? [] : [writeQtyLength(w, 'Length', values.lengthM)]),
+    ...(values.widthM === undefined ? [] : [writeQtyLength(w, 'Width', values.widthM)]),
+    ...(values.heightM === undefined ? [] : [writeQtyLength(w, 'Height', values.heightM)]),
     writeQtyVolume(w, 'NetVolume', values.netVolumeM3),
   ];
   const qtoId = writeElementQuantity(w, ownerHistoryId, 'Qto_WallBaseQuantities', qtyIds);

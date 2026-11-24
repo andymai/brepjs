@@ -1,3 +1,5 @@
+import { bodyClassifications, type BodyClassification } from '../types/bimTypes.js';
+import { capturePlacement, type PlacementDefinition } from '../types/placementDefinition.js';
 import type { Result, ValidSolid } from 'brepjs';
 import { ok, err } from 'brepjs';
 import type { IfcGuid } from '../identity/ifcGuid.js';
@@ -581,6 +583,8 @@ export class BimModel {
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
       const keyCheck = this.#checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
+      const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
+      if (!placement.ok) return placement;
       const geomResult = wallToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
       this.#ownGenerated(command, [geomResult.value]);
@@ -588,6 +592,8 @@ export class BimModel {
         command,
         {
           category: 'WALL',
+          representation: 'BODY',
+          placement: placement.value,
           spec: snapshot,
           geometry: { kind: 'PARAMETRIC', solids: [geomResult.value] },
         },
@@ -814,6 +820,8 @@ export class BimModel {
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
       const keyCheck = this.#checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
+      const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
+      if (!placement.ok) return placement;
       const geomResult = railingToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
       this.#ownGenerated(command, [geomResult.value]);
@@ -821,6 +829,8 @@ export class BimModel {
         command,
         {
           category: 'RAILING',
+          representation: 'BODY',
+          placement: placement.value,
           spec: snapshot,
           geometry: { kind: 'PARAMETRIC', solids: [geomResult.value] },
         },
@@ -828,6 +838,35 @@ export class BimModel {
       );
       this.#associateMaterial(command, id, snapshot);
       this.#associateClassification(command, id, snapshot);
+      return ok(id);
+    });
+  }
+
+  addAuthoredBody(input: {
+    readonly category: BodyClassification;
+    readonly placement: PlacementDefinition;
+    readonly solids: Extract<ProductBody, { kind: 'AUTHORITATIVE' }>['solids'];
+    readonly stableKey?: string;
+  }): Result<LocalId, BimError> {
+    return this.#create('addAuthoredBody', (command) => {
+      const { category, stableKey } = input;
+      if (!bodyClassifications.includes(category)) {
+        return err(specError('BODY_UNSUPPORTED_CATEGORY', 'Unsupported Body classification'));
+      }
+      const placement = capturePlacement(input.placement);
+      if (!placement.ok) return placement;
+      const id = this.#makeElement(
+        command,
+        {
+          category,
+          representation: 'BODY',
+          spec: null,
+          placement: placement.value,
+          geometry: { kind: 'AUTHORITATIVE', solids: input.solids },
+        },
+        stableKey
+      );
+      command.recipeEligibility.set(id, false);
       return ok(id);
     });
   }
@@ -843,16 +882,12 @@ export class BimModel {
       if (target === undefined) {
         return err(specError('BODY_TARGET_NOT_FOUND', `No element found for localId ${localId}`));
       }
-      if (target.category !== 'WALL' && target.category !== 'RAILING') {
+      if (target.representation !== 'BODY') {
         return err(
           specError('BODY_UNSUPPORTED_CATEGORY', `Cannot replace a ${target.category} Product Body`)
         );
       }
-      const captured = snapshotProductBodyInput(input.body);
-      if (!captured.ok) return captured;
-      for (const [itemIndex, solid] of captured.value.solids.entries())
-        this.#requireUnowned(command, solid, itemIndex);
-      const prepared = validateProductBody(captured.value);
+      const prepared = this.#prepareBody(command, input.body);
       if (!prepared.ok) return prepared;
       if (target.geometry.kind === 'AUTHORITATIVE' && prepared.value.kind === 'PARAMETRIC') {
         return err(
@@ -1208,6 +1243,10 @@ export class BimModel {
           specError('DOOR_WALL_NOT_FOUND', `No wall found for localId ${snapshot.wallLocalId}`)
         );
       }
+      if (wall.spec === null)
+        return err(
+          specError('BODY_OPENING_REQUIRES_RECIPE', 'Cutting an opening requires a recipe host')
+        );
       const host = wallOpeningSolid(wall.geometry);
       if (!host.ok) return host;
       const keyCheck = this.#checkOpeningKeys(identity);
@@ -1228,6 +1267,7 @@ export class BimModel {
           )
         );
       }
+      const wallThickness = wall.spec.thickness;
       const openingSpec: WallOpeningSpec = {
         kind: 'WALL_OPENING',
         width: snapshot.width,
@@ -1238,7 +1278,7 @@ export class BimModel {
 
       const cutResult = cutOpeningSolid({
         host: host.value,
-        makeTool: () => openingToSolid(openingSpec, wall.spec.thickness),
+        makeTool: () => openingToSolid(openingSpec, wallThickness),
         hostKind: 'WALL',
       });
       if (!cutResult.ok) return err(cutResult.error);
@@ -1292,6 +1332,10 @@ export class BimModel {
           specError('WINDOW_WALL_NOT_FOUND', `No wall found for localId ${snapshot.wallLocalId}`)
         );
       }
+      if (wall.spec === null)
+        return err(
+          specError('BODY_OPENING_REQUIRES_RECIPE', 'Cutting an opening requires a recipe host')
+        );
       const host = wallOpeningSolid(wall.geometry);
       if (!host.ok) return host;
       const keyCheck = this.#checkOpeningKeys(identity);
@@ -1312,6 +1356,7 @@ export class BimModel {
           )
         );
       }
+      const wallThickness = wall.spec.thickness;
       const openingSpec: WallOpeningSpec = {
         kind: 'WALL_OPENING',
         width: snapshot.width,
@@ -1322,7 +1367,7 @@ export class BimModel {
 
       const cutResult = cutOpeningSolid({
         host: host.value,
-        makeTool: () => openingToSolid(openingSpec, wall.spec.thickness),
+        makeTool: () => openingToSolid(openingSpec, wallThickness),
         hostKind: 'WALL',
       });
       if (!cutResult.ok) return err(cutResult.error);
@@ -1466,7 +1511,7 @@ export class BimModel {
     this.#ownGenerated(command, [newGeometry]);
     const prepared = protectElement({
       ...wall,
-      geometry: { kind: 'PARAMETRIC', solids: [newGeometry] },
+      geometry: { kind: 'PARAMETRIC', solids: [newGeometry] } satisfies ProductBody,
     });
     if (!prepared.ok) throw new RejectedModelCommand(prepared.error);
     this.#stageElement(command, prepared.value);
@@ -1784,6 +1829,14 @@ export class BimModel {
     return [...this.#relationships.values()];
   }
 
+  #prepareBody(command: ModelCommand, input: ProductBody): Result<ProductBody, BimError> {
+    const captured = snapshotProductBodyInput(input);
+    if (!captured.ok) return captured;
+    for (const [itemIndex, solid] of captured.value.solids.entries())
+      this.#requireUnowned(command, solid, itemIndex);
+    return validateProductBody(captured.value);
+  }
+
   #makeElement(command: ModelCommand, fields: ElementFields, stableKey?: string): LocalId {
     if (
       stableKey !== undefined &&
@@ -1802,9 +1855,18 @@ export class BimModel {
         ? `elem:${command.modelScope}:${stableKey}`
         : makeElementKey(command.modelScope, fields.category, localId)
     );
-    const prepared = protectElement({ ...fields, guid, localId });
-    if (!prepared.ok) throw new RejectedModelCommand(prepared.error);
-    this.#stageElement(command, prepared.value);
+    if (fields.representation === 'BODY') {
+      const body = this.#prepareBody(command, fields.geometry);
+      if (!body.ok) throw new RejectedModelCommand(body.error);
+      this.#stageElement(
+        command,
+        Object.freeze({ ...fields, guid, localId, geometry: body.value })
+      );
+    } else {
+      const prepared = protectElement({ ...fields, guid, localId });
+      if (!prepared.ok) throw new RejectedModelCommand(prepared.error);
+      this.#stageElement(command, prepared.value);
+    }
     if (stableKey !== undefined) command.stableKeys.add(stableKey);
     command.recipeEligibility.set(localId, true);
     return localId;

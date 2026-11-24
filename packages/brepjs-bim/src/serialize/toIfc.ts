@@ -117,7 +117,14 @@ import { err, ok } from 'brepjs';
 import type { LocalId } from '../identity/localId.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import { deriveIfcGuidSync } from '../identity/guidDerivation.js';
-import type { BimElement, WallOpeningSpec, SlabOpeningSpec } from '../types/bimTypes.js';
+import { localPlacementFrame } from '../types/placementDefinition.js';
+import type { FrameInput } from '../placementFrame.js';
+import type {
+  AnyBimElement,
+  BimElement,
+  WallOpeningSpec,
+  SlabOpeningSpec,
+} from '../types/bimTypes.js';
 import { isWallOpening, isSlabOpening } from '../types/bimTypes.js';
 import type { BimRelationship } from '../types/relationships.js';
 import { checkReferentialIntegrity } from '../validation/referentialIntegrity.js';
@@ -139,10 +146,11 @@ import {
   type PreparedTessellation,
 } from '../ifc-writer/tessellationWriter.js';
 
-type ProductBodyElement = BimElement<'WALL'> | BimElement<'RAILING'>;
+type ProductBodyElement = Extract<AnyBimElement, { representation: 'BODY' }>;
 
 interface PreflightedProductElement<E extends ProductBodyElement> {
   readonly element: E;
+  readonly frame: FrameInput;
   readonly items: NonEmpty<PreparedTessellation>;
 }
 
@@ -151,6 +159,8 @@ function preflightProductBodies<E extends ProductBodyElement>(
 ): Result<readonly PreflightedProductElement<E>[], BimError> {
   const preflighted: PreflightedProductElement<E>[] = [];
   for (const element of elements) {
+    const frame = localPlacementFrame(element.placement);
+    if (!frame.ok) return frame;
     const prepared = preflightProductBody({
       localId: element.localId,
       solids: bodySolids(element.geometry),
@@ -158,6 +168,7 @@ function preflightProductBodies<E extends ProductBodyElement>(
     if (!prepared.ok) return err(prepared.error);
     preflighted.push({
       element,
+      frame: frame.value,
       items: prepared.value,
     });
   }
@@ -387,7 +398,7 @@ async function serializeIfc(
 
     const { localPlacementId, productDefinitionShapeId, bodyItemIds } = writeProductBodyGeometry(
       w,
-      wall.spec,
+      preflighted.frame,
       preflighted.items,
       geomSubContextId,
       storeyPlacementId
@@ -402,9 +413,9 @@ async function serializeIfc(
     );
     idMap.set(wall.localId, wallExpressId);
     placementMap.set(wall.localId, localPlacementId);
-    writeWallCommonPset(w, ownerHistoryId, wallExpressId, wall.spec);
-    writeManufacturerPset(w, ownerHistoryId, wallExpressId, wall.spec);
-    if (wall.spec.customProperties !== undefined) {
+    if (wall.spec !== null) writeWallCommonPset(w, ownerHistoryId, wallExpressId, wall.spec);
+    if (wall.spec !== null) writeManufacturerPset(w, ownerHistoryId, wallExpressId, wall.spec);
+    if (wall.spec?.customProperties !== undefined) {
       writeCustomPsets(w, ownerHistoryId, wallExpressId, wall.spec.customProperties);
     }
     for (const itemId of bodyItemIds) applySurfaceStyle(w, model, wall.localId, itemId);
@@ -418,7 +429,7 @@ async function serializeIfc(
           { guid: wall.guid, cause: bodyQuantities.error }
         )
       );
-    } else if (model.isRecipeQuantityEligible(wall.localId)) {
+    } else if (wall.spec !== null && model.isRecipeQuantityEligible(wall.localId)) {
       writeWallBaseQuantities(
         w,
         ownerHistoryId,
@@ -805,7 +816,7 @@ async function serializeIfc(
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
     const { localPlacementId, productDefinitionShapeId, bodyItemIds } = writeProductBodyGeometry(
       w,
-      railing.spec,
+      preflighted.frame,
       preflighted.items,
       geomSubContextId,
       storeyPlacementId
@@ -814,16 +825,18 @@ async function serializeIfc(
       w,
       railing.guid,
       `Railing ${i + 1}`,
-      railing.spec.predefinedType ?? 'NOTDEFINED',
+      railing.spec?.predefinedType ?? 'NOTDEFINED',
       ownerHistoryId,
       localPlacementId,
       productDefinitionShapeId
     );
     idMap.set(railing.localId, railingExpressId);
     placementMap.set(railing.localId, localPlacementId);
-    writeRailingCommonPset(w, ownerHistoryId, railingExpressId, railing.spec);
-    writeManufacturerPset(w, ownerHistoryId, railingExpressId, railing.spec);
-    if (railing.spec.customProperties !== undefined) {
+    if (railing.spec !== null)
+      writeRailingCommonPset(w, ownerHistoryId, railingExpressId, railing.spec);
+    if (railing.spec !== null)
+      writeManufacturerPset(w, ownerHistoryId, railingExpressId, railing.spec);
+    if (railing.spec?.customProperties !== undefined) {
       writeCustomPsets(w, ownerHistoryId, railingExpressId, railing.spec.customProperties);
     }
     for (const itemId of bodyItemIds) applySurfaceStyle(w, model, railing.localId, itemId);
@@ -875,6 +888,13 @@ async function serializeIfc(
     const openingElement = elements.find((el) => el.localId === rel.openingLocalId);
     if (openingElement === undefined || openingElement.category !== 'OPENING') continue;
     if (!isWallOpening(openingElement.spec)) continue;
+    if (wallElement.spec === null)
+      return err(
+        ifcError(
+          'OPENING_HOST_FACTS_MISSING',
+          'Opening reference requires a supported host thickness'
+        )
+      );
 
     // The retained Wall Body already contains its apertures. IFC Reference
     // openings preserve the void/fill relationships without requesting a cut.
@@ -1193,7 +1213,7 @@ function writeTypeLayer(
     ['IFCSPACETYPE', 'SPACE', toOccurrences(model.getSpaces(), (s) => s.predefinedType)],
     ['IFCFOOTINGTYPE', 'FOOTING', toOccurrences(model.getFootings(), (s) => s.predefinedType)],
     ['IFCPILETYPE', 'PILE', toOccurrences(model.getPiles(), (s) => s.predefinedType)],
-    ['IFCRAILINGTYPE', 'RAILING', toOccurrences(model.getRailings(), (s) => s.predefinedType)],
+    ['IFCRAILINGTYPE', 'RAILING', toOccurrences(model.getRailings(), (s) => s?.predefinedType)],
     ['IFCCOVERINGTYPE', 'COVERING', toOccurrences(model.getCoverings(), (s) => s.predefinedType)],
   ];
 
@@ -1330,19 +1350,14 @@ function collectGeometryIssues(model: BimModel): ValidationReport {
     });
   }
 
-  const productGroups = [
-    ['Wall', model.getWalls()],
-    ['Railing', model.getRailings()],
-  ] as const;
-  for (const [label, elements] of productGroups) {
-    elements.forEach((el, index) => {
-      bodySolids(el.geometry).forEach((solid, itemIndex) => {
-        const report = checkGeometryValidity(
-          solid,
-          `${label} ${index + 1} Body item ${itemIndex + 1}`
-        );
-        issues.push(...report.issues);
-      });
+  for (const element of model.getAllElements()) {
+    if (element.representation !== 'BODY') continue;
+    bodySolids(element.geometry).forEach((solid, itemIndex) => {
+      const report = checkGeometryValidity(
+        solid,
+        `${element.category} ${element.localId} Body item ${itemIndex + 1}`
+      );
+      issues.push(...report.issues);
     });
   }
 

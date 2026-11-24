@@ -1,3 +1,4 @@
+import { localPlacementFrame } from '../types/placementDefinition.js';
 import { ok, err } from 'brepjs';
 import type { ValidSolid, Result } from 'brepjs';
 import type { AnyBimElement } from '../types/bimTypes.js';
@@ -77,16 +78,17 @@ export function placedSolids(
   options: PlacedSolidsOptions = {}
 ): Result<readonly ValidSolid[], BimError> {
   const parentFrame = options.parentFrame;
+  if (el.representation === 'BODY') {
+    const local = localPlacementFrame(el.placement);
+    if (!local.ok) return local;
+    const frame = resolvedPlacement(local.value, parentFrame);
+    if (!frame.ok) return frame;
+    const placed = transformProductBody(el.geometry, frame.value);
+    return placed.ok ? ok(bodySolids(placed.value)) : placed;
+  }
   const checked = validatePlacements(el, parentFrame);
   if (!checked.ok) return checked;
   switch (el.category) {
-    case 'WALL':
-    case 'RAILING': {
-      const frame = resolvedPlacement(el.spec, parentFrame);
-      if (!frame.ok) return frame;
-      const placed = transformProductBody(el.geometry, frame.value);
-      return placed.ok ? ok(bodySolids(placed.value)) : placed;
-    }
     case 'SLAB':
     case 'BEAM':
     case 'COLUMN':
@@ -190,7 +192,10 @@ function resolvedPlacement(local: unknown, parent?: FrameInput): Result<RigidFra
 }
 
 /** Validate every component and parent before allocating even the first output. */
-function validatePlacements(el: AnyBimElement, parent?: FrameInput): Result<void, BimError> {
+function validatePlacements(
+  el: Exclude<AnyBimElement, { representation: 'BODY' }>,
+  parent?: FrameInput
+): Result<void, BimError> {
   const parentFrame = parent === undefined ? ok(IDENTITY_FRAME) : frameFromPlacement(parent);
   if (!parentFrame.ok) return parentFrame;
   const inputs: unknown[] = [];

@@ -24,10 +24,14 @@ import type {
   BridgeSpec,
   EarthworksFillSpec,
 } from '../specs/infrastructureSpec.js';
+import type { PlacementDefinition } from './placementDefinition.js';
 import type { ProductBody } from './productBody.js';
 
+export const bodyClassifications = ['WALL', 'RAILING'] as const;
+export type BodyClassification = (typeof bodyClassifications)[number];
+
 export type BimCategory =
-  | 'WALL'
+  | BodyClassification
   | 'SLAB'
   | 'BEAM'
   | 'COLUMN'
@@ -42,7 +46,6 @@ export type BimCategory =
   | 'PILE'
   | 'STAIR'
   | 'RAMP'
-  | 'RAILING'
   | 'COVERING'
   | 'ELEMENT_ASSEMBLY'
   | 'ZONE'
@@ -139,7 +142,7 @@ export type BimSpecFor<C extends BimCategory> = C extends 'WALL'
 
 export type BimGeometryFor<C extends BimCategory> = C extends 'CURTAIN_WALL'
   ? CurtainWallGrid
-  : C extends 'WALL' | 'RAILING'
+  : C extends BodyClassification
     ? ProductBody
     : C extends
           | 'SLAB'
@@ -155,39 +158,23 @@ export type BimGeometryFor<C extends BimCategory> = C extends 'CURTAIN_WALL'
       ? ValidSolid
       : null;
 
-export interface BimElement<C extends BimCategory> {
+type BodySpec<C extends BimCategory> =
+  BimGeometryFor<C> extends ProductBody ? BimSpecFor<C> | null : BimSpecFor<C>;
+
+type RecordGeometry<C extends BimCategory> =
+  BimGeometryFor<C> extends ProductBody
+    ? {
+        readonly representation: 'BODY';
+        readonly placement: PlacementDefinition;
+        readonly geometry: BimGeometryFor<C>;
+      }
+    : { readonly representation?: never; readonly geometry: BimGeometryFor<C> };
+
+export type BimElement<C extends BimCategory> = RecordGeometry<C> & {
   readonly guid: IfcGuid;
   readonly localId: LocalId;
   readonly category: C;
-  readonly spec: BimSpecFor<C>;
-  readonly geometry: BimGeometryFor<C>;
-}
+  readonly spec: BodySpec<C>;
+};
 
-export type AnyBimElement =
-  | BimElement<'WALL'>
-  | BimElement<'SLAB'>
-  | BimElement<'BEAM'>
-  | BimElement<'COLUMN'>
-  | BimElement<'OPENING'>
-  | BimElement<'DOOR'>
-  | BimElement<'WINDOW'>
-  | BimElement<'PROXY'>
-  | BimElement<'SPACE'>
-  | BimElement<'ROOF'>
-  | BimElement<'CURTAIN_WALL'>
-  | BimElement<'FOOTING'>
-  | BimElement<'PILE'>
-  | BimElement<'STAIR'>
-  | BimElement<'RAMP'>
-  | BimElement<'RAILING'>
-  | BimElement<'COVERING'>
-  | BimElement<'ELEMENT_ASSEMBLY'>
-  | BimElement<'ZONE'>
-  | BimElement<'SYSTEM'>
-  | BimElement<'PROJECT'>
-  | BimElement<'SITE'>
-  | BimElement<'BRIDGE'>
-  | BimElement<'BRIDGE_PART'>
-  | BimElement<'EARTHWORKS_FILL'>
-  | BimElement<'BUILDING'>
-  | BimElement<'STOREY'>;
+export type AnyBimElement = { [C in BimCategory]: BimElement<C> }[BimCategory];

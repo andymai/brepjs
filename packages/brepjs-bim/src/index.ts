@@ -25,6 +25,7 @@ export type {
   CleanupReport,
   GeometryCleanupDiagnostic,
 } from './types/productBody.js';
+export type { PlacementDefinition } from './types/placementDefinition.js';
 export type { PlacedSolidsOptions } from './elementFns/placedGeometry.js';
 export type { FrameInput, RigidFrame, Mat4x4 } from './placementFrame.js';
 export {

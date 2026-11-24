@@ -43,7 +43,7 @@ for (const authority of ['PARAMETRIC', 'AUTHORITATIVE'] as const) {
         const fixture = bodyExchangeFixture('WALL', authority, 'overlapping');
         using model = fixture.model;
         const wall = model.getElement(fixture.localId);
-        if (wall?.category !== 'WALL') throw new Error('Missing Wall');
+        if (wall?.category !== 'WALL' || !wall.spec) throw new Error('Missing Wall');
         const live = arena();
         sourceReleases.push(...fixture.solids.map((solid) => vi.spyOn(solid, Symbol.dispose)));
         const temporaryReleases: ReturnType<typeof vi.fn>[] = [];
@@ -119,7 +119,7 @@ for (const primaryFailure of [false, true]) {
           const fixture = bodyExchangeFixture('WALL', 'PARAMETRIC', 'overlapping');
           using model = fixture.model;
           const wall = model.getElement(fixture.localId);
-          if (wall?.category !== 'WALL') throw new Error('Missing Wall');
+          if (wall?.category !== 'WALL' || !wall.spec) throw new Error('Missing Wall');
           const container = model
             .getAllRelationships()
             .find(

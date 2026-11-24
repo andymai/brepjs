@@ -34,6 +34,11 @@ for (const category of ['WALL', 'RAILING'] as const) {
           guid: newIfcGuid(),
           localId: ids.next(),
           category,
+          representation: 'BODY',
+          placement: {
+            kind: 'LOCAL_FRAME',
+            frame: { origin: [10, 0, 0], axisX: [0, 1, 0], axisZ: [0, 0, 1] },
+          },
           geometry,
           spec: {
             length: 999,
@@ -78,6 +83,11 @@ for (const category of ['WALL', 'RAILING'] as const) {
         guid: newIfcGuid(),
         localId: ids.next(),
         category,
+        representation: 'BODY',
+        placement: {
+          kind: 'LOCAL_FRAME',
+          frame: { origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1] },
+        },
         geometry,
         spec: {
           length: 2,
@@ -95,13 +105,13 @@ for (const category of ['WALL', 'RAILING'] as const) {
         ok: false,
         error: { code: 'INVALID_RIGID_FRAME' },
       });
-      element.spec.axisX[0] = 2;
-      expect(placedSolids(element)).toMatchObject({
+      expect(
+        placedSolids({ ...element, placement: { kind: 'LOCAL_FRAME' as const, frame: invalid } })
+      ).toMatchObject({
         ok: false,
         error: { code: 'INVALID_RIGID_FRAME' },
       });
       expect(locate).not.toHaveBeenCalled();
-      element.spec.axisX[0] = 1;
       const releases: ReturnType<typeof vi.spyOn>[] = [];
       setProductBodyTestHooksForTesting({
         afterAllocate({ solid, itemIndex }) {

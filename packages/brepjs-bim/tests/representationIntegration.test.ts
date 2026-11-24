@@ -1,0 +1,76 @@
+import { box, DisposalScope, getEdges, getFaces, polygon, sewShells, unwrap } from 'brepjs';
+import { expect, it } from 'vitest';
+import { BimModel } from '../src/model/bimModel.js';
+import { placedSolids } from '../src/elementFns/placedGeometry.js';
+import { measureProductBodyMaterial } from '../src/types/productBody.js';
+import { toIfc } from '../src/serialize/toIfc.js';
+import { bodyRecordContract } from './helpers/bodyRecordContract.js';
+bodyRecordContract('WALL');
+bodyRecordContract('RAILING');
+
+it.each(['GRID_REFERENCE', 'LINEAR_REFERENCE'] as const)(
+  'retains unresolved %s through replacement',
+  async (kind) => {
+    using model = new BimModel();
+    unwrap(model.init({ name: 'Reference placement' }));
+    const references = ['datum-1'];
+    const parameters = { offset: 21 };
+    const id = unwrap(
+      model.addAuthoredBody({
+        category: 'WALL',
+        placement: { kind, references, parameters },
+        solids: [box(2, 2, 2)],
+      })
+    );
+    references[0] = 'unrelated';
+    parameters.offset = 64;
+    unwrap(
+      model.replaceProductBody({
+        localId: id,
+        body: { kind: 'AUTHORITATIVE', solids: [box(3, 3, 3)] },
+      })
+    );
+    const record = model.getElement(id);
+    if (record?.representation !== 'BODY') throw new Error('Missing Body');
+    expect(record.placement).toEqual({ kind, references: ['datum-1'], parameters: { offset: 21 } });
+    expect(unwrap(measureProductBodyMaterial(record.geometry.solids))).toBeCloseTo(27, 6);
+    const failure = { ok: false, error: { code: 'PLACEMENT_REFERENCE_UNRESOLVED' } };
+    expect(placedSolids(record)).toMatchObject(failure);
+    expect(await toIfc(model, { applicationName: 'Test', applicationVersion: '1' })).toMatchObject(
+      failure
+    );
+    expect(record.geometry.solids[0].disposed).toBe(false);
+  }
+);
+
+it('rejects faces, open shells, edges and raw meshes before any item transfers', () => {
+  using model = new BimModel();
+  using first = box(1, 1, 1);
+  using face = unwrap(
+    polygon([
+      [0, 0, 0],
+      [1, 0, 0],
+      [0, 1, 0],
+    ])
+  );
+  using scope = new DisposalScope();
+  const faces = getFaces(first).map((f) => scope.register(f));
+  const openShell = scope.register(unwrap(sewShells(faces.slice(0, 3))));
+  const [edge] = getEdges(face).map((e) => scope.register(e));
+  if (!edge) throw new Error('Missing edge');
+  for (const input of [face, openShell, edge, { vertices: [0, 0, 0], indices: [0] }]) {
+    const result: unknown = Reflect.apply(model.addAuthoredBody.bind(model), model, [
+      {
+        category: 'RAILING',
+        placement: {
+          kind: 'LOCAL_FRAME',
+          frame: { origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1] },
+        },
+        solids: [first, input],
+      },
+    ]);
+    expect(result).toMatchObject({ ok: false, error: { code: 'BODY_INVALID_ITEM', itemIndex: 1 } });
+    expect(model.getAllElements()).toHaveLength(0);
+    expect(first.disposed).toBe(false);
+  }
+});

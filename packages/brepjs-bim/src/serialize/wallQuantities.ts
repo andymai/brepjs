@@ -5,14 +5,14 @@ import { measureProductBodyMaterial, type NonEmpty } from '../types/productBody.
 import { toIfcLengthM } from '../units/units.js';
 
 interface WallQuantityValues {
-  readonly lengthM: number;
-  readonly widthM: number;
-  readonly heightM: number;
+  readonly lengthM?: number;
+  readonly widthM?: number;
+  readonly heightM?: number;
   readonly netVolumeM3: number;
 }
 
 interface WallQuantityInput {
-  readonly spec: WallSpec;
+  readonly spec: WallSpec | null;
   readonly solids: NonEmpty<ValidSolid>;
 }
 
@@ -23,9 +23,11 @@ export function deriveWallQuantities(
     const measured = measureProductBodyMaterial(input.solids);
     if (!measured.ok) return wallVolumeError(measured.error);
     return ok({
-      lengthM: toIfcLengthM(input.spec.length),
-      widthM: toIfcLengthM(input.spec.thickness),
-      heightM: toIfcLengthM(input.spec.height),
+      ...(input.spec && {
+        lengthM: toIfcLengthM(input.spec.length),
+        widthM: toIfcLengthM(input.spec.thickness),
+        heightM: toIfcLengthM(input.spec.height),
+      }),
       netVolumeM3: measured.value / 1_000_000_000,
     });
   } catch (cause) {
