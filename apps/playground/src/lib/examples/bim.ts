@@ -1024,7 +1024,7 @@ import { box, clone, compound, cutAll, cylinder, extrude, fuseAll, getSolids, me
 import { color, present } from 'brepjs/playground';
 
 // Stair core as a BIM model: a half-turn stair for each storey. Two flights go opposite ways in two lanes with a
-// half landing at the turn. The stair is an IfcStair with no solid of its own: placedSolids() gives its flights.
+// half landing at the turn. The IfcStair retains one Body item per flight. placedSolids() places each item.
 // The rise, the going, the flight length, the widths and the heights of handrail and guarding are the limits of
 // a building code for a general access stair. The wall, the door and the shape of the balustrade are a display
 // model. Units are millimetres. The flights go along Y, and the open side of the core looks to +X.
@@ -3369,8 +3369,8 @@ async function hall({ perRow = 10, rackKW = 8, cutaway = true }: HallParams = {}
     const tones: Tones = {};
     const add = (tint: string, ...list: Body[]): void => { (tones[tint] ??= []).push(...list); };
     for (const el of model.getAllElements()) {
-      if (el.category === 'SPACE' || (cutaway && (el.localId === north || el.localId === lifted))) continue; // the aisle volumes would hide the hall
-      const feed = busFeed.get(el.localId), material = (el.spec as { materialName?: string }).materialName ?? '';
+      if (el.representation === 'NONE' || el.category === 'SPACE' || (cutaway && (el.localId === north || el.localId === lifted))) continue; // the aisle volumes would hide the hall
+      const feed = busFeed.get(el.localId), material = el.spec && 'materialName' in el.spec ? (el.spec.materialName ?? '') : '';
       for (const s of unwrap(placedSolids(el))) add(feed ? FEED[feed]! : (PALETTE[material] ?? '#8b8b8b'), own(s));
     }
 

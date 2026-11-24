@@ -2341,7 +2341,19 @@ function assemble(model: BimModel, owned: Body[], storeys: number, cutaway: bool
   const groups: Record<Tone, Body[]> = { steel: [], slab: [], core: [], stair: [], glass: [], frame: [], ground: [] };
   let steelKg = 0, concreteM3 = 0, solids = 0;
   for (const p of placed) {
-    const list = unwrap(placedSolids(elements.get(p.id) as never, { parentFrame: { origin: [0, 0, p.level * GRID.storey], axisX: X, axisZ: Z } }));
+    const element = elements.get(p.id);
+    if (!element) throw new Error('Missing placed building element');
+    const elevation = p.level * GRID.storey;
+    const storey = { origin: [0, 0, elevation] as P3, axisX: X, axisZ: Z };
+    let list: readonly Body[];
+    if (element.category === 'CURTAIN_WALL') {
+      if (element.placement?.kind !== 'LOCAL_FRAME') throw new Error('Facade needs a local frame');
+      const { origin, axisX, axisZ } = element.placement.frame;
+      const facade = { origin: [origin[0], origin[1], origin[2] + elevation] as P3, axisX, axisZ };
+      list = model.getChildren(p.id).flatMap(child => unwrap(placedSolids(child, { parentFrame: facade })));
+    } else {
+      list = unwrap(placedSolids(element, { parentFrame: storey }));
+    }
     owned.push(...list);
     solids += list.length;
     if (p.tone === 'steel') steelKg += list.reduce((sum, s) => sum + unwrap(measureVolume(s)), 0) * STEEL;

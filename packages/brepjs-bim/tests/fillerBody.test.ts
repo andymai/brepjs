@@ -1,4 +1,5 @@
-import { box, unwrap } from 'brepjs';
+import { elementBounds, elementMaterialVolume } from '../src/elementFns/placedGeometry.js';
+import { box, clone, unwrap } from 'brepjs';
 import { expect, it, vi } from 'vitest';
 import { BimModel } from '../src/model/bimModel.js';
 import { toIfc } from '../src/serialize/toIfc.js';
@@ -82,4 +83,71 @@ it('keeps arbitrary replacement material under a slab Opening on reload', async 
   } finally {
     disposeImportedModel(imported);
   }
+});
+
+it.each(['DOOR', 'WINDOW'] as const)(
+  'exports a standalone %s panel only while it describes the retained Body',
+  async (category) => {
+    using model = new BimModel();
+    unwrap(model.init({ name: 'Independent panel' }));
+    const id = unwrap(
+      model.addFillerPanel({ category, width: 10, height: 20, materialName: 'Wood', placement })
+    );
+    const panel = model.getElement(id);
+    if (panel?.representation !== 'BODY') throw new Error('Missing panel Body');
+    expect(panel.geometry.kind).toBe('PARAMETRIC');
+    const extents = unwrap(elementBounds(panel, { kind: 'LOCAL' })).bounds;
+    expect(extents.xMin).toBeCloseTo(-5);
+    expect(extents.yMax).toBeCloseTo(10);
+    expect(extents.zMax).toBeCloseTo(100);
+    expect(unwrap(elementMaterialVolume(panel))).toBeCloseTo(20000);
+    const analytic = new TextDecoder().decode(unwrap(await toIfc(model, meta)));
+    expect(analytic).toContain('IFCEXTRUDEDAREASOLID(');
+    const replacement = unwrap(clone(panel.geometry.solids[0]));
+    unwrap(
+      model.replaceBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [replacement] } })
+    );
+    const bytes = unwrap(await toIfc(model, meta));
+    const text = new TextDecoder().decode(bytes);
+    expect(text).not.toContain('IFCEXTRUDEDAREASOLID(');
+    expect(text.match(/=IFCTRIANGULATEDFACESET\(/g)).toHaveLength(1);
+    expect(text).not.toContain('IFCOPENINGELEMENT(');
+    const imported = unwrap(await fromIfc(bytes));
+    try {
+      const result = imported.elements.find((el) => el.guid === panel.guid);
+      expect(result?.geometry.solids).toHaveLength(1);
+      expect(result?.geometry.volumeMm3).toBeCloseTo(20000, 3);
+    } finally {
+      disposeImportedModel(imported);
+    }
+  }
+);
+
+it('rejects unsupported Opening definitions and nonphysical Body classifications before adoption', () => {
+  using model = new BimModel();
+  const wall = unwrap(model.addWall(OPENING_WALL));
+  const slab = unwrap(model.addSlab({ ...OPENING_WALL, width: 10, predefinedType: 'FLOOR' }));
+  const initial = model.getAllElements();
+  const relationships = model.getAllRelationships();
+  using solid = box(1, 1, 1);
+  const wallRequest = { ...DOOR, wallLocalId: wall, kind: 'CURVED_OPENING' };
+  const slabRequest = {
+    slabLocalId: slab,
+    offsetX: 1,
+    offsetY: 1,
+    sizeX: 2,
+    sizeY: 2,
+    kind: 'CURVED_OPENING',
+  };
+  const error = { ok: false, error: { code: 'UNSUPPORTED_OPENING_DEFINITION' } };
+  expect(model.addDoorAndCutWall(wallRequest, { solids: [solid] })).toMatchObject(error);
+  expect(model.addSlabOpening(slabRequest)).toMatchObject(error);
+  expect(
+    Reflect.apply(model.addAuthoredBody.bind(model), model, [
+      { category: 'ZONE', solids: [solid], placement },
+    ])
+  ).toMatchObject({ ok: false, error: { code: 'BODY_UNSUPPORTED_CATEGORY' } });
+  expect(solid.disposed).toBe(false);
+  expect(model.getAllElements()).toEqual(initial);
+  expect(model.getAllRelationships()).toEqual(relationships);
 });
