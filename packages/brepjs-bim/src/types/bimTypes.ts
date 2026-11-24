@@ -30,6 +30,7 @@ export const bodyClassifications = [
   'RAILING',
   'MEMBER',
   'PLATE',
+  'SIGN',
   'DOOR',
   'WINDOW',
   'STAIR',
@@ -122,6 +123,7 @@ interface ClassificationSpecs {
   STOREY: StoreySpec;
   MEMBER: CurtainComponentSpec;
   PLATE: CurtainComponentSpec;
+  SIGN: never;
 }
 
 export type BimSpecFor<C extends BimCategory> = ClassificationSpecs[C];

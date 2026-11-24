@@ -1826,7 +1826,7 @@ interface StoreySpec {
 
 type BodyClassification = (typeof bodyClassifications)[number];
 
-declare const bodyClassifications: readonly ["WALL", "RAILING", "MEMBER", "PLATE", "DOOR", "WINDOW", "STAIR", "RAMP", "SLAB", "ROOF", "SPACE", "COVERING", "BEAM", "COLUMN", "FOOTING", "PILE", "PROXY", "EARTHWORKS_FILL"];
+declare const bodyClassifications: readonly ["WALL", "RAILING", "MEMBER", "PLATE", "SIGN", "DOOR", "WINDOW", "STAIR", "RAMP", "SLAB", "ROOF", "SPACE", "COVERING", "BEAM", "COLUMN", "FOOTING", "PILE", "PROXY", "EARTHWORKS_FILL"];
 
 interface ClassificationSpecs {
     WALL: WallSpec;
@@ -1858,6 +1858,7 @@ interface ClassificationSpecs {
     STOREY: StoreySpec;
     MEMBER: CurtainComponentSpec;
     PLATE: CurtainComponentSpec;
+    SIGN: never;
 }
 
 interface CurtainComponentSpec {

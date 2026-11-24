@@ -291,7 +291,8 @@ async function serializeIfc(
   }
   const unsupportedStandalone = elements.find(
     (element) =>
-      (element.category === 'MEMBER' || element.category === 'PLATE') && element.spec === null
+      element.category === 'SIGN' ||
+      ((element.category === 'MEMBER' || element.category === 'PLATE') && element.spec === null)
   );
   if (unsupportedStandalone) {
     return err(
