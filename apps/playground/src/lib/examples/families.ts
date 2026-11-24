@@ -410,14 +410,13 @@ function block({ flats = 2, pitch = 25 }: BlockParams = {}) {
   console.log(model.getWalls().length + ' walls, ' + model.getDoors().length + ' doors, ' + model.getWindows().length + ' windows, ' + model.getSlabs().length + ' slabs, ' + proxied.length + ' proxies');
   console.log('GlobalIds: ' + same + ' of ' + idByKeyPath.size + ' are the same after the tree is reversed');
 
-  // placedSolids() puts each element where its IFC placement says. An IfcDoor and an IfcWindow have no
-  // body of their own: the wall has the real hole, and the proxy in the hole is the leaf or the pane.
+  // The detailed leaf and pane proxies provide this view's filler geometry.
   const kind = new Map(proxied.map((p) => [p.keyPath, p.type]));
   const groups = new Map<string, Shape[]>();
   const temp: Shape[] = [];
   for (const [path, id] of idByKeyPath) {
     const element = model.getElement(id);
-    if (!element) continue;
+    if (!element || element.representation === 'NONE' || element.category === 'DOOR' || element.category === 'WINDOW') continue;
     const lift = path.startsWith('block/first') ? STOREY : 0;
     const solids = unwrap(placedSolids(element, { parentFrame: { origin: [0, 0, lift], axisX: [1, 0, 0], axisZ: [0, 0, 1] } }));
     temp.push(...solids);
@@ -1255,12 +1254,12 @@ function frame({ bays = 2, roofed = 1 }: FrameParams = {}) {
   let catalogueKg = 0;
   for (const [path, id] of idByKeyPath) {
     const element = model.getElement(id);
-    if (!element) continue;
+    if (!element || element.representation === 'NONE') continue;
     const level = Number(path.split('/')[1]?.slice(-1) ?? 0);
     const solids = unwrap(placedSolids(element, { parentFrame: { origin: [0, 0, level * STOREY], axisX: [1, 0, 0], axisZ: [0, 0, 1] } }));
     temp.push(...solids);
     let tone: string = element.category;
-    if (element.category === 'BEAM' || element.category === 'COLUMN') {
+    if ((element.category === 'BEAM' || element.category === 'COLUMN') && element.spec) {
       const profile = element.spec.profile;
       const kg = profile.kind === 'I_BEAM' ? KG_PER_M[profile.overallDepth] : undefined;
       if (kg !== undefined) {

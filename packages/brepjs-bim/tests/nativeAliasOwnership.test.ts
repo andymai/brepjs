@@ -433,8 +433,8 @@ it('rejects a generated resource alias already pending adoption without publishi
         error: {
           code: 'BODY_OWNERSHIP_CONFLICT',
           metadata: {
-            itemIndex: 1,
-            ownerLocalId: Number(site) + 1,
+            itemIndex: 0,
+            ownerLocalId: Number(site) + 2,
             ownerItemIndex: 0,
             ownerState: 'RETAINED',
           },

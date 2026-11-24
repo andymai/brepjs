@@ -29,7 +29,12 @@ import {
 } from '../ifc-writer/spaceWriter.js';
 import { writeRoofEntity, writeRoofType } from '../ifc-writer/roofWriter.js';
 import type { RoofPredefinedType } from '../specs/roofSpec.js';
-import { writeCurtainWall } from '../ifc-writer/curtainWallWriter.js';
+import {
+  writeCurtainWall,
+  writePlate,
+  writeMember,
+  writeComponentGeometry,
+} from '../ifc-writer/curtainWallWriter.js';
 import {
   writeFootingGeometry,
   writePileGeometry,
@@ -249,12 +254,50 @@ async function serializeIfc(
   }
 
   const elements = model.getAllElements();
-  const standaloneMember = elements.find((element) => element.category === 'MEMBER');
+  const relationships = model.getAllRelationships();
+  for (const element of elements) {
+    if (element.representation !== 'BODY') continue;
+    const placement = element.placement;
+    if (placement.kind !== 'LOCAL_FRAME')
+      return err(
+        ifcError(
+          'PLACEMENT_REFERENCE_UNRESOLVED',
+          `Cannot resolve ${placement.kind} for IFC export`,
+          undefined,
+          { localId: element.localId }
+        )
+      );
+    const parent = placement.relativeTo;
+    if (parent === undefined) continue;
+    const isChild =
+      (element.category === 'MEMBER' || element.category === 'PLATE') &&
+      element.spec !== null &&
+      model.getElement(parent)?.category === 'CURTAIN_WALL';
+    const isFiller = relationships.some(
+      (r) =>
+        r.kind === 'FILLS_OPENING' &&
+        r.fillerLocalId === element.localId &&
+        r.openingLocalId === parent
+    );
+    if (!isChild && !isFiller && findContainerOf(element.localId, relationships) !== parent)
+      return err(
+        ifcError(
+          'PLACEMENT_REFERENCE_UNRESOLVED',
+          'No supported IFC placement context for parent',
+          undefined,
+          { localId: element.localId, parent }
+        )
+      );
+  }
+  const standaloneMember = elements.find(
+    (element) =>
+      (element.category === 'MEMBER' || element.category === 'PLATE') && element.spec === null
+  );
   if (standaloneMember) {
     return err(
       ifcError(
         'IFC_UNSUPPORTED_CLASSIFICATION',
-        'Standalone Member export has no qualified IFC encoding',
+        `Standalone ${standaloneMember.category} export has no qualified IFC encoding`,
         undefined,
         { localId: standaloneMember.localId, category: standaloneMember.category }
       )
@@ -273,7 +316,6 @@ async function serializeIfc(
   // Scope writer-minted GUIDs (psets/quantities/rels) to this model.
   w.setModelScope(project.guid);
 
-  const relationships = model.getAllRelationships();
   const walls = model.getWalls();
   const slabs = model.getSlabs();
   const beams = model.getBeams();
@@ -417,8 +459,12 @@ async function serializeIfc(
   for (const rel of relationships) {
     if (rel.kind !== 'VOIDS_WALL') continue;
     const opening = elements.find((el) => el.localId === rel.openingLocalId);
-    if (opening === undefined || opening.category !== 'OPENING') continue;
-    if (!isWallOpening(opening.spec)) continue;
+    if (opening === undefined || opening.category !== 'OPENING')
+      return err(
+        ifcError('UNSUPPORTED_OPENING_DEFINITION', 'Void relationship requires an Opening')
+      );
+    if (!isWallOpening(opening.spec))
+      return err(ifcError('UNSUPPORTED_OPENING_DEFINITION', 'Unsupported wall Opening'));
     const list = openingsByWall.get(rel.wallLocalId) ?? [];
     list.push(opening.spec);
     openingsByWall.set(rel.wallLocalId, list);
@@ -428,8 +474,12 @@ async function serializeIfc(
   for (const rel of relationships) {
     if (rel.kind !== 'VOIDS_SLAB') continue;
     const opening = elements.find((el) => el.localId === rel.openingLocalId);
-    if (opening === undefined || opening.category !== 'OPENING') continue;
-    if (!isSlabOpening(opening.spec)) continue;
+    if (opening === undefined || opening.category !== 'OPENING')
+      return err(
+        ifcError('UNSUPPORTED_OPENING_DEFINITION', 'Void relationship requires an Opening')
+      );
+    if (!isSlabOpening(opening.spec))
+      return err(ifcError('UNSUPPORTED_OPENING_DEFINITION', 'Unsupported slab Opening'));
     const list = openingsBySlab.get(rel.slabLocalId) ?? [];
     list.push(opening.spec);
     openingsBySlab.set(rel.slabLocalId, list);
@@ -734,24 +784,64 @@ async function serializeIfc(
     const containingId = findContainerOf(curtainWall.localId, relationships);
     const storeyPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    // The writer also emits the wall's plates/members plus the IfcRelAggregates
-    // decomposing them into the wall. Only the wall is tracked in idMap so the
-    // spatial-containment relationship references the wall, not its parts.
-    const { curtainWallId } = writeCurtainWall(
+    if (!curtainWall.placement)
+      return err(ifcError('MISSING_PLACEMENT', 'Curtain Wall requires placement'));
+    const pose = localPlacementFrame(curtainWall.placement);
+    if (!pose.ok) return pose;
+    const wallPlacement = writeBodyPlacement(w, pose.value, storeyPlacementId);
+    const curtainWallId = writeCurtainWall(
       w,
       curtainWall.spec,
-      curtainWall.geometry,
-      `elem:CURTAIN_WALL:${curtainWall.localId}`,
+      curtainWall.guid,
       `Curtain Wall ${i + 1}`,
       ownerHistoryId,
-      geomSubContextId,
-      storeyPlacementId
+      wallPlacement
     );
+    placementMap.set(curtainWall.localId, wallPlacement);
     idMap.set(curtainWall.localId, curtainWallId);
     writeCurtainWallCommonPset(w, ownerHistoryId, curtainWallId, curtainWall.spec);
     if (curtainWall.spec.customProperties !== undefined) {
       writeCustomPsets(w, ownerHistoryId, curtainWallId, curtainWall.spec.customProperties);
     }
+  }
+
+  for (const child of elements) {
+    if (child.category !== 'MEMBER' && child.category !== 'PLATE') continue;
+    if (
+      !child.spec ||
+      child.placement.kind !== 'LOCAL_FRAME' ||
+      child.placement.relativeTo === undefined
+    )
+      return err(
+        ifcError('IFC_UNSUPPORTED_CLASSIFICATION', 'Unsupported standalone curtain component')
+      );
+    const parent = placementMap.get(child.placement.relativeTo);
+    if (parent === undefined)
+      return err(
+        ifcError('UNRESOLVED_PLACEMENT_PARENT', 'Curtain component placement parent is unavailable')
+      );
+    const geometry = model.isRecipeQuantityEligible(child.localId)
+      ? ok(
+          writeComponentGeometry(
+            w,
+            child.spec.size,
+            geomSubContextId,
+            writeBodyPlacement(w, child.placement.frame, parent)
+          )
+        )
+      : writeRetainedBody(w, child, geomSubContextId, parent);
+    if (!geometry.ok) return geometry;
+    const write = child.category === 'PLATE' ? writePlate : writeMember;
+    const id = write(
+      w,
+      child.guid,
+      child.spec.name,
+      ownerHistoryId,
+      geometry.value.localPlacementId,
+      geometry.value.productDefinitionShapeId
+    );
+    idMap.set(child.localId, id);
+    placementMap.set(child.localId, geometry.value.localPlacementId);
   }
 
   for (const [i, footing] of footings.entries()) {
@@ -1053,14 +1143,17 @@ async function serializeIfc(
       return err(
         ifcError('OPENING_HOST_RECIPE_REQUIRED', 'Slab opening requires retained thickness')
       );
+    const alreadyCut = !model.isRecipeQuantityEligible(slabElement.localId);
+    if (alreadyCut) referenceContextId ??= writeGeometricSubContext(w, geomContextId, 'Reference');
     const { openingPlacementId, openingEntityId } = writeSlabOpeningGeometry(
       w,
       openingElement.guid,
       openingElement.spec,
       slabElement.spec,
       slabPlacementId,
-      geomSubContextId,
-      ownerHistoryId
+      alreadyCut ? (referenceContextId ?? geomSubContextId) : geomSubContextId,
+      ownerHistoryId,
+      alreadyCut ? 'Reference' : 'Body'
     );
     idMap.set(rel.openingLocalId, openingEntityId);
 
@@ -1492,19 +1585,6 @@ function collectGeometryIssues(model: BimModel): ValidationReport {
         `Ramp ${index + 1} uses simplified inclined-slab flight geometry`
       )
     );
-  });
-
-  // Curtain wall geometry is a grid of component solids (panels + mullions);
-  // validate each component individually.
-  model.getCurtainWalls().forEach((cw, index) => {
-    const components = [...cw.geometry.panels, ...cw.geometry.mullions];
-    components.forEach((component, ci) => {
-      const report = checkGeometryValidity(
-        component.solid,
-        `CurtainWall ${index + 1} component ${ci + 1}`
-      );
-      issues.push(...report.issues);
-    });
   });
 
   return { issues };

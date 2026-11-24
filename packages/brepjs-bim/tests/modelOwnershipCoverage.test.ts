@@ -222,16 +222,13 @@ it.each(creators)(
     let items: readonly ValidSolid[];
     if (element.representation === 'BODY') items = element.geometry.solids;
     else if (element.category === 'CURTAIN_WALL') {
-      expect(Object.isFrozen(element.geometry)).toBe(true);
-      expect(Object.isFrozen(element.geometry.panels)).toBe(true);
-      expect(Object.isFrozen(element.geometry.mullions)).toBe(true);
-      const parts = [...element.geometry.panels, ...element.geometry.mullions];
-      for (const part of parts) {
-        expect(Object.isFrozen(part)).toBe(true);
-        expect(Reflect.set(part, 'solid', box)).toBe(false);
-        expect(Reflect.set(part.origin, 0, 999)).toBe(false);
-      }
-      items = parts.map(({ solid }) => solid);
+      expect(element.representation).toBe('NONE');
+      items = model.getChildren(id).flatMap((child) => {
+        if (child.representation !== 'BODY') throw new Error('Missing component Body');
+        expect(Object.isFrozen(child.geometry.solids)).toBe(true);
+        expect(Object.isFrozen(child.placement)).toBe(true);
+        return [...child.geometry.solids];
+      });
     } else throw new Error('Expected retained geometry');
     const attempts = items.map((solid) => vi.spyOn(solid, Symbol.dispose));
     for (const item of items) {

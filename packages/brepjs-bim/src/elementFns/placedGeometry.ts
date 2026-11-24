@@ -1,151 +1,63 @@
-import { localPlacementFrame } from '../types/placementDefinition.js';
-import { ok, err } from 'brepjs';
-import type { ValidSolid, Result } from 'brepjs';
+import { err, ok, type Result, type ValidSolid } from 'brepjs';
 import type { AnyBimElement } from '../types/bimTypes.js';
-import type { BimError } from '../errors/bimError.js';
-import { geometryError } from '../errors/bimError.js';
+import { geometryError, type BimError } from '../errors/bimError.js';
+import { localPlacementFrame } from '../types/placementDefinition.js';
+import { frameFromPlacement, frameMul, type FrameInput } from '../placementFrame.js';
 import {
-  frameFromPlacement,
-  frameMul,
-  IDENTITY_FRAME,
-  type RigidFrame,
-  type FrameInput,
-} from '../placementFrame.js';
-import { bodySolids, transformProductBody } from '../types/productBody.js';
-import { locateShapeInFrame } from '../rigidPlacement.js';
-
-// Applies an (origin, axisX, axisZ) frame to a local solid, returning a fresh
-// caller-owned solid. Orthonormal frames use the validity-preserving transform
-// path, so the result is a ValidSolid.
-function place(solid: ValidSolid, frame: RigidFrame): Result<ValidSolid, BimError> {
-  try {
-    return ok(locateShapeInFrame(solid, frame));
-  } catch (cause) {
-    return err(
-      geometryError(
-        'PLACED_GEOMETRY_FAILED',
-        'Element placement threw while transforming geometry',
-        cause
-      )
-    );
-  }
-}
-
-function disposeAll(solids: readonly ValidSolid[]): void {
-  for (const s of solids) s[Symbol.dispose]();
-}
+  transformProductBody,
+  productBodyBounds,
+  measureProductBodyMaterial,
+} from '../types/productBody.js';
 
 export interface PlacedSolidsOptions {
-  /**
-   * Cumulative frame of the element's containing spatial structure. Element
-   * specs and stored arbitrary bodies are relative to that structure; pass its
-   * frame here when world coordinates are required.
-   */
   readonly parentFrame?: FrameInput | undefined;
 }
 
-function placeWithinParent(
-  solid: ValidSolid,
-  localFrame: FrameInput,
-  parentFrame: FrameInput | undefined
-): Result<ValidSolid, BimError> {
-  const frame = resolvedPlacement(localFrame, parentFrame);
-  return frame.ok ? place(solid, frame.value) : frame;
+function absent(record: Extract<AnyBimElement, { representation: 'NONE' }>) {
+  return err(
+    geometryError(
+      'ELEMENT_HAS_NO_BODY',
+      `${record.category} has no occupied material (${record.reason})`
+    )
+  );
 }
 
-/**
- * Returns each element's geometry transformed to its element-local placement,
- * and optionally through the cumulative frame of its containing spatial
- * structure, as fresh caller-owned solids. Pass `parentFrame` to obtain world
- * coordinates for elements beneath a placed Site, Bridge, Bridge Part, or
- * other spatial structure. **Dispose the returned solids** (e.g. via `using` /
- * `[Symbol.dispose]`) when you own their lifetime — they are independent of the model
- * (`BimModel[Symbol.dispose]` frees only the stored, unplaced `.geometry`). On any
- * failure the solids already built for this call are disposed before the error is
- * returned, so no partial array is leaked.
- *
- * Stored Bodies include flight items in assembly coordinates.
- */
+function placedFrame(
+  el: Extract<AnyBimElement, { representation: 'BODY' }>,
+  options: PlacedSolidsOptions
+) {
+  const local = localPlacementFrame(el.placement);
+  if (!local.ok) return local;
+  const pose = frameFromPlacement(local.value);
+  if (!pose.ok || options.parentFrame === undefined) return pose;
+  const parent = frameFromPlacement(options.parentFrame);
+  return parent.ok ? frameMul(parent.value, pose.value) : parent;
+}
+
+/** Return fresh caller-owned copies of this element's own material in its parent frame. */
 export function placedSolids(
   el: AnyBimElement,
   options: PlacedSolidsOptions = {}
 ): Result<readonly ValidSolid[], BimError> {
-  const parentFrame = options.parentFrame;
-  if (el.representation === 'BODY') {
-    const local = localPlacementFrame(el.placement);
-    if (!local.ok) return local;
-    const frame = resolvedPlacement(local.value, parentFrame);
-    if (!frame.ok) return frame;
-    const placed = transformProductBody(el.geometry, frame.value);
-    return placed.ok ? ok(bodySolids(placed.value)) : placed;
-  }
-  const checked = validatePlacements(el, parentFrame);
-  if (!checked.ok) return checked;
-  switch (el.category) {
-    case 'CURTAIN_WALL': {
-      const out: ValidSolid[] = [];
-      for (const c of [...el.geometry.panels, ...el.geometry.mullions]) {
-        // Two-level: place by the component-local origin, then by the wall frame.
-        const componentLocal = placeWithinParent(
-          c.solid,
-          {
-            origin: c.origin,
-            axisX: [1, 0, 0],
-            axisZ: [0, 0, 1],
-          },
-          undefined
-        );
-        if (!componentLocal.ok) {
-          disposeAll(out);
-          return componentLocal;
-        }
-        using local = componentLocal.value;
-        const placed = placeWithinParent(local, el.spec, parentFrame);
-        if (!placed.ok) {
-          disposeAll(out);
-          return placed;
-        }
-        out.push(placed.value);
-      }
-      return ok(out);
-    }
-    default:
-      return ok([]);
-  }
+  if (el.representation === 'NONE') return absent(el);
+  const frame = placedFrame(el, options);
+  if (!frame.ok) return frame;
+  const transformed = transformProductBody(el.geometry, frame.value);
+  return transformed.ok ? ok(transformed.value.solids) : transformed;
 }
 
-function resolvedPlacement(local: unknown, parent?: FrameInput): Result<RigidFrame, BimError> {
-  const localFrame = frameFromPlacement(local);
-  if (!localFrame.ok) return localFrame;
-  if (parent === undefined) return localFrame;
-  const parentFrame = frameFromPlacement(parent);
-  return parentFrame.ok ? frameMul(parentFrame.value, localFrame.value) : parentFrame;
+export function elementMaterialVolume(el: AnyBimElement) {
+  return el.representation === 'BODY' ? measureProductBodyMaterial(el.geometry.solids) : absent(el);
 }
 
-/** Validate every component and parent before allocating even the first output. */
-function validatePlacements(
-  el: Exclude<AnyBimElement, { representation: 'BODY' }>,
-  parent?: FrameInput
-): Result<void, BimError> {
-  const parentFrame = parent === undefined ? ok(IDENTITY_FRAME) : frameFromPlacement(parent);
-  if (!parentFrame.ok) return parentFrame;
-  const inputs: unknown[] = [];
-  if ('origin' in el.spec && 'axisX' in el.spec && 'axisZ' in el.spec) inputs.push(el.spec);
-  for (const input of inputs) {
-    const frame = resolvedPlacement(input, parent);
-    if (!frame.ok) return frame;
-    if (el.category === 'CURTAIN_WALL') {
-      for (const c of [...el.geometry.panels, ...el.geometry.mullions]) {
-        const component = frameFromPlacement({
-          origin: c.origin,
-          axisX: [1, 0, 0],
-          axisZ: [0, 0, 1],
-        });
-        if (!component.ok) return component;
-        const combined = frameMul(frame.value, component.value);
-        if (!combined.ok) return combined;
-      }
-    }
-  }
-  return ok(undefined);
+export function elementBounds(
+  el: AnyBimElement,
+  space: { kind: 'LOCAL' } | ({ kind: 'PLACED'; tag: string } & PlacedSolidsOptions)
+) {
+  if (el.representation === 'NONE') return absent(el);
+  if (space.kind === 'LOCAL') return productBodyBounds(el.geometry, space);
+  const frame = placedFrame(el, space);
+  return frame.ok
+    ? productBodyBounds(el.geometry, { kind: 'RESOLVED', tag: space.tag, frame: frame.value })
+    : frame;
 }

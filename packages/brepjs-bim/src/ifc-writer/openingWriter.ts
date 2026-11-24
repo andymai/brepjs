@@ -145,7 +145,8 @@ export function writeSlabOpeningGeometry(
   slabSpec: SlabSpec,
   slabPlacementId: number,
   geomSubContextId: number,
-  ownerHistoryId: number
+  ownerHistoryId: number,
+  identifier: 'Body' | 'Reference'
 ): OpeningIds {
   const sizeXM = toIfcLengthM(openingSpec.sizeX);
   const sizeYM = toIfcLengthM(openingSpec.sizeY);
@@ -196,7 +197,7 @@ export function writeSlabOpeningGeometry(
     expressID: shapeRepId,
     type: WebIFC.IFCSHAPEREPRESENTATION,
     ContextOfItems: w.ref(geomSubContextId),
-    RepresentationIdentifier: w.mkType(WebIFC.IFCLABEL, 'Body'),
+    RepresentationIdentifier: w.mkType(WebIFC.IFCLABEL, identifier),
     RepresentationType: w.mkType(WebIFC.IFCLABEL, 'SweptSolid'),
     Items: [w.ref(extrusionId)],
   });

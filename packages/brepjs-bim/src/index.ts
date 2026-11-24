@@ -5,7 +5,7 @@ export {
   type OpeningIdentityOptions,
 } from './model/bimModel.js';
 export type { BimTreeNode, BimTreeSummary } from './model/treeSummary.js';
-export { placedSolids } from './elementFns/placedGeometry.js';
+export { placedSolids, elementBounds, elementMaterialVolume } from './elementFns/placedGeometry.js';
 export {
   bodySolids,
   validateProductBody,

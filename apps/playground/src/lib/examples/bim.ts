@@ -476,14 +476,17 @@ function facade({ skew = 30, storeys = 2, cutaway = 1 }: FacadeParams = {}) {
     structure(model, put, own, lines, sizes);
     dress(model, put, own, lines, sizes);
 
-    // The view. placedSolids() applies both levels of the placement. It gives the panes first, then the mullions
+    // The view. Each child is placed relative to its curtain wall. The grid lists the panes first, then the mullions
     // and the transoms. The kernel measures the panes of the vision band.
     const groups: Record<Tone, Body[]> = { glass: [], spandrel: [], frame: [], slab: [], steel: [], bracket: [], pan: [], fire: [] };
     let visionM2 = 0;
     for (const el of model.getAllElements()) {
       const tone = tones.get(el.localId);
       if (!tone) continue;
-      const placed = unwrap(placedSolids(el)).map((body) => own(body));
+      const frame = el.placement?.kind === 'LOCAL_FRAME' ? el.placement.frame : undefined;
+      const placed = el.category === 'CURTAIN_WALL'
+        ? model.getChildren(el.localId).flatMap((child) => unwrap(placedSolids(child, { parentFrame: frame })).map(own))
+        : unwrap(placedSolids(el)).map(own);
       const skip = hidden.get(el.localId);
       if (!skip) { groups[tone].push(...placed); continue; }
       const panes = placed.slice(0, modules);

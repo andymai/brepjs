@@ -1,15 +1,15 @@
 import { box, getBounds, translate, unwrap, type ValidSolid } from 'brepjs';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { currentKernel, initKernel } from '../../../../tests/setup.js';
-import { placedSolids } from '../../src/elementFns/placedGeometry.js';
+import {
+  placedSolids,
+  elementBounds,
+  elementMaterialVolume,
+} from '../../src/elementFns/placedGeometry.js';
 import { BimModel } from '../../src/model/bimModel.js';
 import { setProductBodyTestHooksForTesting } from '../../src/productBodyTestHooks.js';
 import type { BodyClassification } from '../../src/types/bimTypes.js';
-import {
-  measureProductBodyMaterial,
-  productBodyBounds,
-  type NonEmpty,
-} from '../../src/types/productBody.js';
+import { measureProductBodyMaterial, type NonEmpty } from '../../src/types/productBody.js';
 import { nativeShapeCount } from './nativeArena.js';
 
 beforeAll(async () => {
@@ -80,7 +80,7 @@ export function bodyRecordContract(category: BodyClassification) {
           references: [' datum '],
           parameters: { offset: 1.5 },
         });
-        expect(unwrap(measureProductBodyMaterial(record.geometry.solids))).toBeCloseTo(8);
+        expect(unwrap(elementMaterialVolume(record))).toBeCloseTo(8);
         expect(placedSolids(record, { parentFrame: frame })).toMatchObject({
           ok: false,
           error: { code: 'PLACEMENT_REFERENCE_UNRESOLVED' },
@@ -118,14 +118,23 @@ export function bodyRecordContract(category: BodyClassification) {
         const solids = items(offset);
         const releases = solids.map((solid) => vi.spyOn(solid, Symbol.dispose));
         const id = unwrap(
-          model.addAuthoredBody({ category, placement: { kind: 'LOCAL_FRAME', frame }, solids })
+          model.addAuthoredBody({
+            category,
+            metadata: { name: 'Test panel' },
+            placement: { kind: 'LOCAL_FRAME', frame },
+            solids,
+          })
         );
         const record = model.getElement(id);
         if (record?.representation !== 'BODY') throw new Error('Missing retained Body');
         expect(record.geometry.kind).toBe('AUTHORITATIVE');
         expect(record.geometry.solids).toHaveLength(solids.length);
         solids.forEach((solid, index) => expect(record.geometry.solids[index]).toBe(solid));
-        const bounds = unwrap(productBodyBounds(record.geometry, { kind: 'LOCAL' })).bounds;
+        const bounds = unwrap(elementBounds(record, { kind: 'LOCAL' })).bounds;
+        const world = unwrap(elementBounds(record, { kind: 'PLACED', tag: 'fixture' })).bounds;
+        [world.xMin, world.xMax, world.yMin, world.yMax, world.zMin, world.zMax].forEach((n, i) =>
+          expect(n).toBeCloseTo(Number(placed[i]), 5)
+        );
         const observedLocal = [
           bounds.xMin,
           bounds.xMax,
@@ -135,7 +144,7 @@ export function bodyRecordContract(category: BodyClassification) {
           bounds.zMax,
         ];
         local.forEach((expected, i) => expect(observedLocal[i]).toBeCloseTo(expected, 5));
-        expect(unwrap(measureProductBodyMaterial(record.geometry.solids))).toBeCloseTo(volume, 3);
+        expect(unwrap(elementMaterialVolume(record))).toBeCloseTo(volume, 3);
         expect(
           model.addAuthoredBody({ category, placement: record.placement, solids })
         ).toMatchObject({ ok: false, error: { code: 'BODY_OWNERSHIP_CONFLICT' } });
@@ -148,7 +157,7 @@ export function bodyRecordContract(category: BodyClassification) {
           });
           try {
             expect(placedSolids(record).ok).toBe(false);
-            expect(measureProductBodyMaterial(record.geometry.solids).ok).toBe(false);
+            expect(elementMaterialVolume(record).ok).toBe(false);
           } finally {
             setProductBodyTestHooksForTesting(null);
           }
@@ -166,6 +175,7 @@ export function bodyRecordContract(category: BodyClassification) {
           );
           expect(model.getElement(id)).toMatchObject({
             guid: record.guid,
+            metadata: { name: 'Test panel' },
             placement: record.placement,
           });
           releases.forEach((release) => expect(release).toHaveBeenCalledTimes(1));

@@ -1,13 +1,17 @@
+import {
+  elementBounds,
+  elementMaterialVolume,
+  placedSolids,
+} from '../src/elementFns/placedGeometry.js';
+import { BimModel } from '../src/model/bimModel.js';
+import { toIfc } from '../src/serialize/toIfc.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
-import { measureVolume, unwrap } from 'brepjs';
+import { box, measureVolume, unwrap } from 'brepjs';
 import * as WebIFC from 'web-ifc';
 import { parseCurtainWallSpec } from '../src/specs/curtainWallSpec.js';
 import { curtainWallToGrid } from '../src/elementFns/curtainWallFns.js';
 import type { CurtainWallSpec } from '../src/specs/curtainWallSpec.js';
-import { IfcWriter } from '../src/ifc-writer/ifcWriter.js';
-import { writeHeader } from '../src/ifc-writer/headerWriter.js';
-import { writeCurtainWall } from '../src/ifc-writer/curtainWallWriter.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -130,25 +134,10 @@ describe('curtainWallToGrid', () => {
 
 describe('writeCurtainWall serialization', () => {
   async function serialize(): Promise<{ api: WebIFC.IfcAPI; mid: number }> {
-    const w = unwrap(await IfcWriter.create());
-    const header = writeHeader(w, { applicationName: 'test', applicationVersion: '0' });
-    const grid = unwrap(curtainWallToGrid(SPEC));
-    try {
-      writeCurtainWall(
-        w,
-        SPEC,
-        grid,
-        'curtainwall:1',
-        'CW-01',
-        header.ownerHistoryId,
-        header.geomSubContextId,
-        null
-      );
-    } finally {
-      for (const p of grid.panels) p.solid[Symbol.dispose]();
-      for (const m of grid.mullions) m.solid[Symbol.dispose]();
-    }
-    const bytes = unwrap(w.save());
+    using model = new BimModel();
+    unwrap(model.init({ name: 'Curtain wall' }));
+    unwrap(model.addCurtainWall(SPEC, { stableKey: 'curtainwall:1' }));
+    const bytes = unwrap(await toIfc(model, { applicationName: 'test', applicationVersion: '0' }));
     const api = new WebIFC.IfcAPI();
     await api.Init();
     const mid = api.OpenModel(bytes);
@@ -231,4 +220,46 @@ describe('writeCurtainWall serialization', () => {
     expect((guid as string).length).toBe(22);
     api.CloseModel(mid);
   });
+});
+
+it('composes the parent once and replaces one child without changing its siblings', async () => {
+  using model = new BimModel();
+  unwrap(model.init({ name: 'Assembly' }));
+  const parentId = unwrap(
+    model.addCurtainWall({ ...SPEC, origin: [500, 700, 100], axisX: [0, 1, 0] })
+  );
+  const parent = model.getElement(parentId);
+  if (parent?.category !== 'CURTAIN_WALL' || parent.placement?.kind !== 'LOCAL_FRAME')
+    throw new Error('Missing curtain wall');
+  for (const result of [
+    elementMaterialVolume(parent),
+    elementBounds(parent, { kind: 'LOCAL' }),
+    placedSolids(parent),
+  ])
+    expect(result).toMatchObject({ ok: false, error: { code: 'ELEMENT_HAS_NO_BODY' } });
+  const [child, ...siblings] = model.getChildren(parentId);
+  if (child?.category !== 'PLATE' || child.placement.kind !== 'LOCAL_FRAME')
+    throw new Error('Missing plate');
+  expect(child.placement.relativeTo).toBe(parentId);
+  const local = unwrap(elementBounds(child, { kind: 'PLACED', tag: 'assembly' })).bounds;
+  const world = unwrap(
+    elementBounds(child, { kind: 'PLACED', tag: 'world', parentFrame: parent.placement.frame })
+  ).bounds;
+  expect(world.xMin).toBeCloseTo(500 - local.yMax);
+  expect(world.yMax).toBeCloseTo(700 + local.xMax);
+  expect(world.zMin).toBeCloseTo(100 + local.zMin);
+  unwrap(
+    model.replaceProductBody({
+      localId: child.localId,
+      body: { kind: 'AUTHORITATIVE', solids: [box(1, 2, 3), box(2, 3, 4)] },
+    })
+  );
+  expect(child.geometry.solids[0].disposed).toBe(true);
+  siblings.forEach((sibling) => expect(model.getElement(sibling.localId)).toBe(sibling));
+  expect(model.getElement(parentId)).toBe(parent);
+  const bytes = unwrap(await toIfc(model, { applicationName: 'test', applicationVersion: '1' }));
+  const text = new TextDecoder().decode(bytes);
+  expect(text.match(/=IFCPLATE\(/g)).toHaveLength(4);
+  expect(text.match(/=IFCMEMBER\(/g)).toHaveLength(6);
+  expect(text.match(/=IFCTRIANGULATEDFACESET\(/g)).toHaveLength(2);
 });
