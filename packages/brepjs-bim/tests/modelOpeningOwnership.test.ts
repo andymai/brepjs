@@ -52,7 +52,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
                 offsetX: 7,
                 offsetY: 7,
               })
-            : model[kind === 'Door' ? 'addDoor' : 'addWindow']({
+            : model[kind === 'Door' ? 'addDoorAndCutWall' : 'addWindowAndCutWall']({
                 ...DOOR,
                 wallLocalId: host.hostId,
                 get width() {
@@ -78,7 +78,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
         expect(specReads).toBe(0);
         expect(model.getGeometryCleanupDiagnostics()).toMatchObject([
           {
-            operation: kind === 'Slab' ? 'addSlabOpening' : `add${kind}`,
+            operation: kind === 'Slab' ? 'addSlabOpening' : `add${kind}AndCutWall`,
             localId: host.hostId,
             cause,
           },
@@ -146,7 +146,9 @@ it.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)(
       expect(model.getAllRelationships()).toEqual(relationships);
       expect(old.disposed).toBe(true);
       if (kind === 'PARAMETRIC') {
-        const windowId = brepjs.unwrap(model.addWindow({ ...WINDOW, wallLocalId: wallId }));
+        const windowId = brepjs.unwrap(
+          model.addWindowAndCutWall({ ...WINDOW, wallLocalId: wallId })
+        );
         expect(brepjs.getKernel().volume(singletonWallSolid(model, wallId).wrapped)).toBeCloseTo(
           53,
           7
@@ -171,7 +173,7 @@ it('retains independent native geometry through repeated recipe door and window 
   try {
     const { wallId, doorId } = addWallWithDoor(model);
     const wallAfterDoor = singletonWallSolid(model, wallId);
-    const windowId = brepjs.unwrap(model.addWindow({ ...WINDOW, wallLocalId: wallId }));
+    const windowId = brepjs.unwrap(model.addWindowAndCutWall({ ...WINDOW, wallLocalId: wallId }));
     expect(brepjs.getKernel().volume(singletonWallSolid(model, wallId).wrapped)).toBeCloseTo(53, 7);
     expect(wallAfterDoor.disposed).toBe(true);
     expect(model.getElement(doorId)?.category).toBe('DOOR');
@@ -193,7 +195,7 @@ it('rejects an opening that would split a singleton Wall Body without partial ad
     const wallId = brepjs.unwrap(model.addWall(OPENING_WALL));
     const before = model.getAllElements();
     const relationships = model.getAllRelationships();
-    expect(model.addDoor({ ...DOOR, wallLocalId: wallId, height: 6 })).toMatchObject({
+    expect(model.addDoorAndCutWall({ ...DOOR, wallLocalId: wallId, height: 6 })).toMatchObject({
       ok: false,
       error: { code: 'WALL_OPENING_INVALID_SOLID' },
     });
@@ -215,7 +217,7 @@ it('cuts a singleton recipe Wall and commits door identities, material and owner
     const old = singletonWallSolid(model, wallId);
     const retire = vi.spyOn(old, Symbol.dispose);
     const doorId = brepjs.unwrap(
-      model.addDoor(
+      model.addDoorAndCutWall(
         { ...DOOR, wallLocalId: wallId },
         { stableKey: 'door', openingStableKey: 'opening' }
       )
@@ -267,7 +269,7 @@ const unsupportedBodies: ReadonlyArray<{
   { kind: 'PARAMETRIC', multiple: true, code: 'MULTI_ITEM_WALL_OPENING_UNSUPPORTED' },
 ];
 
-for (const method of ['addDoor', 'addWindow'] as const) {
+for (const method of ['addDoorAndCutWall', 'addWindowAndCutWall'] as const) {
   it.each(unsupportedBodies)(
     `${method} rejects $kind / multiple=$multiple before allocating or reserving identities`,
     ({ kind, multiple, code }) => {

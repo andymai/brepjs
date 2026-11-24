@@ -30,6 +30,10 @@ export const bodyClassifications = [
   'WALL',
   'RAILING',
   'MEMBER',
+  'DOOR',
+  'WINDOW',
+  'STAIR',
+  'RAMP',
   'SLAB',
   'ROOF',
   'SPACE',
@@ -46,11 +50,7 @@ export type BodyClassification = (typeof bodyClassifications)[number];
 export type BimCategory =
   | BodyClassification
   | 'OPENING'
-  | 'DOOR'
-  | 'WINDOW'
   | 'CURTAIN_WALL'
-  | 'STAIR'
-  | 'RAMP'
   | 'ELEMENT_ASSEMBLY'
   | 'ZONE'
   | 'SYSTEM'
@@ -98,9 +98,9 @@ export type BimSpecFor<C extends BimCategory> = C extends 'WALL'
         : C extends 'OPENING'
           ? OpeningSpec
           : C extends 'DOOR'
-            ? DoorSpec
+            ? Omit<DoorSpec, 'wallLocalId' | 'offsetFromFloor' | 'offsetAlongWall'>
             : C extends 'WINDOW'
-              ? WindowSpec
+              ? Omit<WindowSpec, 'wallLocalId' | 'offsetFromFloor' | 'offsetAlongWall'>
               : C extends 'PROXY'
                 ? Omit<ProxySpec, 'solid'>
                 : C extends 'SPACE'

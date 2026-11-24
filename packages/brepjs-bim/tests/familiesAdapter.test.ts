@@ -529,11 +529,11 @@ describe('familiesToBim openings', () => {
       wallLocalId: wallId,
       materialName: 'Wood',
     };
-    const dupFiller = model.addDoor(spec, { stableKey: 'storey-1/w1/voids:d1/fill' });
+    const dupFiller = model.addDoorAndCutWall(spec, { stableKey: 'storey-1/w1/voids:d1/fill' });
     expect(isOk(dupFiller)).toBe(false);
-    const dupOpening = model.addDoor(spec, { openingStableKey: 'storey-1/w1/voids:d1' });
+    const dupOpening = model.addDoorAndCutWall(spec, { openingStableKey: 'storey-1/w1/voids:d1' });
     expect(isOk(dupOpening)).toBe(false);
-    const selfCollision = model.addDoor(spec, { stableKey: 'k', openingStableKey: 'k' });
+    const selfCollision = model.addDoorAndCutWall(spec, { stableKey: 'k', openingStableKey: 'k' });
     expect(isOk(selfCollision)).toBe(false);
   });
 });

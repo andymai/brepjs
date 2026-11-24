@@ -39,7 +39,7 @@ unchanged. `Ok` returns a `COMMITTED` receipt and transfers every supplied handl
 `receipt.cleanup.kind === 'FAILED'` reports a failed release of the superseded Body. Do not
 retry an uncertain release or dispose transferred handles. Parametric Bodies may be replaced by
 either authority; authoritative Bodies may only be replaced by authoritative Bodies. Add wall
-openings before installing an authoritative Body: later `addDoor()` and `addWindow()` return
+openings before installing an authoritative Body: later `addDoorAndCutWall()` and `addWindowAndCutWall()` return
 `AUTHORITATIVE_WALL_BODY_IMMUTABLE`.
 
 Civil-semantic Families Wall/Railing routes require an evaluator and retain the authored Body as

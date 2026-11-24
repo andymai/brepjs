@@ -2332,8 +2332,8 @@ function assemble(model: BimModel, owned: Body[], storeys: number, cutaway: bool
     if (!doors) return;
     // A door from the floor to the stair, and one from the stair to the lift lobby.
     const door = { width: 1000, height: 2100, offsetFromFloor: 0, materialName: 'Steel door' };
-    put(level, 'frame', model.addDoor({ ...door, wallLocalId: west, offsetAlongWall: C1[1] - C0[1] - 2 * w - 1500 }));
-    put(level, 'frame', model.addDoor({ ...door, wallLocalId: middle, offsetAlongWall: 500 }));
+    put(level, 'frame', model.addDoorAndCutWall({ ...door, wallLocalId: west, offsetAlongWall: C1[1] - C0[1] - 2 * w - 1500 }));
+    put(level, 'frame', model.addDoorAndCutWall({ ...door, wallLocalId: middle, offsetAlongWall: 500 }));
   }
 
   // The takeoff. The kernel measures the volume of each solid in its place, and a density gives the mass.

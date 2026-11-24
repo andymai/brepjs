@@ -227,7 +227,7 @@ describe('BimModel', () => {
   });
 });
 
-describe('BimModel.addDoor', () => {
+describe('BimModel.addDoorAndCutWall', () => {
   function buildWallModel() {
     const model = new BimModel();
     const initResult = model.init({ name: 'Test' });
@@ -247,7 +247,7 @@ describe('BimModel.addDoor', () => {
 
   it('adds a door and creates opening + relationships', () => {
     const { model, wallLocalId } = buildWallModel();
-    const result = model.addDoor({
+    const result = model.addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 500,
@@ -261,7 +261,7 @@ describe('BimModel.addDoor', () => {
 
   it('rejects door that exceeds wall length', () => {
     const { model, wallLocalId } = buildWallModel();
-    const result = model.addDoor({
+    const result = model.addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 4500,
@@ -275,7 +275,7 @@ describe('BimModel.addDoor', () => {
 
   it('rejects door that exceeds wall height', () => {
     const { model, wallLocalId } = buildWallModel();
-    const result = model.addDoor({
+    const result = model.addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 500,
@@ -289,7 +289,7 @@ describe('BimModel.addDoor', () => {
 
   it('rejects door referencing non-existent wall', () => {
     const { model } = buildWallModel();
-    const result = model.addDoor({
+    const result = model.addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 500,
@@ -302,7 +302,7 @@ describe('BimModel.addDoor', () => {
   });
 });
 
-describe('BimModel.addWindow', () => {
+describe('BimModel.addWindowAndCutWall', () => {
   function buildWallModel() {
     const model = new BimModel();
     const initResult = model.init({ name: 'Test' });
@@ -322,7 +322,7 @@ describe('BimModel.addWindow', () => {
 
   it('adds a window and creates opening + relationships', () => {
     const { model, wallLocalId } = buildWallModel();
-    const result = model.addWindow({
+    const result = model.addWindowAndCutWall({
       width: 1200,
       height: 1400,
       offsetAlongWall: 1000,
@@ -336,7 +336,7 @@ describe('BimModel.addWindow', () => {
 
   it('rejects window that exceeds wall bounds', () => {
     const { model, wallLocalId } = buildWallModel();
-    const result = model.addWindow({
+    const result = model.addWindowAndCutWall({
       width: 1200,
       height: 1400,
       offsetAlongWall: 4500,
@@ -364,11 +364,11 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
     return unwrap(measureProductBodyMaterial(wall.geometry.solids));
   }
 
-  it('wall volume drops by door volume after addDoor', () => {
+  it('wall volume drops by door volume after addDoorAndCutWall', () => {
     const { model, wallId } = buildWallModel();
     const grossVol = wallVolume(model);
 
-    const doorResult = model.addDoor({
+    const doorResult = model.addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 1000,
@@ -388,7 +388,7 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
     const grossVol = wallVolume(model);
 
     unwrap(
-      model.addDoor({
+      model.addDoorAndCutWall({
         width: 900,
         height: 2100,
         offsetAlongWall: 500,
@@ -398,7 +398,7 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
       })
     );
     unwrap(
-      model.addWindow({
+      model.addWindowAndCutWall({
         width: 1200,
         height: 1500,
         offsetAlongWall: 2500,
@@ -413,13 +413,13 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
     expect(grossVol - netVol).toBeCloseTo(expectedDelta, -2);
   });
 
-  it('addDoor with bounds violation does not mutate the model', () => {
+  it('addDoorAndCutWall with bounds violation does not mutate the model', () => {
     const { model, wallId } = buildWallModel();
     const elementsBefore = model.getAllElements().length;
     const relsBefore = model.getAllRelationships().length;
     const grossVol = wallVolume(model);
 
-    const result = model.addDoor({
+    const result = model.addDoorAndCutWall({
       width: WALL_SPEC.length + 100,
       height: 2100,
       offsetAlongWall: 0,
@@ -434,13 +434,13 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
     expect(wallVolume(model)).toBeCloseTo(grossVol, -2);
   });
 
-  it('addDoor with invalid wall reference does not mutate the model', () => {
+  it('addDoorAndCutWall with invalid wall reference does not mutate the model', () => {
     const { model } = buildWallModel();
     const elementsBefore = model.getAllElements().length;
     const relsBefore = model.getAllRelationships().length;
     const grossVol = wallVolume(model);
 
-    const result = model.addDoor({
+    const result = model.addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 0,
@@ -826,7 +826,7 @@ describe('BimModel.toTreeSummary', () => {
     if (!wall.ok) throw new Error(wall.error.message);
     model.placeIn(wall.value, storeyId);
 
-    const door = model.addDoor({
+    const door = model.addDoorAndCutWall({
       wallLocalId: wall.value,
       width: 800,
       height: 2000,

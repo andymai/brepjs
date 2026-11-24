@@ -9,7 +9,7 @@
  * structure and Earthworks Fill bodies; Wall/Slab/Column/Beam/Roof/Stair,
  * Footing/Pile, Railing/Ramp, Covering/CurtainWall, and Space elements; and
  * wall openings — a fill-role void (Door/Window family) maps onto
- * addDoor/addWindow, which cut
+ * addDoorAndCutWall/addWindowAndCutWall, which cut
  * the wall and wire IfcRelVoidsElement + IfcRelFillsElement; the opening and
  * filler GlobalIds derive from the synthesized key paths. Anonymous (non-fill)
  * voids are rejected: they cut only the IR/viewport geometry, and exporting
@@ -576,12 +576,12 @@ function addFill(
   if (archetype === 'door') {
     const parsed = parseDoorSpec(input);
     if (!parsed.ok) return parsed;
-    return model.addDoor(parsed.value, identity);
+    return model.addDoorAndCutWall(parsed.value, identity);
   }
   if (archetype === 'window') {
     const parsed = parseWindowSpec(input);
     if (!parsed.ok) return parsed;
-    return model.addWindow(parsed.value, identity);
+    return model.addWindowAndCutWall(parsed.value, identity);
   }
   return err(
     specError(
@@ -699,7 +699,7 @@ function addProxyElement(
   return added;
 }
 
-/** Map a wall's synthesized Opening children onto addDoor/addWindow. The
+/** Map a wall's synthesized Opening children onto addDoorAndCutWall/addWindowAndCutWall. The
  *  wall-relative offsets come from the void geometry's frame minus the host's:
  *  exact because both carry the same outer host transform. */
 function addOpenings(

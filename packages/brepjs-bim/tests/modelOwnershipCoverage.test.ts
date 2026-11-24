@@ -100,8 +100,8 @@ it('creates bodyless records without native allocation or ownership', () => {
   unwrap(model.addBridgePart({ name: 'Part', usageType: 'LONGITUDINAL' }));
   unwrap(model.addBuilding({ name: 'Building' }));
   unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
-  unwrap(model.addStair({ materialName: 'Concrete', flights: [] }));
-  unwrap(model.addRamp({ materialName: 'Concrete', flights: [] }));
+  expect(model.addStair({ materialName: 'Concrete', flights: [] }).ok).toBe(false);
+  expect(model.addRamp({ materialName: 'Concrete', flights: [] }).ok).toBe(false);
   unwrap(model.addElementAssembly({ name: 'Assembly' }));
   unwrap(model.addZone({ name: 'Zone' }));
   unwrap(model.addSystem({ name: 'System' }));

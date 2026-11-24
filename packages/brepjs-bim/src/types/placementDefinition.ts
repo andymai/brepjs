@@ -1,7 +1,12 @@
 import { err, ok, type Result } from 'brepjs';
 import { z } from 'zod';
 import { specError, type BimError } from '../errors/bimError.js';
-import { decomposeFrame, frameFromPlacement, type FrameInput } from '../placementFrame.js';
+import {
+  decomposeFrame,
+  frameFromPlacement,
+  IDENTITY_FRAME,
+  type FrameInput,
+} from '../placementFrame.js';
 
 const referenceDefinition = z.strictObject({
   kind: z.enum(['GRID_REFERENCE', 'LINEAR_REFERENCE']),
@@ -16,6 +21,11 @@ export type PlacementDefinition =
       readonly references: readonly string[];
       readonly parameters: Readonly<Record<string, number>>;
     };
+
+export const identityPlacement = Object.freeze({
+  kind: 'LOCAL_FRAME' as const,
+  frame: decomposeFrame(IDENTITY_FRAME),
+});
 
 /** Capture authored references without claiming to resolve them. */
 export function capturePlacement(

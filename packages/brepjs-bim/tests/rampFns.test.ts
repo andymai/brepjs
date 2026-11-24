@@ -1,6 +1,7 @@
+import { BimModel } from '../src/model/bimModel.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
-import { measureVolume, isSolid } from 'brepjs';
+import { unwrap, measureVolume, isSolid } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
 import { rampFlightToSolid, rampFlightVolume } from '../src/elementFns/rampFns.js';
 import { parseRampSpec, parseRampFlightSpec } from '../src/specs/rampSpec.js';
@@ -190,10 +191,16 @@ describe('writeRampAssembly serialization + aggregation', () => {
 
   it('emits one IfcRamp aggregating one IfcRampFlight, flagged simplified', async () => {
     const base = await buildBaseModel();
+    using model = new BimModel();
+    const id = unwrap(model.addRamp(rampSpec));
+    const record = model.getElement(id);
+    if (record?.category !== 'RAMP' || !record.spec) throw new Error('Missing generated flights');
     const written = writeRampAssembly(
       base.w,
-      rampSpec,
+      record.spec,
       'ramp-1',
+      record.geometry,
+      id,
       deriveIfcGuidSync('elem:RAMP:ramp-1'),
       base.ownerHistoryId,
       base.geomSubContextId,
@@ -245,10 +252,16 @@ describe('writeRampAssembly serialization + aggregation', () => {
 
   it('emits a tessellated body and an IfcRampType', async () => {
     const base = await buildBaseModel();
+    using model = new BimModel();
+    const id = unwrap(model.addRamp(rampSpec));
+    const record = model.getElement(id);
+    if (record?.category !== 'RAMP' || !record.spec) throw new Error('Missing generated flights');
     const written = writeRampAssembly(
       base.w,
-      rampSpec,
+      record.spec,
       'ramp-2',
+      record.geometry,
+      id,
       deriveIfcGuidSync('elem:RAMP:ramp-2'),
       base.ownerHistoryId,
       base.geomSubContextId,

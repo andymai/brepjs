@@ -59,7 +59,7 @@ function buildModel(): Built {
   if (!wall.ok) throw new Error(wall.error.message);
   model.placeIn(wall.value, storeyId);
 
-  const door = model.addDoor({
+  const door = model.addDoorAndCutWall({
     wallLocalId: wall.value,
     width: 900,
     height: 2100,

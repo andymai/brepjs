@@ -234,7 +234,7 @@ describe('retained Families Body placement and openings', () => {
       // Ticket05's same native fixture supplies the post-opening reference Body.
       using reference = new BimModel();
       const { wallId } = addWallWithDoor(reference);
-      unwrap(reference.addWindow({ ...WINDOW, wallLocalId: wallId }));
+      unwrap(reference.addWindowAndCutWall({ ...WINDOW, wallLocalId: wallId }));
       const expected = reference.getElement(wallId);
       if (expected?.category !== 'WALL') throw new Error('Missing reference wall');
       expect(getKernel().volume(bodySolids(expected.geometry)[0].wrapped)).toBeCloseTo(53, 8);

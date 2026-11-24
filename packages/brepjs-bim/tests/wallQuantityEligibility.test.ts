@@ -79,7 +79,7 @@ describe('Wall quantity eligibility', () => {
       {
         const fixture = recipeWallFixture();
         using model = fixture.model;
-        if (opening) fixture.addDoor();
+        if (opening) fixture.addDoorAndCutWall();
         const wall = model.getElement(fixture.localId);
         if (wall?.category !== 'WALL') throw new Error('Missing Wall');
         let measurements = 0;
@@ -136,7 +136,7 @@ describe('Wall quantity eligibility', () => {
             body: { kind: 'PARAMETRIC', solids: [replacement] },
           })
         );
-        fixture.addDoor();
+        fixture.addDoorAndCutWall();
         const wall = model.getElement(fixture.localId);
         if (wall?.category !== 'WALL') throw new Error('Missing Wall');
         const exported = unwrap(await toIfcValidated(model, IFC_BODY_META));

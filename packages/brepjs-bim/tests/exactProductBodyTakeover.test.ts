@@ -244,7 +244,7 @@ describe('exact wall mutation and multi-solid placement', () => {
     const relationshipsBefore = model.getAllRelationships();
     const elementsBefore = model.getAllElements();
 
-    const door = model.addDoor({
+    const door = model.addDoorAndCutWall({
       wallLocalId: wallId,
       width: 100,
       height: 200,
@@ -252,7 +252,7 @@ describe('exact wall mutation and multi-solid placement', () => {
       offsetFromFloor: 0,
       materialName: 'Wood',
     });
-    const window = model.addWindow({
+    const window = model.addWindowAndCutWall({
       wallLocalId: wallId,
       width: 100,
       height: 100,

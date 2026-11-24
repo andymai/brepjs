@@ -164,8 +164,11 @@ declare class BimModel {
    * {@link ProxySpec.solid}).
    */
   addProxy(spec: ProxySpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-  addDoor(spec: DoorSpec, options?: OpeningIdentityOptions): Result<LocalId, BimError>;
-  addWindow(spec: WindowSpec, options?: OpeningIdentityOptions): Result<LocalId, BimError>;
+  addDoorAndCutWall(spec: DoorSpec, options?: OpeningIdentityOptions): Result<LocalId, BimError>;
+  addWindowAndCutWall(
+    spec: WindowSpec,
+    options?: OpeningIdentityOptions
+  ): Result<LocalId, BimError>;
   addSlabOpening(
     input: SlabOpeningInput,
     options?: ElementIdentityOptions

@@ -149,7 +149,7 @@ export function retainedOpeningFixture(
     const wallId = unwrap(model.addWall(OPENING_WALL, { stableKey: 'wall' }));
     const fillerSpec = fillerKind === 'DOOR' ? DOOR : WINDOW;
     const fillerId = unwrap(
-      model[fillerKind === 'DOOR' ? 'addDoor' : 'addWindow'](
+      model[fillerKind === 'DOOR' ? 'addDoorAndCutWall' : 'addWindowAndCutWall'](
         { ...fillerSpec, wallLocalId: wallId },
         { stableKey: 'filler', openingStableKey: 'opening' }
       )

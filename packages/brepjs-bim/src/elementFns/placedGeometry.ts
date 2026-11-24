@@ -11,8 +11,6 @@ import {
   type RigidFrame,
   type FrameInput,
 } from '../placementFrame.js';
-import { stairFlightToSolid } from './stairFns.js';
-import { rampFlightToSolid } from './rampFns.js';
 import { bodySolids, transformProductBody } from '../types/productBody.js';
 import { locateShapeInFrame } from '../rigidPlacement.js';
 
@@ -66,12 +64,7 @@ function placeWithinParent(
  * failure the solids already built for this call are disposed before the error is
  * returned, so no partial array is leaked.
  *
- * Stairs and ramps carry no element solid (`.geometry` is null), so flight
- * solids are built from `spec.flights` and placed per flight. Curtain walls
- * return placed panels + mullions. Proxy and Earthworks Fill bodies are stored
- * relative to their containing spatial structure, so their body is copied and
- * then transformed by `parentFrame` when supplied. Elements with no solid geometry
- * (doors/windows/groups/spatial) return an empty array.
+ * Stored Bodies include flight items in assembly coordinates.
  */
 export function placedSolids(
   el: AnyBimElement,
@@ -89,44 +82,6 @@ export function placedSolids(
   const checked = validatePlacements(el, parentFrame);
   if (!checked.ok) return checked;
   switch (el.category) {
-    case 'STAIR': {
-      const out: ValidSolid[] = [];
-      for (const flight of el.spec.flights) {
-        const built = stairFlightToSolid(flight);
-        if (!built.ok) {
-          disposeAll(out);
-          return err(built.error);
-        }
-        using local = built.value.solid;
-        const placed = placeWithinParent(local, flight, parentFrame);
-        if (!placed.ok) {
-          disposeAll(out);
-          return placed;
-        }
-        out.push(placed.value);
-      }
-      return ok(out);
-    }
-    case 'RAMP': {
-      // Ramps mirror stairs: no element solid, one inclined-slab solid per
-      // flight, each placed by its own frame.
-      const out: ValidSolid[] = [];
-      for (const flight of el.spec.flights) {
-        const built = rampFlightToSolid(flight);
-        if (!built.ok) {
-          disposeAll(out);
-          return err(built.error);
-        }
-        using local = built.value.solid;
-        const placed = placeWithinParent(local, flight, parentFrame);
-        if (!placed.ok) {
-          disposeAll(out);
-          return placed;
-        }
-        out.push(placed.value);
-      }
-      return ok(out);
-    }
     case 'CURTAIN_WALL': {
       const out: ValidSolid[] = [];
       for (const c of [...el.geometry.panels, ...el.geometry.mullions]) {
@@ -175,8 +130,7 @@ function validatePlacements(
   const parentFrame = parent === undefined ? ok(IDENTITY_FRAME) : frameFromPlacement(parent);
   if (!parentFrame.ok) return parentFrame;
   const inputs: unknown[] = [];
-  if (el.category === 'STAIR' || el.category === 'RAMP') inputs.push(...el.spec.flights);
-  else if ('origin' in el.spec && 'axisX' in el.spec && 'axisZ' in el.spec) inputs.push(el.spec);
+  if ('origin' in el.spec && 'axisX' in el.spec && 'axisZ' in el.spec) inputs.push(el.spec);
   for (const input of inputs) {
     const frame = resolvedPlacement(input, parent);
     if (!frame.ok) return frame;

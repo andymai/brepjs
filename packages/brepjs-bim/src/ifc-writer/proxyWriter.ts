@@ -1,29 +1,6 @@
 import * as WebIFC from 'web-ifc';
 import type { IfcWriter } from './ifcWriter.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
-import type { ProxySpec } from '../specs/proxySpec.js';
-import {
-  writeTessellatedProductGeometry,
-  type TessellatedProductRepresentationIds,
-} from './tessellatedProductWriter.js';
-
-export type ProxyRepresentationIds = TessellatedProductRepresentationIds;
-
-/**
- * Writes the IfcLocalPlacement (at origin, relative to parentPlacementId) and a
- * tessellated body (IfcTriangulatedFaceSet) for a proxy's solid. Solid
- * coordinates are emitted as supplied; the caller is responsible for matching
- * them to the containing spatial structure's frame.
- */
-export function writeProxyGeometry(
-  w: IfcWriter,
-  spec: ProxySpec,
-  geomSubContextId: number,
-  parentPlacementId: number | null
-): ProxyRepresentationIds {
-  return writeTessellatedProductGeometry(w, spec.solid, geomSubContextId, parentPlacementId);
-}
-
 export function writeProxyEntity(
   w: IfcWriter,
   guid: IfcGuid,

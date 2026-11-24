@@ -98,6 +98,7 @@ import {
   writeOpeningGeometry,
   writeSlabOpeningGeometry,
   writeDoorEntity,
+  writePanelBody,
   writeWindowEntity,
   writeRelVoidsElement,
   writeRelFillsElement,
@@ -142,6 +143,7 @@ import { preflightProductBody } from './productBodyPreflight.js';
 import { deriveWallQuantities } from './wallQuantities.js';
 import {
   writeProductBodyGeometry,
+  writeBodyPlacement,
   type PreparedTessellation,
 } from '../ifc-writer/tessellationWriter.js';
 
@@ -871,10 +873,21 @@ async function serializeIfc(
     const containingId = findContainerOf(stair.localId, relationships);
     const storeyPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const pose = localPlacementFrame(stair.placement);
+    if (!pose.ok) return pose;
+    if (stair.spec === null)
+      return err(
+        ifcError(
+          'FLIGHT_ASSOCIATION_REQUIRED',
+          'Typed flight export requires the original generated flights'
+        )
+      );
     const result = writeStairAssembly(
       w,
       stair.spec,
       `${stair.localId}`,
+      stair.geometry,
+      stair.localId,
       stair.guid,
       ownerHistoryId,
       geomSubContextId,
@@ -889,10 +902,21 @@ async function serializeIfc(
     const containingId = findContainerOf(ramp.localId, relationships);
     const storeyPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const pose = localPlacementFrame(ramp.placement);
+    if (!pose.ok) return pose;
+    if (ramp.spec === null)
+      return err(
+        ifcError(
+          'FLIGHT_ASSOCIATION_REQUIRED',
+          'Typed flight export requires the original generated flights'
+        )
+      );
     const result = writeRampAssembly(
       w,
       ramp.spec,
       `${ramp.localId}`,
+      ramp.geometry,
+      ramp.localId,
       ramp.guid,
       ownerHistoryId,
       geomSubContextId,
@@ -969,8 +993,6 @@ async function serializeIfc(
     for (const item of items) applySurfaceStyle(w, model, covering.localId, item);
   }
 
-  const openingPlacementMap = new Map<LocalId, number>();
-  const openingEntityMap = new Map<LocalId, number>();
   let referenceContextId: number | undefined;
 
   for (const rel of relationships) {
@@ -1008,8 +1030,7 @@ async function serializeIfc(
       'Reference'
     );
     idMap.set(rel.openingLocalId, openingEntityId);
-    openingPlacementMap.set(rel.openingLocalId, openingPlacementId);
-    openingEntityMap.set(rel.openingLocalId, openingEntityId);
+    placementMap.set(rel.openingLocalId, openingPlacementId);
 
     writeRelVoidsElement(w, rel.guid, ownerHistoryId, wallExpressId, openingEntityId);
   }
@@ -1032,7 +1053,7 @@ async function serializeIfc(
       return err(
         ifcError('OPENING_HOST_RECIPE_REQUIRED', 'Slab opening requires retained thickness')
       );
-    const { openingEntityId } = writeSlabOpeningGeometry(
+    const { openingPlacementId, openingEntityId } = writeSlabOpeningGeometry(
       w,
       openingElement.guid,
       openingElement.spec,
@@ -1043,53 +1064,68 @@ async function serializeIfc(
     );
     idMap.set(rel.openingLocalId, openingEntityId);
 
+    placementMap.set(rel.openingLocalId, openingPlacementId);
     writeRelVoidsElement(w, rel.guid, ownerHistoryId, slabExpressId, openingEntityId);
   }
 
-  for (const [i, door] of doors.entries()) {
-    const fillsRel = relationships.find(
-      (rel) => rel.kind === 'FILLS_OPENING' && rel.fillerLocalId === door.localId
-    );
-    if (fillsRel === undefined || fillsRel.kind !== 'FILLS_OPENING') continue;
-    const openingPlacementId = openingPlacementMap.get(fillsRel.openingLocalId);
-    const openingEntityId = openingEntityMap.get(fillsRel.openingLocalId);
-    if (openingPlacementId === undefined || openingEntityId === undefined) continue;
-    const doorExpressId = writeDoorEntity(
-      w,
-      door.guid,
-      `Door ${i + 1}`,
-      ownerHistoryId,
-      openingPlacementId,
-      geomSubContextId,
-      toIfcLengthM(door.spec.width),
-      toIfcLengthM(door.spec.height)
-    );
-    idMap.set(door.localId, doorExpressId);
-    writeRelFillsElement(w, fillsRel.guid, ownerHistoryId, openingEntityId, doorExpressId);
-    writeDoorCommonPset(w, ownerHistoryId, doorExpressId, door.spec);
-  }
-
-  for (const [i, win] of windows.entries()) {
-    const fillsRel = relationships.find(
-      (rel) => rel.kind === 'FILLS_OPENING' && rel.fillerLocalId === win.localId
-    );
-    if (fillsRel === undefined || fillsRel.kind !== 'FILLS_OPENING') continue;
-    const openingPlacementId = openingPlacementMap.get(fillsRel.openingLocalId);
-    const openingEntityId = openingEntityMap.get(fillsRel.openingLocalId);
-    if (openingPlacementId === undefined || openingEntityId === undefined) continue;
-    const windowExpressId = writeWindowEntity(
-      w,
-      win.guid,
-      `Window ${i + 1}`,
-      ownerHistoryId,
-      openingPlacementId,
-      geomSubContextId,
-      toIfcLengthM(win.spec.width),
-      toIfcLengthM(win.spec.height)
-    );
-    idMap.set(win.localId, windowExpressId);
-    writeRelFillsElement(w, fillsRel.guid, ownerHistoryId, openingEntityId, windowExpressId);
-    writeWindowCommonPset(w, ownerHistoryId, windowExpressId, win.spec);
+  for (const fillers of [doors, windows]) {
+    for (const [index, filler] of fillers.entries()) {
+      const fill = relationships.find(
+        (rel) => rel.kind === 'FILLS_OPENING' && rel.fillerLocalId === filler.localId
+      );
+      const opening = fill?.kind === 'FILLS_OPENING' ? fill.openingLocalId : undefined;
+      const owner = opening ?? findContainerOf(filler.localId, relationships);
+      const parent = owner === null ? null : (placementMap.get(owner) ?? null);
+      if (opening !== undefined && (parent === null || !idMap.has(opening)))
+        return err(
+          ifcError('UNSUPPORTED_OPENING_DEFINITION', 'Missing exported Opening for filler')
+        );
+      const pose = localPlacementFrame(filler.placement);
+      if (!pose.ok) return pose;
+      const width = filler.spec ? toIfcLengthM(filler.spec.width) : null;
+      const height = filler.spec ? toIfcLengthM(filler.spec.height) : null;
+      const geometry =
+        width !== null && height !== null && model.isRecipeQuantityEligible(filler.localId)
+          ? ok({
+              localPlacementId: writeBodyPlacement(w, pose.value, parent),
+              productDefinitionShapeId: writePanelBody(
+                w,
+                width,
+                height,
+                toIfcLengthM(100),
+                geomSubContextId
+              ),
+            })
+          : writeRetainedBody(w, filler, geomSubContextId, parent);
+      if (!geometry.ok) return geometry;
+      const writeEntity = filler.category === 'DOOR' ? writeDoorEntity : writeWindowEntity;
+      const label = filler.category === 'DOOR' ? 'Door' : 'Window';
+      const id = writeEntity(
+        w,
+        filler.guid,
+        `${label} ${index + 1}`,
+        ownerHistoryId,
+        geometry.value.localPlacementId,
+        geometry.value.productDefinitionShapeId,
+        width,
+        height
+      );
+      idMap.set(filler.localId, id);
+      placementMap.set(filler.localId, geometry.value.localPlacementId);
+      if (fill?.kind === 'FILLS_OPENING') {
+        const openingEntityId = idMap.get(fill.openingLocalId);
+        if (openingEntityId === undefined)
+          return err(ifcError('OPENING_NOT_FOUND', 'Filler Opening missing'));
+        writeRelFillsElement(w, fill.guid, ownerHistoryId, openingEntityId, id);
+      }
+      if (filler.spec)
+        (filler.category === 'DOOR' ? writeDoorCommonPset : writeWindowCommonPset)(
+          w,
+          ownerHistoryId,
+          id,
+          filler.spec
+        );
+    }
   }
 
   for (const rel of relationships) {
@@ -1448,7 +1484,7 @@ function collectGeometryIssues(model: BimModel): ValidationReport {
   // this as an info-level note (does not block export). Stair flights are real
   // stepped solids and are not flagged here.
   model.getRamps().forEach((ramp, index) => {
-    if (ramp.spec.flights.length === 0) return;
+    if (!ramp.spec?.flights.length) return;
     issues.push(
       issue(
         'info',
