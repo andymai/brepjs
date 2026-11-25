@@ -1,21 +1,19 @@
 import * as WebIFC from 'web-ifc';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import type {
-  BridgePartSpec,
-  BridgeSpec,
-  EarthworksFillSpec,
+BridgePartSpec,
+BridgeSpec,
+EarthworksFillSpec,
 } from '../specs/infrastructureSpec.js';
 import type { IfcWriter } from './ifcWriter.js';
-import { writeSpatialLocalPlacement } from './entityWriter.js';
 
 export function writeBridge(
   w: IfcWriter,
   guid: IfcGuid,
   spec: BridgeSpec,
   ownerHistoryId: number,
-  parentPlacementId: number | null
+  placementId: number
 ): { entityId: number; placementId: number } {
-  const placementId = writeSpatialLocalPlacement(w, spec, parentPlacementId);
   const entityId = w.nextId();
   w.writeLine({
     expressID: entityId,
@@ -39,9 +37,8 @@ export function writeBridgePart(
   guid: IfcGuid,
   spec: BridgePartSpec,
   ownerHistoryId: number,
-  parentPlacementId: number | null
+  placementId: number
 ): { entityId: number; placementId: number } {
-  const placementId = writeSpatialLocalPlacement(w, spec, parentPlacementId);
   const entityId = w.nextId();
   w.writeLine({
     expressID: entityId,

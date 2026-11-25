@@ -1,3 +1,4 @@
+import {writeBodyPlacement} from '../src/ifc-writer/tessellationWriter.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
 import { initKernel } from '../../../tests/setup.js';
@@ -178,7 +179,7 @@ describe('covering IFC serialization', () => {
   it('emits exactly one IfcCovering with a non-null representation', async () => {
     const w = await makeWriter();
     const ids = writeHeader(w, { applicationName: 'test', applicationVersion: '0' });
-    const geom = writeCoveringGeometry(w, spec, ids.geomSubContextId, null);
+    const geom = writeCoveringGeometry(w, spec, ids.geomSubContextId, writeBodyPlacement(w,spec,null));
     const guid = deriveIfcGuidSync(makeElementKey('coveringFns-test', 'COVERING', 1));
     writeCoveringEntity(
       w,
@@ -207,7 +208,7 @@ describe('covering IFC serialization', () => {
     const w = await makeWriter();
     const ids = writeHeader(w, { applicationName: 'test', applicationVersion: '0' });
     const hostId = writeHostSlab(w, ids.ownerHistoryId);
-    const geom = writeCoveringGeometry(w, spec, ids.geomSubContextId, null);
+    const geom = writeCoveringGeometry(w, spec, ids.geomSubContextId, writeBodyPlacement(w,spec,null));
     const guid = deriveIfcGuidSync(makeElementKey('coveringFns-test', 'COVERING', 1));
     const coveringId = writeCoveringEntity(
       w,

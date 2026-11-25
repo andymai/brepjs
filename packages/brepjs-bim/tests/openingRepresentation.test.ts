@@ -157,6 +157,7 @@ describe('IFC opening representation semantics', () => {
       model.aggregate(building, storey);
       const host = openingHost(model, 'Slab');
       model.placeIn(host.hostId, storey);
+    unwrap(model.reparent(host.hostId,storey,'KEEP_LOCAL'));
       unwrap(host.open());
       const slab = model.getElement(host.hostId);
       const opening = model.getAllElements().find(({ category }) => category === 'OPENING');

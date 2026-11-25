@@ -1,3 +1,4 @@
+import {RecordRef} from '../src/identity/recordRef.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
 import { measureVolume } from 'brepjs';
@@ -11,7 +12,7 @@ describe('parseDoorSpec', () => {
     height: 2100,
     offsetAlongWall: 500,
     offsetFromFloor: 0,
-    wallLocalId: 1,
+    wallLocalId: new RecordRef(1),
     materialName: 'Wood',
   };
 
@@ -52,7 +53,7 @@ describe('parseWindowSpec', () => {
     height: 1400,
     offsetAlongWall: 1000,
     offsetFromFloor: 900,
-    wallLocalId: 1,
+    wallLocalId: new RecordRef(1),
     materialName: 'Aluminum',
   };
 

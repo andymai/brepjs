@@ -1,3 +1,4 @@
+import {addDeliveryStorey} from './helpers/deliveryStorey.js';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   box,
@@ -403,6 +404,7 @@ describe('exact Product Body IFC integration', () => {
       })
     );
 
+    addDeliveryStorey(model,wallId);
     const serialized = required(await toIfc(model, META));
     const text = new TextDecoder().decode(serialized);
     expect(text.match(/IFCTRIANGULATEDFACESET\(/g)).toHaveLength(2);
@@ -455,6 +457,7 @@ describe('exact Product Body IFC integration', () => {
       afterWriteLine: () => writeCalls++,
     });
 
+    addDeliveryStorey(model,wallId);
     const serialized = await toIfc(model, META);
     expect(errorCode(serialized)).toBe('BODY_TESSELLATION_FAILED');
     expect(prepareCalls).toBe(2);

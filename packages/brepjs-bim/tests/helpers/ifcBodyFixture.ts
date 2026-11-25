@@ -54,6 +54,7 @@ export function bodyExchangeFixture(
         : model.addRailing({ ...spec, predefinedType: 'GUARDRAIL' }, { stableKey: 'product' })
     );
     model.placeIn(localId, storeyId);
+    unwrap(model.reparent(localId,storeyId,'KEEP_LOCAL'));
     const first = box(1000, 100, 500);
     const solids: NonEmpty<ValidSolid> =
       layout === 'singleton'
@@ -151,6 +152,7 @@ export function retainedOpeningFixture(
       )
     );
     model.placeIn(wallId, storey);
+    unwrap(model.reparent(wallId,storey,'KEEP_LOCAL'));
     model.placeIn(fillerId, storey);
     using source =
       layout === 'disconnected' ? box(2, 1, 3) : box(fillerSpec.width, 1, fillerSpec.height / 2);

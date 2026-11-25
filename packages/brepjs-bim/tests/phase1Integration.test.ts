@@ -152,9 +152,9 @@ describe('Phase 1 integration', () => {
     if (result.ok) return;
     expect(result.error.code).toBe('INTEGRITY_FAILURE');
 
-    // Plain toIfc remains permissive and still serializes.
+    // Both delivery paths enforce required spatial containment.
     const plain = await toIfc(model, META);
-    expect(plain.ok).toBe(true);
+    expect(plain).toMatchObject({ok:false,error:{code:'INTEGRITY_FAILURE'}});
   });
 });
 

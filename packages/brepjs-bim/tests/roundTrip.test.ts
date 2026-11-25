@@ -339,6 +339,8 @@ describe('IFC Opening round-trip (M3)', () => {
       thermalTransmittance: 1.2,
     });
     if (!windowResult.ok) throw new Error(windowResult.error.message);
+    unwrap(model.placeIn(doorResult.value,storeyId));
+    unwrap(model.placeIn(windowResult.value,storeyId));
 
     const result = await toIfc(model, {
       applicationName: 'brepjs-bim-test',

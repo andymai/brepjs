@@ -230,7 +230,7 @@ it('cuts a singleton recipe Wall and commits door identities, material and owner
       expect.arrayContaining([
         expect.objectContaining({
           kind: 'VOIDS',
-          wallLocalId: wallId,
+          hostLocalId: wallId,
           openingLocalId: opening.localId,
         }),
         expect.objectContaining({

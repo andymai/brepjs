@@ -1,3 +1,4 @@
+import {writeBodyPlacement} from '../src/ifc-writer/tessellationWriter.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
 import { measureVolume } from 'brepjs';
@@ -207,7 +208,7 @@ describe('foundationWriter serialize round-trip', () => {
     const w = writerResult.value;
     const header = writeHeader(w, { applicationName: 'test', applicationVersion: '0' });
 
-    const footingGeom = writeFootingGeometry(w, footingSpec, header.geomSubContextId, null);
+    const footingGeom = writeFootingGeometry(w, footingSpec, header.geomSubContextId, writeBodyPlacement(w,footingSpec,null));
     writeFootingEntity(
       w,
       deriveIfcGuidSync('footing:1'),
@@ -218,7 +219,7 @@ describe('foundationWriter serialize round-trip', () => {
       footingGeom.productDefinitionShapeId
     );
 
-    const pileGeom = writePileGeometry(w, pileSpec, header.geomSubContextId, null);
+    const pileGeom = writePileGeometry(w, pileSpec, header.geomSubContextId, writeBodyPlacement(w,pileSpec,null));
     writePileEntity(
       w,
       deriveIfcGuidSync('pile:1'),
@@ -302,7 +303,7 @@ describe('foundationWriter serialize round-trip', () => {
       predefinedType: 'NOTDEFINED',
       materialName: 'Concrete',
     };
-    const geom = writePileGeometry(w, noCt, header.geomSubContextId, null);
+    const geom = writePileGeometry(w, noCt, header.geomSubContextId, writeBodyPlacement(w,noCt,null));
     writePileEntity(
       w,
       deriveIfcGuidSync('pile:nc'),

@@ -1,3 +1,5 @@
+import {identityPlacement} from '../src/types/placementDefinition.js';
+import {writeBodyPlacement} from '../src/ifc-writer/tessellationWriter.js';
 import { BimModel } from '../src/model/bimModel.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
@@ -172,13 +174,13 @@ async function buildBaseModel(): Promise<{
     unitAssignmentId,
     geomContextId
   );
-  const site = writeSite(w, deriveIfcGuidSync('elem:SITE:1'), { name: 'Site' }, ownerHistoryId);
+  const site = writeSite(w, deriveIfcGuidSync('elem:SITE:1'), { name: 'Site' }, ownerHistoryId,writeBodyPlacement(w,identityPlacement.frame,null));
   const building = writeBuilding(
     w,
     deriveIfcGuidSync('elem:BUILDING:2'),
     'Building',
     ownerHistoryId,
-    site.placementId
+    writeBodyPlacement(w,identityPlacement.frame,site.placementId)
   );
   const storey = writeStorey(
     w,
@@ -186,7 +188,7 @@ async function buildBaseModel(): Promise<{
     'L1',
     0,
     ownerHistoryId,
-    building.placementId
+    writeBodyPlacement(w,identityPlacement.frame,building.placementId)
   );
   writeRelAggregates(w, deriveIfcGuidSync('rel:agg:0'), ownerHistoryId, projectId, [site.entityId]);
   writeRelAggregates(w, deriveIfcGuidSync('rel:agg:1'), ownerHistoryId, site.entityId, [
@@ -200,7 +202,7 @@ async function buildBaseModel(): Promise<{
     w,
     ownerHistoryId,
     geomSubContextId,
-    storeyPlacementId: storey.placementId,
+    storeyPlacementId: writeBodyPlacement(w,identityPlacement.frame,storey.placementId),
     storeyEntityId: storey.entityId,
   };
 }

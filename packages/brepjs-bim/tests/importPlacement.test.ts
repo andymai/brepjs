@@ -56,6 +56,7 @@ function buildPlacedModel(): PlacedModel {
   });
   if (!wall.ok) throw new Error(wall.error.message);
   model.placeIn(wall.value, storeyId);
+    unwrap(model.reparent(wall.value,storeyId,'KEEP_LOCAL'));
 
   const wallGuid = model.getWalls()[0]?.guid;
   if (wallGuid === undefined) throw new Error('wall guid missing');
@@ -195,6 +196,7 @@ describe('placement round-trip', () => {
     });
     if (!wall.ok) throw new Error(wall.error.message);
     model.placeIn(wall.value, storeyId);
+    unwrap(model.reparent(wall.value,storeyId,'KEEP_LOCAL'));
     const guid = model.getWalls()[0]?.guid;
     if (guid === undefined) throw new Error('guid missing');
 

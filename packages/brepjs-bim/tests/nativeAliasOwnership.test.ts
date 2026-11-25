@@ -1,3 +1,4 @@
+import {ordinalOf} from '../src/identity/recordRef.js';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import * as brepjs from 'brepjs';
 import {
@@ -131,7 +132,7 @@ it.each(['Proxy', 'EarthworksFill'] as const)(
           { stableKey: 'retry' }
         )
       );
-      expect(adoptedId).toBe(Number(wallId) + 2);
+      expect(ordinalOf(adoptedId)).toBe(ordinalOf(wallId) + 2);
       const adopted = model.getElement(adoptedId);
       if (adopted?.representation !== 'BODY') throw new Error('Expected a retained Body');
       expect(adopted.geometry.solids[0]).toBe(independent);
@@ -446,8 +447,8 @@ it('rejects a generated resource alias already pending adoption without publishi
       expect(model.getGeometryCleanupDiagnostics()).toEqual([]);
       expectArena(baseline);
       injection.mockRestore();
-      expect(unwrap(model.addSite({ name: 'Retry' }, { stableKey: 'retry-pending' }))).toBe(
-        Number(site) + 1
+      expect(ordinalOf(unwrap(model.addSite({ name: 'Retry' }, { stableKey: 'retry-pending' })))).toBe(
+        ordinalOf(site) + 1
       );
     } finally {
       injection.mockRestore();
@@ -507,7 +508,7 @@ it('releases every generated candidate when a later resource accessor throws dur
     expect(model.getGeometryCleanupDiagnostics()).toEqual([]);
     expectArena(baseline);
     injection.mockRestore();
-    expect(unwrap(model.addSite({ name: 'Retry' }, { stableKey: 'retry-accessor' }))).toBe(1);
+    expect(ordinalOf(unwrap(model.addSite({ name: 'Retry' }, { stableKey: 'retry-accessor' })))).toBe(1);
   } finally {
     injection.mockRestore();
     // Red-phase fixture repair after observing any missed generated releases.
@@ -593,7 +594,7 @@ it.each(['before', 'after'] as const)(
         });
         expect(model.getAllElements()).toEqual([]);
         expect(model.getAllRelationships()).toEqual([]);
-        expect(unwrap(model.addSite({ name: 'Retry' }, { stableKey: 'retry-two-faults' }))).toBe(1);
+        expect(ordinalOf(unwrap(model.addSite({ name: 'Retry' }, { stableKey: 'retry-two-faults' })))).toBe(1);
         model[Symbol.dispose]();
         model[Symbol.dispose]();
         expect(attempts).toBe(1);

@@ -1,3 +1,4 @@
+import { writeBodyPlacement } from '../../src/ifc-writer/tessellationWriter.js';
 import { wallOpeningFrame } from '../../src/elementFns/openingFrames.js';
 import * as WebIFC from 'web-ifc';
 import { deriveIfcGuidSync } from '../../src/identity/guidDerivation.js';
@@ -117,7 +118,6 @@ export async function bodyFixture(options: BodyFixtureOptions): Promise<Uint8Arr
         offsetFromFloor: 0,
         ...opening,
       },
-      wallOpeningFrame({ kind: 'WALL_OPENING', offsetFromFloor: 0, ...opening }, 100),
       {
         length: 250,
         height: 100,
@@ -127,7 +127,7 @@ export async function bodyFixture(options: BodyFixtureOptions): Promise<Uint8Arr
         axisZ: [0, 0, 1],
         materialName: 'Test',
       },
-      localPlacementId,
+      writeBodyPlacement(writer,wallOpeningFrame({ kind: 'WALL_OPENING', offsetFromFloor: 0, ...opening }, 100),localPlacementId),
       openingContextId,
       ownerHistoryId,
       openingRepresentation

@@ -324,7 +324,7 @@ export function writeStairAssembly(
   assemblyGuid: string,
   ownerHistoryId: number,
   geomSubContextId: number,
-  parentPlacementId: number | null
+  stairPlacementId: number
 ): { ok: true; value: AssemblyWriteResult } | { ok: false; error: BimError } {
   const predefinedType = spec.predefinedType ?? 'NOTDEFINED';
   const stairName = spec.name ?? 'Stair';
@@ -338,13 +338,6 @@ export function writeStairAssembly(
     return { ok: false, error: specError('STAIR_NO_FLIGHTS', 'Stair has no flights') };
   }
 
-  const stairPlacementId = writeLocalPlacement(
-    w,
-    [0, 0, 0],
-    [0, 0, 1],
-    [1, 0, 0],
-    parentPlacementId
-  );
   const stairGuid = assemblyGuid;
   const assemblyExpressId = writeStairEntity(
     w,
@@ -429,7 +422,7 @@ export function writeRampAssembly(
   assemblyGuid: string,
   ownerHistoryId: number,
   geomSubContextId: number,
-  parentPlacementId: number | null
+  rampPlacementId: number
 ): { ok: true; value: AssemblyWriteResult } | { ok: false; error: BimError } {
   const predefinedType = spec.predefinedType ?? 'NOTDEFINED';
   const rampName = spec.name ?? 'Ramp';
@@ -440,13 +433,6 @@ export function writeRampAssembly(
   }
 
   // Identity container placement so flight origins are absolute (no double-count).
-  const rampPlacementId = writeLocalPlacement(
-    w,
-    [0, 0, 0],
-    [0, 0, 1],
-    [1, 0, 0],
-    parentPlacementId
-  );
   const rampGuid = assemblyGuid;
   const assemblyExpressId = writeRampEntity(
     w,

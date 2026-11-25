@@ -1,3 +1,4 @@
+import {addDeliveryStorey} from './helpers/deliveryStorey.js';
 import { box, clone, translate, unwrap } from 'brepjs';
 import { beforeAll, expect, it } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
@@ -40,6 +41,7 @@ it.each([
       solids: [solid, translate(solid, [5, 0, 0])],
     })
   );
+  addDeliveryStorey(model,id);
   const bytes = unwrap(await toIfc(model, meta));
   const imported = unwrap(await fromIfc(bytes));
   try {
@@ -70,6 +72,7 @@ it('writes the swept volume until a beam, column, or pile receives a replacement
     unwrap(model.addPile({ ...section, length: 600 })),
   ];
 
+  addDeliveryStorey(model,...ids);
   async function expectNetVolume(volumeM3: number) {
     const imported = unwrap(await fromIfc(unwrap(await toIfc(model, meta))));
     try {
@@ -111,6 +114,7 @@ it('invalidates slab swept geometry for coincident and repartitioned replacement
       materialName: 'Stone',
     })
   );
+  addDeliveryStorey(model,id);
   const saved = async () => new TextDecoder().decode(unwrap(await toIfc(model, meta)));
   expect(await saved()).toContain('IFCEXTRUDEDAREASOLID(');
   const slab = model.getSlabs()[0];

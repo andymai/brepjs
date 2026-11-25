@@ -1,3 +1,4 @@
+import {addDeliveryStorey} from './helpers/deliveryStorey.js';
 import { frameMul, frameFromPlacement, decomposeFrame } from '../src/placementFrame.js';
 import { elementBounds, elementMaterialVolume } from '../src/elementFns/placedGeometry.js';
 import { box, clone, unwrap } from 'brepjs';
@@ -37,6 +38,7 @@ for (const category of ['DOOR', 'WINDOW'] as const) {
       model.addAuthoredBody({ category, placement, openingLocalId: opening, solids: [duplicate] })
     ).toMatchObject({ ok: false, error: { code: 'OPENING_ALREADY_FILLED' } });
     expect(duplicate.disposed).toBe(false);
+    addDeliveryStorey(model,host,id);
     const loaded = unwrap(await fromIfc(unwrap(await toIfc(model, meta))));
     try {
       const filler = loaded.elements.find((el) => el.guid === model.getElement(id)?.guid);
@@ -75,6 +77,7 @@ it('keeps arbitrary replacement material under a slab Opening on reload', async 
   unwrap(
     model.replaceBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [box(10, 10, 2)] } })
   );
+  addDeliveryStorey(model,id);
   const bytes = unwrap(await toIfc(model, meta));
   expect(new TextDecoder().decode(bytes)).toContain("'Reference'");
   const imported = unwrap(await fromIfc(bytes));
@@ -102,6 +105,7 @@ it.each(['DOOR', 'WINDOW'] as const)(
     expect(extents.yMax).toBeCloseTo(10);
     expect(extents.zMax).toBeCloseTo(100);
     expect(unwrap(elementMaterialVolume(panel))).toBeCloseTo(20000);
+    addDeliveryStorey(model,id);
     const analytic = new TextDecoder().decode(unwrap(await toIfc(model, meta)));
     expect(analytic).toContain('IFCEXTRUDEDAREASOLID(');
     const replacement = unwrap(clone(panel.geometry.solids[0]));

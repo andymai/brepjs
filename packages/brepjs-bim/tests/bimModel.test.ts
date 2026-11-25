@@ -834,8 +834,8 @@ describe('BimModel.toTreeSummary', () => {
 
     const level = model.toTreeSummary().root?.children[0]?.children[0]?.children[0];
     expect(level?.children).toEqual([
-      { id: named, label: 'Exit', category: 'SIGN', children: [] },
-      { id: unnamed, label: 'SIGN', category: 'SIGN', children: [] },
+      { id: unwrap(model.record(named)).guid, label: 'Exit', category: 'SIGN', children: [] },
+      { id: unwrap(model.record(unnamed)).guid, label: 'SIGN', category: 'SIGN', children: [] },
     ]);
   });
 

@@ -311,6 +311,8 @@ it('preserves identity, descriptive spec, style, placement and relationship obje
   model.placeIn(id, storey);
   const style = { name: 'Brick', r: 0.8, g: 0.2, b: 0.1 };
   model.setSurfaceStyle(id, style);
+  const assignedStyle=model.getSurfaceStyle(id);
+  expect(assignedStyle).toEqual(style);
   const before = model.getElement(id);
   const relations = model.getAllRelationships();
   unwrap(
@@ -322,7 +324,7 @@ it('preserves identity, descriptive spec, style, placement and relationship obje
   const after = model.getElement(id);
   expect(after).toMatchObject({ guid: before?.guid, localId: id });
   expect(after?.spec).toBe(before?.spec);
-  expect(model.getSurfaceStyle(id)).toBe(style);
+  expect(model.getSurfaceStyle(id)).toBe(assignedStyle);
   expect(model.getAllRelationships()).toEqual(relations);
   model.getAllRelationships().forEach((rel, index) => expect(rel).toBe(relations[index]));
 });
