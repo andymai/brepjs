@@ -1948,10 +1948,10 @@ export class BimModel {
     }
 
     const labelFor = (el: AnyBimElement): string => {
-      const spec = el.spec as { name?: string; elevation?: number };
-      const base = typeof spec.name === 'string' && spec.name.length > 0 ? spec.name : el.category;
-      return el.category === 'STOREY' && typeof spec.elevation === 'number'
-        ? `${base} (+${spec.elevation} mm)`
+      const name = el.spec !== null && 'name' in el.spec ? el.spec.name : el.metadata?.name;
+      const base = typeof name === 'string' && name.length > 0 ? name : el.category;
+      return el.category === 'STOREY' && typeof el.spec.elevation === 'number'
+        ? `${base} (+${el.spec.elevation} mm)`
         : base;
     };
 

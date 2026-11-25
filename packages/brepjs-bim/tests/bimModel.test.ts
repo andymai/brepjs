@@ -4,6 +4,7 @@ import { initKernel } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 import { measureBodyMaterial } from '../src/types/body.js';
+import { identityPlacement } from '../src/types/placementDefinition.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -803,6 +804,41 @@ describe('BimModel.addColumn (M7)', () => {
 });
 
 describe('BimModel.toTreeSummary', () => {
+  it('labels authored elements by metadata name or category', () => {
+    using model = new BimModel();
+    const project = unwrap(model.init({ name: 'Project' }));
+    const site = unwrap(model.addSite({ name: 'Site' }));
+    const building = unwrap(model.addBuilding({ name: 'Building' }));
+    const storey = unwrap(model.addStorey({ name: 'Ground', elevation: 0 }));
+    model.aggregate(project, site);
+    model.aggregate(site, building);
+    model.aggregate(building, storey);
+
+    const named = unwrap(
+      model.addAuthoredBody({
+        category: 'SIGN',
+        placement: identityPlacement,
+        solids: [box(10, 2, 5)],
+        metadata: { name: 'Exit' },
+      })
+    );
+    const unnamed = unwrap(
+      model.addAuthoredBody({
+        category: 'SIGN',
+        placement: identityPlacement,
+        solids: [box(10, 2, 5)],
+      })
+    );
+    model.placeIn(named, storey);
+    model.placeIn(unnamed, storey);
+
+    const level = model.toTreeSummary().root?.children[0]?.children[0]?.children[0];
+    expect(level?.children).toEqual([
+      { id: named, label: 'Exit', category: 'SIGN', children: [] },
+      { id: unnamed, label: 'SIGN', category: 'SIGN', children: [] },
+    ]);
+  });
+
   it('returns null root for an uninitialized model', () => {
     const model = new BimModel();
     const tree = model.toTreeSummary();

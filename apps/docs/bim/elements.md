@@ -5,11 +5,11 @@ description: 'Every parametric element brepjs-bim authors: structural, spatial, 
 
 # Element Catalog
 
-Every element has a typed, validated spec in millimeters. Parametric physical elements build analytical brepjs solids in local coordinates; civil spatial elements are body-less, and Earthworks Fill accepts an arbitrary validated body. Placement is applied downstream via `IfcLocalPlacement`.
+Parametric elements build local solids from typed recipes in millimeters. Directly authored elements retain the supplied solids and placement. Civil spatial elements have no Body. The IFC writer applies placement through `IfcLocalPlacement`.
 
 | Element         | Method                   | Notes                                                                                |
 | --------------- | ------------------------ | ------------------------------------------------------------------------------------ |
-| Wall            | `addWall`                | Length along `axisX`, openings cut via `addDoor` / `addWindow`                       |
+| Wall            | `addWall`                | Length along `axisX`. Cut with `addDoorAndCutWall` or `addWindowAndCutWall`          |
 | Slab            | `addSlab`                | `FLOOR` / `ROOF` / `LANDING` / `BASESLAB`; slab openings via `parseSlabOpeningInput` |
 | Beam            | `addBeam`                | Profile extruded along `axisX` by length                                             |
 | Column          | `addColumn`              | Profile extruded along `axisZ` by height                                             |
@@ -26,7 +26,9 @@ Every element has a typed, validated spec in millimeters. Parametric physical el
 | Earthworks fill | `addEarthworksFill`      | IFC4X3 typed arbitrary Product Body, material, and spatial containment               |
 | Proxy           | `addProxy`               | Anything else, carrying arbitrary brepjs geometry                                    |
 
-Doors and windows are not free-standing: `addDoor` / `addWindow` take a host wall, cut the opening as a boolean void, and wire `IfcRelVoidsElement` + `IfcRelFillsElement`.
+Use `addFillerPanel()` to create a Door or Window panel at its own placement. Supply `openingLocalId` to fill an existing Opening. For a custom Door or Window shape, pass the solids to `addAuthoredBody()`.
+
+Use `addDoorAndCutWall()` or `addWindowAndCutWall()` to cut a wall and add the filler in one atomic operation. These commands create the Opening and record the void and fill relationships for IFC export.
 
 ## Profiles
 
