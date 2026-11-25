@@ -69,3 +69,46 @@ describe('manifold profile faces', () => {
     }
   });
 });
+
+it('classifies construction profiles, a solid and its native subshapes', () => {
+  if (!haveManifold) return;
+  withKernel('manifold', () => {
+    const k = getKernel();
+    using face = unwrap(polygon(TRIANGLE));
+    using solid = unwrap(extrude(face, [4, -3, 0]));
+    const edge = k.makeLineEdge([0, 0, 0], [1, 0, 0]);
+    try {
+      const wire = k.makeWire([edge]);
+      try {
+        expect(k.shapeType(edge)).toBe('edge');
+        expect(k.shapeType(wire)).toBe('wire');
+        expect(k.shapeType(face.wrapped)).toBe('face');
+        expect(k.shapeType(solid.wrapped)).toBe('solid');
+        const copies = [edge, wire, face.wrapped, solid.wrapped].map((shape) => k.copyShape(shape));
+        try {
+          expect(copies.map((copy) => k.shapeType(copy))).toEqual([
+            'edge',
+            'wire',
+            'face',
+            'solid',
+          ]);
+        } finally {
+          copies.forEach((copy) => {
+            k.dispose(copy);
+          });
+        }
+        for (const kind of ['face', 'edge', 'vertex'] as const) {
+          const items = k.iterShapes(solid.wrapped, kind);
+          expect(items.length).toBeGreaterThan(0);
+          items.forEach((item) => {
+            expect(k.shapeType(item)).toBe(kind);
+          });
+        }
+      } finally {
+        k.dispose(wire);
+      }
+    } finally {
+      k.dispose(edge);
+    }
+  });
+});
