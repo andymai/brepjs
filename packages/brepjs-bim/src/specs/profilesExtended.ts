@@ -4,6 +4,7 @@ import { ok, err } from 'brepjs';
 import type { BimError } from '../errors/bimError.js';
 import { specError, fromBrepError, geometryError } from '../errors/bimError.js';
 import { generateGeometry } from '../geometryGeneration.js';
+import { roundCorners } from './cornerFillet.js';
 
 // Extended cross-section profiles, additive to the core Profile union in
 // profile.ts (which only covers RECTANGULAR/CIRCULAR/I_BEAM). All dimensions in
@@ -14,6 +15,10 @@ import { generateGeometry } from '../geometryGeneration.js';
 // extendedProfileToFace(); hollow/void profiles use addHoles() to subtract
 // inner loops. The matching IfcXxxProfileDef is emitted by
 // ifc-writer/profileDefWriter.ts.
+//
+// Each outline follows the dimensioned figure of its IfcXxxProfileDef, so a
+// section has the same signed corners here, in the written IFC, and on import.
+// Fillet radii are faceted (see cornerFillet.ts); areas are closed-form.
 
 export type Pt2 = readonly [number, number];
 
@@ -22,7 +27,7 @@ export interface LShapeProfile {
   readonly depth: number; // overall height (Y)
   readonly width: number; // overall width (X)
   readonly legThickness: number; // thickness of both legs
-  readonly filletRadius?: number | undefined;
+  readonly filletRadius?: number | undefined; // root radius at the inner corner
 }
 
 export interface TShapeProfile {
@@ -31,7 +36,7 @@ export interface TShapeProfile {
   readonly flangeWidth: number;
   readonly webThickness: number;
   readonly flangeThickness: number;
-  readonly filletRadius?: number | undefined;
+  readonly filletRadius?: number | undefined; // root radius at both web-to-flange corners
 }
 
 export interface UShapeProfile {
@@ -45,7 +50,7 @@ export interface UShapeProfile {
 export interface ZShapeProfile {
   readonly kind: 'Z_SHAPE';
   readonly depth: number;
-  readonly flangeWidth: number;
+  readonly flangeWidth: number; // flange tip to the far face of the web
   readonly webThickness: number;
   readonly flangeThickness: number;
 }
@@ -56,6 +61,7 @@ export interface CShapeProfile {
   readonly width: number;
   readonly wallThickness: number;
   readonly girth: number; // lip return length
+  // Inside radius of the four bends; the outside radius is this plus wallThickness.
   readonly internalFilletRadius?: number | undefined;
 }
 
@@ -80,7 +86,7 @@ export interface TrapeziumProfile {
   readonly bottomXDim: number;
   readonly topXDim: number;
   readonly yDim: number;
-  readonly topXOffset: number; // horizontal offset of the top edge
+  readonly topXOffset: number; // from the bottom-left corner to the top-left corner, along +X
 }
 
 export interface RectangleHollowProfile {
@@ -135,12 +141,13 @@ export function extendedProfileArea(profile: ExtendedProfile): number {
     case 'L_SHAPE':
       return (
         profile.depth * profile.legThickness +
-        (profile.width - profile.legThickness) * profile.legThickness
+        (profile.width - profile.legThickness) * profile.legThickness +
+        cornerFilletArea(profile.filletRadius)
       );
     case 'T_SHAPE': {
       const flangeArea = profile.flangeWidth * profile.flangeThickness;
       const webArea = (profile.depth - profile.flangeThickness) * profile.webThickness;
-      return flangeArea + webArea;
+      return flangeArea + webArea + 2 * cornerFilletArea(profile.filletRadius);
     }
     case 'U_SHAPE': {
       const flangeArea = 2 * (profile.flangeWidth - profile.webThickness) * profile.flangeThickness;
@@ -148,11 +155,9 @@ export function extendedProfileArea(profile: ExtendedProfile): number {
       return flangeArea + webArea;
     }
     case 'Z_SHAPE': {
-      // The Z geometry builder extends each flange only (flangeWidth-web)/2 from
-      // the centred web, so total flange area is (flangeWidth-web)*flangeThickness
-      // (half the U-channel's), plus the full web. Matches the drawn polygon.
-      const flangeArea = (profile.flangeWidth - profile.webThickness) * profile.flangeThickness;
-      const webArea = profile.depth * profile.webThickness;
+      // Each flange is flangeWidth long and includes its end of the web.
+      const flangeArea = 2 * profile.flangeWidth * profile.flangeThickness;
+      const webArea = (profile.depth - 2 * profile.flangeThickness) * profile.webThickness;
       return flangeArea + webArea;
     }
     case 'C_SHAPE': {
@@ -161,7 +166,10 @@ export function extendedProfileArea(profile: ExtendedProfile): number {
       // per the 4 internal corners). Verified against the drawn polygon (shoelace).
       const t = profile.wallThickness;
       const perimeter = profile.depth + 2 * profile.width + 2 * profile.girth - 4 * t;
-      return perimeter * t;
+      // Each bend replaces a square corner of the wall with a quarter annulus.
+      const r = profile.internalFilletRadius ?? 0;
+      const bendArea = r > 0 ? cornerFilletArea(r + t) - cornerFilletArea(r) : 0;
+      return perimeter * t - 4 * bendArea;
     }
     case 'ASYMMETRIC_I': {
       const webHeight =
@@ -178,8 +186,10 @@ export function extendedProfileArea(profile: ExtendedProfile): number {
       return ((profile.bottomXDim + profile.topXDim) / 2) * profile.yDim;
     case 'RECTANGLE_HOLLOW': {
       const inner =
-        (profile.xDim - 2 * profile.wallThickness) * (profile.yDim - 2 * profile.wallThickness);
-      return profile.xDim * profile.yDim - inner;
+        (profile.xDim - 2 * profile.wallThickness) * (profile.yDim - 2 * profile.wallThickness) -
+        4 * cornerFilletArea(profile.innerFilletRadius);
+      const outer = profile.xDim * profile.yDim - 4 * cornerFilletArea(profile.outerFilletRadius);
+      return outer - inner;
     }
     case 'CIRCLE_HOLLOW': {
       const innerR = profile.radius - profile.wallThickness;
@@ -194,6 +204,20 @@ export function extendedProfileArea(profile: ExtendedProfile): number {
   }
 }
 
+// Area between a square corner and the quarter disc of radius `r` inside it.
+function cornerFilletArea(r: number | undefined): number {
+  return r === undefined || r <= 0 ? 0 : r * r * (1 - Math.PI / 4);
+}
+
+function filleted(
+  loop: ReadonlyArray<Pt2>,
+  indices: ReadonlyArray<number>,
+  r: number | undefined
+): ReadonlyArray<Pt2> {
+  if (r === undefined || r <= 0) return loop;
+  return roundCorners(loop, new Map(indices.map((i) => [i, r])));
+}
+
 // Shoelace formula; returns the absolute (unsigned) polygon area.
 function polygonArea(points: ReadonlyArray<Pt2>): number {
   let sum = 0;
@@ -206,6 +230,8 @@ function polygonArea(points: ReadonlyArray<Pt2>): number {
   return Math.abs(sum) / 2;
 }
 
+const ALL_FOUR = [0, 1, 2, 3] as const;
+
 // Outer outline (2D points, z=0) for the given profile, centred on the local
 // origin. Hollow/void profiles expose their inner loops via holeLoops().
 function outerLoop(profile: ExtendedProfile): ReadonlyArray<Pt2> {
@@ -215,30 +241,38 @@ function outerLoop(profile: ExtendedProfile): ReadonlyArray<Pt2> {
       const halfD = profile.depth / 2;
       const t = profile.legThickness;
       // L sitting in the bottom-left, traced counter-clockwise.
-      return [
-        [-halfW, -halfD],
-        [halfW, -halfD],
-        [halfW, -halfD + t],
-        [-halfW + t, -halfD + t],
-        [-halfW + t, halfD],
-        [-halfW, halfD],
-      ];
+      return filleted(
+        [
+          [-halfW, -halfD],
+          [halfW, -halfD],
+          [halfW, -halfD + t],
+          [-halfW + t, -halfD + t],
+          [-halfW + t, halfD],
+          [-halfW, halfD],
+        ],
+        [3],
+        profile.filletRadius
+      );
     }
     case 'T_SHAPE': {
       const halfFw = profile.flangeWidth / 2;
       const halfD = profile.depth / 2;
       const halfWeb = profile.webThickness / 2;
       const flangeInnerY = halfD - profile.flangeThickness;
-      return [
-        [-halfWeb, -halfD],
-        [halfWeb, -halfD],
-        [halfWeb, flangeInnerY],
-        [halfFw, flangeInnerY],
-        [halfFw, halfD],
-        [-halfFw, halfD],
-        [-halfFw, flangeInnerY],
-        [-halfWeb, flangeInnerY],
-      ];
+      return filleted(
+        [
+          [-halfWeb, -halfD],
+          [halfWeb, -halfD],
+          [halfWeb, flangeInnerY],
+          [halfFw, flangeInnerY],
+          [halfFw, halfD],
+          [-halfFw, halfD],
+          [-halfFw, flangeInnerY],
+          [-halfWeb, flangeInnerY],
+        ],
+        [2, 7],
+        profile.filletRadius
+      );
     }
     case 'U_SHAPE': {
       const halfFw = profile.flangeWidth / 2;
@@ -258,20 +292,21 @@ function outerLoop(profile: ExtendedProfile): ReadonlyArray<Pt2> {
       ];
     }
     case 'Z_SHAPE': {
-      const halfFw = profile.flangeWidth / 2;
       const halfD = profile.depth / 2;
       const halfWeb = profile.webThickness / 2;
+      const tip = profile.flangeWidth - halfWeb;
       const ft = profile.flangeThickness;
-      // Bottom flange extends to -X, top flange to +X, web centred.
+      // IfcZShapeProfileDef figure: web centred, top flange to -X, bottom flange
+      // to +X, and FlangeWidth measured from the tip to the far face of the web.
       return [
-        [-halfFw, -halfD],
-        [halfWeb, -halfD],
-        [halfWeb, halfD - ft],
-        [halfFw, halfD - ft],
-        [halfFw, halfD],
-        [-halfWeb, halfD],
-        [-halfWeb, -halfD + ft],
-        [-halfFw, -halfD + ft],
+        [-halfWeb, -halfD],
+        [tip, -halfD],
+        [tip, -halfD + ft],
+        [halfWeb, -halfD + ft],
+        [halfWeb, halfD],
+        [-tip, halfD],
+        [-tip, halfD - ft],
+        [-halfWeb, halfD - ft],
       ];
     }
     case 'C_SHAPE': {
@@ -281,7 +316,7 @@ function outerLoop(profile: ExtendedProfile): ReadonlyArray<Pt2> {
       const g = profile.girth;
       // Lipped channel opening towards +X. Outer boundary traced CCW, then the
       // inner return as a single continuous loop (the lips create the C gap).
-      return [
+      const sharp: ReadonlyArray<Pt2> = [
         [-halfW, -halfD],
         [halfW, -halfD],
         [halfW, -halfD + g],
@@ -295,6 +330,12 @@ function outerLoop(profile: ExtendedProfile): ReadonlyArray<Pt2> {
         [halfW, halfD],
         [-halfW, halfD],
       ];
+      const r = profile.internalFilletRadius ?? 0;
+      if (r <= 0) return sharp;
+      const radii = new Map<number, number>();
+      for (const i of [4, 5, 6, 7]) radii.set(i, r);
+      for (const i of [0, 1, 10, 11]) radii.set(i, r + t);
+      return roundCorners(sharp, radii);
     }
     case 'ASYMMETRIC_I': {
       const halfTop = profile.topFlangeWidth / 2;
@@ -323,8 +364,10 @@ function outerLoop(profile: ExtendedProfile): ReadonlyArray<Pt2> {
     case 'TRAPEZIUM': {
       const halfB = profile.bottomXDim / 2;
       const halfY = profile.yDim / 2;
-      const topLeft = -profile.topXDim / 2 + profile.topXOffset;
-      const topRight = profile.topXDim / 2 + profile.topXOffset;
+      // IfcTrapeziumProfileDef: TopXOffset runs from the bottom-left corner to
+      // the top-left corner.
+      const topLeft = -halfB + profile.topXOffset;
+      const topRight = topLeft + profile.topXDim;
       return [
         [-halfB, -halfY],
         [halfB, -halfY],
@@ -335,12 +378,16 @@ function outerLoop(profile: ExtendedProfile): ReadonlyArray<Pt2> {
     case 'RECTANGLE_HOLLOW': {
       const halfX = profile.xDim / 2;
       const halfY = profile.yDim / 2;
-      return [
-        [-halfX, -halfY],
-        [halfX, -halfY],
-        [halfX, halfY],
-        [-halfX, halfY],
-      ];
+      return filleted(
+        [
+          [-halfX, -halfY],
+          [halfX, -halfY],
+          [halfX, halfY],
+          [-halfX, halfY],
+        ],
+        ALL_FOUR,
+        profile.outerFilletRadius
+      );
     }
     case 'CIRCLE_HOLLOW':
       return ellipsePoints(profile.radius, profile.radius);
@@ -358,12 +405,16 @@ function holeLoops(profile: ExtendedProfile): ReadonlyArray<ReadonlyArray<Pt2>> 
       const halfX = profile.xDim / 2 - profile.wallThickness;
       const halfY = profile.yDim / 2 - profile.wallThickness;
       return [
-        [
-          [-halfX, -halfY],
-          [halfX, -halfY],
-          [halfX, halfY],
-          [-halfX, halfY],
-        ],
+        filleted(
+          [
+            [-halfX, -halfY],
+            [halfX, -halfY],
+            [halfX, halfY],
+            [-halfX, halfY],
+          ],
+          ALL_FOUR,
+          profile.innerFilletRadius
+        ),
       ];
     }
     case 'CIRCLE_HOLLOW': {
@@ -386,9 +437,76 @@ function ellipsePoints(a: number, b: number): ReadonlyArray<Pt2> {
   return pts;
 }
 
+// A fillet that uses a whole edge, or two that meet on one edge, gives a
+// self-touching outline. Returns a BimError for a radius that does not fit.
+export function extendedProfileRadiusError(profile: ExtendedProfile): BimError | null {
+  const tooLarge = (name: string, limit: string): BimError =>
+    specError('INVALID_PROFILE', `${profile.kind} ${name} must be positive and less than ${limit}`);
+  const outside = (r: number | undefined, limit: number): boolean =>
+    r !== undefined && (!(r > 0) || r >= limit);
+  switch (profile.kind) {
+    case 'L_SHAPE':
+      return outside(
+        profile.filletRadius,
+        Math.min(profile.width, profile.depth) - profile.legThickness
+      )
+        ? tooLarge('filletRadius', 'the shorter inner leg length')
+        : null;
+    case 'T_SHAPE':
+      return outside(
+        profile.filletRadius,
+        Math.min(
+          (profile.flangeWidth - profile.webThickness) / 2,
+          profile.depth - profile.flangeThickness
+        )
+      )
+        ? tooLarge('filletRadius', 'the flange overhang and the web height')
+        : null;
+    case 'C_SHAPE': {
+      const r = profile.internalFilletRadius;
+      const t = profile.wallThickness;
+      const limit = Math.min(profile.width / 2, profile.depth / 2, profile.girth) - t;
+      return outside(r, limit)
+        ? tooLarge(
+            'internalFilletRadius',
+            'half the width, half the depth, and the girth, each less wallThickness'
+          )
+        : null;
+    }
+    case 'RECTANGLE_HOLLOW': {
+      const t = profile.wallThickness;
+      const ro = profile.outerFilletRadius;
+      const ri = profile.innerFilletRadius;
+      if (outside(ro, Math.min(profile.xDim, profile.yDim) / 2)) {
+        return tooLarge('outerFilletRadius', 'half of xDim and yDim');
+      }
+      if (outside(ri, Math.min(profile.xDim, profile.yDim) / 2 - t)) {
+        return tooLarge('innerFilletRadius', 'half of the inner xDim and yDim');
+      }
+      // When the void corner lies outside the outer arc centre, its farthest
+      // point from that centre must stay inside the outer arc.
+      const inner = ri ?? 0;
+      const offset = (ro ?? 0) - t - inner;
+      if (ro !== undefined && offset > 0 && Math.SQRT2 * offset + inner >= ro) {
+        return specError(
+          'INVALID_PROFILE',
+          'RECTANGLE_HOLLOW outerFilletRadius leaves no wall at the corners'
+        );
+      }
+      return null;
+    }
+    default:
+      return null;
+  }
+}
+
 // Geometric feasibility guard. Returns a BimError when the profile cannot
 // produce a valid non-degenerate face.
 function validateProfile(profile: ExtendedProfile): BimError | null {
+  return validateDimensions(profile) ?? extendedProfileRadiusError(profile);
+}
+
+function validateDimensions(profile: ExtendedProfile): BimError | null {
   switch (profile.kind) {
     case 'L_SHAPE':
       if (profile.legThickness >= profile.width || profile.legThickness >= profile.depth) {

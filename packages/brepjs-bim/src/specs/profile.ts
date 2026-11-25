@@ -4,7 +4,7 @@ import { specError } from '../errors/bimError.js';
 import type { Result } from 'brepjs';
 import { ok, err } from 'brepjs';
 import type { ExtendedProfile } from './profilesExtended.js';
-import { extendedProfileToFace } from './profilesExtended.js';
+import { extendedProfileToFace, extendedProfileRadiusError } from './profilesExtended.js';
 
 // Cross-section profile for an extruded structural element. All dimensions in mm.
 // Profile lives in the local XY plane; extrusion happens along the element's
@@ -280,7 +280,7 @@ export function parseProfile(input: unknown): Result<Profile, BimError> {
   }
   const profile = result.data as Profile;
   if (isExtendedProfile(profile)) {
-    const invalid = validateExtendedProfile(profile);
+    const invalid = validateExtendedProfile(profile) ?? extendedProfileRadiusError(profile);
     if (invalid !== null) return err(invalid);
     return ok(profile);
   }

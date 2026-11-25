@@ -4,6 +4,7 @@ import { measureArea } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
 import { extendedProfileToFace, extendedProfileArea } from '../src/specs/profilesExtended.js';
 import type { ExtendedProfile } from '../src/specs/profilesExtended.js';
+import { parseProfile } from '../src/specs/profile.js';
 import { IfcWriter } from '../src/ifc-writer/ifcWriter.js';
 import { writeExtendedProfileDef } from '../src/ifc-writer/profileDefWriter.js';
 
@@ -243,6 +244,72 @@ describe('extendedProfileToFace validation', () => {
     };
     const result = extendedProfileToFace(bad);
     expect(result.ok).toBe(false);
+  });
+
+  it.each<[string, ExtendedProfile]>([
+    [
+      'an L_SHAPE filletRadius that uses the whole inner leg',
+      { kind: 'L_SHAPE', depth: 100, width: 80, legThickness: 10, filletRadius: 70 },
+    ],
+    [
+      'a T_SHAPE filletRadius wider than the flange overhang',
+      {
+        kind: 'T_SHAPE',
+        depth: 120,
+        flangeWidth: 100,
+        webThickness: 8,
+        flangeThickness: 12,
+        filletRadius: 46,
+      },
+    ],
+    [
+      'a C_SHAPE internalFilletRadius that uses the whole lip',
+      {
+        kind: 'C_SHAPE',
+        depth: 150,
+        width: 60,
+        wallThickness: 4,
+        girth: 20,
+        internalFilletRadius: 16,
+      },
+    ],
+    [
+      'a RECTANGLE_HOLLOW outerFilletRadius of half the short side',
+      { kind: 'RECTANGLE_HOLLOW', xDim: 100, yDim: 60, wallThickness: 8, outerFilletRadius: 30 },
+    ],
+    [
+      'a RECTANGLE_HOLLOW innerFilletRadius of half the short inner side',
+      { kind: 'RECTANGLE_HOLLOW', xDim: 100, yDim: 60, wallThickness: 8, innerFilletRadius: 22 },
+    ],
+    [
+      'a RECTANGLE_HOLLOW outerFilletRadius that cuts through the void corner',
+      { kind: 'RECTANGLE_HOLLOW', xDim: 100, yDim: 60, wallThickness: 8, outerFilletRadius: 28 },
+    ],
+    [
+      'a radius that is not positive',
+      { kind: 'L_SHAPE', depth: 100, width: 80, legThickness: 10, filletRadius: 0 },
+    ],
+  ])('rejects %s', (_name, bad) => {
+    expect(extendedProfileToFace(bad).ok).toBe(false);
+    expect(parseProfile(bad).ok).toBe(false);
+  });
+
+  it('accepts an inner radius larger than the outer radius less the wall', () => {
+    const profile: ExtendedProfile = {
+      kind: 'RECTANGLE_HOLLOW',
+      xDim: 100,
+      yDim: 60,
+      wallThickness: 8,
+      outerFilletRadius: 5,
+      innerFilletRadius: 10,
+    };
+    const result = extendedProfileToFace(profile);
+    if (!result.ok) throw new Error(result.error.message);
+    using face = result.value;
+    const area = measureArea(face);
+    if (!area.ok) throw new Error(area.error.message);
+    // Eight inscribed chords change each quarter disc by 0.64 %.
+    expect(area.value / extendedProfileArea(profile)).toBeCloseTo(1, 2);
   });
 });
 

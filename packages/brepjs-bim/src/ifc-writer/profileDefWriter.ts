@@ -113,16 +113,18 @@ export function writeExtendedProfileDef(w: IfcWriter, profile: ExtendedProfile):
         ProfileType: AREA_PROFILE,
         ProfileName: null,
         Position: w.ref(writeAxis2Placement2D(w)),
-        // Bottom flange maps to the parametric "Overall" (bottom) flange.
-        OverallWidth: len(w, profile.bottomFlangeWidth),
+        BottomFlangeWidth: len(w, profile.bottomFlangeWidth),
         OverallDepth: len(w, profile.overallDepth),
         WebThickness: len(w, profile.webThickness),
-        FlangeThickness: len(w, profile.bottomFlangeThickness),
-        FilletRadius: null,
+        BottomFlangeThickness: len(w, profile.bottomFlangeThickness),
+        BottomFlangeFilletRadius: null,
         TopFlangeWidth: len(w, profile.topFlangeWidth),
         TopFlangeThickness: len(w, profile.topFlangeThickness),
         TopFlangeFilletRadius: null,
-        CentreOfGravityInY: null,
+        BottomFlangeEdgeRadius: null,
+        BottomFlangeSlope: null,
+        TopFlangeEdgeRadius: null,
+        TopFlangeSlope: null,
       });
       return id;
     }
