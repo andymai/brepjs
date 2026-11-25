@@ -1,6 +1,7 @@
+import { relationshipEnds, withoutRecord } from './documentGraph.js';
 import { resolveDocumentFrame, type FrameSpace } from './documentFrames.js';
 import { transformBody, bodyBounds, measureBodyMaterial } from '../types/body.js';
-import { IDENTITY_FRAME } from '../placementFrame.js';
+import { IDENTITY_FRAME, decomposeFrame, type FrameInput } from '../placementFrame.js';
 import { validateDocumentGraph, graphError, snapshotData } from './documentGraph.js';
 import { bodyClassifications, type BodyClassification } from '../types/bimTypes.js';
 import { capturePlacement, type PlacementDefinition } from '../types/placementDefinition.js';
@@ -767,6 +768,110 @@ export class BimDocument {
       }
       return ok(undefined);
     });
+  }
+
+  move(ref: RecordRef, frame: FrameInput): Result<void, BimError> {
+    return this.#edit('move', (command) => {
+      const record = this.#elements.get(ref);
+      if (!record?.placement)
+        return err(graphError('INVALID_PLACEMENT_RECORD', 'Expected a live placeable record', ref));
+      if (record.placement.kind !== 'LOCAL_FRAME')
+        return err(
+          graphError(
+            'PLACEMENT_REFERENCE_UNRESOLVED',
+            'Moving a reference placement is unsupported',
+            ref
+          )
+        );
+      const placement = capturePlacement(
+        { kind: 'LOCAL_FRAME', frame },
+        record.placement.relativeTo
+      );
+      if (!placement.ok) return placement;
+      command.elements.push(Object.freeze({ ...record, placement: placement.value }));
+      return ok(undefined);
+    });
+  }
+
+  reparent(
+    ref: RecordRef,
+    parent: RecordRef | 'WORLD',
+    policy: 'KEEP_LOCAL' | 'KEEP_WORLD'
+  ): Result<void, BimError> {
+    return this.#edit('reparent', (command) => {
+      if (policy !== 'KEEP_LOCAL' && policy !== 'KEEP_WORLD')
+        return err(graphError('REPARENT_POLICY_REQUIRED', 'Choose KEEP_LOCAL or KEEP_WORLD', ref));
+      const record = this.#elements.get(ref);
+      if (!record?.placement)
+        return err(graphError('INVALID_PLACEMENT_RECORD', 'Expected a live placeable record', ref));
+      if (record.placement.kind !== 'LOCAL_FRAME')
+        return err(
+          graphError(
+            'PLACEMENT_REFERENCE_UNRESOLVED',
+            'Reparenting a reference placement is unsupported',
+            ref
+          )
+        );
+      let frame = record.placement.frame;
+      if (policy === 'KEEP_WORLD') {
+        const relative = this.frame(ref, parent);
+        if (!relative.ok) return relative;
+        frame = decomposeFrame(relative.value.frame);
+      }
+      const placement = capturePlacement(
+        { kind: 'LOCAL_FRAME', frame },
+        parent === 'WORLD' ? undefined : parent
+      );
+      if (!placement.ok) return placement;
+      command.elements.push(Object.freeze({ ...record, placement: placement.value }));
+      return ok(undefined);
+    });
+  }
+
+  delete(ref: RecordRef): Result<BodyCommitReceipt, BimError> {
+    const result = this.#mutate('delete', (command) => {
+      const record = this.#elements.get(ref);
+      if (!record)
+        return err(graphError('RECORD_NOT_FOUND', 'Expected a live document reference', ref));
+      const dependants: { kind: string; record: RecordRef }[] = [];
+      for (const child of this.#elements.values()) {
+        const placement = child.placement;
+        if (placement?.kind === 'LOCAL_FRAME' && placement.relativeTo === ref)
+          dependants.push({ kind: 'PLACEMENT_PARENT', record: child.localId });
+        if (
+          placement &&
+          placement.kind !== 'LOCAL_FRAME' &&
+          placement.references.some((target) => target.kind === 'DOCUMENT' && target.record === ref)
+        )
+          dependants.push({ kind: 'PLACEMENT_REFERENCE', record: child.localId });
+      }
+      for (const edge of this.#relationships.values()) {
+        if (edge.kind === 'CONTAINED_IN' && edge.relatingStructure === ref)
+          dependants.push(...edge.relatedElements.map((record) => ({ kind: edge.kind, record })));
+        if ((edge.kind === 'AGGREGATES' || edge.kind === 'NESTS') && edge.relatingObject === ref)
+          dependants.push(...edge.relatedObjects.map((record) => ({ kind: edge.kind, record })));
+      }
+      if (dependants.length)
+        return err({
+          ...specError('RECORD_HAS_DEPENDANTS', 'Resolve dependent records before deletion'),
+          metadata: { ref, dependants },
+        });
+      for (const edge of this.#relationships.values()) {
+        if (!relationshipEnds(edge).includes(ref)) continue;
+        const remaining = withoutRecord(edge, ref);
+        if (remaining) command.relationships.push(remaining);
+        else command.removedEdges.add(edge.localId);
+      }
+      command.removedRecords.add(ref);
+      if (command.projectId === ref) command.projectId = null;
+      command.retired.push(...this.#prepareRetirement(record));
+      return ok({ localId: ref, guid: record.guid });
+    });
+    return result.ok
+      ? ok(
+          Object.freeze({ kind: 'COMMITTED', ...result.value.value, cleanup: result.value.cleanup })
+        )
+      : result;
   }
 
   replacePlacement(ref: RecordRef, input: PlacementDefinition): Result<void, BimError> {

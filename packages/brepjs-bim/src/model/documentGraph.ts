@@ -201,3 +201,32 @@ export function validateDocumentGraph(
   }
   return undefined;
 }
+
+/** Remove one incident endpoint while preserving surviving members and relationship identity. */
+export function withoutRecord(rel: BimRelationship, ref: RecordRef): BimRelationship | null {
+  switch (rel.kind) {
+    case 'AGGREGATES':
+    case 'NESTS':
+      if (rel.relatingObject === ref) return null;
+      break;
+    case 'CONTAINED_IN': {
+      const relatedElements = rel.relatedElements.filter((child) => child !== ref);
+      return rel.relatingStructure !== ref && relatedElements.length
+        ? snapshotData({ ...rel, relatedElements })
+        : null;
+    }
+    case 'ASSIGNS_TO_GROUP': {
+      const memberLocalIds = rel.memberLocalIds.filter((child) => child !== ref);
+      return rel.groupLocalId !== ref && memberLocalIds.length
+        ? snapshotData({ ...rel, memberLocalIds })
+        : null;
+    }
+    case 'ASSOCIATES_CLASSIFICATION':
+    case 'ASSOCIATES_MATERIAL':
+      break;
+    default:
+      return null;
+  }
+  const relatedObjects = rel.relatedObjects.filter((child) => child !== ref);
+  return relatedObjects.length ? snapshotData({ ...rel, relatedObjects }) : null;
+}
