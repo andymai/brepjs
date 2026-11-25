@@ -27,7 +27,7 @@ import {
   Evaluator,
   type IRNode,
 } from '@/csg/index.js';
-import { isOk, unwrap, measureArea, measureVolume } from '@/index.js';
+import { isOk, unwrap, measureArea, measureVolume, getVertices, vertexPosition } from '@/index.js';
 import { faceCenter } from '@/topology/faceFns.js';
 import { isFace, isShape3D, type AnyShape, type Dimension, type Face } from '@/core/shapeTypes.js';
 
@@ -94,10 +94,9 @@ const GOLDENS: readonly Golden[] = [
   },
   {
     name: 'Z_SHAPE',
-    // bim contract: flangeWidth reaches from web center to tip, so total
-    // flange area is (flangeWidth - web) * flangeThickness.
+    // IFC figure: each flange is flangeWidth long and includes its end of the web.
     node: () => zShapeProfile({ depth: 100, flangeWidth: 50, webThickness: 6, flangeThickness: 8 }),
-    area: 6 * 100 + (50 - 6) * 8,
+    area: 6 * (100 - 16) + 2 * 50 * 8,
   },
   {
     name: 'C_SHAPE',
@@ -163,17 +162,17 @@ describe('canned bim profiles', () => {
     });
   }
 
-  itBrep('TRAPEZIUM: topXOffset shifts the top-edge CENTER (bim contract)', () => {
+  itBrep('TRAPEZIUM: topXOffset runs from the bottom-left to the top-left corner', () => {
     using ev = new Evaluator();
     const p = { bottomXDim: 60, topXDim: 40, yDim: 30, topXOffset: 20 };
     const r = ev.evaluate(trapeziumProfile(p));
     expect(isOk(r)).toBe(true);
-    // Independent oracle: polygon centroid of the bim-contract vertices.
+    // Independent oracle: polygon centroid of the IfcTrapeziumProfileDef vertices.
     const pts: ReadonlyArray<readonly [number, number]> = [
       [-30, -15],
       [30, -15],
-      [40, 15],
-      [0, 15],
+      [30, 15],
+      [-10, 15],
     ];
     let a2 = 0;
     let cx = 0;
@@ -190,6 +189,30 @@ describe('canned bim profiles', () => {
     const center = faceCenter(unwrap(r) as Face);
     expect(center[0]).toBeCloseTo(centroid[0] ?? 0, 1);
     expect(center[1]).toBeCloseTo(centroid[1] ?? 0, 1);
+  });
+
+  itBrep('Z_SHAPE: top flange to -X, tips at flangeWidth - webThickness / 2', () => {
+    using ev = new Evaluator();
+    const r = ev.evaluate(
+      zShapeProfile({ depth: 100, flangeWidth: 50, webThickness: 6, flangeThickness: 8 })
+    );
+    expect(isOk(r)).toBe(true);
+    const corners = getVertices(unwrap(r) as Face).map(vertexPosition);
+    expect(corners).toHaveLength(8);
+    for (const [x, y] of [
+      [-47, 50],
+      [-47, 42],
+      [47, -50],
+      [47, -42],
+      [3, 50],
+      [-3, -50],
+    ]) {
+      expect(corners).toContainEqual([
+        expect.closeTo(x ?? NaN, 6),
+        expect.closeTo(y ?? NaN, 6),
+        expect.closeTo(0, 6),
+      ]);
+    }
   });
 
   itOcct('tall ELLIPSE (semiAxis2 > semiAxis1) via edge relocation', () => {
