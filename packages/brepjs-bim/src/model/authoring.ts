@@ -1,44 +1,41 @@
-import { wallOpeningFrame,slabOpeningFrame } from '../elementFns/openingFrames.js';
-import { realizeFlights,bindFlightItems } from './flightBody.js';
+import { wallOpeningFrame, slabOpeningFrame } from '../elementFns/openingFrames.js';
+import { realizeFlights, bindFlightItems } from './flightBody.js';
 import { stairFlightToSolid } from '../elementFns/stairFns.js';
 import { rampFlightToSolid } from '../elementFns/rampFns.js';
 import {
-capturePlacement,
-identityPlacement,
-type PlacementDefinition,
+  capturePlacement,
+  identityPlacement,
+  type PlacementDefinition,
 } from '../types/placementDefinition.js';
-import type { Result,ValidSolid } from 'brepjs';
-import { box,translate,ok,err } from 'brepjs';
+import type { Result, ValidSolid } from 'brepjs';
+import { box, translate, ok, err } from 'brepjs';
 import type { RecordRef } from '../identity/recordRef.js';
 import type { BimError } from '../errors/bimError.js';
 import { specError } from '../errors/bimError.js';
-import type {
-WallOpeningSpec,
-SlabOpeningSpec
-} from '../types/bimTypes.js';
+import type { WallOpeningSpec, SlabOpeningSpec } from '../types/bimTypes.js';
 import type { MaterialLayer } from '../types/materialTypes.js';
 import type { ClassificationRef } from '../types/classificationTypes.js';
 import type { WallSpec } from '../specs/wallSpec.js';
 import type { SlabSpec } from '../specs/slabSpec.js';
 import type { BeamSpec } from '../specs/beamSpec.js';
 import type { ColumnSpec } from '../specs/columnSpec.js';
-import type { DoorSpec,WindowSpec,SlabOpeningInput } from '../specs/openingSpec.js';
+import type { DoorSpec, WindowSpec, SlabOpeningInput } from '../specs/openingSpec.js';
 import type { ProxySpec } from '../specs/proxySpec.js';
 import type { SpaceSpec } from '../specs/spaceSpec.js';
 import type { RoofSpec } from '../specs/roofSpec.js';
 import type { CurtainWallSpec } from '../specs/curtainWallSpec.js';
-import type { FootingSpec,PileSpec } from '../specs/foundationSpec.js';
+import type { FootingSpec, PileSpec } from '../specs/foundationSpec.js';
 import type { StairSpec } from '../specs/stairSpec.js';
 import type { RampSpec } from '../specs/rampSpec.js';
 import type { RailingSpec } from '../specs/railingSpec.js';
 import type { CoveringSpec } from '../specs/coveringSpec.js';
 import type { ElementAssemblySpec } from '../specs/assemblySpec.js';
-import type { ZoneSpec,SystemSpec } from '../specs/groupSpec.js';
-import type { SiteSpec,BuildingSpec,StoreySpec } from '../specs/spatialSpec.js';
+import type { ZoneSpec, SystemSpec } from '../specs/groupSpec.js';
+import type { SiteSpec, BuildingSpec, StoreySpec } from '../specs/spatialSpec.js';
 import type {
-BridgePartSpec,
-BridgeSpec,
-EarthworksFillSpec,
+  BridgePartSpec,
+  BridgeSpec,
+  EarthworksFillSpec,
 } from '../specs/infrastructureSpec.js';
 import { wallToSolid } from '../elementFns/wallFns.js';
 import { slabToSolid } from '../elementFns/slabFns.js';
@@ -50,22 +47,41 @@ import { cutOpeningSolid } from '../elementFns/cutOpeningSolid.js';
 import { spaceToSolid } from '../elementFns/spaceFns.js';
 import { roofToSolid } from '../elementFns/roofFns.js';
 import { curtainWallToGrid } from '../elementFns/curtainWallFns.js';
-import { footingToSolid,pileToSolid } from '../elementFns/foundationFns.js';
+import { footingToSolid, pileToSolid } from '../elementFns/foundationFns.js';
 import { railingToSolid } from '../elementFns/railingFns.js';
 import { coveringToSolid } from '../elementFns/coveringFns.js';
+import { type Body, type NonEmpty } from '../types/body.js';
 import {
-type Body,
-type NonEmpty
-} from '../types/body.js';
-import { BimDocument,prepareRecords,type ModelCommand,type ElementIdentityOptions,type OpeningIdentityOptions } from './bimDocument.js';
+  BimDocument,
+  prepareRecords,
+  type ModelCommand,
+  type ElementIdentityOptions,
+  type OpeningIdentityOptions,
+} from './bimDocument.js';
 export class BimAuthoring {
- private readonly access;
- constructor(private readonly document: BimDocument) { this.access=document[prepareRecords](); }
+  private readonly access;
+  constructor(private readonly document: BimDocument) {
+    this.access = document[prepareRecords]();
+  }
 
-
-  addSite(spec: SiteSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
+  addSite(
+    spec: SiteSpec,
+    options?: ElementIdentityOptions & { readonly placementParent?: RecordRef }
+  ): Result<RecordRef, BimError> {
     return this.access.create('addSite', (command) => {
       const snapshot = Object.freeze({ ...spec });
+      const placement = capturePlacement(
+        {
+          kind: 'LOCAL_FRAME',
+          frame: {
+            origin: snapshot.origin ?? [0, 0, 0],
+            axisX: snapshot.axisX ?? [1, 0, 0],
+            axisZ: snapshot.axisZ ?? [0, 0, 1],
+          },
+        },
+        options?.placementParent
+      );
+      if (!placement.ok) return placement;
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
       const keyCheck = this.access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
@@ -76,7 +92,7 @@ export class BimAuthoring {
             category: 'SITE',
             representation: 'NONE',
             reason: 'SPATIAL',
-            placement: null,
+            placement: placement.value,
             spec: snapshot,
             geometry: null,
           },
@@ -86,9 +102,24 @@ export class BimAuthoring {
     });
   }
 
-  addBridge(spec: BridgeSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
+  addBridge(
+    spec: BridgeSpec,
+    options?: ElementIdentityOptions & { readonly placementParent?: RecordRef }
+  ): Result<RecordRef, BimError> {
     return this.access.create('addBridge', (command) => {
       const snapshot = Object.freeze({ ...spec });
+      const placement = capturePlacement(
+        {
+          kind: 'LOCAL_FRAME',
+          frame: {
+            origin: snapshot.origin ?? [0, 0, 0],
+            axisX: snapshot.axisX ?? [1, 0, 0],
+            axisZ: snapshot.axisZ ?? [0, 0, 1],
+          },
+        },
+        options?.placementParent
+      );
+      if (!placement.ok) return placement;
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
       const keyCheck = this.access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
@@ -99,7 +130,7 @@ export class BimAuthoring {
             category: 'BRIDGE',
             representation: 'NONE',
             reason: 'SPATIAL',
-            placement: null,
+            placement: placement.value,
             spec: snapshot,
             geometry: null,
           },
@@ -109,9 +140,24 @@ export class BimAuthoring {
     });
   }
 
-  addBridgePart(spec: BridgePartSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
+  addBridgePart(
+    spec: BridgePartSpec,
+    options?: ElementIdentityOptions & { readonly placementParent?: RecordRef }
+  ): Result<RecordRef, BimError> {
     return this.access.create('addBridgePart', (command) => {
       const snapshot = Object.freeze({ ...spec });
+      const placement = capturePlacement(
+        {
+          kind: 'LOCAL_FRAME',
+          frame: {
+            origin: snapshot.origin ?? [0, 0, 0],
+            axisX: snapshot.axisX ?? [1, 0, 0],
+            axisZ: snapshot.axisZ ?? [0, 0, 1],
+          },
+        },
+        options?.placementParent
+      );
+      if (!placement.ok) return placement;
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
       const keyCheck = this.access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
@@ -122,7 +168,7 @@ export class BimAuthoring {
             category: 'BRIDGE_PART',
             representation: 'NONE',
             reason: 'SPATIAL',
-            placement: null,
+            placement: placement.value,
             spec: snapshot,
             geometry: null,
           },
@@ -170,9 +216,24 @@ export class BimAuthoring {
     });
   }
 
-  addBuilding(spec: BuildingSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
+  addBuilding(
+    spec: BuildingSpec,
+    options?: ElementIdentityOptions & { readonly placementParent?: RecordRef }
+  ): Result<RecordRef, BimError> {
     return this.access.create('addBuilding', (command) => {
       const snapshot = Object.freeze({ ...spec });
+      const placement = capturePlacement(
+        {
+          kind: 'LOCAL_FRAME',
+          frame: {
+            origin: snapshot.origin ?? [0, 0, 0],
+            axisX: snapshot.axisX ?? [1, 0, 0],
+            axisZ: snapshot.axisZ ?? [0, 0, 1],
+          },
+        },
+        options?.placementParent
+      );
+      if (!placement.ok) return placement;
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
       const keyCheck = this.access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
@@ -183,7 +244,7 @@ export class BimAuthoring {
             category: 'BUILDING',
             representation: 'NONE',
             reason: 'SPATIAL',
-            placement: null,
+            placement: placement.value,
             spec: snapshot,
             geometry: null,
           },
@@ -193,9 +254,24 @@ export class BimAuthoring {
     });
   }
 
-  addStorey(spec: StoreySpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
+  addStorey(
+    spec: StoreySpec,
+    options?: ElementIdentityOptions & { readonly placementParent?: RecordRef }
+  ): Result<RecordRef, BimError> {
     return this.access.create('addStorey', (command) => {
       const snapshot = Object.freeze({ ...spec });
+      const placement = capturePlacement(
+        {
+          kind: 'LOCAL_FRAME',
+          frame: {
+            origin: snapshot.origin ?? [0, 0, spec.elevation],
+            axisX: snapshot.axisX ?? [1, 0, 0],
+            axisZ: snapshot.axisZ ?? [0, 0, 1],
+          },
+        },
+        options?.placementParent
+      );
+      if (!placement.ok) return placement;
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
       const keyCheck = this.access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
@@ -206,7 +282,7 @@ export class BimAuthoring {
             category: 'STOREY',
             representation: 'NONE',
             reason: 'SPATIAL',
-            placement: null,
+            placement: placement.value,
             spec: snapshot,
             geometry: null,
           },
@@ -669,13 +745,15 @@ export class BimAuthoring {
    */
   addElementAssembly(
     spec: ElementAssemblySpec,
-    options?: ElementIdentityOptions
+    options?: ElementIdentityOptions & { readonly placementParent?: RecordRef }
   ): Result<RecordRef, BimError> {
     return this.access.create('addElementAssembly', (command) => {
       const snapshot = Object.freeze({ ...spec });
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
       const keyCheck = this.access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
+      const placement = capturePlacement(identityPlacement, options?.placementParent);
+      if (!placement.ok) return placement;
       return ok(
         this.access.makeElement(
           command,
@@ -683,7 +761,7 @@ export class BimAuthoring {
             category: 'ELEMENT_ASSEMBLY',
             representation: 'NONE',
             reason: 'ASSEMBLY',
-            placement: identityPlacement,
+            placement: placement.value,
             spec: snapshot,
             geometry: null,
           },
@@ -1169,7 +1247,6 @@ export class BimAuthoring {
     });
   }
 }
-
 
 function wallOpeningSolid(body: Body): Result<ValidSolid, BimError> {
   if (body.kind === 'AUTHORITATIVE') {

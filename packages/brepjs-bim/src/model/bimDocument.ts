@@ -1,3 +1,6 @@
+import { resolveDocumentFrame, type FrameSpace } from './documentFrames.js';
+import { transformBody, bodyBounds, measureBodyMaterial } from '../types/body.js';
+import { IDENTITY_FRAME } from '../placementFrame.js';
 import { validateDocumentGraph, graphError, snapshotData } from './documentGraph.js';
 import { bodyClassifications, type BodyClassification } from '../types/bimTypes.js';
 import { capturePlacement, type PlacementDefinition } from '../types/placementDefinition.js';
@@ -111,6 +114,53 @@ export class BimDocument {
   #modelScope = '';
   readonly #usedStableKeys = new Set<string>();
   readonly #keyIndex = new Map<string, RecordRef>();
+
+  frame(ref: RecordRef, target: FrameSpace) {
+    const alive = this.record(ref);
+    return alive.ok ? resolveDocumentFrame(this.#elements, ref, target) : alive;
+  }
+
+  #ownBody(ref: RecordRef) {
+    const record = this.record(ref);
+    if (!record.ok) return record;
+    return record.value.representation === 'BODY'
+      ? ok(record.value.geometry)
+      : err(specError('ELEMENT_HAS_NO_BODY', `${record.value.category} has no occupied material`));
+  }
+
+  placedSolids(ref: RecordRef, target: FrameSpace): Result<readonly ValidSolid[], BimError> {
+    const body = this.#ownBody(ref);
+    if (!body.ok) return body;
+    const pose = target === 'LOCAL' ? ok(IDENTITY_FRAME) : this.frame(ref, target);
+    if (!pose.ok) return pose;
+    const transformed = transformBody(
+      body.value,
+      'frame' in pose.value ? pose.value.frame : pose.value
+    );
+    return transformed.ok ? ok(transformed.value.solids) : transformed;
+  }
+
+  bounds(ref: RecordRef, target: FrameSpace) {
+    const body = this.#ownBody(ref);
+    if (!body.ok) return body;
+    const pose =
+      target === 'LOCAL' ? ok({ target: ref, frame: IDENTITY_FRAME }) : this.frame(ref, target);
+    if (!pose.ok) return pose;
+    const measured = bodyBounds(
+      body.value,
+      target === 'LOCAL'
+        ? { kind: 'LOCAL' }
+        : { kind: 'RESOLVED', tag: String(pose.value.target), frame: pose.value.frame }
+    );
+    return measured.ok
+      ? ok(Object.freeze({ source: ref, target: pose.value.target, bounds: measured.value.bounds }))
+      : measured;
+  }
+
+  materialVolume(ref: RecordRef) {
+    const body = this.#ownBody(ref);
+    return body.ok ? measureBodyMaterial(body.value.solids) : body;
+  }
 
   lookupKey(key: string): Result<RecordRef, BimError> {
     const ref = this.#keyIndex.get(key);
