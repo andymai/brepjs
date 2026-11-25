@@ -2,11 +2,7 @@ import { clone, cut, err, ok, validSolid, type Result, type ValidSolid } from 'b
 import { fromBrepError, importError, type BimError } from '../errors/bimError.js';
 import { reportedGeometryCleanup } from '../geometryCleanupDiagnostics.js';
 import { ownSolidChildren } from '../ownedSolidChildren.js';
-import {
-  cleanupOwnedResources,
-  cleanupReport,
-  type OwnedBodyResource,
-} from '../productBodyCleanup.js';
+import { cleanupOwnedResources, cleanupReport, type OwnedBodyResource } from '../bodyCleanup.js';
 
 /** Borrow World-placed inputs; own every disconnected result independently of the cut's cache. */
 export function cutImportedSolids(

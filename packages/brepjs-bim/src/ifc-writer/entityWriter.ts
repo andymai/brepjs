@@ -185,7 +185,7 @@ export function writeSlabEntity(
   w: IfcWriter,
   guid: IfcGuid,
   name: string,
-  _predefinedType: 'FLOOR' | 'ROOF' | 'LANDING' | 'BASESLAB',
+  _predefinedType: 'FLOOR' | 'ROOF' | 'LANDING' | 'BASESLAB' | 'NOTDEFINED',
   ownerHistoryId: number,
   localPlacementId: number,
   productDefinitionShapeId: number

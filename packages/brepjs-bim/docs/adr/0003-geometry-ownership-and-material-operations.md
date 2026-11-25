@@ -32,6 +32,8 @@ The contract is:
 
 The same measurement implementation serves authoring comparisons, document queries, complete imported Bodies, and quantity adapters. Optional IFC quantities may be omitted with a diagnostic; required measurements fail the operation. Nominal dimensions remain class-specific facts. Gross volume, surface quantities, and weight need supporting facts, not an authoritative Body's bounding box.
 
+Body queries always measure the occupied union of the retained solids. When the IFC writer exports a beam, column, or pile as an analytic sweep bound to its retained Body, it uses the exported profile area times the extrusion length for `NetVolume`. This preserves the analytic volume even when the kernel approximates a curved profile with facets. Replacing the Body invalidates the sweep binding, so the writer uses the measured occupied union of the replacement solids for `NetVolume`.
+
 Authoring owns recipe-generated items until successful Body adoption and releases them on a failed generation or transfer. Once adopted, recipe-generated and directly authored items use the same Body operations. Assemblies have `NONE`; each geometry-bearing child owns a Body with its own Placement. There is no separate generated/composite ownership branch. Intentional absence is distinct from zero measured material.
 
 Acceptance requires later-item failures and throws during adoption, transforms, authoring generation, and union measurement. Check duplicate and disposed handles, target-document aliases, caller-mutable arrays, unchanged inputs, and exact release counts. Disconnected and overlapping Bodies preserve order and item count through measurement and exchange.
@@ -43,7 +45,7 @@ For occt-wasm, read the native arena's `getShapeCount()` through the raw kernel,
 ### Positive
 
 - Ownership and failure rules have one implementation per representation.
-- All consumers agree on material volume.
+- All consumers use the same measure of occupied material for retained solids.
 - New classifications inherit complete lifecycle behavior.
 
 ### Costs and risks
@@ -82,3 +84,7 @@ Both can report plausible but incorrect material quantities. An explicit unavail
 [overlap-test]: https://github.com/andymai/brepjs/blob/4602096ebc3c9ea0263d5b2a1b7d3b6dee24c466/packages/brepjs-bim/tests/exactProductBodyTakeover.test.ts#L326
 [compound]: https://github.com/andymai/brepjs/blob/4602096ebc3c9ea0263d5b2a1b7d3b6dee24c466/src/csg/evaluators/compound.ts#L10
 [arena-tests]: https://github.com/andymai/brepjs/blob/4602096ebc3c9ea0263d5b2a1b7d3b6dee24c466/tests/wasmArenaDisposal.test.ts#L1
+
+## Step-2 acceptance
+
+Stage generated flight items, assembly children, placements and relationships on the existing model transaction. Rejection releases generated handles and leaves caller-owned inputs with the caller. A successful replacement transfers its inputs even if retiring old handles reports a cleanup failure. Bounds cover all retained items and volume measures their occupied union. A persistent copy or ownership failure on a supported backend blocks acceptance.

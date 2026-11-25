@@ -1,18 +1,18 @@
 import { err, ok, type Result, type ValidSolid } from 'brepjs';
 import { ifcError, type BimError } from '../errors/bimError.js';
 import type { WallSpec } from '../specs/wallSpec.js';
-import { measureProductBodyMaterial, type NonEmpty } from '../types/productBody.js';
+import { measureBodyMaterial, type NonEmpty } from '../types/body.js';
 import { toIfcLengthM } from '../units/units.js';
 
 interface WallQuantityValues {
-  readonly lengthM: number;
-  readonly widthM: number;
-  readonly heightM: number;
+  readonly lengthM?: number;
+  readonly widthM?: number;
+  readonly heightM?: number;
   readonly netVolumeM3: number;
 }
 
 interface WallQuantityInput {
-  readonly spec: WallSpec;
+  readonly spec: WallSpec | null;
   readonly solids: NonEmpty<ValidSolid>;
 }
 
@@ -20,12 +20,14 @@ export function deriveWallQuantities(
   input: WallQuantityInput
 ): Result<WallQuantityValues, BimError> {
   try {
-    const measured = measureProductBodyMaterial(input.solids);
+    const measured = measureBodyMaterial(input.solids);
     if (!measured.ok) return wallVolumeError(measured.error);
     return ok({
-      lengthM: toIfcLengthM(input.spec.length),
-      widthM: toIfcLengthM(input.spec.thickness),
-      heightM: toIfcLengthM(input.spec.height),
+      ...(input.spec && {
+        lengthM: toIfcLengthM(input.spec.length),
+        widthM: toIfcLengthM(input.spec.thickness),
+        heightM: toIfcLengthM(input.spec.height),
+      }),
       netVolumeM3: measured.value / 1_000_000_000,
     });
   } catch (cause) {

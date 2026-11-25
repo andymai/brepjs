@@ -40,7 +40,7 @@ function buildModelWithOpenings(): { model: BimModel; storeyId: number } {
   if (!wall.ok) throw new Error(wall.error.message);
   model.placeIn(wall.value, storeyId);
 
-  const door = model.addDoor({
+  const door = model.addDoorAndCutWall({
     width: 900,
     height: 2100,
     offsetAlongWall: 500,
@@ -51,7 +51,7 @@ function buildModelWithOpenings(): { model: BimModel; storeyId: number } {
   if (!door.ok) throw new Error(door.error.message);
   model.placeIn(door.value, storeyId);
 
-  const win = model.addWindow({
+  const win = model.addWindowAndCutWall({
     width: 1200,
     height: 1000,
     offsetAlongWall: 2500,

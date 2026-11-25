@@ -2,14 +2,14 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { box, cylinder, DisposalScope, getBounds, getKernel, measureVolume, unwrap } from 'brepjs';
 import {
   bodySolids,
-  copyProductBody,
-  disposeProductBody,
-  measureProductBodyMaterial,
-  productBodyBounds,
-  transformProductBody,
-  validateProductBody,
-  type ProductBody,
-} from '../src/types/productBody.js';
+  copyBody,
+  disposeBody,
+  measureBodyMaterial,
+  bodyBounds,
+  transformBody,
+  validateBody,
+  type Body,
+} from '../src/types/body.js';
 import {
   IDENTITY_FRAME,
   frameMul,
@@ -26,7 +26,7 @@ beforeAll(async () => {
 
 afterEach(() => vi.restoreAllMocks());
 
-describe.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)('%s ProductBody', (kind) => {
+describe.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)('%s Body', (kind) => {
   it.each(['singleton', 'disconnected', 'overlapping'] as const)(
     'protects and borrows %s items, measures occupied material and owns independent outputs',
     (arrangement) => {
@@ -38,7 +38,7 @@ describe.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)('%s ProductBody', (kind)
         const solids =
           arrangement === 'singleton' ? [a] : [a, arrangement === 'overlapping' ? b : distant];
         const input = { kind, solids };
-        const body = unwrap(validateProductBody(input));
+        const body = unwrap(validateBody(input));
         const retained = [...solids];
         Reflect.set(input, 'kind', 'INVALID');
         solids.reverse();
@@ -51,22 +51,22 @@ describe.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)('%s ProductBody', (kind)
         expect(Reflect.set(body, 'kind', 'INVALID')).toBe(false);
         expect(Reflect.set(bodySolids(body), 0, distant)).toBe(false);
         const live = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
-        expect(unwrap(measureProductBodyMaterial(bodySolids(body)))).toBeCloseTo(
+        expect(unwrap(measureBodyMaterial(bodySolids(body)))).toBeCloseTo(
           arrangement === 'singleton' ? 1 : arrangement === 'overlapping' ? 1.5 : 2,
           8
         );
-        const bounds = unwrap(productBodyBounds(body));
+        const bounds = unwrap(bodyBounds(body));
         expect(bounds.space).toEqual({ kind: 'LOCAL' });
         expect(bounds.bounds.xMin).toBeCloseTo(0, 6);
         expect(bounds.bounds.xMax).toBeCloseTo(
           arrangement === 'singleton' ? 1 : arrangement === 'overlapping' ? 1.5 : 4,
           6
         );
-        const outputs: ProductBody[] = [];
+        const outputs: Body[] = [];
         try {
-          outputs.push(unwrap(copyProductBody(body)));
-          outputs.push(unwrap(transformProductBody(body, IDENTITY_FRAME)));
-          const placed = unwrap(transformProductBody(body, unwrap(translationFrame([10, 2, 3]))));
+          outputs.push(unwrap(copyBody(body)));
+          outputs.push(unwrap(transformBody(body, IDENTITY_FRAME)));
+          const placed = unwrap(transformBody(body, unwrap(translationFrame([10, 2, 3]))));
           outputs.push(placed);
           for (const output of outputs) {
             expect(output.kind).toBe(kind);
@@ -75,8 +75,8 @@ describe.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)('%s ProductBody', (kind)
               expect(solid).not.toBe(retained[i]);
               expect(solid.disposed).toBe(false);
             });
-            expect(unwrap(measureProductBodyMaterial(output.solids))).toBeCloseTo(
-              unwrap(measureProductBodyMaterial(body.solids)),
+            expect(unwrap(measureBodyMaterial(output.solids))).toBeCloseTo(
+              unwrap(measureBodyMaterial(body.solids)),
               8
             );
           }
@@ -86,7 +86,7 @@ describe.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)('%s ProductBody', (kind)
             expect(getBounds(solid).xMin - getBounds(source).xMin).toBeCloseTo(10, 6);
           });
         } finally {
-          const reports = outputs.map(disposeProductBody);
+          const reports = outputs.map(disposeBody);
           for (const report of reports) expect(report).toEqual({ kind: 'COMPLETE' });
         }
         expect(body.solids).toEqual(retained);
@@ -100,10 +100,10 @@ describe.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)('%s ProductBody', (kind)
 
 it('uses actual rotated geometry for tight bounds in a caller-named resolved space', () => {
   using solid = box(1, 1, 1);
-  const body = unwrap(validateProductBody({ kind: 'AUTHORITATIVE', solids: [solid] }));
+  const body = unwrap(validateBody({ kind: 'AUTHORITATIVE', solids: [solid] }));
   const before = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
   const result = unwrap(
-    productBodyBounds(body.solids, {
+    bodyBounds(body.solids, {
       kind: 'RESOLVED',
       tag: 'test-container',
       frame: unwrap(rotationFrame(45, [0, 0, 1])),
@@ -119,14 +119,12 @@ it('uses actual rotated geometry for tight bounds in a caller-named resolved spa
 
 it('measures moved curved geometry instead of transforming its old bounding box', () => {
   using solid = cylinder(1, 2);
-  const body = unwrap(validateProductBody({ kind: 'AUTHORITATIVE', solids: [solid] }));
+  const body = unwrap(validateBody({ kind: 'AUTHORITATIVE', solids: [solid] }));
   const frame = unwrap(
     frameMul(unwrap(translationFrame([10, 2, 3])), unwrap(rotationFrame(45, [0, 0, 1])))
   );
   const before = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
-  const result = unwrap(
-    productBodyBounds(body, { kind: 'RESOLVED', tag: 'moved-cylinder', frame })
-  );
+  const result = unwrap(bodyBounds(body, { kind: 'RESOLVED', tag: 'moved-cylinder', frame }));
   // Rotating the old square bounds would widen these extents by sqrt(2).
   expect(result.bounds.xMin).toBeCloseTo(9, 6);
   expect(result.bounds.xMax).toBeCloseTo(11, 6);
@@ -151,15 +149,15 @@ it('rejects malformed JavaScript descriptors and invalid later items without all
     { kind: 'PARAMETRIC', solid },
     { kind: 'PARAMETRIC', solids: [] },
   ]) {
-    expect(validateProductBody(input)).toMatchObject({
+    expect(validateBody(input)).toMatchObject({
       ok: false,
-      error: { operation: 'validateProductBody' },
+      error: { operation: 'validateBody' },
     });
   }
   for (const item of [null, {}, disposed, solid]) {
-    expect(validateProductBody({ kind: 'AUTHORITATIVE', solids: [solid, item] })).toMatchObject({
+    expect(validateBody({ kind: 'AUTHORITATIVE', solids: [solid, item] })).toMatchObject({
       ok: false,
-      error: { operation: 'validateProductBody', itemIndex: 1 },
+      error: { operation: 'validateBody', itemIndex: 1 },
     });
   }
   expect(release).not.toHaveBeenCalled();
@@ -172,16 +170,16 @@ it.each(['copy', 'transform'] as const)(
   (operation) => {
     const baseline = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
     const solid = box(1, 2, 3);
-    const body = unwrap(validateProductBody({ kind: 'AUTHORITATIVE', solids: [solid] }));
+    const body = unwrap(validateBody({ kind: 'AUTHORITATIVE', solids: [solid] }));
     const output = unwrap(
-      operation === 'copy' ? copyProductBody(body) : transformProductBody(body, IDENTITY_FRAME)
+      operation === 'copy' ? copyBody(body) : transformBody(body, IDENTITY_FRAME)
     );
-    expect(disposeProductBody(body)).toEqual({ kind: 'COMPLETE' });
+    expect(disposeBody(body)).toEqual({ kind: 'COMPLETE' });
     try {
       expect(output.solids[0].disposed).toBe(false);
       expect(unwrap(measureVolume(output.solids[0]))).toBeCloseTo(6, 8);
     } finally {
-      expect(disposeProductBody(output)).toEqual({ kind: 'COMPLETE' });
+      expect(disposeBody(output)).toEqual({ kind: 'COMPLETE' });
     }
     if (baseline !== null) expect(nativeShapeCount()).toBe(baseline);
   }

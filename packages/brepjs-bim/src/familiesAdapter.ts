@@ -9,7 +9,7 @@
  * structure and Earthworks Fill bodies; Wall/Slab/Column/Beam/Roof/Stair,
  * Footing/Pile, Railing/Ramp, Covering/CurtainWall, and Space elements; and
  * wall openings — a fill-role void (Door/Window family) maps onto
- * addDoor/addWindow, which cut
+ * addDoorAndCutWall/addWindowAndCutWall, which cut
  * the wall and wire IfcRelVoidsElement + IfcRelFillsElement; the opening and
  * filler GlobalIds derive from the synthesized key paths. Anonymous (non-fill)
  * voids are rejected: they cut only the IR/viewport geometry, and exporting
@@ -76,10 +76,10 @@ import {
 } from './specs/spatialSpec.js';
 import { specError, type BimError } from './errors/bimError.js';
 import type { FillsOpeningRel } from './types/relationships.js';
-import { disposeProductBody } from './types/productBody.js';
-import { prepareCivilProductBody } from './familiesProductBody.js';
+import { disposeBody } from './types/body.js';
+import { prepareCivilBody } from './familiesBody.js';
 import { reportedGeometryCleanup } from './geometryCleanupDiagnostics.js';
-import { cleanupReport } from './productBodyCleanup.js';
+import { cleanupReport } from './bodyCleanup.js';
 
 export interface FamiliesToBimOptions {
   readonly project: ProjectSpec;
@@ -132,7 +132,7 @@ export interface FamiliesBimResult {
 }
 
 export interface FamiliesAdapterTestHooks {
-  readonly afterCivilProductBody?:
+  readonly afterCivilBody?:
     ((model: BimModel, localId: LocalId, element: ResolvedElement) => void) | undefined;
 }
 
@@ -300,7 +300,7 @@ function civilProductArchetype(el: ResolvedElement): keyof typeof SPEC_ROUTES | 
   return definition.archetype;
 }
 
-function civilProductBodyCategory(
+function civilBodyCategory(
   el: ResolvedElement,
   archetype: string | undefined
 ): 'WALL' | 'RAILING' | null {
@@ -576,12 +576,12 @@ function addFill(
   if (archetype === 'door') {
     const parsed = parseDoorSpec(input);
     if (!parsed.ok) return parsed;
-    return model.addDoor(parsed.value, identity);
+    return model.addDoorAndCutWall(parsed.value, identity);
   }
   if (archetype === 'window') {
     const parsed = parseWindowSpec(input);
     if (!parsed.ok) return parsed;
-    return model.addWindow(parsed.value, identity);
+    return model.addWindowAndCutWall(parsed.value, identity);
   }
   return err(
     specError(
@@ -699,7 +699,7 @@ function addProxyElement(
   return added;
 }
 
-/** Map a wall's synthesized Opening children onto addDoor/addWindow. The
+/** Map a wall's synthesized Opening children onto addDoorAndCutWall/addWindowAndCutWall. The
  *  wall-relative offsets come from the void geometry's frame minus the host's:
  *  exact because both carry the same outer host transform. */
 function addOpenings(
@@ -1304,7 +1304,7 @@ function addEarthworksFillElement(
   return added;
 }
 
-function installCivilProductBody(
+function installCivilBody(
   model: BimModel,
   el: ResolvedElement,
   localId: LocalId,
@@ -1321,18 +1321,18 @@ function installCivilProductBody(
       )
     );
   }
-  const prepared = prepareCivilProductBody({
+  const prepared = prepareCivilBody({
     element: el,
     category,
     evaluator,
     productWorldFrame,
   });
   if (!prepared.ok) return prepared;
-  const adopted = model.replaceProductBody({ localId, body: prepared.value });
+  const adopted = model.replaceBody({ localId, body: prepared.value });
   // COMMITTED transfers ownership even if retiring the old candidate failed.
   // The model keeps that diagnostic and owns the new Body through later errors.
   if (adopted.ok) return ok(undefined);
-  const cleanup = disposeProductBody(prepared.value);
+  const cleanup = disposeBody(prepared.value);
   return err({
     ...adopted.error,
     metadata: {
@@ -1340,7 +1340,7 @@ function installCivilProductBody(
       keyPath: el.keyPath,
       category,
       cleanup: cleanupReport([
-        ...reportedGeometryCleanup(adopted.error, 'installCivilProductBody'),
+        ...reportedGeometryCleanup(adopted.error, 'installCivilBody'),
         ...(cleanup.kind === 'FAILED' ? cleanup.diagnostics : []),
       ]),
     },
@@ -1609,7 +1609,7 @@ function projectFamiliesToBim(
         return err(
           specError(
             'FAMILIES_EARTHWORKS_EVALUATOR_REQUIRED',
-            `familiesToBim: Earthworks Fill '${el.keyPath}' needs bodyEvaluator to materialize its exact Product Body`
+            `familiesToBim: Earthworks Fill '${el.keyPath}' needs bodyEvaluator to materialize its exact Body`
           )
         );
       }
@@ -1622,18 +1622,16 @@ function projectFamiliesToBim(
     } else if (route !== undefined) {
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
-      const productBodyCategory = civilProductBodyCategory(el, effectiveArchetype);
-      const productBodyEvaluator =
-        productBodyCategory === null
-          ? undefined
-          : (options.bodyEvaluator ?? options.proxyEvaluator);
-      if (productBodyCategory !== null && productBodyEvaluator === undefined) {
+      const bodyCategory = civilBodyCategory(el, effectiveArchetype);
+      const bodyEvaluator =
+        bodyCategory === null ? undefined : (options.bodyEvaluator ?? options.proxyEvaluator);
+      if (bodyCategory !== null && bodyEvaluator === undefined) {
         return err({
           ...specError(
             'FAMILIES_PRODUCT_BODY_EVALUATOR_REQUIRED',
-            `familiesToBim: civil Product '${el.keyPath}' mapped to ${productBodyCategory} needs bodyEvaluator or proxyEvaluator to verify its authoritative Body`
+            `familiesToBim: civil Product '${el.keyPath}' mapped to ${bodyCategory} needs bodyEvaluator or proxyEvaluator to verify its authoritative Body`
           ),
-          metadata: { keyPath: el.keyPath, category: productBodyCategory },
+          metadata: { keyPath: el.keyPath, category: bodyCategory },
         });
       }
       // The spec path rebuilds the body parametrically: an anonymous
@@ -1697,17 +1695,17 @@ function projectFamiliesToBim(
         const opened = addOpenings(model, el, added.value, nextSpatialStructureId, idByKeyPath);
         if (!opened.ok) return opened;
       }
-      if (productBodyCategory !== null && productBodyEvaluator !== undefined) {
-        const installed = installCivilProductBody(
+      if (bodyCategory !== null && bodyEvaluator !== undefined) {
+        const installed = installCivilBody(
           model,
           el,
           added.value,
-          productBodyCategory,
-          productBodyEvaluator,
+          bodyCategory,
+          bodyEvaluator,
           productFrame
         );
         if (!installed.ok) return installed;
-        testHooks?.afterCivilProductBody?.(model, added.value, el);
+        testHooks?.afterCivilBody?.(model, added.value, el);
       }
     } else if (el.type === 'Opening') {
       return err(

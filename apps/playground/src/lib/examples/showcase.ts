@@ -2171,7 +2171,7 @@ export default present(
     label: 'Office Building',
     description:
       'A steel-framed office building of seven storeys as a BIM model. Each column, beam, slab, wall, stair, door and curtain wall is a typed element in a storey, so the kernel takes off the steel and the concrete, and the Files button saves the IFC file. The steel sections, the planning grid, the storey height, the slab depth, the stair and the facade module are published figures. The core layout, the foundations and the roof are a display model.',
-    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+    code: `import { BimModel, placedSolids, toIfc, frameFromPlacement, frameMul, decomposeFrame } from 'brepjs-bim';
 import { compound, measureVolume, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
@@ -2332,8 +2332,8 @@ function assemble(model: BimModel, owned: Body[], storeys: number, cutaway: bool
     if (!doors) return;
     // A door from the floor to the stair, and one from the stair to the lift lobby.
     const door = { width: 1000, height: 2100, offsetFromFloor: 0, materialName: 'Steel door' };
-    put(level, 'frame', model.addDoor({ ...door, wallLocalId: west, offsetAlongWall: C1[1] - C0[1] - 2 * w - 1500 }));
-    put(level, 'frame', model.addDoor({ ...door, wallLocalId: middle, offsetAlongWall: 500 }));
+    put(level, 'frame', model.addDoorAndCutWall({ ...door, wallLocalId: west, offsetAlongWall: C1[1] - C0[1] - 2 * w - 1500 }));
+    put(level, 'frame', model.addDoorAndCutWall({ ...door, wallLocalId: middle, offsetAlongWall: 500 }));
   }
 
   // The takeoff. The kernel measures the volume of each solid in its place, and a density gives the mass.
@@ -2341,11 +2341,32 @@ function assemble(model: BimModel, owned: Body[], storeys: number, cutaway: bool
   const groups: Record<Tone, Body[]> = { steel: [], slab: [], core: [], stair: [], glass: [], frame: [], ground: [] };
   let steelKg = 0, concreteM3 = 0, solids = 0;
   for (const p of placed) {
-    const list = unwrap(placedSolids(elements.get(p.id) as never, { parentFrame: { origin: [0, 0, p.level * GRID.storey], axisX: X, axisZ: Z } }));
+    const element = elements.get(p.id);
+    if (!element) throw new Error('Missing placed building element');
+    const elevation = p.level * GRID.storey;
+    const storey = { origin: [0, 0, elevation] as P3, axisX: X, axisZ: Z };
+    let list: readonly Body[];
+    if (element.category === 'CURTAIN_WALL') {
+      if (element.placement?.kind !== 'LOCAL_FRAME') throw new Error('Facade needs a local frame');
+      const { origin, axisX, axisZ } = element.placement.frame;
+      const facade = { origin: [origin[0], origin[1], origin[2] + elevation] as P3, axisX, axisZ };
+      list = model.getChildren(p.id).flatMap(child => unwrap(placedSolids(child, { parentFrame: facade })));
+    } else if (element.category === 'DOOR') {
+      const openingId = element.placement.kind === 'LOCAL_FRAME' ? element.placement.relativeTo : undefined;
+      const opening = openingId === undefined ? undefined : elements.get(openingId);
+      const reference = opening?.placement;
+      const wall = reference?.kind === 'LOCAL_FRAME' && reference.relativeTo !== undefined ? elements.get(reference.relativeTo) : undefined;
+      if (reference?.kind !== 'LOCAL_FRAME' || wall?.placement?.kind !== 'LOCAL_FRAME') throw new Error('Missing door opening or host pose');
+      const host = unwrap(frameMul(unwrap(frameFromPlacement(storey)), unwrap(frameFromPlacement(wall.placement.frame))));
+      const parent = unwrap(frameMul(host, unwrap(frameFromPlacement(reference.frame))));
+      list = unwrap(placedSolids(element, { parentFrame: decomposeFrame(parent) }));
+    } else {
+      list = unwrap(placedSolids(element, { parentFrame: storey }));
+    }
     owned.push(...list);
     solids += list.length;
     if (p.tone === 'steel') steelKg += list.reduce((sum, s) => sum + unwrap(measureVolume(s)), 0) * STEEL;
-    else if (p.tone !== 'glass') concreteM3 += list.reduce((sum, s) => sum + unwrap(measureVolume(s)), 0) / 1e9;
+    else if (p.tone !== 'glass' && element.category !== 'DOOR') concreteM3 += list.reduce((sum, s) => sum + unwrap(measureVolume(s)), 0) / 1e9;
     if (p.hidden) continue;
     // A curtain wall gives its glass panes first, then its mullions and transoms.
     if (p.tone === 'glass') { groups.glass.push(...list.slice(0, p.panes)); groups.frame.push(...list.slice(p.panes)); }

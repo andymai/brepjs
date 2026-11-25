@@ -11,7 +11,7 @@ import {
   openingHost,
   singletonWallSolid,
 } from './helpers/openingFixture.js';
-import type { ProductBody } from '../src/types/productBody.js';
+import type { Body } from '../src/types/body.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -52,7 +52,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
                 offsetX: 7,
                 offsetY: 7,
               })
-            : model[kind === 'Door' ? 'addDoor' : 'addWindow']({
+            : model[kind === 'Door' ? 'addDoorAndCutWall' : 'addWindowAndCutWall']({
                 ...DOOR,
                 wallLocalId: host.hostId,
                 get width() {
@@ -78,7 +78,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
         expect(specReads).toBe(0);
         expect(model.getGeometryCleanupDiagnostics()).toMatchObject([
           {
-            operation: kind === 'Slab' ? 'addSlabOpening' : `add${kind}`,
+            operation: kind === 'Slab' ? 'addSlabOpening' : `add${kind}AndCutWall`,
             localId: host.hostId,
             cause,
           },
@@ -134,7 +134,7 @@ it.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)(
       const copied = brepjs.unwrap(brepjs.clone(old));
       const cut = vi.spyOn(brepjs, 'cut');
       expect(
-        model.replaceProductBody({ localId: wallId, body: { kind, solids: [copied] } })
+        model.replaceBody({ localId: wallId, body: { kind, solids: [copied] } })
       ).toMatchObject({ ok: true, value: { kind: 'COMMITTED', localId: wallId } });
       expect(cut).not.toHaveBeenCalled();
       expect(singletonWallSolid(model, wallId)).toBe(copied);
@@ -145,19 +145,18 @@ it.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)(
       );
       expect(model.getAllRelationships()).toEqual(relationships);
       expect(old.disposed).toBe(true);
-      if (kind === 'PARAMETRIC') {
-        const windowId = brepjs.unwrap(model.addWindow({ ...WINDOW, wallLocalId: wallId }));
-        expect(brepjs.getKernel().volume(singletonWallSolid(model, wallId).wrapped)).toBeCloseTo(
-          53,
-          7
-        );
-        expect(model.getElement(windowId)).toMatchObject({
-          category: 'WINDOW',
-          spec: { materialName: 'Glass' },
-        });
-        expect(model.getAllRelationships()).toEqual(expect.arrayContaining(relationships));
-        expect(model.getElement(doorId)).toBe(door);
-      }
+      expect(model.addWindowAndCutWall({ ...WINDOW, wallLocalId: wallId })).toMatchObject({
+        ok: false,
+        error: {
+          code:
+            kind === 'PARAMETRIC'
+              ? 'BODY_OPENING_REQUIRES_RECIPE'
+              : 'AUTHORITATIVE_WALL_BODY_IMMUTABLE',
+        },
+      });
+      expect(cut).not.toHaveBeenCalled();
+      expect(model.getAllRelationships()).toEqual(relationships);
+      expect(singletonWallSolid(model, wallId)).toBe(copied);
     } finally {
       model[Symbol.dispose]();
     }
@@ -171,7 +170,7 @@ it('retains independent native geometry through repeated recipe door and window 
   try {
     const { wallId, doorId } = addWallWithDoor(model);
     const wallAfterDoor = singletonWallSolid(model, wallId);
-    const windowId = brepjs.unwrap(model.addWindow({ ...WINDOW, wallLocalId: wallId }));
+    const windowId = brepjs.unwrap(model.addWindowAndCutWall({ ...WINDOW, wallLocalId: wallId }));
     expect(brepjs.getKernel().volume(singletonWallSolid(model, wallId).wrapped)).toBeCloseTo(53, 7);
     expect(wallAfterDoor.disposed).toBe(true);
     expect(model.getElement(doorId)?.category).toBe('DOOR');
@@ -193,7 +192,7 @@ it('rejects an opening that would split a singleton Wall Body without partial ad
     const wallId = brepjs.unwrap(model.addWall(OPENING_WALL));
     const before = model.getAllElements();
     const relationships = model.getAllRelationships();
-    expect(model.addDoor({ ...DOOR, wallLocalId: wallId, height: 6 })).toMatchObject({
+    expect(model.addDoorAndCutWall({ ...DOOR, wallLocalId: wallId, height: 6 })).toMatchObject({
       ok: false,
       error: { code: 'WALL_OPENING_INVALID_SOLID' },
     });
@@ -215,7 +214,7 @@ it('cuts a singleton recipe Wall and commits door identities, material and owner
     const old = singletonWallSolid(model, wallId);
     const retire = vi.spyOn(old, Symbol.dispose);
     const doorId = brepjs.unwrap(
-      model.addDoor(
+      model.addDoorAndCutWall(
         { ...DOOR, wallLocalId: wallId },
         { stableKey: 'door', openingStableKey: 'opening' }
       )
@@ -258,7 +257,7 @@ it('cuts a singleton recipe Wall and commits door identities, material and owner
 });
 
 const unsupportedBodies: ReadonlyArray<{
-  kind: ProductBody['kind'];
+  kind: Body['kind'];
   multiple: boolean;
   code: string;
 }> = [
@@ -267,7 +266,7 @@ const unsupportedBodies: ReadonlyArray<{
   { kind: 'PARAMETRIC', multiple: true, code: 'MULTI_ITEM_WALL_OPENING_UNSUPPORTED' },
 ];
 
-for (const method of ['addDoor', 'addWindow'] as const) {
+for (const method of ['addDoorAndCutWall', 'addWindowAndCutWall'] as const) {
   it.each(unsupportedBodies)(
     `${method} rejects $kind / multiple=$multiple before allocating or reserving identities`,
     ({ kind, multiple, code }) => {
@@ -277,8 +276,8 @@ for (const method of ['addDoor', 'addWindow'] as const) {
         const id = brepjs.unwrap(model.addWall(OPENING_WALL));
         const supportedId = brepjs.unwrap(model.addWall(OPENING_WALL));
         const first = brepjs.box(10, 1, 6);
-        const solids: ProductBody['solids'] = multiple ? [first, brepjs.box(1, 1, 1)] : [first];
-        brepjs.unwrap(model.replaceProductBody({ localId: id, body: { kind, solids } }));
+        const solids: Body['solids'] = multiple ? [first, brepjs.box(1, 1, 1)] : [first];
+        brepjs.unwrap(model.replaceBody({ localId: id, body: { kind, solids } }));
         const before = model.getAllElements();
         const relationships = model.getAllRelationships();
         const nativeBefore = arena();

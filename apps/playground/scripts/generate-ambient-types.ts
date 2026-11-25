@@ -34,6 +34,8 @@ interface PackageConfig {
   out: string;
   /** Bare module whose referenced types are re-imported instead of inlined. */
   crossImport?: string;
+  /** Include local types used by a barrel export, such as a discriminated record. */
+  includeLocalTypeDependencies?: boolean;
   /** Entry .d.ts relative to the package dir; defaults to dist/index.d.ts. */
   entry?: string;
   /**
@@ -58,7 +60,12 @@ const PACKAGES: PackageConfig[] = [
     out: resolve(TYPES_DIR, 'brepjs-sheetmetal-ambient.d.ts'),
     crossImport: 'brepjs',
   },
-  { name: 'brepjs-bim', out: resolve(TYPES_DIR, 'brepjs-bim-ambient.d.ts'), crossImport: 'brepjs' },
+  {
+    name: 'brepjs-bim',
+    out: resolve(TYPES_DIR, 'brepjs-bim-ambient.d.ts'),
+    crossImport: 'brepjs',
+    includeLocalTypeDependencies: true,
+  },
   {
     name: 'brepjs-families',
     out: resolve(TYPES_DIR, 'brepjs-families-ambient.d.ts'),
@@ -86,7 +93,9 @@ const EXCLUDED_MODULE_RE = /(^|\/)implicit\//;
 
 function generatePackage(pkg: PackageConfig): void {
   const DIST = resolve(NODE_MODULES, pkg.name, 'dist');
-  const ENTRY = pkg.entry ? resolve(NODE_MODULES, pkg.name, pkg.entry) : resolve(DIST, 'index.d.ts');
+  const ENTRY = pkg.entry
+    ? resolve(NODE_MODULES, pkg.name, pkg.entry)
+    : resolve(DIST, 'index.d.ts');
   const OUT = pkg.out;
 
   // Names imported from the crossImport module (e.g. `brepjs`) across every
@@ -412,6 +421,41 @@ function generatePackage(pkg: PackageConfig): void {
 
     const localNames = new Set(byLocal.keys());
     const resolved = resolveDeclarations(filePath, localNames);
+
+    if (pkg.includeLocalTypeDependencies) {
+      const source = parseFile(filePath);
+      if (source) {
+        const locals = new Map<string, ts.Statement>();
+        for (const stmt of source.statements) {
+          const name = getDeclaredName(stmt);
+          if (name) locals.set(name, stmt);
+        }
+        const visited = new Set<string>();
+        function includeReferences(node: ts.Node): void {
+          if (ts.isTypeReferenceNode(node) || ts.isTypeQueryNode(node)) {
+            const ref = ts.isTypeQueryNode(node) ? node.exprName : node.typeName;
+            if (ts.isIdentifier(ref)) {
+              const dependency = locals.get(ref.text);
+              if (dependency && !visited.has(ref.text)) {
+                visited.add(ref.text);
+                if (!resolved.has(ref.text) && !declarations.has(ref.text)) {
+                  declarations.set(
+                    ref.text,
+                    extractWithJsDoc(dependency, dependency.getSourceFile().text)
+                  );
+                }
+                includeReferences(dependency);
+              }
+            }
+          }
+          ts.forEachChild(node, includeReferences);
+        }
+        for (const name of resolved.keys()) {
+          const root = locals.get(name);
+          if (root) includeReferences(root);
+        }
+      }
+    }
 
     for (const [localName, text] of resolved) {
       const exports = byLocal.get(localName);

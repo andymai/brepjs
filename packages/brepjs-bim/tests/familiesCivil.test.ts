@@ -496,7 +496,7 @@ describe('civil Families Projection', () => {
       using model = projected.model;
 
       const fill = required(model.getEarthworksFills()[0], 'projected Earthworks Fill');
-      ownedBody = fill.geometry;
+      ownedBody = fill.geometry.solids[0];
       expect(fill.guid).toBe(
         deriveIfcGuidSync('elem:civil-gate:civil-model/north-site/river-bridge/deck/embankment')
       );
@@ -508,10 +508,10 @@ describe('civil Families Projection', () => {
       expect(projected.proxied).toEqual([]);
 
       const sourceVolume = unwrap(measureVolume(source));
-      const projectedVolume = unwrap(measureVolume(fill.geometry));
+      const projectedVolume = unwrap(measureVolume(fill.geometry.solids[0]));
       expect(projectedVolume).toBeCloseTo(sourceVolume, 3);
       const sourceBounds = getBounds(source);
-      const bounds = getBounds(fill.geometry);
+      const bounds = getBounds(fill.geometry.solids[0]);
       expect(bounds.xMin).toBeCloseTo(sourceBounds.xMin - 6_000, 5);
       expect(bounds.xMax).toBeCloseTo(sourceBounds.xMax - 6_000, 5);
       const boundsVolume =
@@ -878,7 +878,7 @@ describe('civil Families Projection', () => {
     );
     const sourceBounds = getBounds(source);
     const proxy = required(model.getProxies()[0], 'projected proxy');
-    const proxyBounds = getBounds(proxy.geometry);
+    const proxyBounds = getBounds(proxy.geometry.solids[0]);
     expect(proxyBounds.xMin).toBeCloseTo(sourceBounds.xMin - 6_000, 5);
     expect(proxyBounds.xMax).toBeCloseTo(sourceBounds.xMax - 6_000, 5);
 

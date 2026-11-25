@@ -118,7 +118,7 @@ describe('registry families through familiesToBim', () => {
     using model = projected.model;
     const wallAt = (keyPath: string): [number, number, number] | undefined => {
       const localId = projected.idByKeyPath.get(keyPath);
-      return model.getWalls().find((w) => w.localId === localId)?.spec.origin;
+      return model.getWalls().find((w) => w.localId === localId)?.spec?.origin;
     };
     expect(wallAt('g/r/south')).toEqual([1000, 2000, 0]);
     expect(wallAt('g/r/north')).toEqual([1000, 2000 + 3000 - 200, 0]);

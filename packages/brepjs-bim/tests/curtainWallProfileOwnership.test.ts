@@ -45,14 +45,15 @@ it('releases each curtain profile before creating the next component', () => {
     const localId = brepjs.unwrap(model.addCurtainWall(CURTAIN));
     const element = model.getElement(localId);
     if (element?.category !== 'CURTAIN_WALL') throw new Error('Expected curtain wall');
-    const components = [...element.geometry.panels, ...element.geometry.mullions];
-    expect(element.geometry.panels).toHaveLength(12);
-    expect(element.geometry.mullions).toHaveLength(9);
+    const components = model.getChildren(localId);
+    expect(components.filter((c) => c.category === 'PLATE')).toHaveLength(12);
+    expect(components.filter((c) => c.category === 'MEMBER')).toHaveLength(9);
     expect(profiles).toHaveLength(components.length);
     expect(liveBeforeNext).toEqual(components.map(() => 0));
     releases.forEach((release) => expect(release).toHaveBeenCalledTimes(1));
     for (const component of components) {
-      expect(brepjs.unwrap(brepjs.measureVolume(component.solid))).toBeGreaterThan(0);
+      if (component.representation !== 'BODY') throw new Error('Missing component Body');
+      expect(brepjs.unwrap(brepjs.measureVolume(component.geometry.solids[0]))).toBeGreaterThan(0);
     }
     if (baseline !== null) expect(nativeShapeCount()).toBe(baseline + components.length);
   }

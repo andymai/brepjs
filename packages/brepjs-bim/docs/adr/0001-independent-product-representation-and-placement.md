@@ -88,3 +88,7 @@ Both conflict with the package and prototype constraints in this proposal and ad
 [package-json]: https://github.com/andymai/brepjs/blob/4602096ebc3c9ea0263d5b2a1b7d3b6dee24c466/packages/brepjs-bim/package.json
 [barrel]: https://github.com/andymai/brepjs/blob/4602096ebc3c9ea0263d5b2a1b7d3b6dee24c466/packages/brepjs-bim/src/index.ts#L1
 [curtain-wall]: https://github.com/andymai/brepjs/blob/4602096ebc3c9ea0263d5b2a1b7d3b6dee24c466/packages/brepjs-bim/src/ifc-writer/curtainWallWriter.ts#L165
+
+## Step-2 acceptance
+
+An authored Door or Window retains its physical Body. A wall or slab Opening describes a void reference. Standard geometry, bounds and material queries inspect only the record itself. Traverse a curtain wall to reach its separately placed Plate and Member records. Generated Stair and Ramp flights form an ordered retained Body. The extension check covers both direct Member and Sign.

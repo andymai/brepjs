@@ -3,7 +3,7 @@ import { box, DisposalScope, fuseAll, getBounds, measureVolume, unwrap } from 'b
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
 import { placedSolids } from '../src/elementFns/placedGeometry.js';
-import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
+import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
 import { createOverlapFixture } from './helpers/nativeBodyFixture.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 
@@ -12,7 +12,7 @@ beforeAll(async () => {
 }, 30000);
 
 afterEach(() => {
-  setProductBodyTestHooksForTesting(null);
+  setBodyTestHooksForTesting(null);
   vi.restoreAllMocks();
 });
 
@@ -66,7 +66,7 @@ describe('native Body baseline', () => {
       );
       const first = box(1, 1, 1);
       const second = box(1, 1, 1, { at: [0.5, 0, 0] });
-      const adopted = model.replaceProductBody({
+      const adopted = model.replaceBody({
         localId: id,
         body: { kind: 'AUTHORITATIVE', solids: [first, second] },
       });
@@ -83,7 +83,7 @@ describe('native Body baseline', () => {
         expect(liveInputs).toBe(beforeFixture + 2);
       }
       const outputReleases: ReturnType<typeof vi.fn>[] = [];
-      setProductBodyTestHooksForTesting({
+      setBodyTestHooksForTesting({
         afterAllocate: ({ solid }) => {
           outputReleases.push(vi.spyOn(solid, Symbol.dispose));
           if (outputReleases.length === 2) throw new Error('injected later placement failure');

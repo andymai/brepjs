@@ -5,7 +5,7 @@ import type { IfcWriter } from './ifcWriter.js';
 import { toIfcLengthM } from '../units/units.js';
 import { writeAxis2Placement3D } from './headerWriter.js';
 import type { FrameInput } from '../placementFrame.js';
-import type { NonEmpty } from '../types/productBody.js';
+import type { NonEmpty } from '../types/body.js';
 
 export interface TessellationResult {
   readonly productDefinitionShapeId: number;
@@ -35,7 +35,7 @@ export type TessellationPreparation =
   | { readonly ok: true; readonly value: PreparedTessellation }
   | { readonly ok: false; readonly reason: string; readonly cause?: unknown };
 
-export interface ProductBodyRepresentationIds {
+export interface BodyRepresentationIds {
   readonly localPlacementId: number;
   readonly productDefinitionShapeId: number;
   readonly bodyItemIds: readonly number[];
@@ -151,13 +151,11 @@ export function writePreparedTessellationBody(
   return { productDefinitionShapeId, bodyItemIds };
 }
 
-export function writeProductBodyGeometry(
+export function writeBodyPlacement(
   w: IfcWriter,
   placement: FrameInput,
-  items: NonEmpty<PreparedTessellation>,
-  geomSubContextId: number,
   parentPlacementId: number | null
-): ProductBodyRepresentationIds {
+): number {
   const placement3DId = writeAxis2Placement3D(
     w,
     [
@@ -175,6 +173,17 @@ export function writeProductBodyGeometry(
     PlacementRelTo: parentPlacementId === null ? null : w.ref(parentPlacementId),
     RelativePlacement: w.ref(placement3DId),
   });
+  return localPlacementId;
+}
+
+export function writeBodyGeometry(
+  w: IfcWriter,
+  placement: FrameInput,
+  items: NonEmpty<PreparedTessellation>,
+  geomSubContextId: number,
+  parentPlacementId: number | null
+): BodyRepresentationIds {
+  const localPlacementId = writeBodyPlacement(w, placement, parentPlacementId);
   const body = writePreparedTessellationBody(w, items, geomSubContextId);
   return { localPlacementId, ...body };
 }

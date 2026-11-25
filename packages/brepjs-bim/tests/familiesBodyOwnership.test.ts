@@ -5,7 +5,7 @@ import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { specError } from '../src/errors/bimError.js';
 import { familiesToBim, setFamiliesAdapterTestHooksForTesting } from '../src/familiesAdapter.js';
 import { BimModel } from '../src/model/bimModel.js';
-import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
+import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 import {
   BODY_PROJECT,
@@ -20,7 +20,7 @@ beforeAll(async () => {
 }, 30_000);
 afterEach(() => {
   setFamiliesAdapterTestHooksForTesting(null);
-  setProductBodyTestHooksForTesting(null);
+  setBodyTestHooksForTesting(null);
   vi.restoreAllMocks();
 });
 
@@ -61,7 +61,7 @@ describe('Families Body preparation ownership', () => {
       const source = borrowedSources(evaluator, root);
       const inputs = arena();
       const copies: Release[] = [];
-      setProductBodyTestHooksForTesting({
+      setBodyTestHooksForTesting({
         afterAllocate: ({ step, itemIndex, solid }) => {
           if (step !== 'copy') return;
           copies.push(vi.spyOn(solid, Symbol.dispose));
@@ -105,7 +105,7 @@ describe('Families Body preparation ownership', () => {
               const root = bodyTree(civilBody(disconnectedBody()));
               const source = borrowedSources(evaluator, root);
               const inputs = arena();
-              setProductBodyTestHooksForTesting({
+              setBodyTestHooksForTesting({
                 afterAllocate: (event) => {
                   const releases = event.step === 'copy' ? copied : localized;
                   releases.push(
@@ -175,7 +175,7 @@ describe('Families Body preparation ownership', () => {
           const root = bodyTree(civilBody(disconnectedBody()));
           const source = borrowedSources(evaluator, root);
           const inputs = arena();
-          setProductBodyTestHooksForTesting({
+          setBodyTestHooksForTesting({
             afterAllocate: ({ step, itemIndex, solid }) => {
               (step === 'copy' ? copied : localized).push(
                 releaseProbe(
@@ -222,15 +222,15 @@ describe('Families Body adoption ownership', () => {
       const candidates: Release[] = [];
       const outstanding = fault === 'before-release' ? 1 : 0;
       // eslint-disable-next-line @typescript-eslint/unbound-method -- Invoked below with the explicit model receiver via .call().
-      const replace = BimModel.prototype.replaceProductBody;
-      vi.spyOn(BimModel.prototype, 'replaceProductBody').mockImplementation(function (
+      const replace = BimModel.prototype.replaceBody;
+      vi.spyOn(BimModel.prototype, 'replaceBody').mockImplementation(function (
         this: BimModel,
         input
       ) {
         input.body.solids.forEach((solid, index) =>
           candidates.push(releaseProbe(solid, index === 0 ? fault : 'complete', recoveries))
         );
-        setProductBodyTestHooksForTesting({
+        setBodyTestHooksForTesting({
           before: ({ step }) => (step === 'validate' ? err(FAILURE) : undefined),
         });
         return replace.call(this, input);
@@ -280,8 +280,8 @@ describe('Families Body adoption ownership', () => {
         const retired: Release[] = [];
         const outstanding = fault === 'before-release' ? 1 : 0;
         // eslint-disable-next-line @typescript-eslint/unbound-method -- Invoked below with the explicit model receiver via .call().
-        const replace = BimModel.prototype.replaceProductBody;
-        vi.spyOn(BimModel.prototype, 'replaceProductBody').mockImplementation(function (
+        const replace = BimModel.prototype.replaceBody;
+        vi.spyOn(BimModel.prototype, 'replaceBody').mockImplementation(function (
           this: BimModel,
           input
         ) {
@@ -300,7 +300,7 @@ describe('Families Body adoption ownership', () => {
         });
         if (later === 'throw')
           setFamiliesAdapterTestHooksForTesting({
-            afterCivilProductBody: () => {
+            afterCivilBody: () => {
               throw THROWN;
             },
           });
@@ -331,7 +331,7 @@ describe('Families Body adoption ownership', () => {
                   metadata: {
                     cleanup: {
                       kind: 'FAILED',
-                      diagnostics: [expect.objectContaining({ operation: 'replaceProductBody' })],
+                      diagnostics: [expect.objectContaining({ operation: 'replaceBody' })],
                     },
                   },
                 },
@@ -363,7 +363,7 @@ describe('Families Body adoption ownership', () => {
       const adopted: Release[] = [];
       const outstanding = fault === 'before-release' ? 1 : 0;
       setFamiliesAdapterTestHooksForTesting({
-        afterCivilProductBody: (model, id) => {
+        afterCivilBody: (model, id) => {
           const target = model.getElement(id);
           if (target?.category !== 'RAILING') throw new Error('Missing adopted Body');
           target.geometry.solids.forEach((solid, index) =>

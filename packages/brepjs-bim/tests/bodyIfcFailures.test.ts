@@ -7,10 +7,10 @@ import { fromIfc, setFromIfcTestHooksForTesting } from '../src/import/fromIfc.js
 import { SpfReader } from '../src/import/spfReader.js';
 import { disposeImportedModel } from '../src/import/importedModel.js';
 import { setGeometryReadTestHooksForTesting } from '../src/import/geometryRead.js';
-import { setProductBodyItemPreparerForTesting } from '../src/serialize/productBodyPreflight.js';
+import { setBodyItemPreparerForTesting } from '../src/serialize/bodyPreflight.js';
 import { prepareTessellation } from '../src/ifc-writer/tessellationWriter.js';
 import { setIfcWriterTestHooksForTesting } from '../src/ifc-writer/ifcWriter.js';
-import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
+import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 import { IFC_BODY_META, bodyExchangeFixture } from './helpers/ifcBodyFixture.js';
 
@@ -18,11 +18,11 @@ beforeAll(async () => {
   await initKernel();
 }, 30_000);
 afterEach(() => {
-  setProductBodyItemPreparerForTesting(null);
+  setBodyItemPreparerForTesting(null);
   setIfcWriterTestHooksForTesting(null);
   setGeometryReadTestHooksForTesting(null);
   setFromIfcTestHooksForTesting(null);
-  setProductBodyTestHooksForTesting(null);
+  setBodyTestHooksForTesting(null);
   vi.restoreAllMocks();
 });
 
@@ -101,7 +101,7 @@ describe('retained Body export failures', () => {
             const close = vi.spyOn(IfcAPI.prototype, 'CloseModel');
             const save = vi.spyOn(IfcAPI.prototype, 'SaveModel');
             const cause = new Error('later item could not mesh');
-            setProductBodyItemPreparerForTesting((solid) => {
+            setBodyItemPreparerForTesting((solid) => {
               if (solid === fixture.solids[1]) {
                 if (failure === 'throw') throw cause;
                 return { ok: false, reason: cause.message, cause };
@@ -471,7 +471,7 @@ describe('retained Body import failures', () => {
           },
         });
         const cause = new Error(`${failure} unavailable`);
-        setProductBodyTestHooksForTesting({
+        setBodyTestHooksForTesting({
           before: ({ step, itemIndex }) => {
             if (step === failure && (failure !== 'bounds' || itemIndex === 1)) throw cause;
           },

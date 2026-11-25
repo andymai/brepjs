@@ -3,7 +3,8 @@ import { unwrap, measureVolume, box } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
-import { measureProductBodyMaterial } from '../src/types/productBody.js';
+import { measureBodyMaterial } from '../src/types/body.js';
+import { identityPlacement } from '../src/types/placementDefinition.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -227,7 +228,7 @@ describe('BimModel', () => {
   });
 });
 
-describe('BimModel.addDoor', () => {
+describe('BimModel.addDoorAndCutWall', () => {
   function buildWallModel() {
     const model = new BimModel();
     const initResult = model.init({ name: 'Test' });
@@ -247,7 +248,7 @@ describe('BimModel.addDoor', () => {
 
   it('adds a door and creates opening + relationships', () => {
     const { model, wallLocalId } = buildWallModel();
-    const result = model.addDoor({
+    const result = model.addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 500,
@@ -261,7 +262,7 @@ describe('BimModel.addDoor', () => {
 
   it('rejects door that exceeds wall length', () => {
     const { model, wallLocalId } = buildWallModel();
-    const result = model.addDoor({
+    const result = model.addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 4500,
@@ -275,7 +276,7 @@ describe('BimModel.addDoor', () => {
 
   it('rejects door that exceeds wall height', () => {
     const { model, wallLocalId } = buildWallModel();
-    const result = model.addDoor({
+    const result = model.addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 500,
@@ -289,7 +290,7 @@ describe('BimModel.addDoor', () => {
 
   it('rejects door referencing non-existent wall', () => {
     const { model } = buildWallModel();
-    const result = model.addDoor({
+    const result = model.addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 500,
@@ -302,7 +303,7 @@ describe('BimModel.addDoor', () => {
   });
 });
 
-describe('BimModel.addWindow', () => {
+describe('BimModel.addWindowAndCutWall', () => {
   function buildWallModel() {
     const model = new BimModel();
     const initResult = model.init({ name: 'Test' });
@@ -322,7 +323,7 @@ describe('BimModel.addWindow', () => {
 
   it('adds a window and creates opening + relationships', () => {
     const { model, wallLocalId } = buildWallModel();
-    const result = model.addWindow({
+    const result = model.addWindowAndCutWall({
       width: 1200,
       height: 1400,
       offsetAlongWall: 1000,
@@ -336,7 +337,7 @@ describe('BimModel.addWindow', () => {
 
   it('rejects window that exceeds wall bounds', () => {
     const { model, wallLocalId } = buildWallModel();
-    const result = model.addWindow({
+    const result = model.addWindowAndCutWall({
       width: 1200,
       height: 1400,
       offsetAlongWall: 4500,
@@ -361,14 +362,14 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
     const wall = model.getWalls()[0];
     if (!wall) throw new Error('Expected one wall');
     if (wall.geometry.kind !== 'PARAMETRIC') throw new Error('Expected parametric wall Body');
-    return unwrap(measureProductBodyMaterial(wall.geometry.solids));
+    return unwrap(measureBodyMaterial(wall.geometry.solids));
   }
 
-  it('wall volume drops by door volume after addDoor', () => {
+  it('wall volume drops by door volume after addDoorAndCutWall', () => {
     const { model, wallId } = buildWallModel();
     const grossVol = wallVolume(model);
 
-    const doorResult = model.addDoor({
+    const doorResult = model.addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 1000,
@@ -388,7 +389,7 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
     const grossVol = wallVolume(model);
 
     unwrap(
-      model.addDoor({
+      model.addDoorAndCutWall({
         width: 900,
         height: 2100,
         offsetAlongWall: 500,
@@ -398,7 +399,7 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
       })
     );
     unwrap(
-      model.addWindow({
+      model.addWindowAndCutWall({
         width: 1200,
         height: 1500,
         offsetAlongWall: 2500,
@@ -413,13 +414,13 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
     expect(grossVol - netVol).toBeCloseTo(expectedDelta, -2);
   });
 
-  it('addDoor with bounds violation does not mutate the model', () => {
+  it('addDoorAndCutWall with bounds violation does not mutate the model', () => {
     const { model, wallId } = buildWallModel();
     const elementsBefore = model.getAllElements().length;
     const relsBefore = model.getAllRelationships().length;
     const grossVol = wallVolume(model);
 
-    const result = model.addDoor({
+    const result = model.addDoorAndCutWall({
       width: WALL_SPEC.length + 100,
       height: 2100,
       offsetAlongWall: 0,
@@ -434,13 +435,13 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
     expect(wallVolume(model)).toBeCloseTo(grossVol, -2);
   });
 
-  it('addDoor with invalid wall reference does not mutate the model', () => {
+  it('addDoorAndCutWall with invalid wall reference does not mutate the model', () => {
     const { model } = buildWallModel();
     const elementsBefore = model.getAllElements().length;
     const relsBefore = model.getAllRelationships().length;
     const grossVol = wallVolume(model);
 
-    const result = model.addDoor({
+    const result = model.addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 0,
@@ -489,7 +490,7 @@ describe('BimModel.addSlab', () => {
     unwrap(model.addSlab(SLAB_SPEC));
     unwrap(model.addSlab({ ...SLAB_SPEC, predefinedType: 'ROOF' }));
     const slabs = model.getSlabs();
-    expect(slabs.map((s) => s.spec.predefinedType).sort()).toEqual(['FLOOR', 'ROOF']);
+    expect(slabs.map((s) => s.spec?.predefinedType).sort()).toEqual(['FLOOR', 'ROOF']);
   });
 
   it('volume of stored slab geometry matches dimensions', () => {
@@ -498,7 +499,7 @@ describe('BimModel.addSlab', () => {
     if (!result.ok) throw new Error(result.error.message);
     const slab = model.getSlabs()[0];
     if (!slab) throw new Error('Expected one slab');
-    const vol = unwrap(measureVolume(slab.geometry));
+    const vol = unwrap(measureVolume(slab.geometry.solids[0]));
     expect(vol).toBeCloseTo(5000 * 4000 * 200, -2);
   });
 
@@ -509,7 +510,7 @@ describe('BimModel.addSlab', () => {
     const slab = model.getSlabs()[0];
     if (!slab) throw new Error('Expected one slab');
     model[Symbol.dispose]();
-    expect(slab.geometry.disposed).toBe(true);
+    expect(slab.geometry.solids[0].disposed).toBe(true);
   });
 
   it('emits an ASSOCIATES_MATERIAL relationship', () => {
@@ -544,7 +545,7 @@ describe('BimModel.addSlabOpening (M6)', () => {
   function slabVolume(model: BimModel): number {
     const slab = model.getSlabs()[0];
     if (!slab) throw new Error('Expected one slab');
-    return unwrap(measureVolume(slab.geometry));
+    return unwrap(measureVolume(slab.geometry.solids[0]));
   }
 
   it('adds a slab opening and creates VOIDS_SLAB rel', () => {
@@ -731,7 +732,7 @@ describe('BimModel.addBeam (M7)', () => {
     if (!result.ok) throw new Error(result.error.message);
     const beam = model.getBeams()[0];
     if (!beam) throw new Error('Expected one beam');
-    const vol = unwrap(measureVolume(beam.geometry));
+    const vol = unwrap(measureVolume(beam.geometry.solids[0]));
     expect(vol).toBeCloseTo(200 * 400 * 5000, -2);
   });
 
@@ -742,7 +743,7 @@ describe('BimModel.addBeam (M7)', () => {
     const beam = model.getBeams()[0];
     if (!beam) throw new Error('Expected one beam');
     model[Symbol.dispose]();
-    expect(beam.geometry.disposed).toBe(true);
+    expect(beam.geometry.solids[0].disposed).toBe(true);
   });
 
   it('emits an ASSOCIATES_MATERIAL relationship', () => {
@@ -785,7 +786,7 @@ describe('BimModel.addColumn (M7)', () => {
     if (!result.ok) throw new Error(result.error.message);
     const column = model.getColumns()[0];
     if (!column) throw new Error('Expected one column');
-    const vol = unwrap(measureVolume(column.geometry));
+    const vol = unwrap(measureVolume(column.geometry.solids[0]));
     const nominal = Math.PI * 200 * 200 * 3000;
     expect(vol).toBeGreaterThan(nominal * 0.99);
     expect(vol).toBeLessThan(nominal * 1.01);
@@ -798,11 +799,46 @@ describe('BimModel.addColumn (M7)', () => {
     const column = model.getColumns()[0];
     if (!column) throw new Error('Expected one column');
     model[Symbol.dispose]();
-    expect(column.geometry.disposed).toBe(true);
+    expect(column.geometry.solids[0].disposed).toBe(true);
   });
 });
 
 describe('BimModel.toTreeSummary', () => {
+  it('labels authored elements by metadata name or category', () => {
+    using model = new BimModel();
+    const project = unwrap(model.init({ name: 'Project' }));
+    const site = unwrap(model.addSite({ name: 'Site' }));
+    const building = unwrap(model.addBuilding({ name: 'Building' }));
+    const storey = unwrap(model.addStorey({ name: 'Ground', elevation: 0 }));
+    model.aggregate(project, site);
+    model.aggregate(site, building);
+    model.aggregate(building, storey);
+
+    const named = unwrap(
+      model.addAuthoredBody({
+        category: 'SIGN',
+        placement: identityPlacement,
+        solids: [box(10, 2, 5)],
+        metadata: { name: 'Exit' },
+      })
+    );
+    const unnamed = unwrap(
+      model.addAuthoredBody({
+        category: 'SIGN',
+        placement: identityPlacement,
+        solids: [box(10, 2, 5)],
+      })
+    );
+    model.placeIn(named, storey);
+    model.placeIn(unnamed, storey);
+
+    const level = model.toTreeSummary().root?.children[0]?.children[0]?.children[0];
+    expect(level?.children).toEqual([
+      { id: named, label: 'Exit', category: 'SIGN', children: [] },
+      { id: unnamed, label: 'SIGN', category: 'SIGN', children: [] },
+    ]);
+  });
+
   it('returns null root for an uninitialized model', () => {
     const model = new BimModel();
     const tree = model.toTreeSummary();
@@ -826,7 +862,7 @@ describe('BimModel.toTreeSummary', () => {
     if (!wall.ok) throw new Error(wall.error.message);
     model.placeIn(wall.value, storeyId);
 
-    const door = model.addDoor({
+    const door = model.addDoorAndCutWall({
       wallLocalId: wall.value,
       width: 800,
       height: 2000,

@@ -85,7 +85,7 @@ const rearWallId = wallIds[1];
 if (rearWallId === undefined) throw new Error('Expected rear perimeter wall');
 
 const door = expect(
-  model.addDoor({
+  model.addDoorAndCutWall({
     wallLocalId: rearWallId,
     offsetAlongWall: 1200,
     offsetFromFloor: 0,
@@ -96,7 +96,7 @@ const door = expect(
   'door'
 );
 const window = expect(
-  model.addWindow({
+  model.addWindowAndCutWall({
     wallLocalId: rearWallId,
     offsetAlongWall: 5000,
     offsetFromFloor: 900,

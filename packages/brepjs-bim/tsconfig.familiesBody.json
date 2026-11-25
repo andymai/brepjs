@@ -3,7 +3,7 @@
   "include": [
     "tests/setup.ts",
     "tests/familiesAdapter.test.ts",
-    "tests/familiesProductBody.test.ts",
+    "tests/familiesBody.test.ts",
     "tests/familiesBodyOwnership.test.ts",
     "tests/familiesBodyPlacement.test.ts",
     "tests/typedCivilExactBody.test.ts",

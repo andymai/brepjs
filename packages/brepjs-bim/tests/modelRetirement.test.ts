@@ -32,7 +32,7 @@ it('reports post-release failure as COMMITTED, attempts every old item once, and
     const first = box(1, 1, 1);
     const second = box(1, 1, 1);
     unwrap(
-      model.replaceProductBody({
+      model.replaceBody({
         localId: id,
         body: { kind: 'PARAMETRIC', solids: [first, second] },
       })
@@ -65,14 +65,14 @@ it('reports post-release failure as COMMITTED, attempts every old item once, and
     const secondAttempt = vi.spyOn(second, Symbol.dispose).mockImplementation(secondRelease);
     const nextAttempt = vi.spyOn(next, Symbol.dispose);
     const receipt = unwrap(
-      model.replaceProductBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [next] } })
+      model.replaceBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [next] } })
     );
     expect(receipt).toMatchObject({
       kind: 'COMMITTED',
       localId: id,
       cleanup: {
         kind: 'FAILED',
-        diagnostics: [{ operation: 'replaceProductBody', localId: id, itemIndex: 0, cause }],
+        diagnostics: [{ operation: 'replaceBody', localId: id, itemIndex: 0, cause }],
       },
     });
     expect(callbackRead).toBe(model.getElement(id)?.geometry);
@@ -116,12 +116,12 @@ it('retains responsibility for a live uncertain retirement and never readopts or
   try {
     const next = box(2, 2, 2);
     const receipt = unwrap(
-      model.replaceProductBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [next] } })
+      model.replaceBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [next] } })
     );
     expect(receipt.cleanup.kind).toBe('FAILED');
     expect(uncertain.disposed).toBe(false);
     expect(
-      model.replaceProductBody({
+      model.replaceBody({
         localId: id,
         body: { kind: 'AUTHORITATIVE', solids: [uncertain] },
       })
@@ -137,7 +137,7 @@ it('retains responsibility for a live uncertain retirement and never readopts or
     model[Symbol.dispose]();
     expect(attempt).toHaveBeenCalledTimes(1);
     expect(model.getGeometryCleanupDiagnostics()).toMatchObject([
-      { operation: 'replaceProductBody', localId: id, itemIndex: 0, cause },
+      { operation: 'replaceBody', localId: id, itemIndex: 0, cause },
     ]);
     if (baseline !== null) expect(nativeShapeCount()).toBe(baseline + 1);
   } finally {
@@ -203,10 +203,10 @@ it('keeps a successful LocalId outcome and diagnostics when retiring a slab open
     const id = unwrap(model.addSlab({ ...WALL, length: 10, width: 10, predefinedType: 'FLOOR' }));
     const before = model.getElement(id);
     if (before?.category !== 'SLAB') throw new Error('Expected Slab');
-    const release = before.geometry[Symbol.dispose].bind(before.geometry);
+    const release = before.geometry.solids[0][Symbol.dispose].bind(before.geometry.solids[0]);
     let callbackRelationships: unknown;
     const cause = new Error('Old slab release');
-    const attempt = vi.spyOn(before.geometry, Symbol.dispose).mockImplementation(() => {
+    const attempt = vi.spyOn(before.geometry.solids[0], Symbol.dispose).mockImplementation(() => {
       callbackRelationships = model.getAllRelationships();
       release();
       throw cause;
@@ -221,8 +221,10 @@ it('keeps a successful LocalId outcome and diagnostics when retiring a slab open
     ]);
     const after = model.getElement(id);
     if (after?.category !== 'SLAB') throw new Error('Expected Slab');
-    expect(after.geometry === before.geometry).toBe(false);
-    expect(model.addProxy({ name: 'Borrowed slab', solid: after.geometry })).toMatchObject({
+    expect(after.geometry.solids[0] === before.geometry.solids[0]).toBe(false);
+    expect(
+      model.addProxy({ name: 'Borrowed slab', solid: after.geometry.solids[0] })
+    ).toMatchObject({
       ok: false,
       error: { code: 'BODY_OWNERSHIP_CONFLICT' },
     });

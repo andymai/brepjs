@@ -13,15 +13,15 @@ import {
 import { initKernel } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
 import { placedSolids } from '../src/elementFns/placedGeometry.js';
-import { bodySolids } from '../src/types/productBody.js';
-import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
+import { bodySolids } from '../src/types/body.js';
+import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
 import type { BimElement } from '../src/types/bimTypes.js';
 import type { LocalId } from '../src/identity/localId.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import {
-  setProductBodyItemPreparerForTesting,
-  type ProductBodyItemPreparer,
-} from '../src/serialize/productBodyPreflight.js';
+  setBodyItemPreparerForTesting,
+  type BodyItemPreparer,
+} from '../src/serialize/bodyPreflight.js';
 import { setIfcWriterTestHooksForTesting } from '../src/ifc-writer/ifcWriter.js';
 import { prepareTessellation } from '../src/ifc-writer/tessellationWriter.js';
 import { fromIfc } from '../src/import/fromIfc.js';
@@ -32,8 +32,8 @@ beforeAll(async () => {
 }, 30_000);
 
 afterEach(() => {
-  setProductBodyTestHooksForTesting(null);
-  setProductBodyItemPreparerForTesting(null);
+  setBodyTestHooksForTesting(null);
+  setBodyItemPreparerForTesting(null);
   setIfcWriterTestHooksForTesting(null);
   vi.restoreAllMocks();
 });
@@ -60,7 +60,7 @@ const RAILING_SPEC = {
   materialName: 'Steel',
 };
 
-describe('BimModel.replaceProductBody', () => {
+describe('BimModel.replaceBody', () => {
   it('atomically transfers every exact handle and disposes the superseded Body once', () => {
     using model = new BimModel();
     const wallId = required(model.addWall(WALL_SPEC));
@@ -74,7 +74,7 @@ describe('BimModel.replaceProductBody', () => {
     source[Symbol.dispose]();
     const releases = [vi.spyOn(first, Symbol.dispose), vi.spyOn(second, Symbol.dispose)];
 
-    const takeover = model.replaceProductBody({
+    const takeover = model.replaceBody({
       localId: wallId,
       body: { kind: 'AUTHORITATIVE', solids: [first, second] },
     });
@@ -93,28 +93,19 @@ describe('BimModel.replaceProductBody', () => {
 
   it('rejects missing and unsupported targets without taking caller inputs', () => {
     using model = new BimModel();
-    const slabId = required(
-      model.addSlab({
-        length: 1_000,
-        width: 500,
-        thickness: 100,
-        ...FRAME,
-        predefinedType: 'FLOOR',
-        materialName: 'Concrete',
-      })
-    );
+    const projectId = required(model.init({ name: 'Project without geometry' }));
     using missingInput = box(10, 10, 10);
     using categoryInput = box(20, 20, 20);
 
-    const missing = model.replaceProductBody({
+    const missing = model.replaceBody({
       localId: localIdBeyondModel(),
       body: {
         kind: 'AUTHORITATIVE',
         solids: [missingInput],
       },
     });
-    const wrongCategory = model.replaceProductBody({
-      localId: slabId,
+    const wrongCategory = model.replaceBody({
+      localId: projectId,
       body: {
         kind: 'AUTHORITATIVE',
         solids: [categoryInput],
@@ -134,7 +125,7 @@ describe('BimModel.replaceProductBody', () => {
     const original = requiredElement(model, wallId, 'WALL').geometry;
 
     expect(
-      Reflect.apply(model.replaceProductBody.bind(model), model, [
+      Reflect.apply(model.replaceBody.bind(model), model, [
         {
           localId: wallId,
           body: { kind: 'AUTHORITATIVE', solids: [] },
@@ -145,7 +136,7 @@ describe('BimModel.replaceProductBody', () => {
     using duplicate = box(30, 30, 30);
     expect(
       errorCode(
-        model.replaceProductBody({
+        model.replaceBody({
           localId: wallId,
           body: { kind: 'AUTHORITATIVE', solids: [duplicate, duplicate] },
         })
@@ -157,7 +148,7 @@ describe('BimModel.replaceProductBody', () => {
     disposed[Symbol.dispose]();
     expect(
       errorCode(
-        model.replaceProductBody({
+        model.replaceBody({
           localId: wallId,
           body: { kind: 'AUTHORITATIVE', solids: [disposed] },
         })
@@ -167,7 +158,7 @@ describe('BimModel.replaceProductBody', () => {
 
     const invalid = { disposed: false };
     expect(
-      Reflect.apply(model.replaceProductBody.bind(model), model, [
+      Reflect.apply(model.replaceBody.bind(model), model, [
         {
           localId: wallId,
           body: { kind: 'AUTHORITATIVE', solids: [invalid] },
@@ -186,13 +177,13 @@ describe('BimModel.replaceProductBody', () => {
     const selectedRelease = vi.spyOn(selected, Symbol.dispose);
     const replacementRelease = vi.spyOn(replacement, Symbol.dispose);
     expect(
-      model.replaceProductBody({
+      model.replaceBody({
         localId: railingId,
         body: { kind: 'AUTHORITATIVE', solids: [selected] },
       }).ok
     ).toBe(true);
 
-    const second = model.replaceProductBody({
+    const second = model.replaceBody({
       localId: railingId,
       body: {
         kind: 'AUTHORITATIVE',
@@ -222,7 +213,7 @@ describe('BimModel.replaceProductBody', () => {
     if (original.kind !== 'PARAMETRIC') throw new Error('Expected a parametric wall Body');
     const originalRelease = vi.spyOn(original.solids[0], Symbol.dispose);
 
-    const takeover = model.replaceProductBody({
+    const takeover = model.replaceBody({
       localId: wallId,
       body: {
         kind: 'AUTHORITATIVE',
@@ -244,7 +235,7 @@ describe('exact wall mutation and multi-solid placement', () => {
     const wallId = required(model.addWall(WALL_SPEC));
     const exact = box(1_000, 100, 500);
     required(
-      model.replaceProductBody({
+      model.replaceBody({
         localId: wallId,
         body: { kind: 'AUTHORITATIVE', solids: [exact] },
       })
@@ -253,7 +244,7 @@ describe('exact wall mutation and multi-solid placement', () => {
     const relationshipsBefore = model.getAllRelationships();
     const elementsBefore = model.getAllElements();
 
-    const door = model.addDoor({
+    const door = model.addDoorAndCutWall({
       wallLocalId: wallId,
       width: 100,
       height: 200,
@@ -261,7 +252,7 @@ describe('exact wall mutation and multi-solid placement', () => {
       offsetFromFloor: 0,
       materialName: 'Wood',
     });
-    const window = model.addWindow({
+    const window = model.addWindowAndCutWall({
       wallLocalId: wallId,
       width: 100,
       height: 100,
@@ -284,7 +275,7 @@ describe('exact wall mutation and multi-solid placement', () => {
     const first = box(100, 20, 20);
     const second = box(100, 30, 30);
     required(
-      model.replaceProductBody({
+      model.replaceBody({
         localId: railingId,
         body: { kind: 'AUTHORITATIVE', solids: [first, second] },
       })
@@ -322,7 +313,7 @@ describe('exact wall mutation and multi-solid placement', () => {
     const exact = required(clone(item));
     const localVolume = required(measureVolume(exact));
     required(
-      model.replaceProductBody({
+      model.replaceBody({
         localId: wallId,
         body: { kind: 'AUTHORITATIVE', solids: [exact] },
       })
@@ -347,13 +338,13 @@ describe('exact wall mutation and multi-solid placement', () => {
     const first = box(100, 20, 20);
     const second = box(100, 30, 30);
     required(
-      model.replaceProductBody({
+      model.replaceBody({
         localId: railingId,
         body: { kind: 'AUTHORITATIVE', solids: [first, second] },
       })
     );
     const placedReleases: ReturnType<typeof vi.fn>[] = [];
-    setProductBodyTestHooksForTesting({
+    setBodyTestHooksForTesting({
       afterAllocate: ({ solid }) => {
         placedReleases.push(vi.spyOn(solid, Symbol.dispose));
         if (placedReleases.length === 2) throw new Error('injected later placement failure');
@@ -379,7 +370,7 @@ describe('exact Product Body IFC integration', () => {
     const second = translate(source, [0, 0, 480]);
     source[Symbol.dispose]();
     required(
-      model.replaceProductBody({
+      model.replaceBody({
         localId: railingId,
         body: { kind: 'AUTHORITATIVE', solids: [first, second] },
       })
@@ -406,7 +397,7 @@ describe('exact Product Body IFC integration', () => {
     const second = translate(source, [50, 0, 0]);
     source[Symbol.dispose]();
     required(
-      model.replaceProductBody({
+      model.replaceBody({
         localId: wallId,
         body: { kind: 'AUTHORITATIVE', solids: [first, second] },
       })
@@ -438,25 +429,25 @@ describe('exact Product Body IFC integration', () => {
     const exactWall = box(100, 100, 100);
     const exactRailing = box(200, 20, 20);
     required(
-      model.replaceProductBody({
+      model.replaceBody({
         localId: wallId,
         body: { kind: 'AUTHORITATIVE', solids: [exactWall] },
       })
     );
     required(
-      model.replaceProductBody({
+      model.replaceBody({
         localId: railingId,
         body: { kind: 'AUTHORITATIVE', solids: [exactRailing] },
       })
     );
     let prepareCalls = 0;
-    const failingPreparer: ProductBodyItemPreparer = (solid) => {
+    const failingPreparer: BodyItemPreparer = (solid) => {
       prepareCalls++;
       return prepareCalls === 2
         ? { ok: false, reason: 'injected later preflight failure' }
         : prepareTessellation(solid);
     };
-    setProductBodyItemPreparerForTesting(failingPreparer);
+    setBodyItemPreparerForTesting(failingPreparer);
     let closeCalls = 0;
     let writeCalls = 0;
     setIfcWriterTestHooksForTesting({

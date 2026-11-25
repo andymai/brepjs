@@ -91,3 +91,7 @@ This discards explicit local frames and exposes thin geometry to avoidable coord
 
 [placement]: https://github.com/andymai/brepjs/blob/4602096ebc3c9ea0263d5b2a1b7d3b6dee24c466/packages/brepjs-bim/src/elementFns/placedGeometry.ts#L48
 [datum-recovery]: https://github.com/andymai/brepjs/blob/4602096ebc3c9ea0263d5b2a1b7d3b6dee24c466/packages/brepjs-bim/src/familiesAdapter.ts#L967
+
+## Step-2 acceptance
+
+Step 2 records LOCAL_FRAME, GRID_REFERENCE and LINEAR_REFERENCE intent. Only LOCAL_FRAME provides a rigid pose. Placed queries accept a resolved outer frame. Local measurement remains available for unresolved references, while placed queries and IFC export report a capability error. Step 3 owns document parent-chain resolution.

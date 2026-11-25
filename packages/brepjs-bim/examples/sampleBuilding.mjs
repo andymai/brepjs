@@ -87,7 +87,7 @@ if (frontWallId === undefined || sideWallId === undefined)
 
 // A window in the front wall and a door in the side wall.
 const windowId = expect(
-  model.addWindow({
+  model.addWindowAndCutWall({
     width: 1500,
     height: 1200,
     offsetAlongWall: 2250,
@@ -97,10 +97,10 @@ const windowId = expect(
     isExternal: true,
     thermalTransmittance: 1.4,
   }),
-  'addWindow'
+  'addWindowAndCutWall'
 );
 const doorId = expect(
-  model.addDoor({
+  model.addDoorAndCutWall({
     width: 1000,
     height: 2100,
     offsetAlongWall: 1500,
@@ -110,7 +110,7 @@ const doorId = expect(
     isExternal: true,
     fireRating: 'EI 60',
   }),
-  'addDoor'
+  'addDoorAndCutWall'
 );
 model.placeIn(windowId, groundId);
 model.placeIn(doorId, groundId);

@@ -10,7 +10,7 @@ import {
 } from 'brepjs';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { familiesToBim } from '../src/familiesAdapter.js';
-import { measureProductBodyMaterial } from '../src/types/productBody.js';
+import { measureBodyMaterial } from '../src/types/body.js';
 import { createOverlapFixture } from './helpers/nativeBodyFixture.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 import {
@@ -89,8 +89,8 @@ describe('Families civil Product Body authority', () => {
         expect(bounds.zMax).toBeCloseTo(1, 6);
       }
       expect(unwrap(measureVolume(a)) + unwrap(measureVolume(b))).toBeCloseTo(2, 8);
-      expect(unwrap(measureProductBodyMaterial([a, b]))).toBeCloseTo(1.5, 8);
-      expect(unwrap(measureProductBodyMaterial([a, b, p]))).toBeCloseTo(2, 8);
+      expect(unwrap(measureBodyMaterial([a, b]))).toBeCloseTo(1.5, 8);
+      expect(unwrap(measureBodyMaterial([a, b, p]))).toBeCloseTo(2, 8);
       using evaluator = new csg.Evaluator();
       const root = bodyTree(
         civilBody(csg.compound([csg.box(1, 1, 1), csg.translate(csg.box(1, 1, 1), [0.5, 0, 0])]))
@@ -111,7 +111,7 @@ describe('Families civil Product Body authority', () => {
           expectBoundsClose(getBounds(solid), getBounds(index === 0 ? a : b));
           expect(solid).not.toBe(source.solids[index]);
         });
-        expect(unwrap(measureProductBodyMaterial(product.geometry.solids))).toBeCloseTo(1.5, 8);
+        expect(unwrap(measureBodyMaterial(product.geometry.solids))).toBeCloseTo(1.5, 8);
       } finally {
         model[Symbol.dispose]();
       }
@@ -166,7 +166,7 @@ describe('Families civil Product Body authority', () => {
     expect(product.category).toBe(category === 'wall' ? 'WALL' : 'RAILING');
     expect(product.geometry.kind).toBe('AUTHORITATIVE');
     expect(product.geometry.solids).toHaveLength(count);
-    expect(unwrap(measureProductBodyMaterial(product.geometry.solids))).toBeCloseTo(volume, 10);
+    expect(unwrap(measureBodyMaterial(product.geometry.solids))).toBeCloseTo(volume, 10);
   });
 
   it('requires an evaluator for activated civil products', () => {

@@ -13,10 +13,10 @@ import { BimModel } from '../src/model/bimModel.js';
 import type { WallSpec } from '../src/specs/wallSpec.js';
 import type { LocalId } from '../src/identity/localId.js';
 import type { BimError } from '../src/errors/bimError.js';
-import type { ProductBody } from '../src/types/productBody.js';
-import { measureProductBodyMaterial, productBodyBounds } from '../src/types/productBody.js';
+import type { Body } from '../src/types/body.js';
+import { measureBodyMaterial, bodyBounds } from '../src/types/body.js';
 import { placedSolids } from '../src/elementFns/placedGeometry.js';
-import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
+import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
 import { makeLocalIdCounter } from '../src/identity/localId.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
@@ -44,7 +44,7 @@ function expectArena(count: number | null) {
 }
 afterEach(() => {
   vi.restoreAllMocks();
-  setProductBodyTestHooksForTesting(null);
+  setBodyTestHooksForTesting(null);
 });
 
 it.each(['Proxy', 'Fill'] as const)(
@@ -83,7 +83,9 @@ it.each(['Proxy', 'Fill'] as const)(
         command({ name: 'Valid', materialName: 'Test', solid: valid }, { stableKey: 'retry-solid' })
       );
       expect(retry).toBe(existing + 1);
-      expect(model.getElement(retry)?.geometry).toBe(valid);
+      const adopted = model.getElement(retry);
+      if (adopted?.representation !== 'BODY') throw new Error('Expected a retained Body');
+      expect(adopted.geometry.solids[0]).toBe(valid);
     }
     expectArena(baseline);
   }
@@ -98,8 +100,8 @@ it('creates bodyless records without native allocation or ownership', () => {
   unwrap(model.addBridgePart({ name: 'Part', usageType: 'LONGITUDINAL' }));
   unwrap(model.addBuilding({ name: 'Building' }));
   unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
-  unwrap(model.addStair({ materialName: 'Concrete', flights: [] }));
-  unwrap(model.addRamp({ materialName: 'Concrete', flights: [] }));
+  expect(model.addStair({ materialName: 'Concrete', flights: [] }).ok).toBe(false);
+  expect(model.addRamp({ materialName: 'Concrete', flights: [] }).ok).toBe(false);
   unwrap(model.addElementAssembly({ name: 'Assembly' }));
   unwrap(model.addZone({ name: 'Zone' }));
   unwrap(model.addSystem({ name: 'System' }));
@@ -118,13 +120,13 @@ it('rejects missing or unsupported targets before reading the incoming Body', ()
   const site = unwrap(model.addSite({ name: 'Site' }));
   using input = box(1, 1, 1);
   let reads = 0;
-  const body = { kind: 'AUTHORITATIVE', solids: [input] } satisfies ProductBody;
+  const body = { kind: 'AUTHORITATIVE', solids: [input] } satisfies Body;
   for (const [id, code] of [
     [makeLocalIdCounter(1000).next(), 'BODY_TARGET_NOT_FOUND'],
     [site, 'BODY_UNSUPPORTED_CATEGORY'],
   ] as const) {
     expect(
-      model.replaceProductBody({
+      model.replaceBody({
         localId: id,
         get body() {
           reads++;
@@ -146,8 +148,9 @@ it('snapshots caller ownership descriptors without freezing the caller or clonin
   spec.solid = second;
   const element = model.getElement(id);
   if (element?.category !== 'PROXY') throw new Error('Expected Proxy');
-  expect(element.geometry).toBe(first);
-  expect(element.spec.solid).toBe(first);
+  expect(element.geometry.solids[0]).toBe(first);
+  if (element.spec === null) throw new Error('Missing Proxy metadata');
+  expect(element.spec).not.toHaveProperty('solid');
   expect(Reflect.set(element.spec, 'solid', second)).toBe(false);
   expect(Object.isFrozen(spec)).toBe(false);
   model[Symbol.dispose]();
@@ -164,7 +167,7 @@ it('leaves earlier live inputs unregistered when a later item has an ownership c
     if (before?.category !== 'WALL') throw new Error('Expected Wall');
     const first = box(1, 1, 1);
     expect(
-      model.replaceProductBody({
+      model.replaceBody({
         localId: id,
         body: { kind: 'PARAMETRIC', solids: [first, before.geometry.solids[0]] },
       })
@@ -217,25 +220,20 @@ it.each(creators)(
     if (element === null) throw new Error('Missing created element');
     expect(Object.isFrozen(element)).toBe(true);
     let items: readonly ValidSolid[];
-    if (element.category === 'WALL' || element.category === 'RAILING')
-      items = element.geometry.solids;
+    if (element.representation === 'BODY') items = element.geometry.solids;
     else if (element.category === 'CURTAIN_WALL') {
-      expect(Object.isFrozen(element.geometry)).toBe(true);
-      expect(Object.isFrozen(element.geometry.panels)).toBe(true);
-      expect(Object.isFrozen(element.geometry.mullions)).toBe(true);
-      const parts = [...element.geometry.panels, ...element.geometry.mullions];
-      for (const part of parts) {
-        expect(Object.isFrozen(part)).toBe(true);
-        expect(Reflect.set(part, 'solid', box)).toBe(false);
-        expect(Reflect.set(part.origin, 0, 999)).toBe(false);
-      }
-      items = parts.map(({ solid }) => solid);
-    } else if (element.geometry !== null) items = [element.geometry];
-    else throw new Error('Expected retained geometry');
+      expect(element.representation).toBe('NONE');
+      items = model.getChildren(id).flatMap((child) => {
+        if (child.representation !== 'BODY') throw new Error('Missing component Body');
+        expect(Object.isFrozen(child.geometry.solids)).toBe(true);
+        expect(Object.isFrozen(child.placement)).toBe(true);
+        return [...child.geometry.solids];
+      });
+    } else throw new Error('Expected retained geometry');
     const attempts = items.map((solid) => vi.spyOn(solid, Symbol.dispose));
     for (const item of items) {
       expect(
-        model.replaceProductBody({
+        model.replaceBody({
           localId: target,
           body: { kind: 'AUTHORITATIVE', solids: [item] },
         })
@@ -268,8 +266,8 @@ it.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)(
         const id = unwrap(model.addWall(WALL));
         const first = box(1, 1, 1, { at: [0.5, 0.5, 0.5] });
         const second = box(1, 1, 1, { at: [offset + 0.5, 0.5, 0.5] });
-        const input = { kind, solids: [first, second] } satisfies ProductBody;
-        unwrap(model.replaceProductBody({ localId: id, body: input }));
+        const input = { kind, solids: [first, second] } satisfies Body;
+        unwrap(model.replaceBody({ localId: id, body: input }));
         input.solids.reverse();
         input.solids.pop();
         Reflect.set(input, 'kind', 'INVALID');
@@ -281,11 +279,11 @@ it.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)(
         expect(Reflect.set(element.geometry.solids, 0, second)).toBe(false);
         expect(Object.isFrozen(first)).toBe(false);
         expect(element.geometry.solids).toEqual([first, second]);
-        expect(unwrap(measureProductBodyMaterial(element.geometry.solids))).toBeCloseTo(
+        expect(unwrap(measureBodyMaterial(element.geometry.solids))).toBeCloseTo(
           offset < 1 ? 1 + offset : 2,
           8
         );
-        const bounds = unwrap(productBodyBounds(element.geometry, { kind: 'LOCAL' }));
+        const bounds = unwrap(bodyBounds(element.geometry, { kind: 'LOCAL' }));
         expect(bounds.bounds.xMin).toBeCloseTo(0, 6);
         expect(bounds.bounds.xMax).toBeCloseTo(1 + offset, 6);
         const placed = unwrap(placedSolids(element));
@@ -316,7 +314,7 @@ it('preserves identity, descriptive spec, style, placement and relationship obje
   const before = model.getElement(id);
   const relations = model.getAllRelationships();
   unwrap(
-    model.replaceProductBody({
+    model.replaceBody({
       localId: id,
       body: { kind: 'AUTHORITATIVE', solids: [box(4, 5, 6)] },
     })
@@ -335,13 +333,13 @@ it('rolls back generated adoption failures and later relationship failures witho
   const records = model.getAllElements();
   const relationships = model.getAllRelationships();
   const live = arena();
-  setProductBodyTestHooksForTesting({
+  setBodyTestHooksForTesting({
     before: ({ step }) => {
       if (step === 'validate') throw new Error('Adoption validation');
     },
   });
   expect(model.addWall(WALL, { stableKey: 'retry' })).toMatchObject({ ok: false });
-  setProductBodyTestHooksForTesting(null);
+  setBodyTestHooksForTesting(null);
   expectArena(live);
   const layers = new Proxy([{ name: 'Brick', thicknessMm: 1 }], {
     get(target, key, receiver): unknown {
@@ -392,7 +390,7 @@ it('rejects malformed runtime Bodies and later native validation throws without 
     },
   ];
   for (const body of invalid) {
-    const result: unknown = Reflect.apply(model.replaceProductBody.bind(model), model, [
+    const result: unknown = Reflect.apply(model.replaceBody.bind(model), model, [
       { localId: id, body },
     ]);
     expect(result).toMatchObject({ ok: false });
@@ -408,7 +406,7 @@ it('rejects malformed runtime Bodies and later native validation throws without 
     return shapeType(raw);
   });
   expect(
-    model.replaceProductBody({
+    model.replaceBody({
       localId: id,
       body: { kind: 'AUTHORITATIVE', solids: [first, second] },
     })
@@ -420,7 +418,7 @@ it('rejects malformed runtime Bodies and later native validation throws without 
       throw cause;
     },
   });
-  const rejected: unknown = Reflect.apply(model.replaceProductBody.bind(model), model, [
+  const rejected: unknown = Reflect.apply(model.replaceBody.bind(model), model, [
     { localId: id, body: { kind: 'AUTHORITATIVE', solids: throwingItems } },
   ]);
   expect(rejected).toMatchObject({ ok: false, error: { itemIndex: 1, cause } });

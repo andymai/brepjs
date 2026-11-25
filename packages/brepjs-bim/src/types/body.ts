@@ -23,34 +23,30 @@ import {
   type CleanupReport,
   type GeometryCleanupDiagnostic,
   type OwnedBodyResource,
-} from '../productBodyCleanup.js';
-import { productBodyTestHooks, type BodyNativeStep } from '../productBodyTestHooks.js';
+} from '../bodyCleanup.js';
+import { bodyTestHooks, type BodyNativeStep } from '../bodyTestHooks.js';
 
-export type { CleanupReport, GeometryCleanupDiagnostic } from '../productBodyCleanup.js';
+export type { CleanupReport, GeometryCleanupDiagnostic } from '../bodyCleanup.js';
 export type NonEmpty<T> = readonly [T, ...T[]];
 
-export type ProductBody =
+export type Body =
   | { readonly kind: 'PARAMETRIC'; readonly solids: NonEmpty<ValidSolid> }
   | { readonly kind: 'AUTHORITATIVE'; readonly solids: NonEmpty<ValidSolid> };
 
-export type ProductBodyOperation =
-  | 'validateProductBody'
-  | 'copyProductBody'
-  | 'transformProductBody'
-  | 'productBodyBounds'
-  | 'measureProductBodyMaterial';
+export type BodyOperation =
+  'validateBody' | 'copyBody' | 'transformBody' | 'bodyBounds' | 'measureBodyMaterial';
 
-export interface ProductBodyError extends BimError {
-  readonly operation: ProductBodyOperation;
+export interface BodyError extends BimError {
+  readonly operation: BodyOperation;
   readonly itemIndex?: number;
   readonly cleanup: CleanupReport;
 }
 
-export type ProductBodySpace =
+export type BodySpace =
   | { readonly kind: 'LOCAL' }
   | { readonly kind: 'RESOLVED'; readonly tag: string; readonly frame: RigidFrame };
 
-export interface ProductBodyBounds {
+export interface BodyBounds {
   readonly space: { readonly kind: 'LOCAL' } | { readonly kind: 'RESOLVED'; readonly tag: string };
   readonly bounds: Readonly<Bounds3D>;
 }
@@ -68,13 +64,13 @@ const boundsSpaceSchema = z.discriminatedUnion('kind', [
 ]);
 
 function bodyError(
-  operation: ProductBodyOperation,
+  operation: BodyOperation,
   code: string,
   message: string,
   cause?: unknown,
   itemIndex?: number,
   cleanup: CleanupReport = COMPLETE_CLEANUP
-): ProductBodyError {
+): BodyError {
   return {
     kind: 'BIM_GEOMETRY',
     operation,
@@ -86,7 +82,7 @@ function bodyError(
   };
 }
 
-function snapshot(kind: ProductBody['kind'], solids: NonEmpty<ValidSolid>): ProductBody {
+function snapshot(kind: Body['kind'], solids: NonEmpty<ValidSolid>): Body {
   const items: NonEmpty<ValidSolid> = Object.freeze([solids[0], ...solids.slice(1)]);
   return Object.freeze({ kind, solids: items });
 }
@@ -100,15 +96,15 @@ export function wrappedResourceObject(solid: unknown): object | undefined {
 }
 
 /** @internal Capture opaque items before any native query, so owners can reject retired aliases. */
-export function snapshotProductBodyInput(
+export function snapshotBodyInput(
   input: unknown
-): Result<z.infer<typeof descriptorSchema>, ProductBodyError> {
+): Result<z.infer<typeof descriptorSchema>, BodyError> {
   try {
     const parsed = descriptorSchema.safeParse(input);
     if (!parsed.success)
       return err(
         bodyError(
-          'validateProductBody',
+          'validateBody',
           'BODY_INVALID_DESCRIPTOR',
           'Expected a supported authority and a nonempty solids array',
           parsed.error
@@ -121,7 +117,7 @@ export function snapshotProductBodyInput(
       } catch (cause) {
         return err(
           bodyError(
-            'validateProductBody',
+            'validateBody',
             'BODY_VALIDATION_FAILED',
             'Item snapshot threw',
             cause,
@@ -132,9 +128,7 @@ export function snapshotProductBodyInput(
     }
     return ok(Object.freeze({ kind: parsed.data.kind, solids: Object.freeze(items) }));
   } catch (cause) {
-    return err(
-      bodyError('validateProductBody', 'BODY_VALIDATION_FAILED', 'Body validation threw', cause)
-    );
+    return err(bodyError('validateBody', 'BODY_VALIDATION_FAILED', 'Body validation threw', cause));
   }
 }
 
@@ -143,10 +137,10 @@ export function snapshotProductBodyInput(
  * ownership precondition; rejection does not disable an alias's disposer/finalizer.
  * Freezing a descriptor/collection neither clones nor transfers native handles.
  */
-export function validateProductBody(input: unknown): Result<ProductBody, ProductBodyError> {
-  const captured = snapshotProductBodyInput(input);
+export function validateBody(input: unknown): Result<Body, BodyError> {
+  const captured = snapshotBodyInput(input);
   if (!captured.ok) return captured;
-  const items = validateItems(captured.value.solids, 'validateProductBody');
+  const items = validateItems(captured.value.solids, 'validateBody');
   return items.ok ? ok(snapshot(captured.value.kind, items.value)) : items;
 }
 
@@ -173,8 +167,8 @@ function isLiveValidSolid(value: unknown): value is ValidSolid {
 
 function validateItems(
   input: unknown,
-  operation: ProductBodyOperation
-): Result<NonEmpty<ValidSolid>, ProductBodyError> {
+  operation: BodyOperation
+): Result<NonEmpty<ValidSolid>, BodyError> {
   if (!Array.isArray(input) || input.length === 0)
     return err(bodyError(operation, 'BODY_EMPTY_ITEMS', 'Expected a nonempty solids array'));
   const identities = new Set<ValidSolid>();
@@ -182,7 +176,7 @@ function validateItems(
   const solids: ValidSolid[] = [];
   for (let itemIndex = 0; itemIndex < input.length; itemIndex++) {
     try {
-      const injected = productBodyTestHooks()?.before?.({ step: 'validate', itemIndex });
+      const injected = bodyTestHooks()?.before?.({ step: 'validate', itemIndex });
       if (injected && !injected.ok)
         return err(
           bodyError(
@@ -231,7 +225,7 @@ function validateItems(
 }
 
 /** Borrow protected Product-local items. Borrowers must not dispose the retained handles. */
-export function bodySolids(body: ProductBody): NonEmpty<ValidSolid> {
+export function bodySolids(body: Body): NonEmpty<ValidSolid> {
   return Object.isFrozen(body.solids)
     ? body.solids
     : Object.freeze([body.solids[0], ...body.solids.slice(1)]);
@@ -240,10 +234,10 @@ export function bodySolids(body: ProductBody): NonEmpty<ValidSolid> {
 /** Owner-only cleanup. COMPLETE means no failure was observable at the BIM boundary.
  * A FAILED release must not be retried: its native-release outcome can be unknown.
  */
-export function disposeProductBody(body: ProductBody): CleanupReport {
+export function disposeBody(body: Body): CleanupReport {
   return cleanupOwnedResources(
     bodySolids(body).map((resource, itemIndex) => ({ resource, itemIndex })),
-    { operation: 'disposeProductBody' }
+    { operation: 'disposeBody' }
   );
 }
 
@@ -258,9 +252,9 @@ function diagnostics(report: CleanupReport): readonly GeometryCleanupDiagnostic[
 }
 
 function ownedOperation<T>(
-  operation: ProductBodyOperation,
+  operation: BodyOperation,
   work: (scope: OperationScope) => Result<T, BimError>
-): Result<T, ProductBodyError> {
+): Result<T, BodyError> {
   const scope: OperationScope = { itemIndex: 0, temporaries: [], outputs: [] };
   let result: Result<T, BimError>;
   try {
@@ -310,7 +304,7 @@ function ownedOperation<T>(
 }
 
 function before(step: BodyNativeStep, itemIndex: number): Result<void, BimError> {
-  return productBodyTestHooks()?.before?.({ step, itemIndex }) ?? ok(undefined);
+  return bodyTestHooks()?.before?.({ step, itemIndex }) ?? ok(undefined);
 }
 
 function allocateItems(
@@ -337,7 +331,7 @@ function allocateItems(
     if (!created.ok)
       return err(fromBrepError(created.error, 'BODY_COPY_FAILED', 'Could not copy Body item'));
     target.push({ resource: created.value, itemIndex });
-    const checked = productBodyTestHooks()?.afterAllocate?.({
+    const checked = bodyTestHooks()?.afterAllocate?.({
       step,
       itemIndex,
       solid: created.value,
@@ -351,40 +345,35 @@ function allocateItems(
 }
 
 /** Borrow a Body; return a fresh independently owned copy with unchanged authority/order. */
-export function copyProductBody(body: ProductBody): Result<ProductBody, ProductBodyError> {
-  const prepared = validateProductBody(body);
-  if (!prepared.ok) return err({ ...prepared.error, operation: 'copyProductBody' });
-  return ownedOperation('copyProductBody', (scope) => {
+export function copyBody(body: Body): Result<Body, BodyError> {
+  const prepared = validateBody(body);
+  if (!prepared.ok) return err({ ...prepared.error, operation: 'copyBody' });
+  return ownedOperation('copyBody', (scope) => {
     const copied = allocateItems(prepared.value.solids, scope, scope.outputs);
     return copied.ok ? ok(snapshot(prepared.value.kind, copied.value)) : copied;
   });
 }
 
 /** Borrow inputs; even identity placement returns fresh, independently disposable items. */
-export function transformProductBody(
-  body: ProductBody,
-  frame: RigidFrame
-): Result<ProductBody, ProductBodyError> {
+export function transformBody(body: Body, frame: RigidFrame): Result<Body, BodyError> {
   const checked = frameMul(IDENTITY_FRAME, frame);
   if (!checked.ok)
     return err(
-      bodyError('transformProductBody', checked.error.code, checked.error.message, checked.error)
+      bodyError('transformBody', checked.error.code, checked.error.message, checked.error)
     );
-  const prepared = validateProductBody(body);
-  if (!prepared.ok) return err({ ...prepared.error, operation: 'transformProductBody' });
-  return ownedOperation('transformProductBody', (scope) => {
+  const prepared = validateBody(body);
+  if (!prepared.ok) return err({ ...prepared.error, operation: 'transformBody' });
+  return ownedOperation('transformBody', (scope) => {
     const placed = allocateItems(prepared.value.solids, scope, scope.outputs, checked.value);
     return placed.ok ? ok(snapshot(prepared.value.kind, placed.value)) : placed;
   });
 }
 
 /** Occupied material in mm³. Borrowed imported items need no authored Body descriptor. */
-export function measureProductBodyMaterial(
-  solids: NonEmpty<ValidSolid>
-): Result<number, ProductBodyError> {
-  const checked = validateItems(solids, 'measureProductBodyMaterial');
+export function measureBodyMaterial(solids: NonEmpty<ValidSolid>): Result<number, BodyError> {
+  const checked = validateItems(solids, 'measureBodyMaterial');
   if (!checked.ok) return checked;
-  return ownedOperation('measureProductBodyMaterial', (scope) => {
+  return ownedOperation('measureBodyMaterial', (scope) => {
     let material = checked.value[0];
     if (checked.value.length > 1) {
       const ready = before('union', 0);
@@ -396,7 +385,7 @@ export function measureProductBodyMaterial(
         );
       material = fused.value;
       scope.temporaries.push({ resource: material, itemIndex: 0 });
-      const injected = productBodyTestHooks()?.afterAllocate?.({
+      const injected = bodyTestHooks()?.afterAllocate?.({
         step: 'union',
         itemIndex: 0,
         solid: material,
@@ -405,7 +394,7 @@ export function measureProductBodyMaterial(
     }
     const ready = before('measure', 0);
     if (!ready.ok) return ready;
-    const measured = (productBodyTestHooks()?.measure ?? measureVolume)(material);
+    const measured = (bodyTestHooks()?.measure ?? measureVolume)(material);
     if (!measured.ok)
       return err(
         fromBrepError(
@@ -417,7 +406,7 @@ export function measureProductBodyMaterial(
     if (!Number.isFinite(measured.value) || measured.value <= 0)
       return err(
         bodyError(
-          'measureProductBodyMaterial',
+          'measureBodyMaterial',
           'BODY_INVALID_VOLUME',
           'Expected a positive finite occupied volume in mm³',
           measured.value
@@ -428,15 +417,15 @@ export function measureProductBodyMaterial(
 }
 
 /** All-item tight bounds. A resolved tag belongs to the caller, not a document identity. */
-export function productBodyBounds(
-  body: ProductBody | NonEmpty<ValidSolid>,
-  space: ProductBodySpace = { kind: 'LOCAL' }
-): Result<ProductBodyBounds, ProductBodyError> {
+export function bodyBounds(
+  body: Body | NonEmpty<ValidSolid>,
+  space: BodySpace = { kind: 'LOCAL' }
+): Result<BodyBounds, BodyError> {
   const resolved = validateBoundsSpace(space);
   if (!resolved.ok) return resolved;
   const checked = validateBoundsItems(body);
   if (!checked.ok) return checked;
-  return ownedOperation('productBodyBounds', (scope) => {
+  return ownedOperation('bodyBounds', (scope) => {
     const items =
       resolved.value.kind === 'LOCAL'
         ? checked
@@ -447,7 +436,7 @@ export function productBodyBounds(
       scope.itemIndex = itemIndex;
       const ready = before('bounds', itemIndex);
       if (!ready.ok) return ready;
-      const current = (productBodyTestHooks()?.bounds ?? getBounds)(solid);
+      const current = (bodyTestHooks()?.bounds ?? getBounds)(solid);
       if (
         !Object.values(current).every(Number.isFinite) ||
         current.xMin > current.xMax ||
@@ -456,7 +445,7 @@ export function productBodyBounds(
       )
         return err(
           bodyError(
-            'productBodyBounds',
+            'bodyBounds',
             'BODY_INVALID_BOUNDS',
             'Expected finite ordered bounds',
             current,
@@ -484,11 +473,11 @@ export function productBodyBounds(
   });
 }
 
-function validateBoundsSpace(space: ProductBodySpace): Result<ProductBodySpace, ProductBodyError> {
+function validateBoundsSpace(space: BodySpace): Result<BodySpace, BodyError> {
   const invalid = (cause?: unknown) =>
     err(
       bodyError(
-        'productBodyBounds',
+        'bodyBounds',
         'BODY_INVALID_SPACE',
         'Expected LOCAL or a named RESOLVED space',
         cause
@@ -501,9 +490,7 @@ function validateBoundsSpace(space: ProductBodySpace): Result<ProductBodySpace, 
     if (space.kind !== 'RESOLVED') return invalid();
     const frame = frameMul(IDENTITY_FRAME, space.frame);
     if (!frame.ok)
-      return err(
-        bodyError('productBodyBounds', frame.error.code, frame.error.message, frame.error)
-      );
+      return err(bodyError('bodyBounds', frame.error.code, frame.error.message, frame.error));
     return ok({ kind: 'RESOLVED', tag: parsed.data.tag, frame: frame.value });
   } catch (cause) {
     return invalid(cause);
@@ -511,11 +498,11 @@ function validateBoundsSpace(space: ProductBodySpace): Result<ProductBodySpace, 
 }
 
 function validateBoundsItems(
-  input: ProductBody | NonEmpty<ValidSolid>
-): Result<NonEmpty<ValidSolid>, ProductBodyError> {
-  if (Array.isArray(input)) return validateItems(input, 'productBodyBounds');
-  const prepared = validateProductBody(input);
+  input: Body | NonEmpty<ValidSolid>
+): Result<NonEmpty<ValidSolid>, BodyError> {
+  if (Array.isArray(input)) return validateItems(input, 'bodyBounds');
+  const prepared = validateBody(input);
   return prepared.ok
     ? ok(prepared.value.solids)
-    : err({ ...prepared.error, operation: 'productBodyBounds' });
+    : err({ ...prepared.error, operation: 'bodyBounds' });
 }

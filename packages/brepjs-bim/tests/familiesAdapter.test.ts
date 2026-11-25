@@ -21,7 +21,7 @@ import { familiesToBim } from '../src/familiesAdapter.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 import { checkReferentialIntegrity } from '../src/validation/referentialIntegrity.js';
-import { bodySolids } from '../src/types/productBody.js';
+import { bodySolids } from '../src/types/body.js';
 import { BimModel } from '../src/model/bimModel.js';
 
 beforeAll(async () => {
@@ -529,11 +529,11 @@ describe('familiesToBim openings', () => {
       wallLocalId: wallId,
       materialName: 'Wood',
     };
-    const dupFiller = model.addDoor(spec, { stableKey: 'storey-1/w1/voids:d1/fill' });
+    const dupFiller = model.addDoorAndCutWall(spec, { stableKey: 'storey-1/w1/voids:d1/fill' });
     expect(isOk(dupFiller)).toBe(false);
-    const dupOpening = model.addDoor(spec, { openingStableKey: 'storey-1/w1/voids:d1' });
+    const dupOpening = model.addDoorAndCutWall(spec, { openingStableKey: 'storey-1/w1/voids:d1' });
     expect(isOk(dupOpening)).toBe(false);
-    const selfCollision = model.addDoor(spec, { stableKey: 'k', openingStableKey: 'k' });
+    const selfCollision = model.addDoorAndCutWall(spec, { stableKey: 'k', openingStableKey: 'k' });
     expect(isOk(selfCollision)).toBe(false);
   });
 });
@@ -662,12 +662,12 @@ describe('archetype routing', () => {
     );
     using evaluator = new csg.Evaluator();
     const volumesByWall = new Map<
-      Parameters<BimModel['replaceProductBody']>[0]['localId'],
+      Parameters<BimModel['replaceBody']>[0]['localId'],
       readonly [number, number]
     >();
     // eslint-disable-next-line @typescript-eslint/unbound-method -- Invoked below with the explicit model receiver via .call().
-    const replace = BimModel.prototype.replaceProductBody;
-    vi.spyOn(BimModel.prototype, 'replaceProductBody').mockImplementation(function (
+    const replace = BimModel.prototype.replaceBody;
+    vi.spyOn(BimModel.prototype, 'replaceBody').mockImplementation(function (
       this: BimModel,
       input
     ) {

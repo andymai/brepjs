@@ -1,5 +1,5 @@
 import { GeometryCleanupError } from 'brepjs';
-import type { NonEmpty } from './types/productBody.js';
+import type { NonEmpty } from './types/body.js';
 
 export interface GeometryCleanupDiagnostic {
   readonly operation: string;

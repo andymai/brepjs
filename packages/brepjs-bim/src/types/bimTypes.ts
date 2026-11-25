@@ -1,4 +1,3 @@
-import type { ValidSolid } from 'brepjs';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import type { LocalId } from '../identity/localId.js';
 import type { WallSpec } from '../specs/wallSpec.js';
@@ -10,7 +9,6 @@ import type { ProxySpec } from '../specs/proxySpec.js';
 import type { SpaceSpec } from '../specs/spaceSpec.js';
 import type { RoofSpec } from '../specs/roofSpec.js';
 import type { CurtainWallSpec } from '../specs/curtainWallSpec.js';
-import type { CurtainWallGrid } from '../elementFns/curtainWallFns.js';
 import type { FootingSpec, PileSpec } from '../specs/foundationSpec.js';
 import type { StairSpec } from '../specs/stairSpec.js';
 import type { RampSpec } from '../specs/rampSpec.js';
@@ -24,26 +22,36 @@ import type {
   BridgeSpec,
   EarthworksFillSpec,
 } from '../specs/infrastructureSpec.js';
-import type { ProductBody } from './productBody.js';
+import type { PlacementDefinition } from './placementDefinition.js';
+import type { Body } from './body.js';
+
+export const bodyClassifications = [
+  'WALL',
+  'RAILING',
+  'MEMBER',
+  'PLATE',
+  'SIGN',
+  'DOOR',
+  'WINDOW',
+  'STAIR',
+  'RAMP',
+  'SLAB',
+  'ROOF',
+  'SPACE',
+  'COVERING',
+  'BEAM',
+  'COLUMN',
+  'FOOTING',
+  'PILE',
+  'PROXY',
+  'EARTHWORKS_FILL',
+] as const;
+export type BodyClassification = (typeof bodyClassifications)[number];
 
 export type BimCategory =
-  | 'WALL'
-  | 'SLAB'
-  | 'BEAM'
-  | 'COLUMN'
+  | BodyClassification
   | 'OPENING'
-  | 'DOOR'
-  | 'WINDOW'
-  | 'PROXY'
-  | 'SPACE'
-  | 'ROOF'
   | 'CURTAIN_WALL'
-  | 'FOOTING'
-  | 'PILE'
-  | 'STAIR'
-  | 'RAMP'
-  | 'RAILING'
-  | 'COVERING'
   | 'ELEMENT_ASSEMBLY'
   | 'ZONE'
   | 'SYSTEM'
@@ -51,7 +59,6 @@ export type BimCategory =
   | 'SITE'
   | 'BRIDGE'
   | 'BRIDGE_PART'
-  | 'EARTHWORKS_FILL'
   | 'BUILDING'
   | 'STOREY';
 
@@ -81,113 +88,71 @@ export function isSlabOpening(spec: OpeningSpec): spec is SlabOpeningSpec {
   return spec.kind === 'SLAB_OPENING';
 }
 
-export type BimSpecFor<C extends BimCategory> = C extends 'WALL'
-  ? WallSpec
-  : C extends 'SLAB'
-    ? SlabSpec
-    : C extends 'BEAM'
-      ? BeamSpec
-      : C extends 'COLUMN'
-        ? ColumnSpec
-        : C extends 'OPENING'
-          ? OpeningSpec
-          : C extends 'DOOR'
-            ? DoorSpec
-            : C extends 'WINDOW'
-              ? WindowSpec
-              : C extends 'PROXY'
-                ? ProxySpec
-                : C extends 'SPACE'
-                  ? SpaceSpec
-                  : C extends 'ROOF'
-                    ? RoofSpec
-                    : C extends 'CURTAIN_WALL'
-                      ? CurtainWallSpec
-                      : C extends 'FOOTING'
-                        ? FootingSpec
-                        : C extends 'PILE'
-                          ? PileSpec
-                          : C extends 'STAIR'
-                            ? StairSpec
-                            : C extends 'RAMP'
-                              ? RampSpec
-                              : C extends 'RAILING'
-                                ? RailingSpec
-                                : C extends 'COVERING'
-                                  ? CoveringSpec
-                                  : C extends 'ELEMENT_ASSEMBLY'
-                                    ? ElementAssemblySpec
-                                    : C extends 'ZONE'
-                                      ? ZoneSpec
-                                      : C extends 'SYSTEM'
-                                        ? SystemSpec
-                                        : C extends 'PROJECT'
-                                          ? ProjectSpec
-                                          : C extends 'SITE'
-                                            ? SiteSpec
-                                            : C extends 'BRIDGE'
-                                              ? BridgeSpec
-                                              : C extends 'BRIDGE_PART'
-                                                ? BridgePartSpec
-                                                : C extends 'EARTHWORKS_FILL'
-                                                  ? EarthworksFillSpec
-                                                  : C extends 'BUILDING'
-                                                    ? BuildingSpec
-                                                    : C extends 'STOREY'
-                                                      ? StoreySpec
-                                                      : never;
+export interface CurtainComponentSpec {
+  readonly name: string;
+  readonly size: readonly [number, number, number];
+}
 
-export type BimGeometryFor<C extends BimCategory> = C extends 'CURTAIN_WALL'
-  ? CurtainWallGrid
-  : C extends 'WALL' | 'RAILING'
-    ? ProductBody
-    : C extends
-          | 'SLAB'
-          | 'BEAM'
-          | 'COLUMN'
-          | 'PROXY'
-          | 'EARTHWORKS_FILL'
-          | 'SPACE'
-          | 'ROOF'
-          | 'FOOTING'
-          | 'PILE'
-          | 'COVERING'
-      ? ValidSolid
-      : null;
+interface ClassificationSpecs {
+  WALL: WallSpec;
+  SLAB: SlabSpec;
+  BEAM: BeamSpec;
+  COLUMN: ColumnSpec;
+  OPENING: OpeningSpec;
+  DOOR: Omit<DoorSpec, 'wallLocalId' | 'offsetFromFloor' | 'offsetAlongWall'>;
+  WINDOW: Omit<WindowSpec, 'wallLocalId' | 'offsetFromFloor' | 'offsetAlongWall'>;
+  PROXY: Omit<ProxySpec, 'solid'>;
+  SPACE: SpaceSpec;
+  ROOF: RoofSpec;
+  CURTAIN_WALL: CurtainWallSpec;
+  FOOTING: FootingSpec;
+  PILE: PileSpec;
+  STAIR: StairSpec;
+  RAMP: RampSpec;
+  RAILING: RailingSpec;
+  COVERING: CoveringSpec;
+  ELEMENT_ASSEMBLY: ElementAssemblySpec;
+  ZONE: ZoneSpec;
+  SYSTEM: SystemSpec;
+  PROJECT: ProjectSpec;
+  SITE: SiteSpec;
+  BRIDGE: BridgeSpec;
+  BRIDGE_PART: BridgePartSpec;
+  EARTHWORKS_FILL: Omit<EarthworksFillSpec, 'solid'>;
+  BUILDING: BuildingSpec;
+  STOREY: StoreySpec;
+  MEMBER: CurtainComponentSpec;
+  PLATE: CurtainComponentSpec;
+  SIGN: never;
+}
 
-export interface BimElement<C extends BimCategory> {
+export type BimSpecFor<C extends BimCategory> = ClassificationSpecs[C];
+
+export type BimGeometryFor<C extends BimCategory> = C extends BodyClassification ? Body : null;
+
+type BodySpec<C extends BimCategory> =
+  BimGeometryFor<C> extends Body ? BimSpecFor<C> | null : BimSpecFor<C>;
+
+type RecordGeometry<C extends BimCategory> =
+  BimGeometryFor<C> extends Body
+    ? {
+        readonly representation: 'BODY';
+        readonly placement: PlacementDefinition;
+        readonly geometry: BimGeometryFor<C>;
+      }
+    : {
+        readonly representation: 'NONE';
+        readonly reason: 'ASSEMBLY' | 'OPENING_REFERENCE' | 'SPATIAL' | 'GROUP';
+        readonly geometry: null;
+        readonly placement: PlacementDefinition | null;
+      };
+
+export type BimElement<C extends BimCategory> = RecordGeometry<C> & {
+  readonly metadata?: Readonly<{ name?: string; description?: string }>;
   readonly guid: IfcGuid;
   readonly localId: LocalId;
   readonly category: C;
-  readonly spec: BimSpecFor<C>;
-  readonly geometry: BimGeometryFor<C>;
-}
+  readonly spec: BodySpec<C>;
+};
 
-export type AnyBimElement =
-  | BimElement<'WALL'>
-  | BimElement<'SLAB'>
-  | BimElement<'BEAM'>
-  | BimElement<'COLUMN'>
-  | BimElement<'OPENING'>
-  | BimElement<'DOOR'>
-  | BimElement<'WINDOW'>
-  | BimElement<'PROXY'>
-  | BimElement<'SPACE'>
-  | BimElement<'ROOF'>
-  | BimElement<'CURTAIN_WALL'>
-  | BimElement<'FOOTING'>
-  | BimElement<'PILE'>
-  | BimElement<'STAIR'>
-  | BimElement<'RAMP'>
-  | BimElement<'RAILING'>
-  | BimElement<'COVERING'>
-  | BimElement<'ELEMENT_ASSEMBLY'>
-  | BimElement<'ZONE'>
-  | BimElement<'SYSTEM'>
-  | BimElement<'PROJECT'>
-  | BimElement<'SITE'>
-  | BimElement<'BRIDGE'>
-  | BimElement<'BRIDGE_PART'>
-  | BimElement<'EARTHWORKS_FILL'>
-  | BimElement<'BUILDING'>
-  | BimElement<'STOREY'>;
+export type AnyBimElement = { [C in BimCategory]: BimElement<C> }[BimCategory];

@@ -1,3 +1,4 @@
+import { wallOpeningFrame } from '../../src/elementFns/openingFrames.js';
 import * as WebIFC from 'web-ifc';
 import { deriveIfcGuidSync } from '../../src/identity/guidDerivation.js';
 import { writeWallEntity } from '../../src/ifc-writer/entityWriter.js';
@@ -116,6 +117,7 @@ export async function bodyFixture(options: BodyFixtureOptions): Promise<Uint8Arr
         offsetFromFloor: 0,
         ...opening,
       },
+      wallOpeningFrame({ kind: 'WALL_OPENING', offsetFromFloor: 0, ...opening }, 100),
       {
         length: 250,
         height: 100,

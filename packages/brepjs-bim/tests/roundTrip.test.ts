@@ -316,7 +316,7 @@ describe('IFC Opening round-trip (M3)', () => {
     if (!wallResult.ok) throw new Error(wallResult.error.message);
     model.placeIn(wallResult.value, storeyId);
 
-    const doorResult = model.addDoor({
+    const doorResult = model.addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 500,
@@ -328,7 +328,7 @@ describe('IFC Opening round-trip (M3)', () => {
     });
     if (!doorResult.ok) throw new Error(doorResult.error.message);
 
-    const windowResult = model.addWindow({
+    const windowResult = model.addWindowAndCutWall({
       width: 1200,
       height: 1400,
       offsetAlongWall: 2000,
@@ -546,7 +546,7 @@ describe('IFC Opening round-trip (M3)', () => {
       materialName: 'Concrete',
     });
     if (!wallResult.ok) throw new Error(wallResult.error.message);
-    const doorResult = model.addDoor({
+    const doorResult = model.addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 500,

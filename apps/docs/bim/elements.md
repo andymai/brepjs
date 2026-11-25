@@ -5,11 +5,11 @@ description: 'Every parametric element brepjs-bim authors: structural, spatial, 
 
 # Element Catalog
 
-Every element has a typed, validated spec in millimeters. Parametric physical elements build analytical brepjs solids in local coordinates; civil spatial elements are body-less, and Earthworks Fill accepts an arbitrary validated body. Placement is applied downstream via `IfcLocalPlacement`.
+Parametric elements build local solids from typed recipes in millimeters. Directly authored elements retain the supplied solids and placement. Civil spatial elements have no Body. The IFC writer applies placement through `IfcLocalPlacement`.
 
 | Element         | Method                   | Notes                                                                                |
 | --------------- | ------------------------ | ------------------------------------------------------------------------------------ |
-| Wall            | `addWall`                | Length along `axisX`, openings cut via `addDoor` / `addWindow`                       |
+| Wall            | `addWall`                | Length along `axisX`. Cut with `addDoorAndCutWall` or `addWindowAndCutWall`          |
 | Slab            | `addSlab`                | `FLOOR` / `ROOF` / `LANDING` / `BASESLAB`; slab openings via `parseSlabOpeningInput` |
 | Beam            | `addBeam`                | Profile extruded along `axisX` by length                                             |
 | Column          | `addColumn`              | Profile extruded along `axisZ` by height                                             |
@@ -26,7 +26,9 @@ Every element has a typed, validated spec in millimeters. Parametric physical el
 | Earthworks fill | `addEarthworksFill`      | IFC4X3 typed arbitrary Product Body, material, and spatial containment               |
 | Proxy           | `addProxy`               | Anything else, carrying arbitrary brepjs geometry                                    |
 
-Doors and windows are not free-standing: `addDoor` / `addWindow` take a host wall, cut the opening as a boolean void, and wire `IfcRelVoidsElement` + `IfcRelFillsElement`.
+Use `addFillerPanel()` to create a Door or Window panel at its own placement. Supply `openingLocalId` to fill an existing Opening. For a custom Door or Window shape, pass the solids to `addAuthoredBody()`.
+
+Use `addDoorAndCutWall()` or `addWindowAndCutWall()` to cut a wall and add the filler in one atomic operation. These commands create the Opening and record the void and fill relationships for IFC export.
 
 ## Profiles
 
@@ -47,21 +49,23 @@ On the brepjs side, `extendedProfileToFace` builds the section face for the soli
 
 ## Placement and display
 
-Element geometry is **unplaced template geometry**. `origin` / `axisX` / `axisZ` live in the spec and become `IfcLocalPlacement`. Wall and railing `.geometry` is a `ProductBody` whose `kind` is `PARAMETRIC` or `AUTHORITATIVE`. Both authorities hold a nonempty, ordered `solids` collection. `bodySolids()` borrows Product-local handles; do not dispose them.
+Element geometry is **unplaced template geometry**. `origin` / `axisX` / `axisZ` live in the spec and become `IfcLocalPlacement`. Each material-bearing record has a `Body` whose `kind` is `PARAMETRIC` or `AUTHORITATIVE`. Both authorities hold a nonempty, ordered `solids` collection. `bodySolids()` borrows Product-local handles; do not dispose them.
 
-Use `model.replaceProductBody({ localId, body: { kind: 'AUTHORITATIVE', solids } })` to install the complete Body atomically. An error transfers nothing and leaves model state unchanged. Success returns a `COMMITTED` receipt and transfers all supplied solids to the model. Inspect its `cleanup` report separately: a failed release of the old Body does not undo the commit or return ownership of the new Body. Do not retry uncertain releases. An authoritative Body cannot revert to parametric authority.
+Use `model.replaceBody({ localId, body: { kind: 'AUTHORITATIVE', solids } })` to install the complete Body atomically. An error transfers nothing and leaves model state unchanged. Success returns a `COMMITTED` receipt and transfers all supplied solids to the model. Inspect its `cleanup` report separately: a failed release of the old Body does not undo the commit or return ownership of the new Body. Do not retry uncertain releases. An authoritative Body cannot revert to parametric authority.
 
-Register wall openings before installing an authoritative Body. Later `addDoor()` and `addWindow()` calls return `AUTHORITATIVE_WALL_BODY_IMMUTABLE`. Existing opening relationships survive replacement, and the retained Body must already contain their geometry.
+Cut recipe openings before replacing the host Body. A singleton `PARAMETRIC` replacement returns `BODY_OPENING_REQUIRES_RECIPE` on a subsequent recipe cut. An authoritative host returns `AUTHORITATIVE_WALL_BODY_IMMUTABLE` when its recipe is present. Existing Opening relationships survive replacement.
+
+A cut-in Door or Window uses its Opening as its placement parent. The Opening carries a local frame relative to the host. To query the filler in world coordinates, compose the host’s world frame with the Opening frame and supply the result as `parentFrame`.
 
 Retained Wall apertures export as IFC `Reference` geometry with void and fill relationships. IfcOpenShell 0.8.5 still subtracts Reference openings by default, even with a separate Reference context. If a replacement Body adds material inside a retained opening, readers using that engine can remove the added material.
 
 `familiesToBim()` performs that sequence for civil-semantic walls and railings using `bodyEvaluator` (or `proxyEvaluator`). Those routes require an evaluator: missing it returns `FAMILIES_PRODUCT_BODY_EVALUATOR_REQUIRED`. The adapter copies every authored item into Product-local coordinates and always retains `AUTHORITATIVE` authority, even when the authored Body coincides with a recipe. Conventional archetype routes retain their existing recipe authoring behavior.
 
-`placedSolids(element)` returns fresh, caller-owned solids transformed by the element's own placement. For an element beneath a placed spatial structure, pass its cumulative frame as `placedSolids(element, { parentFrame })` to obtain world coordinates. Both Product Body authorities return one placed copy per item. Stairs and ramps return one per flight, and curtain walls return their panels and mullions. Geometry-free elements return an empty list. Dispose every returned solid.
+`placedSolids(element)` returns fresh, caller-owned solids transformed by the element's own placement. For an element beneath a placed spatial structure, pass its cumulative frame as `placedSolids(element, { parentFrame })` to obtain world coordinates. Each Body returns one copy per retained item. Curtain walls have no Body. Traverse their Plate/Member records with `model.getChildren(id)` and pass the parent frame explicitly. Own-geometry queries on a NONE record return `ELEMENT_HAS_NO_BODY`. Dispose every returned solid.
 
 Wall net volume measures the occupied union of all Body items. Length, Width, and Height remain nominal dimensions from the Wall spec. After Body replacement, those dimensions do not establish gross volume, surface quantities, or weight. Recipe-derived quantities require current model recipe eligibility; replacing a Body clears that eligibility even if the replacement is tagged `PARAMETRIC`. Measurement failures omit the affected quantities and produce `WALL_QUANTITY_OMITTED` issues from `toIfcValidated()`.
 
-Other categories retain class-specific storage in step 1. Converging that storage and removing the transitional model ownership enumerator are step-2 work.
+Use `model.addAuthoredBody({ category, placement, solids })` for any supported material-bearing class. Use `elementBounds` and `elementMaterialVolume` to query its own geometry. The material volume counts overlap once.
 
 ## Data layers
 

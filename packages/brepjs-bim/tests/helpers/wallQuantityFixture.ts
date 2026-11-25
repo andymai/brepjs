@@ -40,9 +40,9 @@ export function recipeWallFixture() {
     return {
       model,
       localId,
-      addDoor() {
+      addDoorAndCutWall() {
         const door = unwrap(
-          model.addDoor({
+          model.addDoorAndCutWall({
             wallLocalId: localId,
             width: 200,
             height: 300,

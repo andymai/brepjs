@@ -71,3 +71,7 @@ This preserves shape at the cost of requested Classification and does not solve 
 [body-type]: https://github.com/andymai/brepjs/blob/4602096ebc3c9ea0263d5b2a1b7d3b6dee24c466/packages/brepjs-bim/src/types/productBody.ts#L5
 [takeover]: https://github.com/andymai/brepjs/blob/4602096ebc3c9ea0263d5b2a1b7d3b6dee24c466/packages/brepjs-bim/src/model/bimModel.ts#L372
 [routes]: https://github.com/andymai/brepjs/blob/4602096ebc3c9ea0263d5b2a1b7d3b6dee24c466/packages/brepjs-bim/src/familiesAdapter.ts#L216
+
+## Step-2 acceptance
+
+The IFC writer can use an existing recipe encoding while it remains bound to the retained Body. Every public replacement invalidates that binding, including fresh coincident items and changes of partition. Generated flight descriptions bind to the ordered items of that specific Body. Typed flight export reports a capability error when the binding is absent. Adding a filler to an Opening and cutting a host are separate commands. An explicit combined command performs both atomically.

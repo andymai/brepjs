@@ -1,16 +1,51 @@
+import { flightItems } from '../model/flightBody.js';
+import { frameInverse } from '../placementFrame.js';
+import { disposeBody, transformBody, type Body } from '../types/body.js';
+import { preflightBody } from '../serialize/bodyPreflight.js';
+import type { LocalId } from '../identity/localId.js';
+import { ok, err } from 'brepjs';
 import * as WebIFC from 'web-ifc';
 import type { IfcWriter } from './ifcWriter.js';
 import { writeAxis2Placement3D } from './headerWriter.js';
-import { writeTessellation } from './tessellationWriter.js';
+import { writePreparedTessellationBody } from './tessellationWriter.js';
 import { writeRelAggregates } from './relWriter.js';
 import { deriveIfcGuidSync } from '../identity/guidDerivation.js';
 import { toIfcLengthM } from '../units/units.js';
 import type { StairSpec, StairFlightSpec } from '../specs/stairSpec.js';
 import type { RampSpec } from '../specs/rampSpec.js';
-import { stairFlightToSolid } from '../elementFns/stairFns.js';
-import { rampFlightToSolid } from '../elementFns/rampFns.js';
 import type { BimError } from '../errors/bimError.js';
 import { specError } from '../errors/bimError.js';
+
+function prepareFlight(body: Body, localId: LocalId, index: number, properties: object) {
+  const bindings = flightItems(body);
+  if (!bindings.ok) return bindings;
+  const binding = bindings.value[index];
+  if (!binding || binding.item.properties !== properties)
+    return err(
+      specError(
+        'FLIGHT_ASSOCIATION_REQUIRED',
+        'Flight description is not bound to the retained Body'
+      )
+    );
+  const solid = body.solids[binding.item.index];
+  if (!solid)
+    return err(specError('FLIGHT_ASSOCIATION_REQUIRED', 'Flight Body item is unavailable'));
+  const inverse = frameInverse(binding.item.frame);
+  if (!inverse.ok) return inverse;
+  const local = transformBody({ kind: body.kind, solids: [solid] }, inverse.value);
+  if (!local.ok) return local;
+  const prepared = preflightBody({ localId, solids: local.value.solids });
+  const cleanup = disposeBody(local.value);
+  if (cleanup.kind === 'FAILED')
+    return err(
+      specError(
+        'FLIGHT_EXPORT_CLEANUP_FAILED',
+        'Flight export could not release its temporary copy',
+        cleanup
+      )
+    );
+  return prepared.ok ? ok({ items: prepared.value, key: binding.key }) : prepared;
+}
 
 export interface AssemblyWriteResult {
   /** Express ID of the IfcStair / IfcRamp assembly entity. */
@@ -284,6 +319,8 @@ export function writeStairAssembly(
   w: IfcWriter,
   spec: StairSpec,
   stairKey: string,
+  body: Body,
+  localId: LocalId,
   assemblyGuid: string,
   ownerHistoryId: number,
   geomSubContextId: number,
@@ -319,13 +356,11 @@ export function writeStairAssembly(
   );
 
   const flightExpressIds: number[] = [];
-  let geometrySimplified = false;
+  const geometrySimplified = false;
 
   for (const [i, flight] of spec.flights.entries()) {
-    const built = stairFlightToSolid(flight);
-    if (!built.ok) return { ok: false, error: built.error };
-
-    using flightSolid = built.value.solid;
+    const prepared = prepareFlight(body, localId, i, flight);
+    if (!prepared.ok) return prepared;
     const flightPlacementId = writeLocalPlacement(
       w,
       flight.origin,
@@ -333,10 +368,9 @@ export function writeStairAssembly(
       flight.axisX,
       stairPlacementId
     );
-    const tess = writeTessellation(w, flightSolid, geomSubContextId, flightPlacementId);
-    if (tess.usedFallback) geometrySimplified = true;
+    const tess = writePreparedTessellationBody(w, prepared.value.items, geomSubContextId);
 
-    const flightGuid = deriveIfcGuidSync(`elem:STAIR_FLIGHT:${stairKey}:${i}`);
+    const flightGuid = deriveIfcGuidSync(`elem:STAIR_FLIGHT:${prepared.value.key}`);
     const flightExpressId = writeStairFlightEntity(
       w,
       flightGuid,
@@ -390,6 +424,8 @@ export function writeRampAssembly(
   w: IfcWriter,
   spec: RampSpec,
   rampKey: string,
+  body: Body,
+  localId: LocalId,
   assemblyGuid: string,
   ownerHistoryId: number,
   geomSubContextId: number,
@@ -426,10 +462,8 @@ export function writeRampAssembly(
   const geometrySimplified = true;
 
   for (const [i, flight] of spec.flights.entries()) {
-    const built = rampFlightToSolid(flight);
-    if (!built.ok) return { ok: false, error: built.error };
-
-    using flightSolid = built.value.solid;
+    const prepared = prepareFlight(body, localId, i, flight);
+    if (!prepared.ok) return prepared;
     const flightPlacementId = writeLocalPlacement(
       w,
       flight.origin,
@@ -437,9 +471,9 @@ export function writeRampAssembly(
       flight.axisX,
       rampPlacementId
     );
-    const tess = writeTessellation(w, flightSolid, geomSubContextId, flightPlacementId);
+    const tess = writePreparedTessellationBody(w, prepared.value.items, geomSubContextId);
 
-    const flightGuid = deriveIfcGuidSync(`elem:RAMP_FLIGHT:${rampKey}:${i}`);
+    const flightGuid = deriveIfcGuidSync(`elem:RAMP_FLIGHT:${prepared.value.key}`);
     const flightPredefined = flight.predefinedType ?? 'STRAIGHT';
     const flightExpressId = writeRampFlightEntity(
       w,

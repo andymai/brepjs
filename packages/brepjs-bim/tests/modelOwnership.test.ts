@@ -45,7 +45,7 @@ it('commits fresh multi-item Bodies, preserves identity, and rejects authority r
   const first = box(1, 1, 1);
   const second = box(1, 1, 1);
   const receipt = unwrap(
-    model.replaceProductBody({
+    model.replaceBody({
       localId: id,
       body: { kind: 'PARAMETRIC', solids: [first, second] },
     })
@@ -62,12 +62,10 @@ it('commits fresh multi-item Bodies, preserves identity, and rejects authority r
   expect(after.spec).toBe(before.spec);
   expect(after.geometry.solids).toEqual([first, second]);
   const authored = box(2, 2, 2);
-  unwrap(
-    model.replaceProductBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [authored] } })
-  );
+  unwrap(model.replaceBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [authored] } }));
   using rejected = box(3, 3, 3);
   expect(
-    model.replaceProductBody({ localId: id, body: { kind: 'PARAMETRIC', solids: [rejected] } })
+    model.replaceBody({ localId: id, body: { kind: 'PARAMETRIC', solids: [rejected] } })
   ).toMatchObject({ ok: false, error: { code: 'BODY_AUTHORITY_TRANSITION' } });
   expect(rejected.disposed).toBe(false);
   expect(model.getElement(id)?.geometry).toMatchObject({
@@ -75,9 +73,7 @@ it('commits fresh multi-item Bodies, preserves identity, and rejects authority r
     solids: [authored],
   });
   const later = box(4, 4, 4);
-  unwrap(
-    model.replaceProductBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [later] } })
-  );
+  unwrap(model.replaceBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [later] } }));
   expect(authored.disposed).toBe(true);
   expect(model.getElement(id)?.geometry).toMatchObject({ kind: 'AUTHORITATIVE', solids: [later] });
 });
@@ -92,19 +88,21 @@ it('rejects borrowed Body handles in either adoption direction without consuming
     model.addProxy({ name: 'Borrowed', solid: borrowed }, { stableKey: 'retry' })
   ).toMatchObject({ ok: false, error: { code: 'BODY_OWNERSHIP_CONFLICT' } });
   expect(
-    model.replaceProductBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [borrowed] } })
+    model.replaceBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [borrowed] } })
   ).toMatchObject({ ok: false, error: { code: 'BODY_OWNERSHIP_CONFLICT' } });
   const independent = unwrap(clone(borrowed));
   const proxy = unwrap(
     model.addProxy({ name: 'Independent', solid: independent }, { stableKey: 'retry' })
   );
   expect(
-    model.replaceProductBody({
+    model.replaceBody({
       localId: id,
       body: { kind: 'AUTHORITATIVE', solids: [independent] },
     })
   ).toMatchObject({ ok: false, error: { code: 'BODY_OWNERSHIP_CONFLICT' } });
-  expect(model.getElement(proxy)?.geometry).toBe(independent);
+  const adopted = model.getElement(proxy);
+  if (adopted?.representation !== 'BODY') throw new Error('Expected a retained Body');
+  expect(adopted.geometry.solids[0]).toBe(independent);
   expect(borrowed.disposed).toBe(false);
   expect(independent.disposed).toBe(false);
 });

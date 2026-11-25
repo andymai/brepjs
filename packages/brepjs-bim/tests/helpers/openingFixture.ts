@@ -45,7 +45,7 @@ export function openingHost(model: BimModel, kind: OpeningCommand) {
     toolPrefix: kind === 'Slab' ? 'SLAB_OPENING' : 'OPENING',
     solid() {
       const host = model.getElement(hostId);
-      if (host?.category === 'SLAB') return host.geometry;
+      if (host?.category === 'SLAB') return host.geometry.solids[0];
       return singletonWallSolid(model, hostId);
     },
     open() {
@@ -54,7 +54,7 @@ export function openingHost(model: BimModel, kind: OpeningCommand) {
           { slabLocalId: hostId, sizeX: 2, sizeY: 3, offsetX: 1, offsetY: 1 },
           { stableKey: 'opening' }
         );
-      return model[kind === 'Door' ? 'addDoor' : 'addWindow'](
+      return model[kind === 'Door' ? 'addDoorAndCutWall' : 'addWindowAndCutWall'](
         { ...(kind === 'Door' ? DOOR : WINDOW), wallLocalId: hostId },
         { stableKey: 'filler', openingStableKey: 'opening' }
       );
@@ -74,7 +74,7 @@ export function singletonWallSolid(model: BimModel, id: LocalId) {
 export function addWallWithDoor(model: BimModel) {
   const wallId = unwrap(model.addWall(OPENING_WALL, { stableKey: 'wall' }));
   const doorId = unwrap(
-    model.addDoor(
+    model.addDoorAndCutWall(
       { ...DOOR, wallLocalId: wallId },
       { stableKey: 'door', openingStableKey: 'door-opening' }
     )

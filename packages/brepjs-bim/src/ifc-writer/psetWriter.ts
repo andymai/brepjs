@@ -380,16 +380,16 @@ export function writeWallBodyQuantities(
   ownerHistoryId: number,
   wallExpressId: number,
   values: {
-    readonly lengthM: number;
-    readonly widthM: number;
-    readonly heightM: number;
+    readonly lengthM?: number;
+    readonly widthM?: number;
+    readonly heightM?: number;
     readonly netVolumeM3: number;
   }
 ): void {
   const qtyIds = [
-    writeQtyLength(w, 'Length', values.lengthM),
-    writeQtyLength(w, 'Width', values.widthM),
-    writeQtyLength(w, 'Height', values.heightM),
+    ...(values.lengthM === undefined ? [] : [writeQtyLength(w, 'Length', values.lengthM)]),
+    ...(values.widthM === undefined ? [] : [writeQtyLength(w, 'Width', values.widthM)]),
+    ...(values.heightM === undefined ? [] : [writeQtyLength(w, 'Height', values.heightM)]),
     writeQtyVolume(w, 'NetVolume', values.netVolumeM3),
   ];
   const qtoId = writeElementQuantity(w, ownerHistoryId, 'Qto_WallBaseQuantities', qtyIds);
@@ -415,14 +415,30 @@ export function writeSlabCommonPset(
   writeCommonPset(w, ownerHistoryId, slabExpressId, 'SLAB', values);
 }
 
+function writeMeasuredVolume(
+  w: IfcWriter,
+  ownerId: number,
+  elementId: number,
+  name: string,
+  netM3: number
+): void {
+  const quantity = writeElementQuantity(w, ownerId, name, [writeQtyVolume(w, 'NetVolume', netM3)]);
+  writeRelDefinesByProperties(w, ownerId, elementId, quantity);
+}
+
 export function writeSlabBaseQuantities(
   w: IfcWriter,
   ownerHistoryId: number,
   slabExpressId: number,
-  spec: SlabSpec,
+  spec: SlabSpec | null,
+  netVolumeM3: number,
   openings: readonly SlabOpeningSpec[],
   densityKgM3?: number
 ): void {
+  if (spec === null) {
+    writeMeasuredVolume(w, ownerHistoryId, slabExpressId, 'Qto_SlabBaseQuantities', netVolumeM3);
+    return;
+  }
   const lengthM = toIfcLengthM(spec.length);
   const widthM = toIfcLengthM(spec.width);
   const thicknessM = toIfcLengthM(spec.thickness);
@@ -437,7 +453,6 @@ export function writeSlabBaseQuantities(
     sumOpeningAreaM2 += opSizeXM * opSizeYM;
   }
   const netAreaM2 = grossAreaM2 - sumOpeningAreaM2;
-  const netVolumeM3 = grossVolumeM3 - sumOpeningAreaM2 * thicknessM;
 
   const qtyIds = [
     writeQtyLength(w, 'Width', widthM),
@@ -494,12 +509,20 @@ export function writeColumnCommonPset(
   writeCommonPset(w, ownerHistoryId, columnExpressId, 'COLUMN', buildCommonValues(spec));
 }
 
+// For beam, column, and pile sweeps the IFC profile and depth define both gross
+// and net volume. The kernel can facet that same profile. A null spec means the
+// writer exported the retained items and must use their measured union instead.
 export function writeBeamBaseQuantities(
   w: IfcWriter,
   ownerHistoryId: number,
   beamExpressId: number,
-  spec: BeamSpec
+  spec: BeamSpec | null,
+  netVolumeM3: number
 ): void {
+  if (spec === null) {
+    writeMeasuredVolume(w, ownerHistoryId, beamExpressId, 'Qto_BeamBaseQuantities', netVolumeM3);
+    return;
+  }
   const lengthM = toIfcLengthM(spec.length);
   // Profile area is in mm²; convert to m² (divide by 1e6).
   const crossSectionAreaM2 = profileCrossSectionArea(spec.profile) / 1_000_000;
@@ -520,8 +543,19 @@ export function writeColumnBaseQuantities(
   w: IfcWriter,
   ownerHistoryId: number,
   columnExpressId: number,
-  spec: ColumnSpec
+  spec: ColumnSpec | null,
+  netVolumeM3: number
 ): void {
+  if (spec === null) {
+    writeMeasuredVolume(
+      w,
+      ownerHistoryId,
+      columnExpressId,
+      'Qto_ColumnBaseQuantities',
+      netVolumeM3
+    );
+    return;
+  }
   const heightM = toIfcLengthM(spec.height);
   const crossSectionAreaM2 = profileCrossSectionArea(spec.profile) / 1_000_000;
   const grossVolumeM3 = crossSectionAreaM2 * heightM;
@@ -555,8 +589,13 @@ export function writeSpaceBaseQuantities(
   w: IfcWriter,
   ownerHistoryId: number,
   spaceExpressId: number,
-  spec: SpaceSpec
+  spec: SpaceSpec | null,
+  netVolumeM3: number
 ): void {
+  if (spec === null) {
+    writeMeasuredVolume(w, ownerHistoryId, spaceExpressId, 'Qto_SpaceBaseQuantities', netVolumeM3);
+    return;
+  }
   const lengthM = toIfcLengthM(spec.length);
   const widthM = toIfcLengthM(spec.width);
   const heightM = toIfcLengthM(spec.height);
@@ -570,7 +609,7 @@ export function writeSpaceBaseQuantities(
     writeQtyArea(w, 'GrossFloorArea', grossFloorAreaM2),
     writeQtyArea(w, 'NetFloorArea', grossFloorAreaM2),
     writeQtyVolume(w, 'GrossVolume', grossVolumeM3),
-    writeQtyVolume(w, 'NetVolume', grossVolumeM3),
+    writeQtyVolume(w, 'NetVolume', netVolumeM3),
   ];
 
   const qtoId = writeElementQuantity(w, ownerHistoryId, 'Qto_SpaceBaseQuantities', qtyIds);
@@ -650,8 +689,19 @@ export function writeFootingBaseQuantities(
   w: IfcWriter,
   ownerHistoryId: number,
   footingExpressId: number,
-  spec: FootingSpec
+  spec: FootingSpec | null,
+  netVolumeM3: number
 ): void {
+  if (spec === null) {
+    writeMeasuredVolume(
+      w,
+      ownerHistoryId,
+      footingExpressId,
+      'Qto_FootingBaseQuantities',
+      netVolumeM3
+    );
+    return;
+  }
   const lengthM = toIfcLengthM(spec.length);
   const widthM = toIfcLengthM(spec.width);
   const depthM = toIfcLengthM(spec.thickness);
@@ -663,7 +713,7 @@ export function writeFootingBaseQuantities(
     // Qto_FootingBaseQuantities names the vertical extent 'Height' (QTY001).
     writeQtyLength(w, 'Height', depthM),
     writeQtyVolume(w, 'GrossVolume', grossVolumeM3),
-    writeQtyVolume(w, 'NetVolume', grossVolumeM3),
+    writeQtyVolume(w, 'NetVolume', netVolumeM3),
   ];
 
   const qtoId = writeElementQuantity(w, ownerHistoryId, 'Qto_FootingBaseQuantities', qtyIds);
@@ -686,8 +736,13 @@ export function writePileBaseQuantities(
   w: IfcWriter,
   ownerHistoryId: number,
   pileExpressId: number,
-  spec: PileSpec
+  spec: PileSpec | null,
+  netVolumeM3: number
 ): void {
+  if (spec === null) {
+    writeMeasuredVolume(w, ownerHistoryId, pileExpressId, 'Qto_PileBaseQuantities', netVolumeM3);
+    return;
+  }
   const lengthM = toIfcLengthM(spec.length);
   const crossSectionAreaM2 = profileCrossSectionArea(spec.profile) / 1_000_000;
   const grossVolumeM3 = crossSectionAreaM2 * lengthM;

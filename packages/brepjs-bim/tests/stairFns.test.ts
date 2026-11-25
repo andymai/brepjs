@@ -1,6 +1,7 @@
+import { BimModel } from '../src/model/bimModel.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
-import { measureVolume, isSolid } from 'brepjs';
+import { unwrap, measureVolume, isSolid } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
 import { stairFlightToSolid, stairFlightVolume } from '../src/elementFns/stairFns.js';
 import { parseStairSpec, parseStairFlightSpec } from '../src/specs/stairSpec.js';
@@ -221,10 +222,16 @@ describe('writeStairAssembly serialization + aggregation', () => {
 
   it('emits one IfcStair aggregating two IfcStairFlight occurrences', async () => {
     const base = await buildBaseModel();
+    using model = new BimModel();
+    const id = unwrap(model.addStair(stairSpec));
+    const record = model.getElement(id);
+    if (record?.category !== 'STAIR' || !record.spec) throw new Error('Missing generated flights');
     const written = writeStairAssembly(
       base.w,
-      stairSpec,
+      record.spec,
       'stair-1',
+      record.geometry,
+      id,
       deriveIfcGuidSync('elem:STAIR:stair-1'),
       base.ownerHistoryId,
       base.geomSubContextId,
@@ -278,10 +285,16 @@ describe('writeStairAssembly serialization + aggregation', () => {
 
   it('emits a tessellated body (IfcTriangulatedFaceSet) per flight', async () => {
     const base = await buildBaseModel();
+    using model = new BimModel();
+    const id = unwrap(model.addStair(stairSpec));
+    const record = model.getElement(id);
+    if (record?.category !== 'STAIR' || !record.spec) throw new Error('Missing generated flights');
     const written = writeStairAssembly(
       base.w,
-      stairSpec,
+      record.spec,
       'stair-2',
+      record.geometry,
+      id,
       deriveIfcGuidSync('elem:STAIR:stair-2'),
       base.ownerHistoryId,
       base.geomSubContextId,
@@ -304,10 +317,16 @@ describe('writeStairAssembly serialization + aggregation', () => {
 
   it('emits an IfcStairType linked via IfcRelDefinesByType', async () => {
     const base = await buildBaseModel();
+    using model = new BimModel();
+    const id = unwrap(model.addStair(stairSpec));
+    const record = model.getElement(id);
+    if (record?.category !== 'STAIR' || !record.spec) throw new Error('Missing generated flights');
     const written = writeStairAssembly(
       base.w,
-      stairSpec,
+      record.spec,
       'stair-3',
+      record.geometry,
+      id,
       deriveIfcGuidSync('elem:STAIR:stair-3'),
       base.ownerHistoryId,
       base.geomSubContextId,
@@ -326,10 +345,17 @@ describe('writeStairAssembly serialization + aggregation', () => {
   it('derives a deterministic IfcStair GlobalId across two serializations', async () => {
     const guidOf = async (): Promise<string> => {
       const base = await buildBaseModel();
+      using model = new BimModel();
+      const id = unwrap(model.addStair(stairSpec));
+      const record = model.getElement(id);
+      if (record?.category !== 'STAIR' || !record.spec)
+        throw new Error('Missing generated flights');
       const written = writeStairAssembly(
         base.w,
-        stairSpec,
+        record.spec,
         'stair-x',
+        record.geometry,
+        id,
         deriveIfcGuidSync('elem:STAIR:stair-x'),
         base.ownerHistoryId,
         base.geomSubContextId,

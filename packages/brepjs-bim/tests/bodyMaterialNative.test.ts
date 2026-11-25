@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { box, getKernel, measureVolume, unwrap } from 'brepjs';
-import { measureProductBodyMaterial } from '../src/types/productBody.js';
+import { measureBodyMaterial } from '../src/types/body.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 beforeAll(async () => {
@@ -57,13 +57,13 @@ describe('union raw-result cleanup', () => {
           release(raw);
         });
         try {
-          const result = measureProductBodyMaterial(solids);
+          const result = measureBodyMaterial(solids);
           expect(result).toMatchObject({ ok: false, error: { cleanup: { kind: 'FAILED' } } });
           if (result.ok || result.error.cleanup.kind !== 'FAILED')
             throw new Error('Expected cleanup failure');
           expect(result.error.cleanup.diagnostics).toEqual([
             {
-              operation: 'measureProductBodyMaterial',
+              operation: 'measureBodyMaterial',
               itemIndex: 0,
               resourceKind: 'SHAPE',
               cause: cleanupCause,
@@ -110,7 +110,7 @@ it('reclaims the union result when native result casting fails', () => {
         return downcast(raw, type);
       });
     try {
-      const result = measureProductBodyMaterial(solids);
+      const result = measureBodyMaterial(solids);
       expect(result).toMatchObject({
         ok: false,
         error: {

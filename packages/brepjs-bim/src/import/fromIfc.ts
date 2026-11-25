@@ -3,11 +3,7 @@ import type { Bounds3D, Result, ValidSolid } from 'brepjs';
 import { ok, err } from 'brepjs';
 import type { BimError } from '../errors/bimError.js';
 import { importError } from '../errors/bimError.js';
-import {
-  productBodyBounds,
-  measureProductBodyMaterial,
-  type NonEmpty,
-} from '../types/productBody.js';
+import { bodyBounds, measureBodyMaterial, type NonEmpty } from '../types/body.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import {
   issue,
@@ -21,7 +17,7 @@ import { readLengthScale } from './placement.js';
 import { buildSpatialTree, buildElementContainmentMap, type SpatialNode } from './spatialTree.js';
 import { readBodyGeometry, readBodyItems } from './geometryRead.js';
 import { cutImportedSolids } from './cutImportedSolids.js';
-import { cleanupOwnedResources, cleanupReport, type CleanupReport } from '../productBodyCleanup.js';
+import { cleanupOwnedResources, cleanupReport, type CleanupReport } from '../bodyCleanup.js';
 import { reportedGeometryCleanup } from '../geometryCleanupDiagnostics.js';
 import {
   readPsets,
@@ -524,9 +520,9 @@ function measureCompleteBody(
     if (first === undefined) return { bounds: null, volumeMm3: null };
     const items: NonEmpty<ValidSolid> = [first, ...rest];
     // These borrowed inputs are already World-placed. No further Placement is applied.
-    const bounds = productBodyBounds(items);
+    const bounds = bodyBounds(items);
     if (!bounds.ok) return unavailable(bounds.error, bounds.error.message);
-    const volume = measureProductBodyMaterial(items);
+    const volume = measureBodyMaterial(items);
     if (!volume.ok) return unavailable(volume.error, volume.error.message);
     return { bounds: bounds.value.bounds, volumeMm3: volume.value };
   } catch (cause) {

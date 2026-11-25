@@ -72,7 +72,7 @@ function buildRoundTripModel(): BuiltModel {
   if (!column.ok) throw new Error(column.error.message);
   model.placeIn(column.value, storeyId);
 
-  const door = model.addDoor({
+  const door = model.addDoorAndCutWall({
     wallLocalId: wall.value,
     width: 900,
     height: 2100,

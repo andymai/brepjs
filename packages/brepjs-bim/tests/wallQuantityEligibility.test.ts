@@ -3,7 +3,7 @@ import { box, getKernel, unwrap } from 'brepjs';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { readPsets } from '../src/import/dataRead.js';
 import { SpfReader } from '../src/import/spfReader.js';
-import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
+import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
 import { toIfcValidated } from '../src/serialize/toIfc.js';
 import {
   bodyExchangeFixture,
@@ -19,7 +19,7 @@ beforeAll(async () => {
 }, 30_000);
 
 afterEach(() => {
-  setProductBodyTestHooksForTesting(null);
+  setBodyTestHooksForTesting(null);
   vi.restoreAllMocks();
 });
 
@@ -34,7 +34,7 @@ describe('Wall quantity eligibility', () => {
         const wall = model.getElement(fixture.localId);
         if (wall?.category !== 'WALL') throw new Error('Missing Wall');
         let measurements = 0;
-        setProductBodyTestHooksForTesting({
+        setBodyTestHooksForTesting({
           before: ({ step }) => {
             if (step === 'measure') measurements++;
           },
@@ -79,11 +79,11 @@ describe('Wall quantity eligibility', () => {
       {
         const fixture = recipeWallFixture();
         using model = fixture.model;
-        if (opening) fixture.addDoor();
+        if (opening) fixture.addDoorAndCutWall();
         const wall = model.getElement(fixture.localId);
         if (wall?.category !== 'WALL') throw new Error('Missing Wall');
         let measurements = 0;
-        setProductBodyTestHooksForTesting({
+        setBodyTestHooksForTesting({
           before: ({ step }) => {
             if (step === 'measure') measurements++;
           },
@@ -123,7 +123,7 @@ describe('Wall quantity eligibility', () => {
   );
 
   it.each([1500, 2000])(
-    'does not restore recipe eligibility after a %s mm singleton replacement and opening',
+    'does not restore recipe eligibility after a %s mm singleton replacement and rejects a recipe cut',
     async (length) => {
       const before = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
       {
@@ -131,12 +131,30 @@ describe('Wall quantity eligibility', () => {
         using model = fixture.model;
         const replacement = box(length, 100, 500);
         unwrap(
-          model.replaceProductBody({
+          model.replaceBody({
             localId: fixture.localId,
             body: { kind: 'PARAMETRIC', solids: [replacement] },
           })
         );
-        fixture.addDoor();
+        const prior = model.getElement(fixture.localId);
+        const relations = model.getAllRelationships();
+        using filler = box(100, 100, 100);
+        expect(
+          model.addDoorAndCutWall(
+            {
+              wallLocalId: fixture.localId,
+              width: 200,
+              height: 300,
+              offsetAlongWall: 200,
+              offsetFromFloor: 0,
+              materialName: 'Wood',
+            },
+            { solids: [filler] }
+          )
+        ).toMatchObject({ ok: false, error: { code: 'BODY_OPENING_REQUIRES_RECIPE' } });
+        expect(model.getElement(fixture.localId)).toBe(prior);
+        expect(model.getAllRelationships()).toEqual(relations);
+        expect(filler.disposed).toBe(false);
         const wall = model.getElement(fixture.localId);
         if (wall?.category !== 'WALL') throw new Error('Missing Wall');
         const exported = unwrap(await toIfcValidated(model, IFC_BODY_META));
@@ -151,17 +169,17 @@ describe('Wall quantity eligibility', () => {
           Length: 2,
           Width: 0.1,
           Height: 0.5,
-          NetVolume: length === 1500 ? 0.069 : 0.094,
+          NetVolume: length === 1500 ? 0.075 : 0.1,
         });
         expect(
           exported.report.issues.filter(
             ({ code, severity }) => code === 'WALL_QUANTITY_OMITTED' || severity === 'error'
           )
         ).toEqual([]);
-        recordIfcBodyFixture(`quantity-replacement-${length}-opening`, exported.bytes, {
+        recordIfcBodyFixture(`quantity-replacement-${length}-rejected-opening`, exported.bytes, {
           guid: wall.guid,
           quantities,
-          materialVolumeMm3: length === 1500 ? 69_000_000 : 94_000_000,
+          materialVolumeMm3: length === 1500 ? 75_000_000 : 100_000_000,
         });
       }
       if (before !== null) expect(nativeShapeCount()).toBe(before);

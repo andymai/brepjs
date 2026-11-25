@@ -2,46 +2,20 @@ import * as WebIFC from 'web-ifc';
 import type { IfcWriter } from './ifcWriter.js';
 import { writeAxis2Placement3D, writeDirection } from './headerWriter.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
-import { deriveIfcGuidSync } from '../identity/guidDerivation.js';
 import { toIfcLengthM } from '../units/units.js';
 import type { CurtainWallSpec } from '../specs/curtainWallSpec.js';
-import type { CurtainWallComponent, CurtainWallGrid } from '../elementFns/curtainWallFns.js';
-
-export interface CurtainWallWriteResult {
-  /** Express ID of the IfcCurtainWall assembly. */
-  readonly curtainWallId: number;
-  /** Express IDs of the emitted IfcPlate panels. */
-  readonly plateIds: readonly number[];
-  /** Express IDs of the emitted IfcMember mullions. */
-  readonly memberIds: readonly number[];
-  /** Express ID of the IfcRelAggregates linking the wall to its parts. */
-  readonly aggregatesId: number;
-}
 
 // Emits IfcLocalPlacement + IfcExtrudedAreaSolid + IfcShapeRepresentation +
 // IfcProductDefinitionShape for a single box component. The box footprint lies
 // in local XY (size X × size Y) extruded along local +Z; the component's origin
 // is carried as an offset relative to the curtain wall's placement.
-function writeComponentGeometry(
+export function writeComponentGeometry(
   w: IfcWriter,
-  component: CurtainWallComponent,
+  size: readonly [number, number, number],
   geomSubContextId: number,
-  parentPlacementId: number
+  localPlacementId: number
 ): { localPlacementId: number; productDefinitionShapeId: number } {
-  const placement3DId = writeAxis2Placement3D(
-    w,
-    component.origin.map(toIfcLengthM) as [number, number, number]
-  );
-
-  const localPlacementId = w.nextId();
-  w.writeLine({
-    expressID: localPlacementId,
-    type: WebIFC.IFCLOCALPLACEMENT,
-    PlacementRelTo: w.ref(parentPlacementId),
-    RelativePlacement: w.ref(placement3DId),
-  });
-
-  const [sizeX, sizeY, sizeZ] = component.size;
+  const [sizeX, sizeY, sizeZ] = size;
   const xDimM = toIfcLengthM(sizeX);
   const yDimM = toIfcLengthM(sizeY);
   const depthM = toIfcLengthM(sizeZ);
@@ -111,7 +85,7 @@ function writeComponentGeometry(
   return { localPlacementId, productDefinitionShapeId };
 }
 
-function writePlate(
+export function writePlate(
   w: IfcWriter,
   guid: IfcGuid,
   name: string,
@@ -136,7 +110,7 @@ function writePlate(
   return id;
 }
 
-function writeMember(
+export function writeMember(
   w: IfcWriter,
   guid: IfcGuid,
   name: string,
@@ -161,45 +135,20 @@ function writeMember(
   return id;
 }
 
-/**
- * Serializes a curtain wall: an IfcCurtainWall assembly (no own geometry) that
- * aggregates one IfcPlate per glazing panel and one IfcMember per mullion via a
- * single IfcRelAggregates. The wall carries an IfcLocalPlacement at its world
- * origin/orientation; each plate and member is placed relative to it.
- *
- * GlobalIds are derived deterministically from `stableKey` so re-serializing an
- * identical wall yields identical IDs for every part and the aggregation rel.
- */
 export function writeCurtainWall(
   w: IfcWriter,
   spec: CurtainWallSpec,
-  grid: CurtainWallGrid,
-  stableKey: string,
+  guid: IfcGuid,
   name: string,
   ownerHistoryId: number,
-  geomSubContextId: number,
-  parentPlacementId: number | null
-): CurtainWallWriteResult {
-  const placement3DId = writeAxis2Placement3D(
-    w,
-    spec.origin.map(toIfcLengthM) as [number, number, number],
-    spec.axisZ,
-    spec.axisX
-  );
-  const wallPlacementId = w.nextId();
-  w.writeLine({
-    expressID: wallPlacementId,
-    type: WebIFC.IFCLOCALPLACEMENT,
-    PlacementRelTo: parentPlacementId !== null ? w.ref(parentPlacementId) : null,
-    RelativePlacement: w.ref(placement3DId),
-  });
-
+  wallPlacementId: number
+): number {
   const predefinedType = spec.predefinedType ?? 'NOTDEFINED';
   const curtainWallId = w.nextId();
   w.writeLine({
     expressID: curtainWallId,
     type: WebIFC.IFCCURTAINWALL,
-    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, deriveIfcGuidSync(stableKey)),
+    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, guid),
     OwnerHistory: w.ref(ownerHistoryId),
     Name: w.mkType(WebIFC.IFCLABEL, name),
     Description: null,
@@ -210,45 +159,5 @@ export function writeCurtainWall(
     PredefinedType: { type: 3, value: predefinedType },
   });
 
-  const plateIds: number[] = [];
-  grid.panels.forEach((panel, index) => {
-    const geometry = writeComponentGeometry(w, panel, geomSubContextId, wallPlacementId);
-    const plateId = writePlate(
-      w,
-      deriveIfcGuidSync(`${stableKey}:plate:${index}`),
-      `${name} Panel ${index}`,
-      ownerHistoryId,
-      geometry.localPlacementId,
-      geometry.productDefinitionShapeId
-    );
-    plateIds.push(plateId);
-  });
-
-  const memberIds: number[] = [];
-  grid.mullions.forEach((mullion, index) => {
-    const geometry = writeComponentGeometry(w, mullion, geomSubContextId, wallPlacementId);
-    const memberId = writeMember(
-      w,
-      deriveIfcGuidSync(`${stableKey}:member:${index}`),
-      `${name} Mullion ${index}`,
-      ownerHistoryId,
-      geometry.localPlacementId,
-      geometry.productDefinitionShapeId
-    );
-    memberIds.push(memberId);
-  });
-
-  const aggregatesId = w.nextId();
-  w.writeLine({
-    expressID: aggregatesId,
-    type: WebIFC.IFCRELAGGREGATES,
-    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, deriveIfcGuidSync(`${stableKey}:aggregates`)),
-    OwnerHistory: w.ref(ownerHistoryId),
-    Name: null,
-    Description: null,
-    RelatingObject: w.ref(curtainWallId),
-    RelatedObjects: [...plateIds, ...memberIds].map((id) => w.ref(id)),
-  });
-
-  return { curtainWallId, plateIds, memberIds, aggregatesId };
+  return curtainWallId;
 }

@@ -1,13 +1,13 @@
 import { err, type Result } from 'brepjs';
 import { geometryError, type BimError } from './errors/bimError.js';
 import { reportedGeometryCleanup } from './geometryCleanupDiagnostics.js';
-import { wrappedResourceObject } from './types/productBody.js';
+import { wrappedResourceObject } from './types/body.js';
 import {
   cleanupOwnedResources,
   cleanupReport,
   type CleanupReport,
   type OwnedBodyResource,
-} from './productBodyCleanup.js';
+} from './bodyCleanup.js';
 
 export type OwnGeneratedResource = <T extends Disposable>(resource: T) => T;
 

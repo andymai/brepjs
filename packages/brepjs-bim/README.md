@@ -28,19 +28,19 @@ the browser.
 
 Parametric authoring of the common IFC4 building elements plus the data layers that make a model
 useful downstream (psets, classification, materials, quantities), with import, export, and
-validation. Geometry is produced by brepjs (OCCT). Walls and railings carry a `ProductBody`:
+validation. Geometry is produced by brepjs (OCCT). Records with their own material carry a `Body`:
 `PARAMETRIC` or `AUTHORITATIVE`, both with a nonempty, ordered `solids` collection. Authority and
 item count are independent. `bodySolids()` borrows Product-local model handles; do not dispose
-those handles. Other solid-bearing categories retain their current geometry types.
+those handles. Use `addAuthoredBody({ category, solids, placement })` to transfer fresh solids without invoking a recipe.
 
-`model.replaceProductBody({ localId, body: { kind: 'AUTHORITATIVE', solids } })` validates and
+`model.replaceBody({ localId, body: { kind: 'AUTHORITATIVE', solids } })` validates and
 installs the complete collection atomically. `Err` leaves the model and caller ownership
 unchanged. `Ok` returns a `COMMITTED` receipt and transfers every supplied handle, even when
 `receipt.cleanup.kind === 'FAILED'` reports a failed release of the superseded Body. Do not
 retry an uncertain release or dispose transferred handles. Parametric Bodies may be replaced by
-either authority; authoritative Bodies may only be replaced by authoritative Bodies. Add wall
-openings before installing an authoritative Body: later `addDoor()` and `addWindow()` return
-`AUTHORITATIVE_WALL_BODY_IMMUTABLE`.
+either authority; authoritative Bodies may only be replaced by authoritative Bodies. Cut recipe openings before replacing the host Body. Replacing even a singleton with another
+`PARAMETRIC` Body invalidates the wall dimensions used by the cut. The command rejects the edit
+and preserves the replacement and existing relationships.
 
 Civil-semantic Families Wall/Railing routes require an evaluator and retain the authored Body as
 `AUTHORITATIVE`, including when it coincides with the nominal recipe. The adapter copies borrowed
@@ -50,8 +50,9 @@ Conventional archetype routes retain their existing recipe authoring behavior.
 Element geometry is **unplaced template geometry** in local coordinates. Placement (`origin` /
 `axisX` / `axisZ`) is applied by the IFC layer via `IfcLocalPlacement`, not baked into the brepjs
 solid. Use `placedSolids(element)` to read fresh, caller-owned solids transformed by the element's
-own placement. Stairs and ramps return one solid per flight, curtain walls return their panels and
-mullions, and either Product Body authority returns one placed copy per Body item. When an element is
+own placement. Each Body returns one copy per item. Generated Stair/Ramp Bodies retain their flight items.
+A curtain wall has no material of its own. Traverse its Plate/Member children with
+`model.getChildren(id)` and pass the assembly frame to each child query. When an element is
 beneath a placed spatial structure, pass its cumulative frame as
 `placedSolids(element, { parentFrame })` to obtain world coordinates. This is especially important
 for parent-local Proxy and Earthworks Fill bodies.
@@ -88,9 +89,11 @@ a separate Reference context. If a replacement Body adds material inside a retai
 region, that engine can remove the added material. Schema validation and shape generation alone
 do not detect this difference; check the representation semantics and retained item geometry.
 
-Step 1 retains class-specific geometry storage outside Wall/Railing and the transitional
-`model/modelGeometry.ts` ownership enumerator. Converging those records and renaming
-`ProductBody` to `Body` belong to [step 2](docs/architecture-migration.md#migration-order).
+A Door or Window can adopt authored solids or use the rectangular `addFillerPanel` recipe.
+Attaching it to an existing Opening preserves the host. Use `addDoorAndCutWall` or
+`addWindowAndCutWall` for an atomic cut and fill. Replacing a retained Body invalidates
+its recipe encoding. A generated Stair or Ramp needs its original flight associations
+for typed IFC export. See the [migration acceptance criteria](docs/architecture-migration.md).
 
 ## Status
 

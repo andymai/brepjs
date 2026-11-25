@@ -1,8 +1,8 @@
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { box, DisposalScope, err, getKernel, measureVolume, ok, unwrap } from 'brepjs';
-import { measureProductBodyMaterial, productBodyBounds } from '../src/types/productBody.js';
+import { measureBodyMaterial, bodyBounds } from '../src/types/body.js';
 import { geometryError } from '../src/errors/bimError.js';
-import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
+import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 import { createOverlapFixture } from './helpers/nativeBodyFixture.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
@@ -14,7 +14,7 @@ function expectArena(expected: number | null) {
   if (expected !== null) expect(nativeShapeCount()).toBe(expected);
 }
 afterEach(() => {
-  setProductBodyTestHooksForTesting(null);
+  setBodyTestHooksForTesting(null);
   vi.restoreAllMocks();
 });
 it.each(['overlapping', 'disconnected'] as const)(
@@ -27,11 +27,11 @@ it.each(['overlapping', 'disconnected'] as const)(
       const distant = scope.register(box(1, 1, 1, { at: [3.5, 0.5, 0.5] }));
       const items = [a, arrangement === 'overlapping' ? b : distant] as const;
       const live = arena();
-      expect(unwrap(measureProductBodyMaterial(items))).toBeCloseTo(
+      expect(unwrap(measureBodyMaterial(items))).toBeCloseTo(
         arrangement === 'overlapping' ? 1.5 : 2,
         8
       );
-      const { bounds } = unwrap(productBodyBounds(items));
+      const { bounds } = unwrap(bodyBounds(items));
       expect(bounds.xMin).toBeCloseTo(0, 6);
       expect(bounds.xMax).toBeCloseTo(arrangement === 'overlapping' ? 1.5 : 4, 6);
       for (const item of items) expect(unwrap(measureVolume(item))).toBeCloseTo(1, 8);
@@ -46,13 +46,13 @@ it('reports a later bounds failure without consuming borrowed items', () => {
   using b = box(1, 1, 1);
   const live = arena();
   const releases = [vi.spyOn(a, Symbol.dispose), vi.spyOn(b, Symbol.dispose)];
-  setProductBodyTestHooksForTesting({
+  setBodyTestHooksForTesting({
     before({ step, itemIndex }) {
       if (step === 'bounds' && itemIndex === 1)
         return err(geometryError('LATER_BOUNDS', 'second item'));
     },
   });
-  expect(productBodyBounds([a, b])).toMatchObject({ ok: false, error: { itemIndex: 1 } });
+  expect(bodyBounds([a, b])).toMatchObject({ ok: false, error: { itemIndex: 1 } });
   for (const release of releases) expect(release).not.toHaveBeenCalled();
   expectArena(live);
 });
@@ -63,7 +63,7 @@ it('rejects empty, duplicate, disposed and invalid borrowed items', () => {
   disposed[Symbol.dispose]();
   const live = arena();
   for (const input of [[], [a, a], [a, disposed], [a, {}], [a, null]]) {
-    expect(Reflect.apply(measureProductBodyMaterial, undefined, [input])).toMatchObject({
+    expect(Reflect.apply(measureBodyMaterial, undefined, [input])).toMatchObject({
       ok: false,
     });
   }
@@ -86,7 +86,7 @@ for (const stage of ['union-before', 'union-after', 'measure'] as const) {
           if (failure === 'throw') throw new Error(cause.message, { cause });
           return err(cause);
         };
-        setProductBodyTestHooksForTesting({
+        setBodyTestHooksForTesting({
           before({ step }) {
             if (
               (stage === 'union-before' && step === 'union') ||
@@ -100,9 +100,9 @@ for (const stage of ['union-before', 'union-after', 'measure'] as const) {
           },
         });
         const live = arena();
-        expect(measureProductBodyMaterial(solids)).toMatchObject({
+        expect(measureBodyMaterial(solids)).toMatchObject({
           ok: false,
-          error: { operation: 'measureProductBodyMaterial', cleanup: { kind: 'COMPLETE' } },
+          error: { operation: 'measureBodyMaterial', cleanup: { kind: 'COMPLETE' } },
         });
         expect(temporaryReleases).toHaveLength(stage === 'union-before' ? 0 : 1);
         temporaryReleases.forEach((release) => expect(release).toHaveBeenCalledTimes(1));
@@ -121,8 +121,8 @@ it.each([NaN, Infinity, -1, 0])(
     using scope = new DisposalScope();
     const { a, b } = createOverlapFixture(scope);
     const live = arena();
-    setProductBodyTestHooksForTesting({ measure: () => ok(value) });
-    expect(measureProductBodyMaterial([a, b])).toMatchObject({
+    setBodyTestHooksForTesting({ measure: () => ok(value) });
+    expect(measureBodyMaterial([a, b])).toMatchObject({
       ok: false,
       error: { code: 'BODY_INVALID_VOLUME' },
     });
@@ -137,9 +137,9 @@ it('returns a measurement error when the native union throws, with borrowed inpu
   vi.spyOn(getKernel(), 'fuseAll').mockImplementation(() => {
     throw new Error('native union');
   });
-  expect(measureProductBodyMaterial([a, b])).toMatchObject({
+  expect(measureBodyMaterial([a, b])).toMatchObject({
     ok: false,
-    error: { operation: 'measureProductBodyMaterial' },
+    error: { operation: 'measureBodyMaterial' },
   });
   expectArena(live);
   expect(unwrap(measureVolume(a))).toBeCloseTo(1, 8);
@@ -155,8 +155,8 @@ it('preserves a native measurement Result error and retires its union', () => {
     code: 'NATIVE_VOLUME_ERROR',
     message: 'native measurement',
   } as const;
-  setProductBodyTestHooksForTesting({ measure: () => err(cause) });
-  expect(measureProductBodyMaterial([a, b])).toMatchObject({
+  setBodyTestHooksForTesting({ measure: () => err(cause) });
+  expect(measureBodyMaterial([a, b])).toMatchObject({
     ok: false,
     error: { code: 'BODY_MEASUREMENT_FAILED', cause: { cause }, cleanup: { kind: 'COMPLETE' } },
   });
@@ -167,7 +167,7 @@ it('uses direct singleton measurement without a union or geometry copy', () => {
   using solid = box(2, 3, 4);
   const union = vi.spyOn(getKernel(), 'fuseAll');
   const copy = vi.spyOn(getKernel(), 'copyShape');
-  expect(unwrap(measureProductBodyMaterial([solid]))).toBeCloseTo(24, 8);
+  expect(unwrap(measureBodyMaterial([solid]))).toBeCloseTo(24, 8);
   expect(union).not.toHaveBeenCalled();
   expect(copy).not.toHaveBeenCalled();
 });
@@ -175,10 +175,10 @@ it('uses direct singleton measurement without a union or geometry copy', () => {
 it('reports nonfinite bounds instead of returning an incomplete query', () => {
   using solid = box(1, 1, 1);
   const live = arena();
-  setProductBodyTestHooksForTesting({
+  setBodyTestHooksForTesting({
     bounds: () => ({ xMin: 0, yMin: 0, zMin: 0, xMax: NaN, yMax: 1, zMax: 1 }),
   });
-  expect(productBodyBounds([solid])).toMatchObject({
+  expect(bodyBounds([solid])).toMatchObject({
     ok: false,
     error: { code: 'BODY_INVALID_BOUNDS' },
   });

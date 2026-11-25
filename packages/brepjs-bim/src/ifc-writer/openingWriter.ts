@@ -1,3 +1,5 @@
+import type { FrameInput } from '../placementFrame.js';
+import { writeBodyPlacement } from './tessellationWriter.js';
 import * as WebIFC from 'web-ifc';
 import type { IfcWriter } from './ifcWriter.js';
 import { writeAxis2Placement3D, writeDirection } from './headerWriter.js';
@@ -43,6 +45,7 @@ export function writeOpeningGeometry(
   w: IfcWriter,
   guid: IfcGuid,
   openingSpec: WallOpeningSpec,
+  frame: FrameInput,
   wallSpec: WallSpec,
   wallPlacementId: number,
   geomSubContextId: number,
@@ -51,26 +54,11 @@ export function writeOpeningGeometry(
 ): OpeningIds {
   const widthM = toIfcLengthM(openingSpec.width);
   const heightM = toIfcLengthM(openingSpec.height);
-  const offsetAlongWallM = toIfcLengthM(openingSpec.offsetAlongWall);
-  const offsetFromFloorM = toIfcLengthM(openingSpec.offsetFromFloor);
   const thicknessM = toIfcLengthM(wallSpec.thickness);
 
   // Centred on the opening at the wall's outer face (y = thickness); the
   // extrusion runs along -Y through the full wall depth.
-  const placement3DId = writeAxis2Placement3D(
-    w,
-    [offsetAlongWallM + widthM / 2, thicknessM, offsetFromFloorM + heightM / 2],
-    [0, -1, 0],
-    [1, 0, 0]
-  );
-
-  const openingPlacementId = w.nextId();
-  w.writeLine({
-    expressID: openingPlacementId,
-    type: WebIFC.IFCLOCALPLACEMENT,
-    PlacementRelTo: w.ref(wallPlacementId),
-    RelativePlacement: w.ref(placement3DId),
-  });
+  const openingPlacementId = writeBodyPlacement(w, frame, wallPlacementId);
 
   const profileId = w.nextId();
   w.writeLine({
@@ -142,31 +130,18 @@ export function writeSlabOpeningGeometry(
   w: IfcWriter,
   guid: IfcGuid,
   openingSpec: SlabOpeningSpec,
+  frame: FrameInput,
   slabSpec: SlabSpec,
   slabPlacementId: number,
   geomSubContextId: number,
-  ownerHistoryId: number
+  ownerHistoryId: number,
+  identifier: 'Body' | 'Reference'
 ): OpeningIds {
   const sizeXM = toIfcLengthM(openingSpec.sizeX);
   const sizeYM = toIfcLengthM(openingSpec.sizeY);
-  const offsetXM = toIfcLengthM(openingSpec.offsetX);
-  const offsetYM = toIfcLengthM(openingSpec.offsetY);
   const thicknessM = toIfcLengthM(slabSpec.thickness);
 
-  const placement3DId = writeAxis2Placement3D(
-    w,
-    [offsetXM + sizeXM / 2, offsetYM + sizeYM / 2, 0],
-    [0, 0, 1],
-    [1, 0, 0]
-  );
-
-  const openingPlacementId = w.nextId();
-  w.writeLine({
-    expressID: openingPlacementId,
-    type: WebIFC.IFCLOCALPLACEMENT,
-    PlacementRelTo: w.ref(slabPlacementId),
-    RelativePlacement: w.ref(placement3DId),
-  });
+  const openingPlacementId = writeBodyPlacement(w, frame, slabPlacementId);
 
   const profileId = w.nextId();
   w.writeLine({
@@ -196,7 +171,7 @@ export function writeSlabOpeningGeometry(
     expressID: shapeRepId,
     type: WebIFC.IFCSHAPEREPRESENTATION,
     ContextOfItems: w.ref(geomSubContextId),
-    RepresentationIdentifier: w.mkType(WebIFC.IFCLABEL, 'Body'),
+    RepresentationIdentifier: w.mkType(WebIFC.IFCLABEL, identifier),
     RepresentationType: w.mkType(WebIFC.IFCLABEL, 'SweptSolid'),
     Items: [w.ref(extrusionId)],
   });
@@ -229,13 +204,12 @@ export function writeSlabOpeningGeometry(
 }
 
 // Default panel depth (mm) for a door/window filler when no depth is supplied.
-const DEFAULT_PANEL_DEPTH_MM = 100;
 
 // Emits a flat panel body for a door/window filler: a width×height rectangle
 // (centered on the opening's local origin) extruded along local +Z by depthM.
 // The opening's local frame places local X along the wall and local Z into the
 // wall, so the panel fills the opening face. Returns the IfcProductDefinitionShape.
-function writePanelBody(
+export function writePanelBody(
   w: IfcWriter,
   widthM: number,
   heightM: number,
@@ -291,30 +265,11 @@ export function writeDoorEntity(
   guid: IfcGuid,
   name: string,
   ownerHistoryId: number,
-  openingPlacementId: number,
-  geomSubContextId: number,
-  overallWidthM: number,
-  overallHeightM: number,
-  nominalDepthMm?: number
+  localPlacementId: number,
+  productDefinitionShapeId: number,
+  overallWidthM: number | null,
+  overallHeightM: number | null
 ): number {
-  const placement3DId = writeAxis2Placement3D(w, [0, 0, 0]);
-  const localPlacementId = w.nextId();
-  w.writeLine({
-    expressID: localPlacementId,
-    type: WebIFC.IFCLOCALPLACEMENT,
-    PlacementRelTo: w.ref(openingPlacementId),
-    RelativePlacement: w.ref(placement3DId),
-  });
-
-  const depthM = toIfcLengthM(nominalDepthMm ?? DEFAULT_PANEL_DEPTH_MM);
-  const productDefinitionShapeId = writePanelBody(
-    w,
-    overallWidthM,
-    overallHeightM,
-    depthM,
-    geomSubContextId
-  );
-
   const id = w.nextId();
   w.writeLine({
     expressID: id,
@@ -327,8 +282,10 @@ export function writeDoorEntity(
     ObjectPlacement: w.ref(localPlacementId),
     Representation: w.ref(productDefinitionShapeId),
     Tag: null,
-    OverallHeight: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, overallHeightM),
-    OverallWidth: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, overallWidthM),
+    OverallHeight:
+      overallHeightM === null ? null : w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, overallHeightM),
+    OverallWidth:
+      overallWidthM === null ? null : w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, overallWidthM),
     PredefinedType: null,
     OperationType: null,
     UserDefinedOperationType: null,
@@ -341,30 +298,11 @@ export function writeWindowEntity(
   guid: IfcGuid,
   name: string,
   ownerHistoryId: number,
-  openingPlacementId: number,
-  geomSubContextId: number,
-  overallWidthM: number,
-  overallHeightM: number,
-  nominalDepthMm?: number
+  localPlacementId: number,
+  productDefinitionShapeId: number,
+  overallWidthM: number | null,
+  overallHeightM: number | null
 ): number {
-  const placement3DId = writeAxis2Placement3D(w, [0, 0, 0]);
-  const localPlacementId = w.nextId();
-  w.writeLine({
-    expressID: localPlacementId,
-    type: WebIFC.IFCLOCALPLACEMENT,
-    PlacementRelTo: w.ref(openingPlacementId),
-    RelativePlacement: w.ref(placement3DId),
-  });
-
-  const depthM = toIfcLengthM(nominalDepthMm ?? DEFAULT_PANEL_DEPTH_MM);
-  const productDefinitionShapeId = writePanelBody(
-    w,
-    overallWidthM,
-    overallHeightM,
-    depthM,
-    geomSubContextId
-  );
-
   const id = w.nextId();
   w.writeLine({
     expressID: id,
@@ -377,8 +315,10 @@ export function writeWindowEntity(
     ObjectPlacement: w.ref(localPlacementId),
     Representation: w.ref(productDefinitionShapeId),
     Tag: null,
-    OverallHeight: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, overallHeightM),
-    OverallWidth: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, overallWidthM),
+    OverallHeight:
+      overallHeightM === null ? null : w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, overallHeightM),
+    OverallWidth:
+      overallWidthM === null ? null : w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, overallWidthM),
     PredefinedType: null,
     PartitioningType: null,
     UserDefinedPartitioningType: null,
