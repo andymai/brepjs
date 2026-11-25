@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
-import { measureVolume } from 'brepjs';
+import { getBounds, measureVolume } from 'brepjs';
 import { beamToSolid } from '../src/elementFns/beamFns.js';
 import { parseBeamSpec } from '../src/specs/beamSpec.js';
 import type { BeamSpec } from '../src/specs/beamSpec.js';
@@ -19,10 +19,13 @@ const BASE: BeamSpec = {
 };
 
 describe('beamToSolid', () => {
-  it('rectangular beam returns ValidSolid with correct volume', () => {
+  it('rectangular beam preserves width along Y and height along Z', () => {
     const result = beamToSolid(BASE);
     if (!result.ok) throw new Error(result.error.message);
     using solid = result.value;
+    const bounds = getBounds(solid);
+    expect(bounds.yMax - bounds.yMin).toBeCloseTo(200, 4);
+    expect(bounds.zMax - bounds.zMin).toBeCloseTo(400, 4);
     const vol = measureVolume(solid);
     if (!vol.ok) throw new Error(vol.error.message);
     expect(vol.value).toBeCloseTo(5000 * 200 * 400, -2);

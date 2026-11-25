@@ -10,21 +10,13 @@ import { profileToPolygon } from './profileFns.js';
 import { isExtendedProfile } from '../specs/profile.js';
 import { extendedProfileToFace } from '../specs/profilesExtended.js';
 
-// Returned solid is unplaced template geometry: profile in the global YZ plane
-// (cross-section centered on the local Y/Z axes), extruded along +X by length.
-// origin/axisX/axisZ are applied by the IFC layer via IfcLocalPlacement.
-//
-// The profile is rotated from its native XY definition into YZ here so that
-// the brepjs solid grows in +X to match the standard wall/extrusion pattern.
+// In the unplaced beam, section point (u, v) at distance s is (s, u, v).
 export function beamToSolid(spec: BeamSpec): Result<ValidSolid, BimError> {
   return generateGeometry({ operation: 'beamToSolid', codePrefix: 'BEAM' }, (own) => {
     if (spec.length <= 0) {
       return err(specError('BEAM_ZERO_LENGTH', 'Beam length must be positive'));
     }
 
-    // Extended/hollow profiles have no single outer polygon. Build the XY face,
-    // extrude along +Z, then rotate +90° about Y so the beam length runs along +X
-    // (matching the core path's YZ cross-section / +X extrusion convention).
     if (isExtendedProfile(spec.profile)) {
       const faceResult = extendedProfileToFace(spec.profile);
       if (!faceResult.ok) return err(faceResult.error);
@@ -36,7 +28,8 @@ export function beamToSolid(spec: BeamSpec): Result<ValidSolid, BimError> {
         );
       }
       const prism = own(prismResult.value);
-      const solid = own(rotate(prism, 90, { axis: [0, 1, 0] }));
+      // Cycle the XY section and its +Z extrusion into beam axes Y, Z and X.
+      const solid = own(rotate(prism, 120, { axis: [1, 1, 1] }));
       return validateGeneratedSolid(solid, {
         code: 'BEAM_INVALID_SOLID',
         message: 'Extruded beam solid failed validity check',

@@ -1,5 +1,14 @@
-import { describe, it, expect, beforeAll } from 'vitest';
-import { getBounds, measureVolume, unwrap, type Shape3D, type Bounds3D } from 'brepjs';
+import { assert, describe, it, expect, beforeAll } from 'vitest';
+import {
+  DisposalScope,
+  getBounds,
+  getVertices,
+  measureVolume,
+  unwrap,
+  vertexPosition,
+  type Shape3D,
+  type Bounds3D,
+} from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
 import {
   BimModel,
@@ -296,6 +305,73 @@ function expectImportedBody(
 }
 
 describe('element placement survives the IFC round trip', () => {
+  const section: [number, number][] = [
+    [0, 0],
+    [-120, 0],
+    [-100, 20],
+    [-100, 180],
+    [0, 160],
+  ];
+  const sectionAreaMm2 = 17_200;
+  const translated = (s: number, u: number, v: number) => [1000 + s, 2000 + u, 3000 + v] as const;
+  const rotated = (s: number, u: number, v: number) => [1000 + v, 2000 + s, 3000 + u] as const;
+
+  it.each([
+    { name: 'negative side', sign: 1, axisX: X, axisZ: Z, worldPoint: translated },
+    { name: 'positive side', sign: -1, axisX: X, axisZ: Z, worldPoint: translated },
+    { name: 'rotated axes', sign: 1, axisX: Y, axisZ: X, worldPoint: rotated },
+  ])(
+    'places every arbitrary beam profile vertex ($name)',
+    async ({ sign, axisX, axisZ, worldPoint }) => {
+      const hierarchy = newModel();
+      using model = hierarchy.model;
+      const points = section.map(([u, v]): [number, number] => [sign * u, v]);
+      const length = 600;
+      const id = unwrap(
+        model.addBeam({
+          length,
+          profile: { kind: 'ARBITRARY_CLOSED', points },
+          origin: ORIGIN,
+          axisX,
+          axisZ,
+          materialName: 'Steel',
+        })
+      );
+      model.placeIn(id, hierarchy.storeyId);
+      const beam = model.getElement(id);
+      assert.exists(beam);
+
+      const expected = [0, length].flatMap((s) => points.map(([u, v]) => worldPoint(s, u, v)));
+      using scope = new DisposalScope();
+      const placed = unwrap(placedSolids(beam)).map((solid) => scope.register(solid));
+      const imported = await roundTrip(model);
+      try {
+        const readBack = imported.elements.find((el) => el.guid === beam.guid);
+        assert.exists(readBack);
+        for (const [label, solids] of [
+          ['IFC', readBack.geometry.solids],
+          ['placedSolids', placed],
+        ] as const) {
+          expect(solids, label).toHaveLength(1);
+          const [solid] = solids;
+          assert.exists(solid);
+          expect(unwrap(measureVolume(solid)), label).toBeCloseTo(sectionAreaMm2 * length, 1);
+          const vertices = getVertices(solid).map(vertexPosition);
+          expect(vertices, label).toHaveLength(expected.length);
+          for (const [x, y, z] of expected) {
+            expect(vertices, label).toContainEqual([
+              expect.closeTo(x, 4),
+              expect.closeTo(y, 4),
+              expect.closeTo(z, 4),
+            ]);
+          }
+        }
+      } finally {
+        disposeImportedModel(imported);
+      }
+    }
+  );
+
   it('imports swept and tessellated bodies at the bounds placedSolids reports', async () => {
     const { model, storeyId } = newModel();
     const eager: Array<{ readonly c: Case; readonly body: EagerBody }> = [];
