@@ -732,6 +732,12 @@ type ScaleFn = (k: string) => number;
  */
 type ProfileBuilder = (f: ScaleFn, def: Record<string, unknown>, scale: number) => Profile;
 
+/** An optional radius attribute in millimetres; absent when unset or zero. */
+function optRadius(def: Record<string, unknown>, key: string, scale: number): number | undefined {
+  const raw = readMeasure(def[key]);
+  return raw !== undefined && raw > 0 ? raw * scale * 1000 : undefined;
+}
+
 const PARAMETRIC_PROFILE_BUILDERS: ReadonlyMap<number, ProfileBuilder> = new Map<
   number,
   ProfileBuilder
@@ -743,31 +749,34 @@ const PARAMETRIC_PROFILE_BUILDERS: ReadonlyMap<number, ProfileBuilder> = new Map
   [WebIFC.IFCCIRCLEPROFILEDEF, (f) => ({ kind: 'CIRCULAR', radius: f('Radius') })],
   [
     WebIFC.IFCISHAPEPROFILEDEF,
-    (f) => ({
+    (f, def, scale) => ({
       kind: 'I_BEAM',
       overallWidth: f('OverallWidth'),
       overallDepth: f('OverallDepth'),
       webThickness: f('WebThickness'),
       flangeThickness: f('FlangeThickness'),
+      filletRadius: optRadius(def, 'FilletRadius', scale),
     }),
   ],
   [
     WebIFC.IFCLSHAPEPROFILEDEF,
-    (f) => ({
+    (f, def, scale) => ({
       kind: 'L_SHAPE',
       depth: f('Depth'),
       width: f('Width'),
       legThickness: f('Thickness'),
+      filletRadius: optRadius(def, 'FilletRadius', scale),
     }),
   ],
   [
     WebIFC.IFCTSHAPEPROFILEDEF,
-    (f) => ({
+    (f, def, scale) => ({
       kind: 'T_SHAPE',
       depth: f('Depth'),
       flangeWidth: f('FlangeWidth'),
       webThickness: f('WebThickness'),
       flangeThickness: f('FlangeThickness'),
+      filletRadius: optRadius(def, 'FilletRadius', scale),
     }),
   ],
   [
@@ -792,23 +801,25 @@ const PARAMETRIC_PROFILE_BUILDERS: ReadonlyMap<number, ProfileBuilder> = new Map
   ],
   [
     WebIFC.IFCCSHAPEPROFILEDEF,
-    (f) => ({
+    (f, def, scale) => ({
       kind: 'C_SHAPE',
       depth: f('Depth'),
       width: f('Width'),
       wallThickness: f('WallThickness'),
       girth: f('Girth'),
+      internalFilletRadius: optRadius(def, 'InternalFilletRadius', scale),
     }),
   ],
-  // Writer maps bottom flange → OverallWidth/FlangeThickness, top → TopFlange*.
+  // IFC4 names the bottom flange BottomFlange*; IFC2X3 inherited OverallWidth
+  // and FlangeThickness from IfcIShapeProfileDef for it.
   [
     WebIFC.IFCASYMMETRICISHAPEPROFILEDEF,
     (f) => ({
       kind: 'ASYMMETRIC_I',
       overallDepth: f('OverallDepth'),
       webThickness: f('WebThickness'),
-      bottomFlangeWidth: f('OverallWidth'),
-      bottomFlangeThickness: f('FlangeThickness'),
+      bottomFlangeWidth: f('BottomFlangeWidth') || f('OverallWidth'),
+      bottomFlangeThickness: f('BottomFlangeThickness') || f('FlangeThickness'),
       topFlangeWidth: f('TopFlangeWidth'),
       topFlangeThickness: f('TopFlangeThickness'),
     }),
@@ -829,11 +840,13 @@ const PARAMETRIC_PROFILE_BUILDERS: ReadonlyMap<number, ProfileBuilder> = new Map
   ],
   [
     WebIFC.IFCRECTANGLEHOLLOWPROFILEDEF,
-    (f) => ({
+    (f, def, scale) => ({
       kind: 'RECTANGLE_HOLLOW',
       xDim: f('XDim'),
       yDim: f('YDim'),
       wallThickness: f('WallThickness'),
+      innerFilletRadius: optRadius(def, 'InnerFilletRadius', scale),
+      outerFilletRadius: optRadius(def, 'OuterFilletRadius', scale),
     }),
   ],
   [
@@ -878,7 +891,7 @@ export function readProfileDef(
 
   switch (type) {
     case WebIFC.IFCARBITRARYCLOSEDPROFILEDEF: {
-      const points = readPolylinePoints(reader, def['OuterCurve'], scale);
+      const points = readClosedCurvePoints(reader, def['OuterCurve'], scale);
       if (points === undefined) {
         return err(
           importError('UNSUPPORTED_PROFILE', 'ARBITRARY_CLOSED OuterCurve could not be read')
@@ -887,17 +900,27 @@ export function readProfileDef(
       return ok({ kind: 'ARBITRARY_CLOSED', points });
     }
     case WebIFC.IFCARBITRARYPROFILEDEFWITHVOIDS: {
-      const outerPoints = readPolylinePoints(reader, def['OuterCurve'], scale);
+      const outerPoints = readClosedCurvePoints(reader, def['OuterCurve'], scale);
       if (outerPoints === undefined) {
         return err(
           importError('UNSUPPORTED_PROFILE', 'ARBITRARY_WITH_VOIDS OuterCurve could not be read')
         );
       }
+      // A void that cannot be read must fail the profile: a solid without it
+      // would report material where the source has a hole.
       const innerRefs = asRefArray(def['InnerCurves']) ?? [];
       const voids: Array<Array<[number, number]>> = [];
       for (const innerRef of innerRefs) {
-        const loop = readPolylinePoints(reader, innerRef, scale);
-        if (loop !== undefined) voids.push(loop);
+        const loop = readClosedCurvePoints(reader, innerRef, scale);
+        if (loop === undefined) {
+          return err(
+            importError(
+              'UNSUPPORTED_PROFILE',
+              `ARBITRARY_WITH_VOIDS inner curve ${innerRef.value} could not be read`
+            )
+          );
+        }
+        voids.push(loop);
       }
       return ok({ kind: 'ARBITRARY_WITH_VOIDS', outerPoints, voids });
     }
@@ -1122,6 +1145,61 @@ function findBodyItems(reader: SpfReader, representations: readonly IfcRef[]): n
   return null;
 }
 
+// Chords in a full circle or ellipse read from a profile curve. The polygon is
+// inscribed, so its area is sin(2π/48)/(2π/48) ≈ 0.9971 of the true area.
+const CLOSED_CONIC_SEGMENTS = 48;
+
+/**
+ * Reads a closed profile curve as polygon points in millimetres: an
+ * IfcPolyline, or a full IfcCircle or IfcEllipse faceted to
+ * CLOSED_CONIC_SEGMENTS chords. Returns `undefined` for any other curve type.
+ */
+function readClosedCurvePoints(
+  reader: SpfReader,
+  ref: unknown,
+  scale: number
+): Array<[number, number]> | undefined {
+  const curveRef = asRef(ref);
+  if (curveRef === undefined) return undefined;
+  const type = reader.getLineType(curveRef.value);
+  if (type === WebIFC.IFCPOLYLINE) return readPolylinePoints(reader, curveRef, scale);
+  if (type !== WebIFC.IFCCIRCLE && type !== WebIFC.IFCELLIPSE) return undefined;
+
+  const conic = reader.getLine<Record<string, unknown>>(curveRef.value);
+  if (conic === null) return undefined;
+  const circleRadius = readMeasure(conic['Radius']);
+  const semi1 = type === WebIFC.IFCCIRCLE ? circleRadius : readMeasure(conic['SemiAxis1']);
+  const semi2 = type === WebIFC.IFCCIRCLE ? circleRadius : readMeasure(conic['SemiAxis2']);
+  if (semi1 === undefined || semi2 === undefined || !(semi1 > 0) || !(semi2 > 0)) return undefined;
+
+  const positionRef = asRef(conic['Position']);
+  const position =
+    positionRef === undefined ? null : reader.getLine<Record<string, unknown>>(positionRef.value);
+  if (position === null) return undefined;
+  const centre = readPoint2D(reader, position['Location'], scale);
+  if (centre === undefined) return undefined;
+  const refInput = position['RefDirection'];
+  const ref2 =
+    refInput === null || refInput === undefined ? [1, 0] : readDirection2D(reader, refInput);
+  if (ref2 === undefined) return undefined;
+  const [dx = 1, dy = 0] = ref2;
+  const len = Math.hypot(dx, dy);
+  if (!(len > 0)) return undefined;
+  const c = dx / len;
+  const s = dy / len;
+  const a = semi1 * scale * 1000;
+  const b = semi2 * scale * 1000;
+
+  const out: Array<[number, number]> = [];
+  for (let i = 0; i < CLOSED_CONIC_SEGMENTS; i++) {
+    const theta = (2 * Math.PI * i) / CLOSED_CONIC_SEGMENTS;
+    const u = a * Math.cos(theta);
+    const v = b * Math.sin(theta);
+    out.push([centre[0] + c * u - s * v, centre[1] + s * u + c * v]);
+  }
+  return out;
+}
+
 function readPolylinePoints(
   reader: SpfReader,
   ref: unknown,
@@ -1202,7 +1280,10 @@ function readDirection(reader: SpfReader, ref: unknown): Vec3 | undefined {
   if (dir === null) return undefined;
   const ratios = asMeasureArray(dir['DirectionRatios']);
   if (ratios.length < 3) return undefined;
-  return [ratios[0] ?? 0, ratios[1] ?? 0, ratios[2] ?? 0];
+  // DirectionRatios give a direction only; their magnitude carries no length.
+  const [x = 0, y = 0, z = 0] = ratios;
+  const length = Math.hypot(x, y, z);
+  return length > 0 ? [x / length, y / length, z / length] : [x, y, z];
 }
 
 function releaseEmbind(value: unknown): void {
