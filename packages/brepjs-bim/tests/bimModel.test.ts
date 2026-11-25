@@ -101,7 +101,10 @@ describe('BimDocument', () => {
       ],
       [
         'proxy',
-        authoring(model).addProxy({ name: 'Blob', solid: box(100, 100, 100) }, { stableKey: 'k/proxy' }),
+        authoring(model).addProxy(
+          { name: 'Blob', solid: box(100, 100, 100) },
+          { stableKey: 'k/proxy' }
+        ),
       ],
     ];
     for (const [label, added] of minted) {
@@ -229,7 +232,7 @@ describe('BimDocument', () => {
   });
 });
 
-describe('BimDocument.addDoorAndCutWall', () => {
+describe('BimAuthoring.addDoorAndCutWall', () => {
   function buildWallModel() {
     const model = new BimDocument();
     const initResult = model.init({ name: 'Test' });
@@ -304,7 +307,7 @@ describe('BimDocument.addDoorAndCutWall', () => {
   });
 });
 
-describe('BimDocument.addWindowAndCutWall', () => {
+describe('BimAuthoring.addWindowAndCutWall', () => {
   function buildWallModel() {
     const model = new BimDocument();
     const initResult = model.init({ name: 'Test' });
@@ -459,7 +462,7 @@ describe('BimDocument — wall geometry is cut by openings (M4)', () => {
   });
 });
 
-describe('BimDocument.addSlab', () => {
+describe('BimAuthoring.addSlab', () => {
   const SLAB_SPEC = {
     length: 5000,
     width: 4000,
@@ -524,7 +527,7 @@ describe('BimDocument.addSlab', () => {
   });
 });
 
-describe('BimDocument.addSlabOpening (M6)', () => {
+describe('BimAuthoring.addSlabOpening (M6)', () => {
   const SLAB_SPEC = {
     length: 6000,
     width: 4000,
@@ -702,7 +705,7 @@ describe('BimDocument.addSlabOpening (M6)', () => {
   });
 });
 
-describe('BimDocument.addBeam (M7)', () => {
+describe('BimAuthoring.addBeam (M7)', () => {
   const BEAM_SPEC = {
     length: 5000,
     profile: { kind: 'RECTANGULAR' as const, width: 200, height: 400 },
@@ -757,7 +760,7 @@ describe('BimDocument.addBeam (M7)', () => {
   });
 });
 
-describe('BimDocument.addColumn (M7)', () => {
+describe('BimAuthoring.addColumn (M7)', () => {
   const COLUMN_SPEC = {
     height: 3000,
     profile: { kind: 'CIRCULAR' as const, radius: 200 },

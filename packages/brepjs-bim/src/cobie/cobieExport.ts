@@ -133,7 +133,10 @@ function deriveContact(meta?: CobieExportMeta): CobieContactRow[] {
   ];
 }
 
-function deriveFacility(model: BimDocument, elements: readonly AnyBimElement[]): CobieFacilityRow[] {
+function deriveFacility(
+  model: BimDocument,
+  elements: readonly AnyBimElement[]
+): CobieFacilityRow[] {
   const project = model.getProject();
   if (project === null) return [];
   const site = elements.find((e) => e.category === 'SITE');

@@ -1,9 +1,9 @@
 import * as WebIFC from 'web-ifc';
 import type { IfcWriter } from './ifcWriter.js';
-import { writeAxis2Placement3D,writeDirection } from './headerWriter.js';
+import { writeAxis2Placement3D, writeDirection } from './headerWriter.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import type { WallSpec } from '../specs/wallSpec.js';
-import type { WallOpeningSpec,SlabOpeningSpec } from '../types/bimTypes.js';
+import type { WallOpeningSpec, SlabOpeningSpec } from '../types/bimTypes.js';
 import type { SlabSpec } from '../specs/slabSpec.js';
 import { toIfcLengthM } from '../units/units.js';
 import { writeCommonPset } from './psetWriter.js';
@@ -135,7 +135,6 @@ export function writeSlabOpeningGeometry(
   const sizeXM = toIfcLengthM(openingSpec.sizeX);
   const sizeYM = toIfcLengthM(openingSpec.sizeY);
   const thicknessM = toIfcLengthM(slabSpec.thickness);
-
 
   const profileId = w.nextId();
   w.writeLine({

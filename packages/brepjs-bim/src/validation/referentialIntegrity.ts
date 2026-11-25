@@ -92,7 +92,7 @@ export function checkReferentialIntegrity(input: IntegrityInput): ValidationRepo
         issue(
           'error',
           'ELEMENT_NOT_CONTAINED',
-          `${el.category} (localId ${el.localId}) is not contained in any spatial structure`,
+          `${el.category} (${el.guid}) is not contained in any spatial structure`,
           el.localId
         )
       );
@@ -101,7 +101,7 @@ export function checkReferentialIntegrity(input: IntegrityInput): ValidationRepo
         issue(
           'error',
           'ELEMENT_DOUBLE_CONTAINED',
-          `${el.category} (localId ${el.localId}) is contained in ${count} spatial structures (expected 1)`,
+          `${el.category} (${el.guid}) is contained in ${count} spatial structures (expected 1)`,
           el.localId,
           { count }
         )
@@ -122,7 +122,7 @@ export function checkReferentialIntegrity(input: IntegrityInput): ValidationRepo
           issue(
             'error',
             'FILL_FILLER_MISSING',
-            `FILLS_OPENING references filler localId ${rel.fillerLocalId}, which does not exist`,
+            'Fill relationship references a missing filler',
             rel.fillerLocalId
           )
         );
@@ -138,7 +138,7 @@ export function checkReferentialIntegrity(input: IntegrityInput): ValidationRepo
         issue(
           'warning',
           'ORPHANED_OPENING',
-          `OPENING (localId ${el.localId}) is not referenced by any void relationship`,
+          `OPENING (${el.guid}) is not referenced by any void relationship`,
           el.localId
         )
       );
@@ -156,14 +156,7 @@ function checkVoidHost(
 ): void {
   const host = elementsById.get(hostId);
   if (host === undefined) {
-    issues.push(
-      issue(
-        'error',
-        'VOID_HOST_MISSING',
-        `Void references host localId ${hostId}, which does not exist`,
-        hostId
-      )
-    );
+    issues.push(issue('error', 'VOID_HOST_MISSING', 'Void references a missing host', hostId));
     return;
   }
   if (host.category !== expected) {
@@ -171,7 +164,7 @@ function checkVoidHost(
       issue(
         'error',
         'VOID_HOST_WRONG_CATEGORY',
-        `Void references host localId ${hostId}, expected ${expected} but found ${host.category}`,
+        `Invalid void host, expected ${expected} but found ${host.category}`,
         hostId,
         { expected, actual: host.category }
       )
@@ -187,14 +180,7 @@ function checkOpeningExists(
 ): void {
   const opening = elementsById.get(openingId);
   if (opening === undefined) {
-    issues.push(
-      issue(
-        'error',
-        code,
-        `References opening localId ${openingId}, which does not exist`,
-        openingId
-      )
-    );
+    issues.push(issue('error', code, 'Relationship references a missing Opening', openingId));
     return;
   }
   if (opening.category !== 'OPENING') {
@@ -204,7 +190,7 @@ function checkOpeningExists(
         code === 'VOID_OPENING_MISSING'
           ? 'VOID_OPENING_WRONG_CATEGORY'
           : 'FILL_OPENING_WRONG_CATEGORY',
-        `References opening localId ${openingId}, expected OPENING but found ${opening.category}`,
+        `Invalid Opening reference, expected OPENING but found ${opening.category}`,
         openingId,
         { actual: opening.category }
       )

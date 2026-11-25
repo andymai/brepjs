@@ -31,7 +31,11 @@ function isIssue(v: unknown): v is BimIssueLike {
 /** Validation issues name a BimDocument local id; agents work in key paths. */
 function issueDiagnostic(issue: BimIssueLike, keyOf: ReadonlyMap<object, string>): BuildDiagnostic {
   const id =
-    typeof issue.entity === 'object' ? keyOf.get(issue.entity) : typeof issue.entity === 'number' ? `#${issue.entity}` : issue.entity;
+    typeof issue.entity === 'object'
+      ? keyOf.get(issue.entity)
+      : typeof issue.entity === 'number'
+        ? `#${issue.entity}`
+        : issue.entity;
   return {
     severity: issue.severity,
     code: issue.code,

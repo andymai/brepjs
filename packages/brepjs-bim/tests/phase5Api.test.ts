@@ -105,7 +105,9 @@ function buildModel(): { model: BimDocument; spaceAId: RecordRef } {
   );
   model.assignToGroup(zoneId, [spaceA.value, spaceB.value]);
 
-  const systemId = unwrap(authoring(model).addSystem({ name: 'HVAC Supply', longName: 'Air supply network' }));
+  const systemId = unwrap(
+    authoring(model).addSystem({ name: 'HVAC Supply', longName: 'Air supply network' })
+  );
   model.assignToGroup(systemId, [wall.value]);
 
   return { model, spaceAId: spaceA.value };

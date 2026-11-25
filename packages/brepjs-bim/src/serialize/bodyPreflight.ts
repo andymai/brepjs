@@ -32,7 +32,7 @@ export function preflightBody(
     err(
       ifcError(
         'BODY_TESSELLATION_FAILED',
-        `Body item ${itemIndex} for ${input.localId} could not be tessellated: ${reason}`,
+        `Body item ${itemIndex} could not be tessellated: ${reason}`,
         cause,
         { localId: input.localId, itemIndex }
       )

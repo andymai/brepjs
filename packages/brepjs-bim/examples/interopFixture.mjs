@@ -11,7 +11,7 @@ import { unwrap } from 'brepjs';
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { BimDocument, toIfcValidated , authoring } from 'brepjs-bim';
+import { BimDocument, toIfcValidated, authoring } from 'brepjs-bim';
 
 const outFile =
   process.argv[2] ?? resolve(dirname(fileURLToPath(import.meta.url)), 'interop-fixture.ifc');
@@ -82,7 +82,10 @@ const wallIds = walls.map((d, i) =>
     `wall ${i}`
   )
 );
-for (const id of wallIds) { unwrap(model.placeIn(id, groundId)); unwrap(model.reparent(id, groundId, 'KEEP_LOCAL')); }
+for (const id of wallIds) {
+  unwrap(model.placeIn(id, groundId));
+  unwrap(model.reparent(id, groundId, 'KEEP_LOCAL'));
+}
 
 const rearWallId = wallIds[1];
 if (rearWallId === undefined) throw new Error('Expected rear perimeter wall');
@@ -200,7 +203,10 @@ const beam = expect(
   }),
   'I beam'
 );
-for (const id of [roundCol, iCol, beam]) { unwrap(model.placeIn(id, groundId)); unwrap(model.reparent(id, groundId, 'KEEP_LOCAL')); }
+for (const id of [roundCol, iCol, beam]) {
+  unwrap(model.placeIn(id, groundId));
+  unwrap(model.reparent(id, groundId, 'KEEP_LOCAL'));
+}
 
 // Shaped roofs: gable over the west half, hip over the east half, a small dome
 // crown. All three serialize as tessellated bodies.
@@ -249,7 +255,10 @@ const dome = expect(
   }),
   'dome roof'
 );
-for (const id of [gable, hip, dome]) { unwrap(model.placeIn(id, groundId)); unwrap(model.reparent(id, groundId, 'KEEP_LOCAL')); }
+for (const id of [gable, hip, dome]) {
+  unwrap(model.placeIn(id, groundId));
+  unwrap(model.reparent(id, groundId, 'KEEP_LOCAL'));
+}
 
 // A two-flight return stair and a posted railing beside it.
 const stair = expect(

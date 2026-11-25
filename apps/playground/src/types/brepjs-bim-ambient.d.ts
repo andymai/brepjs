@@ -15,33 +15,6 @@ interface DocumentFrame {
     readonly frame: RigidFrame;
 }
 
-/** Optional identity override for created elements: a stable key (e.g. a
- *  families key path) that replaces the positional GlobalId derivation. */
-interface ElementIdentityOptions {
-    readonly stableKey?: string | undefined;
-}
-
-interface AuthoredBodyInput {
-    readonly category: BodyClassification;
-    readonly placement: PlacementDefinition;
-    readonly solids: Extract<Body, {
-        kind: 'AUTHORITATIVE';
-    }>['solids'];
-    readonly stableKey?: string;
-    readonly metadata?: Readonly<{
-        name?: string;
-        description?: string;
-    }>;
-    readonly openingLocalId?: RecordRef;
-}
-
-interface BodyCommitReceipt {
-    readonly kind: 'COMMITTED';
-    readonly localId: RecordRef;
-    readonly guid: IfcGuid;
-    readonly cleanup: CleanupReport;
-}
-
 /** Prepared writes for one synchronous command, discarded on rejection. */
 interface ModelCommand {
     readonly counter: ReturnType<typeof recordCounter>;
@@ -57,6 +30,7 @@ interface ModelCommand {
     }>>;
     readonly generated: Map<ValidSolid, object | undefined>;
     readonly retired: OwnedGeometry[];
+    readonly styles: Map<RecordRef, SurfaceStyleSpec>;
     readonly recipeEligibility: Map<RecordRef, boolean>;
 }
 
@@ -89,8 +63,37 @@ type RelationshipFields = {
     }>, 'guid' | 'localId'>;
 }[BimRelationship['kind']];
 
+interface BodyCommitReceipt {
+    readonly kind: 'COMMITTED';
+    readonly localId: RecordRef;
+    readonly guid: IfcGuid;
+    readonly cleanup: CleanupReport;
+}
+
+/** Optional identity override for created elements: a stable key (e.g. a
+ *  families key path) that replaces the positional GlobalId derivation. */
+interface ElementIdentityOptions {
+    readonly stableKey?: string | undefined;
+}
+
+interface AuthoredBodyInput {
+    readonly category: BodyClassification;
+    readonly placement: PlacementDefinition;
+    readonly solids: Extract<Body, {
+        kind: 'AUTHORITATIVE';
+    }>['solids'];
+    readonly stableKey?: string;
+    readonly metadata?: Readonly<{
+        name?: string;
+        description?: string;
+    }>;
+    readonly openingLocalId?: RecordRef;
+}
+
 declare class BimDocument {
     #private;
+    /** Monotonic revision for asynchronous consumers of borrowed geometry. */
+    get revision(): number;
     frame(ref: RecordRef, target: FrameSpace): Result<import('./documentFrames.js').DocumentFrame, BimError>;
     placedSolids(ref: RecordRef, target: FrameSpace): Result<readonly ValidSolid[], BimError>;
     bounds(ref: RecordRef, target: FrameSpace): import('brepjs').Err<BimError> | import('brepjs').Ok<Readonly<{
@@ -163,7 +166,7 @@ declare class BimDocument {
     aggregate(parentId: RecordRef, childId: RecordRef): Result<void, BimError>;
     placeIn(elementId: RecordRef, containerId: RecordRef): Result<void, BimError>;
     getProject(): BimElement<'PROJECT'> | null;
-    getElement(id: RecordRef): AnyBimElement | null;
+    getElement(id: RecordRef): AnyBimElement;
     /** Follow explicit decomposition only. Placement parenting is a separate relation. */
     getChildren(id: RecordRef): readonly AnyBimElement[];
     /** Whether recipe commands still justify this element's recipe-derived quantities. */
@@ -234,7 +237,6 @@ declare class BimAuthoring {
         readonly roof: RecordRef;
         readonly opening: RecordRef;
     }, BimError>;
-    private readonly access;
     constructor(document: BimDocument);
     addSite(spec: SiteSpec, options?: ElementIdentityOptions & {
         readonly placementParent?: RecordRef;
@@ -338,22 +340,6 @@ interface BimTreeSummary {
     /** Number of nodes in the tree (the project and everything reachable from it). */
     readonly elementCount: number;
 }
-
-interface PlacedSolidsOptions {
-    readonly parentFrame?: FrameInput | undefined;
-}
-
-/** Return fresh caller-owned copies of this element's own material in its parent frame. */
-declare function placedSolids(el: AnyBimElement, options?: PlacedSolidsOptions): Result<readonly ValidSolid[], BimError>;
-
-declare function elementMaterialVolume(el: AnyBimElement): import('brepjs').Err<BimError> | import('brepjs').Ok<number>;
-
-declare function elementBounds(el: AnyBimElement, space: {
-    kind: 'LOCAL';
-} | ({
-    kind: 'PLACED';
-    tag: string;
-} & PlacedSolidsOptions)): import('brepjs').Err<BimError> | import('brepjs').Ok<import('../index.js').BodyBounds>;
 
 interface GeometryCleanupDiagnostic {
     readonly operation: string;
@@ -1355,7 +1341,7 @@ declare function parseDoorSpec(input: unknown): Result<DoorSpec, BimError>;
 declare function parseWindowSpec(input: unknown): Result<WindowSpec, BimError>;
 
 /**
- * Input for BimDocument.addSlabOpening — a vertical through-hole in a slab.
+ * Input for BimAuthoring.addSlabOpening — a vertical through-hole in a slab.
  * All dimensions in mm, offsets in the slab's local XY frame.
  */
 interface SlabOpeningInput {
@@ -2173,9 +2159,8 @@ interface ClassificationRef {
 }
 
 declare class RecordRef {
-    readonly [sequence]: number;
+    private readonly documentRecord;
     constructor(ordinal: number);
-    toString(): string;
 }
 
 interface BimModelMeta {
@@ -2709,45 +2694,6 @@ declare function familiesToBim(root: ResolvedElement, options: FamiliesToBimOpti
 interface OpeningIdentityOptions extends ElementIdentityOptions {
     readonly openingStableKey?: string | undefined;
     readonly solids?: NonEmpty<ValidSolid>;
-}
-
-declare class BimModel extends BimDocument {
-    private readonly commands;
-    addSite(spec: SiteSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addBridge(spec: BridgeSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addBridgePart(spec: BridgePartSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addEarthworksFill(spec: EarthworksFillSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addBuilding(spec: BuildingSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addStorey(spec: StoreySpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addWall(spec: WallSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addSlab(spec: SlabSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addBeam(spec: BeamSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addColumn(spec: ColumnSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addSpace(spec: SpaceSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addRoof(spec: RoofSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addCurtainWall(spec: CurtainWallSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addFooting(spec: FootingSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addPile(spec: PileSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addStair(spec: StairSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addRamp(spec: RampSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addRailing(spec: RailingSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addCovering(spec: CoveringSpec, hostLocalId?: RecordRef, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addElementAssembly(spec: ElementAssemblySpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addZone(spec: ZoneSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addSystem(spec: SystemSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addProxy(spec: ProxySpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
-    addFillerPanel(input: {
-        category: 'DOOR' | 'WINDOW';
-        width: number;
-        height: number;
-        materialName: string;
-        placement: PlacementDefinition;
-        stableKey?: string;
-        openingLocalId?: RecordRef;
-    }): Result<RecordRef, BimError>;
-    addDoorAndCutWall(spec: DoorSpec, options?: OpeningIdentityOptions): Result<RecordRef, BimError>;
-    addWindowAndCutWall(spec: WindowSpec, options?: OpeningIdentityOptions): Result<RecordRef, BimError>;
-    addSlabOpening(input: SlabOpeningInput, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
 }
 
 interface RoundTripReport extends ValidationReport {

@@ -43,7 +43,9 @@ describe('IFC round-trip (M1)', () => {
     const projectLocalId = initResult.value;
     const siteLocalId = unwrap(authoring(model).addSite({ name: 'Test Site' }));
     const buildingLocalId = unwrap(authoring(model).addBuilding({ name: 'Test Building' }));
-    const storeyLocalId = unwrap(authoring(model).addStorey({ name: 'Ground Floor', elevation: 0 }));
+    const storeyLocalId = unwrap(
+      authoring(model).addStorey({ name: 'Ground Floor', elevation: 0 })
+    );
     model.aggregate(projectLocalId, siteLocalId);
     model.aggregate(siteLocalId, buildingLocalId);
     model.aggregate(buildingLocalId, storeyLocalId);
@@ -340,8 +342,8 @@ describe('IFC Opening round-trip (M3)', () => {
       thermalTransmittance: 1.2,
     });
     if (!windowResult.ok) throw new Error(windowResult.error.message);
-    unwrap(model.placeIn(doorResult.value,storeyId));
-    unwrap(model.placeIn(windowResult.value,storeyId));
+    unwrap(model.placeIn(doorResult.value, storeyId));
+    unwrap(model.placeIn(windowResult.value, storeyId));
 
     const result = await toIfc(model, {
       applicationName: 'brepjs-bim-test',
@@ -559,6 +561,8 @@ describe('IFC Opening round-trip (M3)', () => {
     });
     if (!doorResult.ok) throw new Error(doorResult.error.message);
 
+    unwrap(model.placeIn(wallResult.value, storeyId));
+    unwrap(model.placeIn(doorResult.value, storeyId));
     const result = await toIfc(model, { applicationName: 'test', applicationVersion: '0' });
     if (!result.ok) throw new Error(result.error.message);
     const api = new WebIFC.IfcAPI();
@@ -999,7 +1003,7 @@ describe('IFC Beam round-trip (M7)', () => {
     // and height along +Z in world space.
     const model = new BimDocument();
     unwrap(model.init({ name: 'Orient Test' }));
-    unwrap(
+    const authored = unwrap(
       authoring(model).addBeam({
         length: 5000,
         profile: {
@@ -1015,18 +1019,19 @@ describe('IFC Beam round-trip (M7)', () => {
         materialName: 'Steel',
       })
     );
+    unwrap(
+      model.placeIn(authored, unwrap(authoring(model).addStorey({ name: 'Level', elevation: 0 })))
+    );
     const result = await toIfc(model, { applicationName: 't', applicationVersion: '0' });
     if (!result.ok) throw new Error(result.error.message);
     const api = new WebIFC.IfcAPI();
     await api.Init();
     const mid = api.OpenModel(result.value);
-    const beamIds = api.GetLineIDsWithType(mid, WebIFC.IFCBEAM);
-    const beam = api.GetLine(mid, beamIds.get(0)) as Record<string, unknown>;
-    const placementRef = beam['ObjectPlacement'] as { value: number };
-    const placement = api.GetLine(mid, placementRef.value) as Record<string, unknown>;
-    const relPlacementRef = placement['RelativePlacement'] as { value: number };
-    const relPlacement = api.GetLine(mid, relPlacementRef.value) as Record<string, unknown>;
-
+    // The product pose maps authored XYZ. The swept solid positions the section in its YZ plane.
+    const solids = api.GetLineIDsWithType(mid, WebIFC.IFCEXTRUDEDAREASOLID);
+    expect(solids.size()).toBe(1);
+    const sweep = api.GetLine(mid, solids.get(0)) as { Position: { value: number } };
+    const relPlacement = api.GetLine(mid, sweep.Position.value) as Record<string, unknown>;
     const axisRef = relPlacement['Axis'] as { value: number };
     const refDirRef = relPlacement['RefDirection'] as { value: number };
     const axisLine = api.GetLine(mid, axisRef.value) as Record<string, unknown>;

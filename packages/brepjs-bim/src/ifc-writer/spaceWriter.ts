@@ -20,7 +20,6 @@ export function writeSpaceGeometry(
   geomSubContextId: number,
   localPlacementId: number
 ): SpaceRepresentationIds {
-
   const lengthM = toIfcLengthM(spec.length);
   const widthM = toIfcLengthM(spec.width);
   const heightM = toIfcLengthM(spec.height);

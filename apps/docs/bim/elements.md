@@ -65,7 +65,7 @@ Retained Wall apertures export as IFC `Reference` geometry with void and fill re
 
 Wall net volume measures the occupied union of all Body items. Length, Width, and Height remain nominal dimensions from the Wall spec. After Body replacement, those dimensions do not establish gross volume, surface quantities, or weight. Recipe-derived quantities require current model recipe eligibility; replacing a Body clears that eligibility even if the replacement is tagged `PARAMETRIC`. Measurement failures omit the affected quantities and produce `WALL_QUANTITY_OMITTED` issues from `toIfcValidated()`.
 
-Use `model.addAuthoredBody({ category, placement, solids })` for any supported material-bearing class. Use `elementBounds` and `elementMaterialVolume` to query its own geometry. The material volume counts overlap once.
+Use `model.addAuthoredBody({ category, placement, solids })` for any supported material-bearing class. Use `model.bounds(ref, target)` and `model.materialVolume(ref)` to query its own geometry. The material volume counts overlap once.
 
 ## Data layers
 

@@ -28,7 +28,6 @@ export function writeFootingGeometry(
   geomSubContextId: number,
   localPlacementId: number
 ): FoundationRepresentationIds {
-
   const lengthM = toIfcLengthM(spec.length);
   const widthM = toIfcLengthM(spec.width);
   const thicknessM = toIfcLengthM(spec.thickness);
@@ -85,7 +84,6 @@ export function writePileGeometry(
   geomSubContextId: number,
   localPlacementId: number
 ): FoundationRepresentationIds {
-
   const profileId = writeProfile(w, spec.profile);
   const extrusionPosId = writeAxis2Placement3D(w, [0, 0, 0]);
   const extrusionDirId = writeDirection(w, [0, 0, 1]);

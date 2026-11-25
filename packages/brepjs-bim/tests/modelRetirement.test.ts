@@ -55,11 +55,7 @@ it('reports post-release failure as COMMITTED, attempts every old item once, and
           return 1;
         },
       });
-      try {
-        model.setSurfaceStyle(id, { name: 'late', r: 1, g: 0, b: 0 });
-      } catch (error) {
-        metadataMutation = error;
-      }
+      metadataMutation = model.setSurfaceStyle(id, { name: 'late', r: 1, g: 0, b: 0 });
       firstRelease();
       throw cause;
     });
@@ -79,7 +75,7 @@ it('reports post-release failure as COMMITTED, attempts every old item once, and
     expect(callbackRead).toBe(model.getElement(id)?.geometry);
     expect(callbackRead).toMatchObject({ solids: [next] });
     expect(reentrant).toMatchObject({ ok: false, error: { code: 'MODEL_BUSY' } });
-    expect(metadataMutation).toMatchObject({ cause: { code: 'MODEL_BUSY' } });
+    expect(metadataMutation).toMatchObject({ ok: false, error: { code: 'MODEL_BUSY' } });
     expect(specReads).toBe(0);
     expect(firstAttempt).toHaveBeenCalledTimes(1);
     expect(secondAttempt).toHaveBeenCalledTimes(1);
@@ -201,7 +197,9 @@ it('keeps a successful RecordRef outcome and diagnostics when retiring a slab op
   const baseline = arena();
   const model = new BimDocument();
   try {
-    const id = unwrap(authoring(model).addSlab({ ...WALL, length: 10, width: 10, predefinedType: 'FLOOR' }));
+    const id = unwrap(
+      authoring(model).addSlab({ ...WALL, length: 10, width: 10, predefinedType: 'FLOOR' })
+    );
     const before = model.getElement(id);
     if (before?.category !== 'SLAB') throw new Error('Expected Slab');
     const release = before.geometry.solids[0][Symbol.dispose].bind(before.geometry.solids[0]);
@@ -213,7 +211,13 @@ it('keeps a successful RecordRef outcome and diagnostics when retiring a slab op
       throw cause;
     });
     const opening = unwrap(
-      authoring(model).addSlabOpening({ slabLocalId: id, sizeX: 1, sizeY: 1, offsetX: 1, offsetY: 1 })
+      authoring(model).addSlabOpening({
+        slabLocalId: id,
+        sizeX: 1,
+        sizeY: 1,
+        offsetX: 1,
+        offsetY: 1,
+      })
     );
     expect(model.getElement(opening)?.category).toBe('OPENING');
     expect(callbackRelationships).toEqual(model.getAllRelationships());

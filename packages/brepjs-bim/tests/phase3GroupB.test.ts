@@ -132,7 +132,10 @@ function buildGroupBModel(): GroupBModel {
 
   // Element assembly nesting the railing (ordered nesting via IfcRelNests).
   const assemblyId = unwrap(
-    authoring(model).addElementAssembly({ name: 'Guard Assembly', predefinedType: 'ACCESSORY_ASSEMBLY' })
+    authoring(model).addElementAssembly({
+      name: 'Guard Assembly',
+      predefinedType: 'ACCESSORY_ASSEMBLY',
+    })
   );
   model.placeIn(assemblyId, storeyId);
   model.nest(assemblyId, railing.value);

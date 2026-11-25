@@ -130,7 +130,9 @@ describe('Phase 2 door/window geometry', () => {
 describe('Phase 2 proxy geometry', () => {
   it('writes an IfcBuildingElementProxy with its own tessellated body', async () => {
     using model = buildModelWithOpenings().model;
-    const proxyId = unwrap(authoring(model).addProxy({ name: 'Custom Block', solid: box(800, 600, 400) }));
+    const proxyId = unwrap(
+      authoring(model).addProxy({ name: 'Custom Block', solid: box(800, 600, 400) })
+    );
     const proxy = model.getElement(proxyId);
     if (proxy?.category !== 'PROXY') throw new Error('Missing proxy');
     const bytes = unwrap(await toIfc(model, META));

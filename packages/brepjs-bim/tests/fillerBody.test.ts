@@ -1,5 +1,5 @@
 import { authoring } from '../src/model/authoring.js';
-import {addDeliveryStorey} from './helpers/deliveryStorey.js';
+import { addDeliveryStorey } from './helpers/deliveryStorey.js';
 import { box, clone, unwrap } from 'brepjs';
 import { expect, it, vi } from 'vitest';
 import { BimDocument } from '../src/model/bimDocument.js';
@@ -18,9 +18,17 @@ for (const category of ['DOOR', 'WINDOW'] as const) {
   it('keeps the host unchanged when attaching a multi-item ' + category, async () => {
     using model = new BimDocument();
     unwrap(model.init({ name: 'Fillers' }));
-    const host = unwrap(authoring(model).addSlab({ ...OPENING_WALL, width: 10, predefinedType: 'FLOOR' }));
+    const host = unwrap(
+      authoring(model).addSlab({ ...OPENING_WALL, width: 10, predefinedType: 'FLOOR' })
+    );
     const opening = unwrap(
-      authoring(model).addSlabOpening({ slabLocalId: host, offsetX: 1, offsetY: 1, sizeX: 2, sizeY: 3 })
+      authoring(model).addSlabOpening({
+        slabLocalId: host,
+        offsetX: 1,
+        offsetY: 1,
+        sizeX: 2,
+        sizeY: 3,
+      })
     );
     const cut = model.getElement(host);
     const id = unwrap(
@@ -37,7 +45,7 @@ for (const category of ['DOOR', 'WINDOW'] as const) {
       model.addAuthoredBody({ category, placement, openingLocalId: opening, solids: [duplicate] })
     ).toMatchObject({ ok: false, error: { code: 'OPENING_ALREADY_FILLED' } });
     expect(duplicate.disposed).toBe(false);
-    addDeliveryStorey(model,host,id);
+    addDeliveryStorey(model, host, id);
     const loaded = unwrap(await fromIfc(unwrap(await toIfc(model, meta))));
     try {
       const filler = loaded.elements.find((el) => el.guid === model.getElement(id)?.guid);
@@ -71,12 +79,16 @@ it('keeps both caller handles and old host when combined filler adoption fails',
 it('keeps arbitrary replacement material under a slab Opening on reload', async () => {
   using model = new BimDocument();
   unwrap(model.init({ name: 'Replacement slab' }));
-  const id = unwrap(authoring(model).addSlab({ ...OPENING_WALL, width: 10, predefinedType: 'FLOOR' }));
-  unwrap(authoring(model).addSlabOpening({ slabLocalId: id, offsetX: 1, offsetY: 1, sizeX: 2, sizeY: 3 }));
+  const id = unwrap(
+    authoring(model).addSlab({ ...OPENING_WALL, width: 10, predefinedType: 'FLOOR' })
+  );
+  unwrap(
+    authoring(model).addSlabOpening({ slabLocalId: id, offsetX: 1, offsetY: 1, sizeX: 2, sizeY: 3 })
+  );
   unwrap(
     model.replaceBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [box(10, 10, 2)] } })
   );
-  addDeliveryStorey(model,id);
+  addDeliveryStorey(model, id);
   const bytes = unwrap(await toIfc(model, meta));
   expect(new TextDecoder().decode(bytes)).toContain("'Reference'");
   const imported = unwrap(await fromIfc(bytes));
@@ -94,7 +106,13 @@ it.each(['DOOR', 'WINDOW'] as const)(
     using model = new BimDocument();
     unwrap(model.init({ name: 'Independent panel' }));
     const id = unwrap(
-      authoring(model).addFillerPanel({ category, width: 10, height: 20, materialName: 'Wood', placement })
+      authoring(model).addFillerPanel({
+        category,
+        width: 10,
+        height: 20,
+        materialName: 'Wood',
+        placement,
+      })
     );
     const panel = model.getElement(id);
     if (panel?.representation !== 'BODY') throw new Error('Missing panel Body');
@@ -104,7 +122,7 @@ it.each(['DOOR', 'WINDOW'] as const)(
     expect(extents.yMax).toBeCloseTo(10);
     expect(extents.zMax).toBeCloseTo(100);
     expect(unwrap(model.materialVolume(panel.localId))).toBeCloseTo(20000);
-    addDeliveryStorey(model,id);
+    addDeliveryStorey(model, id);
     const analytic = new TextDecoder().decode(unwrap(await toIfc(model, meta)));
     expect(analytic).toContain('IFCEXTRUDEDAREASOLID(');
     const replacement = unwrap(clone(panel.geometry.solids[0]));
@@ -130,7 +148,9 @@ it.each(['DOOR', 'WINDOW'] as const)(
 it('rejects unsupported Opening definitions and nonphysical Body classifications before adoption', () => {
   using model = new BimDocument();
   const wall = unwrap(authoring(model).addWall(OPENING_WALL));
-  const slab = unwrap(authoring(model).addSlab({ ...OPENING_WALL, width: 10, predefinedType: 'FLOOR' }));
+  const slab = unwrap(
+    authoring(model).addSlab({ ...OPENING_WALL, width: 10, predefinedType: 'FLOOR' })
+  );
   const initial = model.getAllElements();
   const relationships = model.getAllRelationships();
   using solid = box(1, 1, 1);
@@ -172,7 +192,9 @@ it.each(['DOOR', 'WINDOW'] as const)(
     );
     const spec = { ...DOOR, width: 900, height: 2100, offsetAlongWall: 550, wallLocalId: wallId };
     const id = unwrap(
-      category === 'DOOR' ? authoring(model).addDoorAndCutWall(spec) : authoring(model).addWindowAndCutWall(spec)
+      category === 'DOOR'
+        ? authoring(model).addDoorAndCutWall(spec)
+        : authoring(model).addWindowAndCutWall(spec)
     );
     const filler = model.getElement(id);
     if (filler?.placement?.kind !== 'LOCAL_FRAME' || filler.placement.relativeTo === undefined)
@@ -182,9 +204,7 @@ it.each(['DOOR', 'WINDOW'] as const)(
     if (opening?.placement?.kind !== 'LOCAL_FRAME' || wall?.placement?.kind !== 'LOCAL_FRAME')
       throw new Error('Missing Opening or Wall frame');
     expect(opening.placement.relativeTo).toBe(wallId);
-    const b = unwrap(
-      model.bounds(filler.localId, 'WORLD')
-    ).bounds;
+    const b = unwrap(model.bounds(filler.localId, 'WORLD')).bounds;
     const actual = [b.xMin, b.xMax, b.yMin, b.yMax, b.zMin, b.zMax];
     [4800, 4900, 3550, 4450, 0, 2100].forEach((value, i) =>
       expect(actual[i]).toBeCloseTo(value, 4)

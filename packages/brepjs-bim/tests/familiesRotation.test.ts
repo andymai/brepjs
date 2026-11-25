@@ -103,7 +103,7 @@ async function worldPlacement(
 }
 
 function guidOf(model: BimDocument, localId: RecordRef): string {
-  const guid = model.getElement(localId as never)?.guid;
+  const guid = model.getElement(localId)?.guid;
   if (guid === undefined) throw new Error('element guid missing');
   return guid;
 }
@@ -119,7 +119,7 @@ async function padWorldPlacement(transform: readonly TransformOp[]): Promise<Wor
   using model = projected.model;
   const localId = projected.idByKeyPath.get('g/p');
   if (localId === undefined) throw new Error('pad not projected');
-  return worldPlacement(model, guidOf(model, localId));
+  return await worldPlacement(model, guidOf(model, localId));
 }
 
 function expectVec(actual: readonly number[], expected: readonly number[], precision = 4): void {
@@ -481,9 +481,7 @@ describe('familiesToBim rotation fold — civil spatial nodes', () => {
 
     // Reconstruct the world body through the rotated parent frame; bounds match
     // the world-baked source, proving the applyMatrix localization is exact.
-    const placed = unwrap(
-      model.placedSolids(fill.localId, 'WORLD')
-    );
+    const placed = unwrap(model.placedSolids(fill.localId, 'WORLD'));
     const worldBody = placed[0];
     if (worldBody === undefined) throw new Error('no placed body');
     using disposeWorld = worldBody;

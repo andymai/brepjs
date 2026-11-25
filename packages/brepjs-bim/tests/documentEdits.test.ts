@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { box, unwrap } from 'brepjs';
-import { BimDocument, BimAuthoring, type FrameInput } from '../src/index.js';
+import { authoring, BimDocument, BimAuthoring, type FrameInput } from '../src/index.js';
 import { identityPlacement } from '../src/types/placementDefinition.js';
 
 const pose = (x: number, y = 0): FrameInput => ({
@@ -46,7 +46,8 @@ describe('document edits', () => {
     unwrap(doc.reparent(child, 'WORLD', 'KEEP_WORLD'));
     expect(doc.reparent(level, group, 'KEEP_LOCAL').ok).toBe(false);
     expect(doc.move(group, { ...pose(0), axisX: [0, 0, 0] }).ok).toBe(false);
-    expect(Reflect.apply(doc.reparent, doc, [child, group]).ok).toBe(false);
+    // @ts-expect-error -- Exercise a JavaScript caller omitting the required policy.
+    expect(doc.reparent(child, group).ok).toBe(false);
     expect(unwrap(doc.materialVolume(child))).toBeCloseTo(1);
     expect(doc.getChildren(group).map((c) => c.localId)).toEqual([independent]);
   });
@@ -90,13 +91,8 @@ describe('document edits', () => {
       if (r.ok) throw Error('expected blockers');
       return r.error.metadata?.['dependants'];
     };
-    expect(reject()).toEqual(
-      expect.arrayContaining(
-        ['PLACEMENT_PARENT', 'PLACEMENT_REFERENCE', 'CONTAINED_IN', 'NESTS'].map((kind) =>
-          expect.objectContaining({ kind })
-        )
-      )
-    );
+    for (const kind of ['PLACEMENT_PARENT', 'PLACEMENT_REFERENCE', 'CONTAINED_IN', 'NESTS'])
+      expect(reject()).toContainEqual(expect.objectContaining({ kind }));
     unwrap(doc.detachContainment(child));
     unwrap(doc.detachDecomposition(child));
     unwrap(doc.reparent(child, 'WORLD', 'KEEP_LOCAL'));
@@ -119,3 +115,79 @@ describe('document edits', () => {
     expect(a.addStorey({ name: 'Reused', elevation: 0 }, { stableKey: 'room' }).ok).toBe(false);
   });
 });
+
+it.each(['PLACEMENT_PARENT', 'PLACEMENT_REFERENCE', 'CONTAINED_IN', 'AGGREGATES'] as const)(
+  'reports %s as the sole deletion blocker without releasing a handle',
+  (kind) => {
+    using doc = new BimDocument();
+    const retained = box(1, 2, 3);
+    const released = vi.spyOn(retained, Symbol.dispose);
+    const parent = unwrap(
+      doc.addAuthoredBody({ category: 'SPACE', placement: identityPlacement, solids: [retained] })
+    );
+    const child = unwrap(
+      doc.addAuthoredBody({
+        category: 'SIGN',
+        solids: [box(1, 1, 1)],
+        placement:
+          kind === 'PLACEMENT_PARENT'
+            ? { ...identityPlacement, relativeTo: parent }
+            : kind === 'PLACEMENT_REFERENCE'
+              ? {
+                  kind: 'GRID_REFERENCE',
+                  references: [{ kind: 'DOCUMENT', record: parent }],
+                  parameters: {},
+                }
+              : identityPlacement,
+      })
+    );
+    if (kind === 'CONTAINED_IN') unwrap(doc.placeIn(child, parent));
+    if (kind === 'AGGREGATES') unwrap(doc.aggregate(parent, child));
+    const before = doc.getAllRelationships();
+    expect(doc.delete(parent)).toMatchObject({
+      ok: false,
+      error: { metadata: { dependants: [{ kind, record: child }] } },
+    });
+    expect(doc.getAllRelationships()).toEqual(before);
+    expect(released).not.toHaveBeenCalled();
+  }
+);
+
+it.each(['physical', 'spatial', 'assembly'] as const)(
+  'reparents a %s record between rotated parents using either policy',
+  (kind) => {
+    using doc = new BimDocument(),
+      foreign = new BimDocument();
+    const make = authoring(doc);
+    const first = unwrap(make.addSite({ name: 'A', origin: [10, 20, 0], axisX: [0, 1, 0] }));
+    const second = unwrap(make.addSite({ name: 'B', origin: [200, 100, 0], axisX: [-1, 0, 0] }));
+    const invalid = unwrap(authoring(foreign).addSite({ name: 'Foreign' }));
+    const root = unwrap(doc.init({ name: 'Project' }));
+    const target =
+      kind === 'physical'
+        ? unwrap(
+            doc.addAuthoredBody({
+              category: 'SIGN',
+              solids: [box(2, 3, 4)],
+              placement: identityPlacement,
+            })
+          )
+        : kind === 'spatial'
+          ? unwrap(make.addBuilding({ name: 'Building' }))
+          : unwrap(make.addElementAssembly({ name: 'Assembly' }));
+    unwrap(doc.reparent(target, first, 'KEEP_LOCAL'));
+    unwrap(doc.move(target, { ...identityPlacement.frame, origin: [3, 0, 0] }));
+    const old = unwrap(doc.frame(target, 'WORLD'));
+    expect(old.frame.matrix.slice(12, 15)).toEqual([10, 23, 0]);
+    const snapshot = doc.getElement(target);
+    for (const parent of [invalid, root, target]) {
+      expect(doc.reparent(target, parent, 'KEEP_LOCAL').ok).toBe(false);
+      expect(doc.getElement(target)).toBe(snapshot);
+    }
+    unwrap(doc.reparent(target, second, 'KEEP_WORLD'));
+    expect(unwrap(doc.frame(target, 'WORLD')).frame.matrix).toEqual(old.frame.matrix);
+    unwrap(doc.reparent(target, first, 'KEEP_LOCAL'));
+    expect(unwrap(doc.frame(target, 'WORLD')).frame.matrix.slice(12, 15)).toEqual([-67, 210, 0]);
+    expect(old.frame.matrix.slice(12, 15)).toEqual([10, 23, 0]);
+  }
+);

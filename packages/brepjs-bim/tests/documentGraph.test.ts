@@ -75,3 +75,20 @@ it('keeps external names distinct from document targets and rejects a foreign ta
   });
   unwrap(doc.replacePlacement(ref, identityPlacement));
 });
+
+it('rejects a containment cycle between placeable Spaces', () => {
+  using doc = new BimDocument();
+  const space = () =>
+    unwrap(
+      doc.addAuthoredBody({
+        category: 'SPACE',
+        placement: identityPlacement,
+        solids: [box(1, 1, 1)],
+      })
+    );
+  const a = space(),
+    b = space();
+  unwrap(doc.placeIn(a, b));
+  expect(doc.placeIn(b, a)).toMatchObject({ ok: false, error: { code: 'CONTAINMENT_CYCLE' } });
+  expect(doc.getAllRelationships()).toHaveLength(1);
+});

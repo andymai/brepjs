@@ -239,9 +239,7 @@ it('composes the parent once and replaces one child without changing its sibling
     throw new Error('Missing plate');
   expect(child.placement.relativeTo).toBe(parentId);
   const local = unwrap(model.bounds(child.localId, parentId)).bounds;
-  const world = unwrap(
-    model.bounds(child.localId, 'WORLD')
-  ).bounds;
+  const world = unwrap(model.bounds(child.localId, 'WORLD')).bounds;
   expect(world.xMin).toBeCloseTo(500 - local.yMax);
   expect(world.yMax).toBeCloseTo(700 + local.xMax);
   expect(world.zMin).toBeCloseTo(100 + local.zMin);

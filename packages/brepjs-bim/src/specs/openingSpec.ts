@@ -69,7 +69,7 @@ export function parseWindowSpec(input: unknown): Result<WindowSpec, BimError> {
 }
 
 /**
- * Input for BimDocument.addSlabOpening — a vertical through-hole in a slab.
+ * Input for BimAuthoring.addSlabOpening — a vertical through-hole in a slab.
  * All dimensions in mm, offsets in the slab's local XY frame.
  */
 export interface SlabOpeningInput {

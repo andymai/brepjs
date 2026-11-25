@@ -489,7 +489,6 @@ function facade({ skew = 30, storeys = 2, cutaway = 1 }: FacadeParams = {}) {
     for (const el of model.getAllElements()) {
       const tone = tones.get(el.localId);
       if (!tone) continue;
-      const frame = el.placement?.kind === 'LOCAL_FRAME' ? el.placement.frame : undefined;
       const placed = el.category === 'CURTAIN_WALL'
         ? model.getChildren(el.localId).flatMap((child) => unwrap(model.placedSolids(child.localId, 'WORLD')).map(own))
         : unwrap(model.placedSolids(el.localId, 'WORLD')).map(own);
@@ -1028,7 +1027,7 @@ export default present(scene.shown, {
     id: 'bim-switchback-stair',
     label: 'Switchback Stair',
     description:
-      'A stair core as a BIM model: a half-turn stair for each storey, with two flights that go opposite ways, a half landing at the turn, a wall with a door at each floor, railings on the landings and a balustrade along each flight. The stair is an IfcStair with no solid of its own, and placedSolids() gives its flights. The rise, the going, the flight length, the widths and the heights of handrail and guarding follow the limits of a building code for a general access stair, and the kernel measures the concrete. The wall, the doors and the shape of the balustrade are a display model.',
+      'A stair core as a BIM model: a half-turn stair for each storey, with two flights that go opposite ways, a half landing at the turn, a wall with a door at each floor, railings on the landings and a balustrade along each flight. The IfcStair retains one Body item per flight. The rise, the going, the flight length, the widths and the heights of handrail and guarding follow the limits of a building code for a general access stair, and the kernel measures the concrete. The wall, the doors and the shape of the balustrade are a display model.',
     code: `import { BimDocument, toIfc, authoring, type BimAuthoring } from 'brepjs-bim';
 import { box, clone, compound, cutAll, cylinder, extrude, fuseAll, getSolids, measureVolume, polygon, translate, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';

@@ -13,7 +13,8 @@ export function relationshipEnds(rel: BimRelationship): readonly RecordRef[] {
     case 'ASSOCIATES_MATERIAL':
     case 'ASSOCIATES_CLASSIFICATION':
       return rel.relatedObjects;
-    case 'VOIDS': return [rel.hostLocalId,rel.openingLocalId];
+    case 'VOIDS':
+      return [rel.hostLocalId, rel.openingLocalId];
     case 'FILLS_OPENING':
       return [rel.openingLocalId, rel.fillerLocalId];
     case 'SPACE_BOUNDARY':
@@ -30,17 +31,27 @@ export function relationshipEnds(rel: BimRelationship): readonly RecordRef[] {
 
 /** Preserve document references when snapshotting nested recipe or relationship data. */
 export function snapshotData<T extends object>(input: T): T {
-  const copy = structuredClone(input);
-  function restore(original: object, target: object) {
-    for (const [key, value] of Object.entries(original)) {
-      if (value instanceof RecordRef) Object.defineProperty(target, key, { value });
-      else if (value !== null && typeof value === 'object')
-        restore(value, Reflect.get(target, key));
+  const seen = new WeakMap<object, object>();
+  function clone(value: unknown): unknown {
+    if (value instanceof RecordRef || value === null || typeof value !== 'object') {
+      if (typeof value === 'function' || typeof value === 'symbol')
+        throw new TypeError('Expected BIM data');
+      return value;
     }
-    Object.freeze(target);
+    const existing = seen.get(value);
+    if (existing !== undefined) return existing;
+    const copy: object = Array.isArray(value) ? new Array<unknown>(value.length) : {};
+    seen.set(value, copy);
+    for (const [key, member] of Object.entries(value))
+      Object.defineProperty(copy, key, {
+        enumerable: true,
+        configurable: true,
+        value: clone(member),
+      });
+    return Object.freeze(copy);
   }
-  restore(input, copy);
-  return copy;
+  // Data properties retain their types and document references retain identity.
+  return clone(input) as T;
 }
 
 export function graphError(code: string, message: string, ...references: RecordRef[]): BimError {
@@ -77,7 +88,7 @@ export function validateDocumentGraph(
 ): BimError | undefined {
   const parents = new Map<RecordRef, RecordRef>();
   const decomposition = new Map<RecordRef, RecordRef>();
-  const contained = new Set<RecordRef>();
+  const contained = new Map<RecordRef, RecordRef>();
   const hosts = new Set<RecordRef>();
   const filled = new Set<RecordRef>();
   const fillers = new Set<RecordRef>();
@@ -132,7 +143,7 @@ export function validateDocumentGraph(
             return badRole();
           if (contained.has(child))
             return graphError('MULTIPLE_CONTAINERS', 'Record already has a container', child);
-          contained.add(child);
+          contained.set(child, edge.relatingStructure);
         }
         break;
       }
@@ -151,7 +162,12 @@ export function validateDocumentGraph(
         }
         break;
       case 'VOIDS':
-        if (category(edge.openingLocalId)!=='OPENING' || category(edge.hostLocalId)!==edge.hostCategory || hosts.has(edge.openingLocalId)) return badRole();
+        if (
+          category(edge.openingLocalId) !== 'OPENING' ||
+          category(edge.hostLocalId) !== edge.hostCategory ||
+          hosts.has(edge.openingLocalId)
+        )
+          return badRole();
         hosts.add(edge.openingLocalId);
         break;
       case 'FILLS_OPENING':
@@ -182,6 +198,8 @@ export function validateDocumentGraph(
         break;
     }
   }
+  if (cyclic(contained))
+    return graphError('CONTAINMENT_CYCLE', 'Spatial containment contains a cycle');
   if (cyclic(decomposition))
     return graphError('DECOMPOSITION_CYCLE', 'Decomposition graph contains a cycle');
   for (const record of records.values()) {

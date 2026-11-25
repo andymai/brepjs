@@ -3,18 +3,20 @@ import type { BimNs } from '@/session/bim.js';
 import type { ImportedModelLike } from '@/session/buildIfc.js';
 import { validateFamilies, validateIfc } from '@/session/validate.js';
 
-const issue = (code: string, entity?: number | string) => ({
+const issue = (code: string, entity?: object | number | string) => ({
   code,
   severity: 'error' as const,
   message: code,
   ...(entity !== undefined ? { entity } : {}),
 });
 
-/** A brepjs-bim stand-in: local ids 1 and 2, written to IFC as express ids 101 and 102. */
+/** A brepjs-bim stand-in: two document references, written to IFC as express ids 101 and 102. */
 function fakeBim(): BimNs {
+  const first = {},
+    second = {};
   const guids = new Map([
-    [1, 'G1'],
-    [2, 'G2'],
+    [first, 'G1'],
+    [second, 'G2'],
   ]);
   const imported = {
     elements: [
@@ -27,12 +29,12 @@ function fakeBim(): BimNs {
       ok: true,
       value: {
         model: {
-          getElement: (id: number) => ({ guid: guids.get(id) ?? '' }),
+          getElement: (id: object) => ({ guid: guids.get(id) ?? '' }),
           [Symbol.dispose]: () => {},
         },
         idByKeyPath: new Map([
-          ['ground/a', 1],
-          ['ground/b', 2],
+          ['ground/a', first],
+          ['ground/b', second],
         ]),
         proxied: [],
       },
@@ -40,7 +42,7 @@ function fakeBim(): BimNs {
     toIfc: () => Promise.resolve({ ok: true, value: new Uint8Array([1]) }),
     fromIfc: () => Promise.resolve({ ok: true, value: imported }),
     disposeImportedModel: () => {},
-    checkReferentialIntegrity: () => ({ issues: [issue('DANGLING', 2)] }),
+    checkReferentialIntegrity: () => ({ issues: [issue('DANGLING', second)] }),
     checkSchema: () => Promise.resolve({ issues: [issue('SCHEMA', 101), issue('MODEL_LEVEL')] }),
     checkRoundTrip: () => Promise.resolve({ issues: [issue('COUNTS', 999)] }),
     checkGherkinRules: () => Promise.resolve([]),

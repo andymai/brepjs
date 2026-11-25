@@ -1,9 +1,9 @@
 import * as WebIFC from 'web-ifc';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import type {
-BridgePartSpec,
-BridgeSpec,
-EarthworksFillSpec,
+  BridgePartSpec,
+  BridgeSpec,
+  EarthworksFillSpec,
 } from '../specs/infrastructureSpec.js';
 import type { IfcWriter } from './ifcWriter.js';
 

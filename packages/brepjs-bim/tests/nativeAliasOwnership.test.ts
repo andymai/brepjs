@@ -1,5 +1,5 @@
 import { authoring } from '../src/model/authoring.js';
-import {ordinalOf} from '../src/identity/recordRef.js';
+import { RecordRef, ordinalOf } from '../src/identity/recordRef.js';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import * as brepjs from 'brepjs';
 import {
@@ -104,7 +104,9 @@ it.each(['Proxy', 'EarthworksFill'] as const)(
       const relationships = model.getAllRelationships();
       const live = arena();
       const adopt =
-        category === 'Proxy' ? authoring(model).addProxy.bind(authoring(model)) : authoring(model).addEarthworksFill.bind(authoring(model));
+        category === 'Proxy'
+          ? authoring(model).addProxy.bind(authoring(model))
+          : authoring(model).addEarthworksFill.bind(authoring(model));
       expect(
         adopt({ name: 'Alias', solid: fixture.alias, materialName: 'Test' }, { stableKey: 'retry' })
       ).toMatchObject({
@@ -195,9 +197,9 @@ it.each(['before', 'after'] as const)(
             body: { kind: 'AUTHORITATIVE', solids: [fixture.alias] },
           })
         ).toMatchObject(conflict);
-        expect(authoring(model).addProxy({ name: 'Uncertain alias', solid: fixture.alias })).toMatchObject(
-          conflict
-        );
+        expect(
+          authoring(model).addProxy({ name: 'Uncertain alias', solid: fixture.alias })
+        ).toMatchObject(conflict);
         expect(
           authoring(model).addEarthworksFill({
             name: 'Uncertain alias',
@@ -283,7 +285,11 @@ it.each(['target Body', 'Proxy', 'EarthworksFill'] as const)(
         ownerId = unwrap(authoring(model).addProxy({ name: 'Source', solid: source }));
       } else {
         ownerId = unwrap(
-          authoring(model).addEarthworksFill({ name: 'Source', solid: source, materialName: 'Test' })
+          authoring(model).addEarthworksFill({
+            name: 'Source',
+            solid: source,
+            materialName: 'Test',
+          })
         );
       }
       using fixture = aliasFixture(source);
@@ -335,7 +341,9 @@ it('accepts independent clone and placement owners that remain natively usable a
       true
     );
     unwrap(authoring(model).addProxy({ name: 'Clone', solid: independent }));
-    unwrap(authoring(model).addEarthworksFill({ name: 'Placement', solid: placed, materialName: 'Test' }));
+    unwrap(
+      authoring(model).addEarthworksFill({ name: 'Placement', solid: placed, materialName: 'Test' })
+    );
     const replacement = box(3, 3, 3);
     expect(
       unwrap(
@@ -416,41 +424,46 @@ it('rejects a generated resource alias already pending adoption without publishi
       return result;
     });
     try {
-      expect(
-        authoring(model).addCurtainWall(
-          {
-            ...WALL,
-            width: 10,
-            height: 10,
-            columns: 2,
-            rows: 2,
-            panelThickness: 0.1,
-            mullionWidth: 1,
-            mullionDepth: 1,
-          },
-          { stableKey: 'retry-pending' }
-        )
-      ).toMatchObject({
+      const attempted = authoring(model).addCurtainWall(
+        {
+          ...WALL,
+          width: 10,
+          height: 10,
+          columns: 2,
+          rows: 2,
+          panelThickness: 0.1,
+          mullionWidth: 1,
+          mullionDepth: 1,
+        },
+        { stableKey: 'retry-pending' }
+      );
+      expect(attempted).toMatchObject({
         ok: false,
         error: {
           code: 'BODY_OWNERSHIP_CONFLICT',
           metadata: {
             itemIndex: 0,
-            ownerLocalId: Number(site) + 2,
+
             ownerItemIndex: 0,
             ownerState: 'RETAINED',
           },
         },
       });
+      if (attempted.ok) throw Error('Expected generated alias rejection');
+      const owner = attempted.error.metadata?.['ownerLocalId'];
+      if (!(owner instanceof RecordRef)) throw Error('Expected pending owner reference');
+      expect(ordinalOf(owner)).toBe(ordinalOf(site) + 2);
       expect(fixture).toBeDefined();
       expect(model.getAllElements()).toEqual(records);
       expect(model.getAllRelationships()).toEqual([]);
       expect(model.getGeometryCleanupDiagnostics()).toEqual([]);
       expectArena(baseline);
       injection.mockRestore();
-      expect(ordinalOf(unwrap(authoring(model).addSite({ name: 'Retry' }, { stableKey: 'retry-pending' })))).toBe(
-        ordinalOf(site) + 1
-      );
+      expect(
+        ordinalOf(
+          unwrap(authoring(model).addSite({ name: 'Retry' }, { stableKey: 'retry-pending' }))
+        )
+      ).toBe(ordinalOf(site) + 1);
     } finally {
       injection.mockRestore();
       fixture?.[Symbol.dispose]();
@@ -509,7 +522,11 @@ it('releases every generated candidate when a later resource accessor throws dur
     expect(model.getGeometryCleanupDiagnostics()).toEqual([]);
     expectArena(baseline);
     injection.mockRestore();
-    expect(ordinalOf(unwrap(authoring(model).addSite({ name: 'Retry' }, { stableKey: 'retry-accessor' })))).toBe(1);
+    expect(
+      ordinalOf(
+        unwrap(authoring(model).addSite({ name: 'Retry' }, { stableKey: 'retry-accessor' }))
+      )
+    ).toBe(1);
   } finally {
     injection.mockRestore();
     // Red-phase fixture repair after observing any missed generated releases.
@@ -595,7 +612,11 @@ it.each(['before', 'after'] as const)(
         });
         expect(model.getAllElements()).toEqual([]);
         expect(model.getAllRelationships()).toEqual([]);
-        expect(ordinalOf(unwrap(authoring(model).addSite({ name: 'Retry' }, { stableKey: 'retry-two-faults' })))).toBe(1);
+        expect(
+          ordinalOf(
+            unwrap(authoring(model).addSite({ name: 'Retry' }, { stableKey: 'retry-two-faults' }))
+          )
+        ).toBe(1);
         model[Symbol.dispose]();
         model[Symbol.dispose]();
         expect(attempts).toBe(1);

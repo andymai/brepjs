@@ -17,7 +17,7 @@ property sets + classification → export IFC / COBie, validate, round-trip.**
 The declarative entry point is
 [`brepjs-families`](https://www.npmjs.com/package/brepjs-families): author the building as a tree of
 prop-driven components, then `familiesToBim(tree, { project })` projects it onto a `BimDocument` with
-stable GlobalIds derived from component key paths. Hand-authoring specs against `BimDocument` remains
+stable GlobalIds derived from component key paths. Passing recipe specs to `authoring(document)` remains
 the low-level path (and covers elements the declarative route doesn't yet). See the
 [Declarative Models guide](https://brepjs.dev/families/overview).
 
@@ -173,21 +173,24 @@ Author a small model and export IFC:
 import { BimDocument, toIfc, authoring } from 'brepjs-bim';
 import { unwrap } from 'brepjs';
 
-const model = new BimDocument();
+using model = new BimDocument();
+const create = authoring(model);
 model.init({ name: 'Example' });
 
 // Spatial structure: project → site → building → storey.
 const project = model.getProject();
-const siteId = unwrap(authoring(model).addSite({ name: 'Site' }));
-const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building' }));
-const storeyId = unwrap(authoring(model).addStorey({ name: 'Level 1', elevation: 0 }));
+const siteId = unwrap(create.addSite({ name: 'Site' }));
+const buildingId = unwrap(create.addBuilding({ name: 'Building' }, { placementParent: siteId }));
+const storeyId = unwrap(
+  create.addStorey({ name: 'Level 1', elevation: 0 }, { placementParent: buildingId })
+);
 if (project) model.aggregate(project.localId, siteId);
 model.aggregate(siteId, buildingId);
 model.aggregate(buildingId, storeyId);
 
 // A parametric wall, placed on the storey. Dimensions in mm; axisX is the wall's
 // length direction and axisZ its up direction.
-const wall = authoring(model).addWall({
+const wall = create.addWall({
   length: 4000,
   height: 3000,
   thickness: 200,
@@ -196,10 +199,13 @@ const wall = authoring(model).addWall({
   axisZ: [0, 0, 1],
   materialName: 'Concrete',
 });
-if (wall.ok) model.placeIn(wall.value, storeyId);
+if (wall.ok) {
+  unwrap(model.placeIn(wall.value, storeyId));
+  unwrap(model.reparent(wall.value, storeyId, 'KEEP_LOCAL'));
+}
 
-// Renderable geometry (a brepjs ValidSolid, unplaced/local coords):
-const solid = model.getWalls()[0]?.geometry;
+// Read the World bounds without taking ownership of the retained Body.
+if (wall.ok) unwrap(model.bounds(wall.value, 'WORLD'));
 
 // Serialize to an IFC-SPF byte buffer.
 const ifc = await toIfc(model, { applicationName: 'brepjs-bim', applicationVersion: '1.0' });
@@ -209,8 +215,25 @@ const ifc = await toIfc(model, { applicationName: 'brepjs-bim', applicationVersi
 Reading element geometry requires only the core brepjs kernel; `toIfc` / `fromIfc` additionally load
 the `web-ifc` peer dependency.
 
-All public operations return `Result<T, BimError>` (from `brepjs`); validation issues and non-fatal
-warnings travel inside the payload rather than throwing.
+Use `document.record(ref)` for a fallible lookup. Direct accessors such as `getElement(ref)` require a live reference and throw an error with a BIM diagnostic as its cause for an invalid reference.
+
+## Document edits and delivery
+
+A stable key identifies the corresponding occurrence across rebuilds. Look it up in each document
+to obtain a live reference. A move changes the local pose and carries placement descendants.
+Deletion reports every placement, containment, decomposition or in-document placement-reference
+dependant. Detach or reparent those records before retrying.
+
+`authoring(document).addRoofWithOpening(...)` accepts a finished local Roof solid with an existing
+cut, a host-relative rectangular opening definition and a stable void slot. The command returns
+the Roof and Opening references together. The Opening follows the Roof when it moves. IFC delivery
+currently reports `IFC_ROOF_OPENING_UNSUPPORTED` for this relationship.
+
+The [document frame tests](tests/documentFrames.test.ts) exercise World and record-local queries
+on spatial records, assemblies and placed material. The [edit tests](tests/documentEdits.test.ts)
+cover dependency checks and rollback. The [Roof fixture](tests/authoredRoofOpening.test.ts) checks
+occupied material at the notch, hole and interior. The [IFC placement fixture](tests/documentIfcPlacement.test.ts)
+reads W-01’s placement parent and spatial container from the exported file.
 
 ## Design
 

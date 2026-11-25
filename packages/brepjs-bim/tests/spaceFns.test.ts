@@ -1,4 +1,4 @@
-import {writeBodyPlacement} from '../src/ifc-writer/tessellationWriter.js';
+import { writeBodyPlacement } from '../src/ifc-writer/tessellationWriter.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
 import { initKernel } from '../../../tests/setup.js';
@@ -154,7 +154,12 @@ describe('spaceWriter serialization', () => {
       applicationVersion: '0.1.0',
     });
 
-    const geom = writeSpaceGeometry(w, baseSpec, header.geomSubContextId, writeBodyPlacement(w,baseSpec,null));
+    const geom = writeSpaceGeometry(
+      w,
+      baseSpec,
+      header.geomSubContextId,
+      writeBodyPlacement(w, baseSpec, null)
+    );
     const guid = deriveIfcGuidSync(makeElementKey('spaceFns-test', 'SPACE', 1));
     const spaceId = writeSpaceEntity(
       w,
@@ -192,7 +197,12 @@ describe('spaceWriter serialization', () => {
     });
 
     const wallId = writeBoundingWall(w, header.ownerHistoryId);
-    const geom = writeSpaceGeometry(w, baseSpec, header.geomSubContextId, writeBodyPlacement(w,baseSpec,null));
+    const geom = writeSpaceGeometry(
+      w,
+      baseSpec,
+      header.geomSubContextId,
+      writeBodyPlacement(w, baseSpec, null)
+    );
     const spaceGuid = deriveIfcGuidSync(makeElementKey('spaceFns-test', 'SPACE', 1));
     const spaceId = writeSpaceEntity(
       w,

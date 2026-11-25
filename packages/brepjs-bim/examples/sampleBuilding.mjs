@@ -10,7 +10,7 @@ import { unwrap } from 'brepjs';
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { BimDocument, toIfcValidated , authoring } from 'brepjs-bim';
+import { BimDocument, toIfcValidated, authoring } from 'brepjs-bim';
 
 const outFile =
   process.argv[2] ?? resolve(dirname(fileURLToPath(import.meta.url)), 'sample-building.ifc');
@@ -83,7 +83,10 @@ const wallIds = wallDefs.map((d, i) =>
     `addWall[${i}]`
   )
 );
-for (const id of wallIds) { unwrap(model.placeIn(id, groundId)); unwrap(model.reparent(id, groundId, 'KEEP_LOCAL')); }
+for (const id of wallIds) {
+  unwrap(model.placeIn(id, groundId));
+  unwrap(model.reparent(id, groundId, 'KEEP_LOCAL'));
+}
 
 const [frontWallId, sideWallId] = wallIds;
 if (frontWallId === undefined || sideWallId === undefined)

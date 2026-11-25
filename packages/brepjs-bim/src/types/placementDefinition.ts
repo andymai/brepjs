@@ -71,10 +71,3 @@ export function capturePlacement(
     })
   );
 }
-
-export function localPlacementFrame(definition: PlacementDefinition): Result<FrameInput, BimError> {
-  if (definition.kind === 'LOCAL_FRAME') return ok(definition.frame);
-  return err(
-    specError('PLACEMENT_REFERENCE_UNRESOLVED', `Cannot resolve ${definition.kind} placement`)
-  );
-}

@@ -21,6 +21,8 @@ function worldFrame(
   records: ReadonlyMap<RecordRef, AnyBimElement>,
   source: RecordRef
 ): Result<RigidFrame, BimError> {
+  if (!records.has(source))
+    return err(specError('RECORD_NOT_FOUND', 'Expected a live document reference'));
   const visited = new Set<RecordRef>();
   let ref: RecordRef | undefined = source;
   let frame = IDENTITY_FRAME;

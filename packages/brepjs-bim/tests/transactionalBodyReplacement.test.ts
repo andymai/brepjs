@@ -48,11 +48,7 @@ it.each(['before', 'after'] as const)(
           return 1;
         },
       });
-      try {
-        model.setSurfaceStyle(id, { name: 'late', r: 1, g: 0, b: 0 });
-      } catch (error) {
-        metadataMutation = error;
-      }
+      metadataMutation = model.setSurfaceStyle(id, { name: 'late', r: 1, g: 0, b: 0 });
       if (point === 'after') release();
       else recovery = true;
       throw cause;
@@ -67,7 +63,7 @@ it.each(['before', 'after'] as const)(
       expect(callbackRead).toBe(model.getElement(id)?.geometry);
       expect(callbackRead).toMatchObject({ kind: 'AUTHORITATIVE', solids: [next] });
       expect(reentrant).toMatchObject({ ok: false, error: { code: 'MODEL_BUSY' } });
-      expect(metadataMutation).toMatchObject({ cause: { code: 'MODEL_BUSY' } });
+      expect(metadataMutation).toMatchObject({ ok: false, error: { code: 'MODEL_BUSY' } });
       expect(specReads).toBe(0);
       expect(model.getSurfaceStyle(id)).toBeNull();
       expect(model.isRecipeQuantityEligible(id)).toBe(false);

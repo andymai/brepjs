@@ -54,7 +54,8 @@ function aggregates(localId: number, parent: number, children: number[]): Aggreg
 
 function voidsWall(localId: number, wall: number, opening: number): VoidsRel {
   return {
-    kind:'VOIDS',hostCategory:'WALL',
+    kind: 'VOIDS',
+    hostCategory: 'WALL',
     guid: guid(`rel-${localId}`),
     localId: id(localId),
     hostLocalId: id(wall),
@@ -64,7 +65,8 @@ function voidsWall(localId: number, wall: number, opening: number): VoidsRel {
 
 function voidsSlab(localId: number, slab: number, opening: number): VoidsRel {
   return {
-    kind:'VOIDS',hostCategory:'SLAB',
+    kind: 'VOIDS',
+    hostCategory: 'SLAB',
     guid: guid(`rel-${localId}`),
     localId: id(localId),
     hostLocalId: id(slab),
@@ -170,9 +172,7 @@ describe('checkReferentialIntegrity', () => {
     it('flags a VOIDS_WALL referencing a missing host wall', () => {
       const { elements, relationships } = cleanModel();
       // Opening 7 voids a nonexistent wall (99).
-      const broken = relationships.map((r) =>
-        r.kind === 'VOIDS' ? voidsWall(104, 99, 7) : r
-      );
+      const broken = relationships.map((r) => (r.kind === 'VOIDS' ? voidsWall(104, 99, 7) : r));
       const report = checkReferentialIntegrity({ elements, relationships: broken });
       const issue = report.issues.find((i) => i.code === 'VOID_HOST_MISSING');
       expect(issue).toBeDefined();

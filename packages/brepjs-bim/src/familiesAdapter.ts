@@ -1,4 +1,3 @@
-import { authoring } from './model/authoring.js';
 /**
  * brepjs-families -> BimDocument adapter. Consumes a resolved element tree and
  * feeds each element's PRE-DESUGARED props into parametric specs. Civil wall
@@ -30,6 +29,7 @@ import {
   type ValidSolid,
   type csg,
 } from 'brepjs';
+import { authoring } from './model/authoring.js';
 import type { ResolvedElement, TransformOp } from 'brepjs-families';
 import { frameFromOps, requireFrame, FrameProjectionError } from './familiesFrame.js';
 import {
@@ -158,11 +158,13 @@ const GEOMETRY_PROPS = new Set(['voids', 'fuse', 'transform', 'psets']);
 const SPEC_ROUTES = {
   wall: {
     parse: parseWallSpec,
-    add: (m: BimDocument, spec: unknown, key: string) => authoring(m).addWall(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) =>
+      authoring(m).addWall(spec as never, { stableKey: key }),
   },
   slab: {
     parse: parseSlabSpec,
-    add: (m: BimDocument, spec: unknown, key: string) => authoring(m).addSlab(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) =>
+      authoring(m).addSlab(spec as never, { stableKey: key }),
   },
   column: {
     parse: parseColumnSpec,
@@ -171,15 +173,18 @@ const SPEC_ROUTES = {
   },
   beam: {
     parse: parseBeamSpec,
-    add: (m: BimDocument, spec: unknown, key: string) => authoring(m).addBeam(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) =>
+      authoring(m).addBeam(spec as never, { stableKey: key }),
   },
   roof: {
     parse: parseRoofSpec,
-    add: (m: BimDocument, spec: unknown, key: string) => authoring(m).addRoof(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) =>
+      authoring(m).addRoof(spec as never, { stableKey: key }),
   },
   stair: {
     parse: parseStairSpec,
-    add: (m: BimDocument, spec: unknown, key: string) => authoring(m).addStair(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) =>
+      authoring(m).addStair(spec as never, { stableKey: key }),
     input: flightsSpecInput,
   },
   footing: {
@@ -189,7 +194,8 @@ const SPEC_ROUTES = {
   },
   pile: {
     parse: parsePileSpec,
-    add: (m: BimDocument, spec: unknown, key: string) => authoring(m).addPile(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) =>
+      authoring(m).addPile(spec as never, { stableKey: key }),
   },
   railing: {
     parse: parseRailingSpec,
@@ -198,7 +204,8 @@ const SPEC_ROUTES = {
   },
   ramp: {
     parse: parseRampSpec,
-    add: (m: BimDocument, spec: unknown, key: string) => authoring(m).addRamp(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) =>
+      authoring(m).addRamp(spec as never, { stableKey: key }),
     input: flightsSpecInput,
   },
   covering: {
@@ -213,7 +220,8 @@ const SPEC_ROUTES = {
   },
   space: {
     parse: parseSpaceSpec,
-    add: (m: BimDocument, spec: unknown, key: string) => authoring(m).addSpace(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) =>
+      authoring(m).addSpace(spec as never, { stableKey: key }),
   },
 } as const;
 
@@ -437,7 +445,10 @@ function civilProductSpecInput(el: ResolvedElement): Record<string, unknown> {
 /** Total of the resolved geometry's OUTER literal translate chain. The
  *  transform vocabulary is translate-only, so frame differences are exact
  *  subtractions. Parameter-driven translations stop the peel. */
-function peelTranslates(node: csg.IRNode): {
+function peelTranslates(
+  node: csg.IRNode,
+  keyPath?: string
+): {
   readonly total: readonly [number, number, number];
   readonly moved: boolean;
 } {
@@ -446,7 +457,13 @@ function peelTranslates(node: csg.IRNode): {
   let cur = node;
   while (cur.kind === 'Translate') {
     const v = cur.vector;
-    if (v.kind !== 'Vec3Lit') break;
+    if (v.kind !== 'Vec3Lit') {
+      if (keyPath !== undefined)
+        throw new FrameProjectionError(
+          specError('FAMILIES_INVALID_PLACEMENT', `Unresolved Body translation at '${keyPath}'`)
+        );
+      break;
+    }
     total[0] += v.value[0];
     total[1] += v.value[1];
     total[2] += v.value[2];
@@ -979,16 +996,9 @@ function specLocalShift(el: ResolvedElement): Vec3 {
 /** Skip the resolver occurrence wrappers already owned by `cumulativeFrame`,
  *  then recover only the Body's outer literal Datum translations. An unexpected
  *  wrapper shape fails instead of inventing a placement. */
-function bodyLocalTranslation(el: ResolvedElement, occurrenceTransformDepth: number): Translation {
-  let body = el.geometry;
-  for (let i = 0; i < occurrenceTransformDepth; i++) {
-    if (body.kind !== 'Translate' && body.kind !== 'Rotate')
-      throw new FrameProjectionError(
-        specError('FAMILIES_INVALID_PLACEMENT', `Missing occurrence wrapper at '${el.keyPath}'`)
-      );
-    body = body.target;
-  }
-  return peelTranslates(body).total;
+function bodyLocalTranslation(el: ResolvedElement, wrappers: readonly TransformOp[]): Translation {
+  const body = occurrenceBody(el, wrappers);
+  return peelTranslates(body, el.keyPath).total;
 }
 
 /** World frame of an element's own body: the walk's cumulative frame (all
@@ -999,14 +1009,11 @@ function bodyLocalTranslation(el: ResolvedElement, occurrenceTransformDepth: num
 function elementBodyFrame(
   el: ResolvedElement,
   cumulativeFrame: RigidFrame,
-  occurrenceTransformDepth: number
+  wrappers: readonly TransformOp[]
 ): RigidFrame {
   const axes = requireFrame(
     frameFromPlacement({
-      origin: addTranslation(
-        authoredSpecOrigin(el),
-        bodyLocalTranslation(el, occurrenceTransformDepth)
-      ),
+      origin: addTranslation(authoredSpecOrigin(el), bodyLocalTranslation(el, wrappers)),
       axisX: authoredAxisX(el),
       axisZ: authoredAxisZ(el),
     })
@@ -1045,7 +1052,7 @@ function rotatedRoutedInput(
   flatInput: Record<string, unknown>,
   el: ResolvedElement,
   cumulativeFrame: RigidFrame,
-  occurrenceTransformDepth: number,
+  wrappers: readonly TransformOp[],
   spatialFrame: RigidFrame
 ): Record<string, unknown> {
   const toSpatial = requireFrame(frameInverse(spatialFrame));
@@ -1054,7 +1061,7 @@ function rotatedRoutedInput(
     // composes under the element's full body frame — cumulative transforms plus
     // the element's own `origin`/`axisX`/`axisZ` props, matching what
     // flightsSpecInput folds into flight origins on the unrotated path.
-    const elementFrame = elementBodyFrame(el, cumulativeFrame, occurrenceTransformDepth);
+    const elementFrame = elementBodyFrame(el, cumulativeFrame, wrappers);
     const flights: readonly unknown[] = flatInput['flights'];
     return {
       ...flatInput,
@@ -1082,9 +1089,7 @@ function rotatedRoutedInput(
     };
   }
   const placed = decomposeFrame(
-    requireFrame(
-      frameMul(toSpatial, elementBodyFrame(el, cumulativeFrame, occurrenceTransformDepth))
-    )
+    requireFrame(frameMul(toSpatial, elementBodyFrame(el, cumulativeFrame, wrappers)))
   );
   return { ...flatInput, origin: placed.origin, axisX: placed.axisX, axisZ: placed.axisZ };
 }
@@ -1222,7 +1227,9 @@ function addCivilSpatialOccurrence(
     predefinedType,
     usageType: subdivision !== undefined ? CIVIL_USAGE[subdivision] : 'NOTDEFINED',
   });
-  return parsed.ok ? authoring(model).addBridgePart(parsed.value, { stableKey: el.keyPath }) : parsed;
+  return parsed.ok
+    ? authoring(model).addBridgePart(parsed.value, { stableKey: el.keyPath })
+    : parsed;
 }
 
 function relativeSpecInput(
@@ -1356,7 +1363,7 @@ interface ProjectionWalkState {
   readonly cumulativeTranslation: Translation;
   readonly projectedSpatialTranslation: Translation;
   /** Resolver transform wrappers already represented by `cumulativeFrame`. */
-  readonly occurrenceTransformDepth: number;
+  readonly wrappers: readonly TransformOp[];
   /** World frame of the current element's parent: every authored transform
    *  (ancestors, composed) as a rigid motion. Drives the rotation-aware
    *  placement path; its translation column equals `cumulativeTranslation`. */
@@ -1414,18 +1421,34 @@ export function familiesToBim(
 }
 
 /** Validate the existing Families placement tree before any eager recipe or evaluator work. */
-function checkOccurrenceWrappers(el: ResolvedElement, operations: readonly TransformOp[]): void {
+function occurrenceBody(el: ResolvedElement, operations: readonly TransformOp[]): csg.IRNode {
   let node = el.geometry;
   function sameVector(expr: csg.Expr | undefined, vector: Vec3 | undefined) {
-    return vector === undefined ? expr === undefined :
-      expr?.kind === 'Vec3Lit' && vector.every((value, i) => value === expr.value[i]);
+    return vector === undefined
+      ? expr === undefined
+      : expr?.kind === 'Vec3Lit' && vector.every((value, i) => value === expr.value[i]);
   }
   for (const op of operations) {
-    if (op.op === 'translate' && node.kind === 'Translate' && sameVector(node.vector, op.v)) node = node.target;
-    else if (op.op === 'rotate' && node.kind === 'Rotate' && node.angle.kind === 'NumLit'
-      && node.angle.value === op.angleDeg && sameVector(node.axis, op.axis) && sameVector(node.at, op.at)) node = node.target;
-    else throw new FrameProjectionError(specError('FAMILIES_INVALID_PLACEMENT', `Unexpected occurrence wrapper at '${el.keyPath}' (${op.op})`));
+    if (op.op === 'translate' && node.kind === 'Translate' && sameVector(node.vector, op.v))
+      node = node.target;
+    else if (
+      op.op === 'rotate' &&
+      node.kind === 'Rotate' &&
+      node.angle.kind === 'NumLit' &&
+      node.angle.value === op.angleDeg &&
+      sameVector(node.axis, op.axis) &&
+      sameVector(node.at, op.at)
+    )
+      node = node.target;
+    else
+      throw new FrameProjectionError(
+        specError(
+          'FAMILIES_INVALID_PLACEMENT',
+          `Unexpected occurrence wrapper at '${el.keyPath}' (${op.op})`
+        )
+      );
   }
+  return node;
 }
 
 function preflightFamilyFrames(
@@ -1437,15 +1460,13 @@ function preflightFamilyFrames(
   authoredPlacement(el);
   const cumulative = requireFrame(frameMul(parent, requireFrame(frameFromOps(el.localTransforms))));
   const wrappers = [...inherited, ...[...el.localTransforms].reverse()];
-  const occurrenceDepth = wrappers.length;
   const node = civilSpatialKind(el) === undefined ? cumulative : civilNodeFrame(el, cumulative);
   const nextSpatial = civilSpatialKind(el) === undefined ? spatial : node;
   requireFrame(frameInverse(node));
   const archetype = el.semantics?.kind === 'product' ? civilProductArchetype(el) : archetypeFor(el);
   const route = specRoute(archetype);
   if (route !== undefined) {
-    checkOccurrenceWrappers(el, wrappers);
-    const body = elementBodyFrame(el, cumulative, occurrenceDepth);
+    const body = elementBodyFrame(el, cumulative, wrappers);
     requireFrame(frameInverse(body));
     const relative = requireFrame(frameMul(requireFrame(frameInverse(spatial)), body));
     const flights = el.props['flights'];
@@ -1485,7 +1506,10 @@ function projectFamiliesToBim(
   if (!usesAuthoredCivilHierarchy) {
     const siteResult = authoring(model).addSite({ name: options.siteName ?? 'Site' });
     if (!siteResult.ok) return siteResult;
-    const buildingResult = authoring(model).addBuilding({ name: options.buildingName ?? 'Building' }, { placementParent: siteResult.value });
+    const buildingResult = authoring(model).addBuilding(
+      { name: options.buildingName ?? 'Building' },
+      { placementParent: siteResult.value }
+    );
     if (!buildingResult.ok) return buildingResult;
     buildingId = buildingResult.value;
     const siteEdge = model.aggregate(projectId, siteResult.value);
@@ -1507,7 +1531,7 @@ function projectFamiliesToBim(
       state.cumulativeTranslation,
       authoredTranslation(el)
     );
-    const occurrenceTransformDepthHere = state.occurrenceTransformDepth + el.localTransforms.length;
+    const wrappers = [...state.wrappers, ...[...el.localTransforms].reverse()];
     const cumulativeFrameHere = requireFrame(
       frameMul(state.cumulativeFrame, requireFrame(frameFromOps(el.localTransforms)))
     );
@@ -1606,12 +1630,17 @@ function projectFamiliesToBim(
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
       const elevation = (el.props['elevation'] as number | undefined) ?? 0;
-      const storeyPose = requireFrame(frameMul(cumulativeFrameHere, requireFrame(translationFrame([0, 0, elevation]))));
-      const {origin,axisX,axisZ} = decomposeFrame(storeyPose);
+      const storeyPose = requireFrame(
+        frameMul(cumulativeFrameHere, requireFrame(translationFrame([0, 0, elevation])))
+      );
+      const { origin, axisX, axisZ } = decomposeFrame(storeyPose);
       const storeyResult = authoring(model).addStorey(
         {
           name: (el.attributes['name'] as string | undefined) ?? el.keyPath,
-          elevation, origin:[...origin], axisX:[...axisX], axisZ:[...axisZ],
+          elevation,
+          origin: [...origin],
+          axisX: [...axisX],
+          axisZ: [...axisZ],
         },
         { stableKey: el.keyPath, placementParent: buildingId }
       );
@@ -1694,15 +1723,9 @@ function projectFamiliesToBim(
       // adds the element origin to each flight, which the frame would double-count.
       const rotatedBase = Array.isArray(routedInput['flights']) ? specInput(el) : routedInput;
       const placedInput = rotatedHere
-        ? rotatedRoutedInput(
-            rotatedBase,
-            el,
-            cumulativeFrameHere,
-            occurrenceTransformDepthHere,
-            state.spatialFrame
-          )
+        ? rotatedRoutedInput(rotatedBase, el, cumulativeFrameHere, wrappers, state.spatialFrame)
         : relativeSpecInput(routedInput, state.projectedSpatialTranslation);
-      const productFrame = elementBodyFrame(el, cumulativeFrameHere, occurrenceTransformDepthHere);
+      const productFrame = elementBodyFrame(el, cumulativeFrameHere, wrappers);
       requireFrame(frameInverse(productFrame));
       const parsed = route.parse(canonicalPlacementInput(placedInput));
       if (!parsed.ok) return parsed;
@@ -1794,7 +1817,7 @@ function projectFamiliesToBim(
         rotated: nextRotated,
         cumulativeTranslation: cumulativeTranslationHere,
         projectedSpatialTranslation: nextProjectedSpatialTranslation,
-        occurrenceTransformDepth: occurrenceTransformDepthHere,
+        wrappers,
         cumulativeFrame: nextCumulativeFrame,
         spatialFrame: nextSpatialFrame,
       });
@@ -1809,7 +1832,7 @@ function projectFamiliesToBim(
     rotated: false,
     cumulativeTranslation: ZERO_TRANSLATION,
     projectedSpatialTranslation: ZERO_TRANSLATION,
-    occurrenceTransformDepth: 0,
+    wrappers: [],
     cumulativeFrame: IDENTITY_FRAME,
     spatialFrame: IDENTITY_FRAME,
   });

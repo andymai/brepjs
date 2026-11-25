@@ -70,7 +70,7 @@ function buildModel(): Built {
   });
   if (!door.ok) throw new Error(door.error.message);
 
-  unwrap(model.placeIn(door.value,storeyId));
+  unwrap(model.placeIn(door.value, storeyId));
   const wallGuid = model.getWalls()[0]?.guid;
   if (wallGuid === undefined) throw new Error('wall guid missing');
   return { model, wallGuid };

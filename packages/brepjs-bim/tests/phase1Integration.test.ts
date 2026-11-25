@@ -155,7 +155,7 @@ describe('Phase 1 integration', () => {
 
     // Both delivery paths enforce required spatial containment.
     const plain = await toIfc(model, META);
-    expect(plain).toMatchObject({ok:false,error:{code:'INTEGRITY_FAILURE'}});
+    expect(plain).toMatchObject({ ok: false, error: { code: 'INTEGRITY_FAILURE' } });
   });
 });
 

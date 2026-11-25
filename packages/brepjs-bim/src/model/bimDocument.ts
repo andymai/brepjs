@@ -23,7 +23,7 @@ import type {
   AssignsToGroupRel,
 } from '../types/relationships.js';
 import type { ClassificationRef } from '../types/classificationTypes.js';
-import type { SurfaceStyleSpec } from '../ifc-writer/styleWriter.js';
+import type { SurfaceStyleSpec } from '../specs/styleSpec.js';
 import type { ProjectSpec } from '../specs/spatialSpec.js';
 import {
   snapshotBodyInput,
@@ -74,6 +74,7 @@ export interface ModelCommand {
   readonly adoptions: Map<ValidSolid, Extract<GeometryOwner, { state: 'RETAINED' }>>;
   readonly generated: Map<ValidSolid, object | undefined>;
   readonly retired: OwnedGeometry[];
+  readonly styles: Map<RecordRef, SurfaceStyleSpec>;
   readonly recipeEligibility: Map<RecordRef, boolean>;
 }
 
@@ -104,13 +105,12 @@ export interface OpeningIdentityOptions extends ElementIdentityOptions {
 }
 export const prepareRecords = Symbol('prepareRecords');
 export interface AuthoredBodyInput {
-
-    readonly category: BodyClassification;
-    readonly placement: PlacementDefinition;
-    readonly solids: Extract<Body, { kind: 'AUTHORITATIVE' }>['solids'];
-    readonly stableKey?: string;
-    readonly metadata?: Readonly<{ name?: string; description?: string }>;
-    readonly openingLocalId?: RecordRef;
+  readonly category: BodyClassification;
+  readonly placement: PlacementDefinition;
+  readonly solids: Extract<Body, { kind: 'AUTHORITATIVE' }>['solids'];
+  readonly stableKey?: string;
+  readonly metadata?: Readonly<{ name?: string; description?: string }>;
+  readonly openingLocalId?: RecordRef;
 }
 
 export class BimDocument {
@@ -118,6 +118,11 @@ export class BimDocument {
   readonly #relationships = new Map<RecordRef, BimRelationship>();
   readonly #surfaceStyles = new Map<RecordRef, SurfaceStyleSpec>();
   readonly #counter = recordCounter();
+  #revision = 0;
+  /** Monotonic revision for asynchronous consumers of borrowed geometry. */
+  get revision() {
+    return this.#revision;
+  }
   #projectId: RecordRef | null = null;
   // Per-model scope mixed into every derived GlobalId so two distinct models do
   // not collide. Set from the project identity in init() before any element is
@@ -161,7 +166,11 @@ export class BimDocument {
       body.value,
       target === 'LOCAL'
         ? { kind: 'LOCAL' }
-        : { kind: 'RESOLVED', tag: String(pose.value.target), frame: pose.value.frame }
+        : {
+            kind: 'RESOLVED',
+            tag: pose.value.target === 'WORLD' ? 'WORLD' : this.getElement(pose.value.target).guid,
+            frame: pose.value.frame,
+          }
     );
     return measured.ok
       ? ok(Object.freeze({ source: ref, target: pose.value.target, bounds: measured.value.bounds }))
@@ -175,14 +184,14 @@ export class BimDocument {
 
   lookupKey(key: string): Result<RecordRef, BimError> {
     const ref = this.#keyIndex.get(key);
-    return ref !== undefined && this.getElement(ref) !== null
+    return this.#phase !== 'DISPOSED' && ref !== undefined && this.#elements.has(ref)
       ? ok(ref)
       : err(specError('RECORD_NOT_FOUND', `No live record for key ${key}`));
   }
 
   record(ref: RecordRef): Result<AnyBimElement, BimError> {
-    const record = this.getElement(ref);
-    return record === null
+    const record = this.#phase === 'DISPOSED' ? undefined : this.#elements.get(ref);
+    return record === undefined
       ? err(specError('RECORD_NOT_FOUND', 'Expected a live reference issued by this document'))
       : ok(record);
   }
@@ -243,6 +252,7 @@ export class BimDocument {
       generated: new Map(),
       retired: [],
       recipeEligibility: new Map(),
+      styles: new Map(),
     };
     this.#phase = 'MUTATING';
     try {
@@ -317,6 +327,8 @@ export class BimDocument {
         if (eligible) this.#recipeQuantityEligible.add(id);
         else this.#recipeQuantityEligible.delete(id);
       }
+      for (const [id, style] of command.styles) this.#surfaceStyles.set(id, style);
+      this.#revision++;
       this.#counter.advanceTo(command.counter.current());
       this.#modelScope = command.modelScope;
       this.#projectId = command.projectId;
@@ -443,7 +455,7 @@ export class BimDocument {
 
   init(spec: ProjectSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
     return this.#create('init', (command) => {
-      const snapshot = Object.freeze({ ...spec });
+      const snapshot = snapshotData(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
       if (this.#projectId !== null) {
         return err(
@@ -479,6 +491,7 @@ export class BimDocument {
     if (this.#phase === 'DISPOSED' || this.#phase === 'DISPOSING') return;
     this.#assertMutable();
     this.#phase = 'DISPOSING';
+    this.#revision++;
     try {
       const retained: OwnedGeometry[] = [];
       for (const [solid, owner] of this.#owners) {
@@ -512,42 +525,40 @@ export class BimDocument {
     return ok(undefined);
   }
 
-  addAuthoredBody(input: AuthoredBodyInput): Result<RecordRef,BimError> {
-    return this.#create('addAuthoredBody', command=>this.#stageAuthoredBody(command,input));
+  addAuthoredBody(input: AuthoredBodyInput): Result<RecordRef, BimError> {
+    return this.#create('addAuthoredBody', (command) => this.#stageAuthoredBody(command, input));
   }
 
-  #stageAuthoredBody(command:ModelCommand,input:AuthoredBodyInput): Result<RecordRef,BimError> {
-      const { category, stableKey } = input;
-      if (!bodyClassifications.includes(category)) {
-        return err(specError('BODY_UNSUPPORTED_CATEGORY', 'Unsupported Body classification'));
-      }
-      if (input.openingLocalId !== undefined) {
-        const valid = this.#checkFillTarget(category, input.openingLocalId);
-        if (!valid.ok) return valid;
-      }
-      const placement = capturePlacement(input.placement, input.openingLocalId);
-      if (!placement.ok) return placement;
-      const id = this.#makeElement(
-        command,
-        {
-          category,
-          representation: 'BODY',
-          spec: null,
-          ...(input.metadata !== undefined
-            ? { metadata: Object.freeze({ ...input.metadata }) }
-            : {}),
-          placement: placement.value,
-          geometry: { kind: 'AUTHORITATIVE', solids: input.solids },
-        },
-        stableKey
+  #stageAuthoredBody(command: ModelCommand, input: AuthoredBodyInput): Result<RecordRef, BimError> {
+    const { category, stableKey } = input;
+    if (!bodyClassifications.includes(category)) {
+      return err(specError('BODY_UNSUPPORTED_CATEGORY', 'Unsupported Body classification'));
+    }
+    if (input.openingLocalId !== undefined) {
+      const valid = this.#checkFillTarget(category, input.openingLocalId);
+      if (!valid.ok) return valid;
+    }
+    const placement = capturePlacement(input.placement, input.openingLocalId);
+    if (!placement.ok) return placement;
+    const id = this.#makeElement(
+      command,
+      {
+        category,
+        representation: 'BODY',
+        spec: null,
+        ...(input.metadata !== undefined ? { metadata: Object.freeze({ ...input.metadata }) } : {}),
+        placement: placement.value,
+        geometry: { kind: 'AUTHORITATIVE', solids: input.solids },
+      },
+      stableKey
+    );
+    if (input.openingLocalId !== undefined)
+      this.#makeRel(
+        { kind: 'FILLS_OPENING', openingLocalId: input.openingLocalId, fillerLocalId: id },
+        command
       );
-      if (input.openingLocalId !== undefined)
-        this.#makeRel(
-          { kind: 'FILLS_OPENING', openingLocalId: input.openingLocalId, fillerLocalId: id },
-          command
-        );
-      command.recipeEligibility.set(id, false);
-      return ok(id);
+    command.recipeEligibility.set(id, false);
+    return ok(id);
   }
 
   /** Ownership transfers only on COMMITTED, including when retirement reports failure. */
@@ -559,7 +570,9 @@ export class BimDocument {
       const { localId } = input;
       const target = this.#elements.get(localId);
       if (target === undefined) {
-        return err(specError('BODY_TARGET_NOT_FOUND', `No element found for localId ${localId}`));
+        return err(
+          specError('BODY_TARGET_NOT_FOUND', 'Expected a live Body target in this document')
+        );
       }
       if (target.representation !== 'BODY') {
         return err(
@@ -716,11 +729,12 @@ export class BimDocument {
    * representation item is surfaced by their geometry writers).
    */
   setSurfaceStyle(elementLocalId: RecordRef, style: SurfaceStyleSpec): Result<void, BimError> {
-    this.#assertMutable();
-    if (!this.#elements.has(elementLocalId))
-      return err(graphError('INVALID_ENDPOINT', 'Missing style target', elementLocalId));
-    this.#surfaceStyles.set(elementLocalId, snapshotData(style));
-    return ok(undefined);
+    return this.#edit('setSurfaceStyle', (command) => {
+      if (!this.#elements.has(elementLocalId))
+        return err(graphError('INVALID_ENDPOINT', 'Missing style target', elementLocalId));
+      command.styles.set(elementLocalId, snapshotData(style));
+      return ok(undefined);
+    });
   }
 
   detachContainment(child: RecordRef): Result<void, BimError> {
@@ -904,6 +918,7 @@ export class BimDocument {
   }
 
   getSurfaceStyle(elementLocalId: RecordRef): SurfaceStyleSpec | null {
+    this.getElement(elementLocalId);
     return this.#surfaceStyles.get(elementLocalId) ?? null;
   }
 
@@ -970,7 +985,7 @@ export class BimDocument {
 
   #replaceGeneratedBody(
     command: ModelCommand,
-    host: Extract<AnyBimElement,{representation:'BODY'}>,
+    host: Extract<AnyBimElement, { representation: 'BODY' }>,
     geometry: Body
   ): void {
     this.#ownGenerated(command, geometry.solids);
@@ -1064,12 +1079,15 @@ export class BimDocument {
     return el?.category === 'PROJECT' ? el : null;
   }
 
-  getElement(id: RecordRef): AnyBimElement | null {
-    return this.#phase === 'DISPOSED' ? null : (this.#elements.get(id) ?? null);
+  getElement(id: RecordRef): AnyBimElement {
+    const result = this.record(id);
+    if (!result.ok) throw new RejectedModelCommand(result.error);
+    return result.value;
   }
 
   /** Follow explicit decomposition only. Placement parenting is a separate relation. */
   getChildren(id: RecordRef): readonly AnyBimElement[] {
+    this.getElement(id);
     const children = new Set<RecordRef>();
     for (const rel of this.#relationships.values()) {
       if ((rel.kind === 'AGGREGATES' || rel.kind === 'NESTS') && rel.relatingObject === id)
@@ -1083,6 +1101,7 @@ export class BimDocument {
 
   /** Whether recipe commands still justify this element's recipe-derived quantities. */
   isRecipeQuantityEligible(id: RecordRef): boolean {
+    this.getElement(id);
     return this.#recipeQuantityEligible.has(id);
   }
 
@@ -1348,7 +1367,11 @@ export class BimDocument {
   #makeRel(fields: RelationshipFields, command: ModelCommand): RecordRef {
     const localId = command.counter.next();
     const guid = deriveIfcGuidSync(
-      makeRelKey(command.modelScope, fields.kind==='VOIDS' ? 'VOIDS_'+fields.hostCategory : fields.kind, ordinalOf(localId))
+      makeRelKey(
+        command.modelScope,
+        fields.kind === 'VOIDS' ? 'VOIDS_' + fields.hostCategory : fields.kind,
+        ordinalOf(localId)
+      )
     );
     const rel = snapshotData({ ...fields, guid, localId });
     command.relationships.push(rel);

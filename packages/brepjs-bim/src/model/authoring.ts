@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import type {FrameInput} from '../placementFrame.js';
-import type {AuthoredBodyInput} from './bimDocument.js';
+import type { FrameInput } from '../placementFrame.js';
+import type { AuthoredBodyInput, BimDocument } from './bimDocument.js';
 import { snapshotData as captureRecipe } from './documentGraph.js';
 import { wallOpeningFrame, slabOpeningFrame } from '../elementFns/openingFrames.js';
 import { realizeFlights, bindFlightItems } from './flightBody.js';
@@ -13,7 +13,7 @@ import {
 } from '../types/placementDefinition.js';
 import type { Result, ValidSolid } from 'brepjs';
 import { box, translate, ok, err } from 'brepjs';
-import type { RecordRef } from '../identity/recordRef.js';
+import { ordinalOf, type RecordRef } from '../identity/recordRef.js';
 import type { BimError } from '../errors/bimError.js';
 import { specError } from '../errors/bimError.js';
 import type { WallOpeningSpec, SlabOpeningSpec } from '../types/bimTypes.js';
@@ -56,45 +56,79 @@ import { railingToSolid } from '../elementFns/railingFns.js';
 import { coveringToSolid } from '../elementFns/coveringFns.js';
 import { type Body, type NonEmpty } from '../types/body.js';
 import {
-  BimDocument,
   prepareRecords,
   type ModelCommand,
   type ElementIdentityOptions,
   type OpeningIdentityOptions,
 } from './bimDocument.js';
-const roofOpening = z.strictObject({kind:z.literal('ROOF_OPENING'),sizeX:z.number().positive(),sizeY:z.number().positive(),depth:z.number().positive()});
+const roofOpening = z.strictObject({
+  kind: z.literal('ROOF_OPENING'),
+  sizeX: z.number().positive(),
+  sizeY: z.number().positive(),
+  depth: z.number().positive(),
+});
 export class BimAuthoring {
   /** The supplied solids already contain the void. Its definition records intent only. */
-  addRoofWithOpening(input: Pick<AuthoredBodyInput,'solids'|'placement'|'metadata'> & {
-    readonly stableKey:string;
-    readonly opening:{readonly slot:string;readonly frame:FrameInput;readonly definition:z.infer<typeof roofOpening>};
-  }): Result<{readonly roof:RecordRef;readonly opening:RecordRef},BimError> {
-    return this.access.edit('addRoofWithOpening',command=>{
-      if(!input.stableKey?.trim() || !input.opening?.slot?.trim()) return err(specError('INVALID_OPENING_KEY','Roof and void slot require stable keys'));
-      const definition=roofOpening.safeParse(input.opening.definition);
-      if(!definition.success) return err(specError('UNSUPPORTED_OPENING_DEFINITION','Expected a rectangular already-cut through opening',definition.error));
-      const roof=this.access.adopt(command,{...input,category:'ROOF'});
-      if(!roof.ok) return roof;
-      const placement=capturePlacement({kind:'LOCAL_FRAME',frame:input.opening.frame},roof.value);
-      if(!placement.ok) return placement;
-      const opening=this.access.makeElement(command,{category:'OPENING',representation:'NONE',reason:'OPENING_REFERENCE',
-        placement:placement.value,spec:Object.freeze(definition.data),geometry:null},input.stableKey+'/void/'+encodeURIComponent(input.opening.slot));
-      this.access.makeRel({kind:'VOIDS',hostCategory:'ROOF',hostLocalId:roof.value,openingLocalId:opening},command);
-      return ok(Object.freeze({roof:roof.value,opening}));
+  addRoofWithOpening(
+    input: Pick<AuthoredBodyInput, 'solids' | 'placement' | 'metadata'> & {
+      readonly stableKey: string;
+      readonly opening: {
+        readonly slot: string;
+        readonly frame: FrameInput;
+        readonly definition: z.infer<typeof roofOpening>;
+      };
+    }
+  ): Result<{ readonly roof: RecordRef; readonly opening: RecordRef }, BimError> {
+    return this.#access.edit('addRoofWithOpening', (command) => {
+      if (!input.stableKey?.trim() || !input.opening?.slot?.trim())
+        return err(specError('INVALID_OPENING_KEY', 'Roof and void slot require stable keys'));
+      const definition = roofOpening.safeParse(input.opening.definition);
+      if (!definition.success)
+        return err(
+          specError(
+            'UNSUPPORTED_OPENING_DEFINITION',
+            'Expected a rectangular already-cut through opening',
+            definition.error
+          )
+        );
+      const roof = this.#access.adopt(command, { ...input, category: 'ROOF' });
+      if (!roof.ok) return roof;
+      const placement = capturePlacement(
+        { kind: 'LOCAL_FRAME', frame: input.opening.frame },
+        roof.value
+      );
+      if (!placement.ok) return placement;
+      const opening = this.#access.makeElement(
+        command,
+        {
+          category: 'OPENING',
+          representation: 'NONE',
+          reason: 'OPENING_REFERENCE',
+          placement: placement.value,
+          spec: Object.freeze(definition.data),
+          geometry: null,
+        },
+        input.stableKey + '/void/' + encodeURIComponent(input.opening.slot)
+      );
+      this.#access.makeRel(
+        { kind: 'VOIDS', hostCategory: 'ROOF', hostLocalId: roof.value, openingLocalId: opening },
+        command
+      );
+      return ok(Object.freeze({ roof: roof.value, opening }));
     });
   }
 
-  private readonly access;
+  readonly #access;
   constructor(private readonly document: BimDocument) {
-    this.access = document[prepareRecords]();
+    this.#access = document[prepareRecords]();
   }
 
   addSite(
     spec: SiteSpec,
     options?: ElementIdentityOptions & { readonly placementParent?: RecordRef }
   ): Result<RecordRef, BimError> {
-    return this.access.create('addSite', (command) => {
-      const snapshot = Object.freeze({ ...spec });
+    return this.#access.create('addSite', (command) => {
+      const snapshot = captureRecipe(spec);
       const placement = capturePlacement(
         {
           kind: 'LOCAL_FRAME',
@@ -108,10 +142,10 @@ export class BimAuthoring {
       );
       if (!placement.ok) return placement;
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       return ok(
-        this.access.makeElement(
+        this.#access.makeElement(
           command,
           {
             category: 'SITE',
@@ -131,8 +165,8 @@ export class BimAuthoring {
     spec: BridgeSpec,
     options?: ElementIdentityOptions & { readonly placementParent?: RecordRef }
   ): Result<RecordRef, BimError> {
-    return this.access.create('addBridge', (command) => {
-      const snapshot = Object.freeze({ ...spec });
+    return this.#access.create('addBridge', (command) => {
+      const snapshot = captureRecipe(spec);
       const placement = capturePlacement(
         {
           kind: 'LOCAL_FRAME',
@@ -146,10 +180,10 @@ export class BimAuthoring {
       );
       if (!placement.ok) return placement;
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       return ok(
-        this.access.makeElement(
+        this.#access.makeElement(
           command,
           {
             category: 'BRIDGE',
@@ -169,8 +203,8 @@ export class BimAuthoring {
     spec: BridgePartSpec,
     options?: ElementIdentityOptions & { readonly placementParent?: RecordRef }
   ): Result<RecordRef, BimError> {
-    return this.access.create('addBridgePart', (command) => {
-      const snapshot = Object.freeze({ ...spec });
+    return this.#access.create('addBridgePart', (command) => {
+      const snapshot = captureRecipe(spec);
       const placement = capturePlacement(
         {
           kind: 'LOCAL_FRAME',
@@ -184,10 +218,10 @@ export class BimAuthoring {
       );
       if (!placement.ok) return placement;
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       return ok(
-        this.access.makeElement(
+        this.#access.makeElement(
           command,
           {
             category: 'BRIDGE_PART',
@@ -209,29 +243,29 @@ export class BimAuthoring {
     spec: EarthworksFillSpec,
     options?: ElementIdentityOptions
   ): Result<RecordRef, BimError> {
-    return this.access.create('addEarthworksFill', (command) => {
-      const snapshot = Object.freeze({ ...spec });
+    return this.#access.create('addEarthworksFill', (command) => {
+      const { solid, ...metadata } = spec;
+      const snapshot = captureRecipe(metadata);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
-      if (snapshot.solid === null || snapshot.solid === undefined) {
+      if (solid === null || solid === undefined) {
         return err(
           specError('EARTHWORKS_FILL_NO_GEOMETRY', 'EarthworksFillSpec.solid is required')
         );
       }
-      const { solid, ...metadata } = snapshot;
       const placement = capturePlacement({
         kind: 'LOCAL_FRAME',
         frame: { origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1] },
       });
       if (!placement.ok) return placement;
-      const id = this.access.makeElement(
+      const id = this.#access.makeElement(
         command,
         {
           category: 'EARTHWORKS_FILL',
           representation: 'BODY',
           placement: placement.value,
-          spec: captureRecipe(metadata),
+          spec: snapshot,
           geometry: { kind: 'AUTHORITATIVE', solids: [solid] },
         },
         identity?.stableKey
@@ -245,8 +279,8 @@ export class BimAuthoring {
     spec: BuildingSpec,
     options?: ElementIdentityOptions & { readonly placementParent?: RecordRef }
   ): Result<RecordRef, BimError> {
-    return this.access.create('addBuilding', (command) => {
-      const snapshot = Object.freeze({ ...spec });
+    return this.#access.create('addBuilding', (command) => {
+      const snapshot = captureRecipe(spec);
       const placement = capturePlacement(
         {
           kind: 'LOCAL_FRAME',
@@ -260,10 +294,10 @@ export class BimAuthoring {
       );
       if (!placement.ok) return placement;
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       return ok(
-        this.access.makeElement(
+        this.#access.makeElement(
           command,
           {
             category: 'BUILDING',
@@ -283,8 +317,8 @@ export class BimAuthoring {
     spec: StoreySpec,
     options?: ElementIdentityOptions & { readonly placementParent?: RecordRef }
   ): Result<RecordRef, BimError> {
-    return this.access.create('addStorey', (command) => {
-      const snapshot = Object.freeze({ ...spec });
+    return this.#access.create('addStorey', (command) => {
+      const snapshot = captureRecipe(spec);
       const placement = capturePlacement(
         {
           kind: 'LOCAL_FRAME',
@@ -298,10 +332,10 @@ export class BimAuthoring {
       );
       if (!placement.ok) return placement;
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       return ok(
-        this.access.makeElement(
+        this.#access.makeElement(
           command,
           {
             category: 'STOREY',
@@ -318,9 +352,9 @@ export class BimAuthoring {
   }
 
   #checkOpeningKeys(options: OpeningIdentityOptions | undefined): Result<void, BimError> {
-    const filler = this.access.checkStableKey(options);
+    const filler = this.#access.checkStableKey(options);
     if (!filler.ok) return filler;
-    const opening = this.access.checkStableKey({ stableKey: options?.openingStableKey });
+    const opening = this.#access.checkStableKey({ stableKey: options?.openingStableKey });
     if (!opening.ok) return opening;
     if (options?.stableKey !== undefined && options.stableKey === options.openingStableKey) {
       return err(
@@ -334,17 +368,17 @@ export class BimAuthoring {
   }
 
   addWall(spec: WallSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
-    return this.access.create('addWall', (command) => {
+    return this.#access.create('addWall', (command) => {
       const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
       if (!placement.ok) return placement;
       const geomResult = wallToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
-      this.access.ownGenerated(command, [geomResult.value]);
-      const id = this.access.makeElement(
+      this.#access.ownGenerated(command, [geomResult.value]);
+      const id = this.#access.makeElement(
         command,
         {
           category: 'WALL',
@@ -362,17 +396,17 @@ export class BimAuthoring {
   }
 
   addSlab(spec: SlabSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
-    return this.access.create('addSlab', (command) => {
+    return this.#access.create('addSlab', (command) => {
       const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
       if (!placement.ok) return placement;
       const geomResult = slabToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
-      this.access.ownGenerated(command, [geomResult.value]);
-      const id = this.access.makeElement(
+      this.#access.ownGenerated(command, [geomResult.value]);
+      const id = this.#access.makeElement(
         command,
         {
           category: 'SLAB',
@@ -390,17 +424,17 @@ export class BimAuthoring {
   }
 
   addBeam(spec: BeamSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
-    return this.access.create('addBeam', (command) => {
+    return this.#access.create('addBeam', (command) => {
       const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
       if (!placement.ok) return placement;
       const geomResult = beamToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
-      this.access.ownGenerated(command, [geomResult.value]);
-      const id = this.access.makeElement(
+      this.#access.ownGenerated(command, [geomResult.value]);
+      const id = this.#access.makeElement(
         command,
         {
           category: 'BEAM',
@@ -418,17 +452,17 @@ export class BimAuthoring {
   }
 
   addColumn(spec: ColumnSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
-    return this.access.create('addColumn', (command) => {
+    return this.#access.create('addColumn', (command) => {
       const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
       if (!placement.ok) return placement;
       const geomResult = columnToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
-      this.access.ownGenerated(command, [geomResult.value]);
-      const id = this.access.makeElement(
+      this.#access.ownGenerated(command, [geomResult.value]);
+      const id = this.#access.makeElement(
         command,
         {
           category: 'COLUMN',
@@ -446,17 +480,17 @@ export class BimAuthoring {
   }
 
   addSpace(spec: SpaceSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
-    return this.access.create('addSpace', (command) => {
+    return this.#access.create('addSpace', (command) => {
       const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
       if (!placement.ok) return placement;
       const geomResult = spaceToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
-      this.access.ownGenerated(command, [geomResult.value]);
-      const id = this.access.makeElement(
+      this.#access.ownGenerated(command, [geomResult.value]);
+      const id = this.#access.makeElement(
         command,
         {
           category: 'SPACE',
@@ -474,17 +508,17 @@ export class BimAuthoring {
   }
 
   addRoof(spec: RoofSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
-    return this.access.create('addRoof', (command) => {
+    return this.#access.create('addRoof', (command) => {
       const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
       if (!placement.ok) return placement;
       const geomResult = roofToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
-      this.access.ownGenerated(command, [geomResult.value]);
-      const id = this.access.makeElement(
+      this.#access.ownGenerated(command, [geomResult.value]);
+      const id = this.#access.makeElement(
         command,
         {
           category: 'ROOF',
@@ -505,20 +539,20 @@ export class BimAuthoring {
     spec: CurtainWallSpec,
     options?: ElementIdentityOptions
   ): Result<RecordRef, BimError> {
-    return this.access.create('addCurtainWall', (command) => {
+    return this.#access.create('addCurtainWall', (command) => {
       const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
       if (!placement.ok) return placement;
       const gridResult = curtainWallToGrid(snapshot);
       if (!gridResult.ok) return err(gridResult.error);
-      this.access.ownGenerated(
+      this.#access.ownGenerated(
         command,
         [...gridResult.value.panels, ...gridResult.value.mullions].map(({ solid }) => solid)
       );
-      const id = this.access.makeElement(
+      const id = this.#access.makeElement(
         command,
         {
           category: 'CURTAIN_WALL',
@@ -541,7 +575,7 @@ export class BimAuthoring {
             frame: { origin: component.origin, axisX: [1, 0, 0], axisZ: [0, 0, 1] },
           });
           if (!childPlacement.ok) return childPlacement;
-          const childId = this.access.makeElement(
+          const childId = this.#access.makeElement(
             command,
             {
               category,
@@ -553,12 +587,12 @@ export class BimAuthoring {
               }),
               geometry: { kind: 'PARAMETRIC', solids: [component.solid] },
             },
-            `${identity?.stableKey ?? 'curtain-wall/' + id}/${category}/${index}`
+            `${identity?.stableKey ?? 'curtain-wall/' + String(ordinalOf(id))}/${category}/${index}`
           );
           childIds.push(childId);
         }
       }
-      this.access.makeRel(
+      this.#access.makeRel(
         { kind: 'AGGREGATES', relatingObject: id, relatedObjects: Object.freeze(childIds) },
         command
       );
@@ -569,17 +603,17 @@ export class BimAuthoring {
   }
 
   addFooting(spec: FootingSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
-    return this.access.create('addFooting', (command) => {
+    return this.#access.create('addFooting', (command) => {
       const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
       if (!placement.ok) return placement;
       const geomResult = footingToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
-      this.access.ownGenerated(command, [geomResult.value]);
-      const id = this.access.makeElement(
+      this.#access.ownGenerated(command, [geomResult.value]);
+      const id = this.#access.makeElement(
         command,
         {
           category: 'FOOTING',
@@ -597,17 +631,17 @@ export class BimAuthoring {
   }
 
   addPile(spec: PileSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
-    return this.access.create('addPile', (command) => {
+    return this.#access.create('addPile', (command) => {
       const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
       if (!placement.ok) return placement;
       const geomResult = pileToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
-      this.access.ownGenerated(command, [geomResult.value]);
-      const id = this.access.makeElement(
+      this.#access.ownGenerated(command, [geomResult.value]);
+      const id = this.#access.makeElement(
         command,
         {
           category: 'PILE',
@@ -626,16 +660,16 @@ export class BimAuthoring {
 
   /** Realize each stair flight once in assembly coordinates. */
   addStair(spec: StairSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
-    return this.access.create('addStair', (command) => {
+    return this.#access.create('addStair', (command) => {
       const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       const realized = realizeFlights(snapshot.flights, stairFlightToSolid, (solids) =>
-        this.access.ownGenerated(command, solids)
+        this.#access.ownGenerated(command, solids)
       );
       if (!realized.ok) return realized;
-      const id = this.access.makeElement(
+      const id = this.#access.makeElement(
         command,
         {
           category: 'STAIR',
@@ -658,16 +692,16 @@ export class BimAuthoring {
 
   /** Realize each ramp flight once in assembly coordinates. */
   addRamp(spec: RampSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
-    return this.access.create('addRamp', (command) => {
+    return this.#access.create('addRamp', (command) => {
       const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       const realized = realizeFlights(snapshot.flights, rampFlightToSolid, (solids) =>
-        this.access.ownGenerated(command, solids)
+        this.#access.ownGenerated(command, solids)
       );
       if (!realized.ok) return realized;
-      const id = this.access.makeElement(
+      const id = this.#access.makeElement(
         command,
         {
           category: 'RAMP',
@@ -689,17 +723,17 @@ export class BimAuthoring {
   }
 
   addRailing(spec: RailingSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
-    return this.access.create('addRailing', (command) => {
+    return this.#access.create('addRailing', (command) => {
       const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
       if (!placement.ok) return placement;
       const geomResult = railingToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
-      this.access.ownGenerated(command, [geomResult.value]);
-      const id = this.access.makeElement(
+      this.#access.ownGenerated(command, [geomResult.value]);
+      const id = this.#access.makeElement(
         command,
         {
           category: 'RAILING',
@@ -726,17 +760,17 @@ export class BimAuthoring {
     hostLocalId?: RecordRef,
     options?: ElementIdentityOptions
   ): Result<RecordRef, BimError> {
-    return this.access.create('addCovering', (command) => {
+    return this.#access.create('addCovering', (command) => {
       const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame: snapshot });
       if (!placement.ok) return placement;
       const geomResult = coveringToSolid(snapshot);
       if (!geomResult.ok) return err(geomResult.error);
-      this.access.ownGenerated(command, [geomResult.value]);
-      const id = this.access.makeElement(
+      this.#access.ownGenerated(command, [geomResult.value]);
+      const id = this.#access.makeElement(
         command,
         {
           category: 'COVERING',
@@ -750,7 +784,7 @@ export class BimAuthoring {
       this.#associateMaterial(command, id, snapshot);
       this.#associateClassification(command, id, snapshot);
       if (hostLocalId !== undefined) {
-        this.access.makeRel(
+        this.#access.makeRel(
           {
             kind: 'COVERS_ELEMENT',
             hostLocalId,
@@ -772,15 +806,15 @@ export class BimAuthoring {
     spec: ElementAssemblySpec,
     options?: ElementIdentityOptions & { readonly placementParent?: RecordRef }
   ): Result<RecordRef, BimError> {
-    return this.access.create('addElementAssembly', (command) => {
-      const snapshot = Object.freeze({ ...spec });
+    return this.#access.create('addElementAssembly', (command) => {
+      const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       const placement = capturePlacement(identityPlacement, options?.placementParent);
       if (!placement.ok) return placement;
       return ok(
-        this.access.makeElement(
+        this.#access.makeElement(
           command,
           {
             category: 'ELEMENT_ASSEMBLY',
@@ -802,13 +836,13 @@ export class BimAuthoring {
    * {@link assignToGroup}. Returns the zone's localId as a Result.
    */
   addZone(spec: ZoneSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
-    return this.access.create('addZone', (command) => {
-      const snapshot = Object.freeze({ ...spec });
+    return this.#access.create('addZone', (command) => {
+      const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       return ok(
-        this.access.makeElement(
+        this.#access.makeElement(
           command,
           {
             category: 'ZONE',
@@ -830,13 +864,13 @@ export class BimAuthoring {
    * Returns the system's localId as a Result.
    */
   addSystem(spec: SystemSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
-    return this.access.create('addSystem', (command) => {
-      const snapshot = Object.freeze({ ...spec });
+    return this.#access.create('addSystem', (command) => {
+      const snapshot = captureRecipe(spec);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       return ok(
-        this.access.makeElement(
+        this.#access.makeElement(
           command,
           {
             category: 'SYSTEM',
@@ -862,7 +896,7 @@ export class BimAuthoring {
     }
   ): void {
     const hasLayers = spec.materialLayers !== undefined && spec.materialLayers.length > 0;
-    this.access.makeRel(
+    this.#access.makeRel(
       {
         kind: 'ASSOCIATES_MATERIAL',
         materialName: spec.materialName,
@@ -884,7 +918,7 @@ export class BimAuthoring {
     spec: { readonly classification?: ClassificationRef | undefined }
   ): void {
     if (spec.classification === undefined) return;
-    this.access.makeRel(
+    this.#access.makeRel(
       {
         kind: 'ASSOCIATES_CLASSIFICATION',
         ref: spec.classification,
@@ -900,33 +934,33 @@ export class BimAuthoring {
    * {@link ProxySpec.solid}).
    */
   addProxy(spec: ProxySpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
-    return this.access.create('addProxy', (command) => {
-      const snapshot = Object.freeze({ ...spec });
+    return this.#access.create('addProxy', (command) => {
+      const { solid, ...metadata } = spec;
+      const snapshot = captureRecipe(metadata);
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
-      if (snapshot.solid === null || snapshot.solid === undefined) {
+      if (solid === null || solid === undefined) {
         return err(specError('PROXY_NO_GEOMETRY', 'ProxySpec.solid is required'));
       }
-      const { solid, ...metadata } = snapshot;
       const placement = capturePlacement({
         kind: 'LOCAL_FRAME',
         frame: { origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1] },
       });
       if (!placement.ok) return placement;
-      const id = this.access.makeElement(
+      const id = this.#access.makeElement(
         command,
         {
           category: 'PROXY',
           representation: 'BODY',
           placement: placement.value,
-          spec: captureRecipe(metadata),
+          spec: snapshot,
           geometry: { kind: 'AUTHORITATIVE', solids: [solid] },
         },
         identity?.stableKey
       );
       if (snapshot.materialName !== undefined) {
-        this.access.makeRel(
+        this.#access.makeRel(
           {
             kind: 'ASSOCIATES_MATERIAL',
             materialName: snapshot.materialName,
@@ -948,9 +982,9 @@ export class BimAuthoring {
     if (![spec.width, spec.height].every((n) => Number.isFinite(n) && n > 0))
       return err(specError('INVALID_PANEL', 'Panel dimensions must be positive'));
     const blank = box(spec.width, spec.height, 100);
-    this.access.ownGenerated(command, [blank]);
+    this.#access.ownGenerated(command, [blank]);
     const panel = translate(blank, [-spec.width / 2, -spec.height / 2, 0]);
-    this.access.ownGenerated(command, [panel]);
+    this.#access.ownGenerated(command, [panel]);
     return ok({ kind: 'PARAMETRIC', solids: [panel] });
   }
 
@@ -963,12 +997,12 @@ export class BimAuthoring {
     stableKey?: string;
     openingLocalId?: RecordRef;
   }): Result<RecordRef, BimError> {
-    return this.access.create('addFillerPanel', (command) => {
+    return this.#access.create('addFillerPanel', (command) => {
       const { category, width, height, materialName, stableKey, openingLocalId } = input;
       if (category !== 'DOOR' && category !== 'WINDOW')
         return err(specError('INVALID_FILLER', 'Expected a Door or Window'));
       if (openingLocalId !== undefined) {
-        const target = this.access.checkFillTarget(category, openingLocalId);
+        const target = this.#access.checkFillTarget(category, openingLocalId);
         if (!target.ok) return target;
       }
       const placement = capturePlacement(input.placement, input.openingLocalId);
@@ -976,7 +1010,7 @@ export class BimAuthoring {
       const spec = Object.freeze({ width, height, materialName });
       const panel = this.#fillerBody(command, spec);
       if (!panel.ok) return panel;
-      const id = this.access.makeElement(
+      const id = this.#access.makeElement(
         command,
         {
           category,
@@ -988,7 +1022,7 @@ export class BimAuthoring {
         stableKey
       );
       if (openingLocalId !== undefined)
-        this.access.makeRel({ kind: 'FILLS_OPENING', openingLocalId, fillerLocalId: id }, command);
+        this.#access.makeRel({ kind: 'FILLS_OPENING', openingLocalId, fillerLocalId: id }, command);
       this.#associateMaterial(command, id, spec);
       return ok(id);
     });
@@ -1010,10 +1044,10 @@ export class BimAuthoring {
     spec: DoorSpec | WindowSpec,
     options?: OpeningIdentityOptions
   ): Result<RecordRef, BimError> {
-    return this.access.create(
+    return this.#access.create(
       category === 'DOOR' ? 'addDoorAndCutWall' : 'addWindowAndCutWall',
       (command) => {
-        const snapshot = Object.freeze({ ...spec });
+        const snapshot = captureRecipe(spec);
         const identity = options === undefined ? undefined : Object.freeze({ ...options });
         if ('kind' in snapshot && snapshot.kind !== 'WALL_OPENING')
           return err(
@@ -1033,13 +1067,11 @@ export class BimAuthoring {
           snapshot.offsetFromFloor < 0
         )
           return err(specError('INVALID_OPENING', 'Invalid opening dimensions or offsets'));
-        const wall = this.document.getElement(snapshot.wallLocalId);
+        const found = this.document.record(snapshot.wallLocalId);
+        const wall = found.ok ? found.value : null;
         if (wall === null || wall.category !== 'WALL') {
           return err(
-            specError(
-              `${category}_WALL_NOT_FOUND`,
-              `No wall found for localId ${snapshot.wallLocalId}`
-            )
+            specError(`${category}_WALL_NOT_FOUND`, 'Expected a Wall reference in this document')
           );
         }
         if (wall.spec === null)
@@ -1081,9 +1113,12 @@ export class BimAuthoring {
           hostKind: 'WALL',
         });
         if (!cutResult.ok) return err(cutResult.error);
-        this.access.replaceGeneratedBody(command, wall, {kind:'PARAMETRIC', solids:[cutResult.value]});
+        this.#access.replaceGeneratedBody(command, wall, {
+          kind: 'PARAMETRIC',
+          solids: [cutResult.value],
+        });
 
-        const openingId = this.access.makeElement(
+        const openingId = this.#access.makeElement(
           command,
           {
             category: 'OPENING',
@@ -1095,9 +1130,10 @@ export class BimAuthoring {
           },
           identity?.openingStableKey
         );
-        this.access.makeRel(
+        this.#access.makeRel(
           {
-            kind:'VOIDS',hostCategory:'WALL',
+            kind: 'VOIDS',
+            hostCategory: 'WALL',
             hostLocalId: snapshot.wallLocalId,
             openingLocalId: openingId,
           },
@@ -1105,7 +1141,7 @@ export class BimAuthoring {
         );
         const filler = this.#fillerBody(command, snapshot, options?.solids);
         if (!filler.ok) return filler;
-        const fillerId = this.access.makeElement(
+        const fillerId = this.#access.makeElement(
           command,
           {
             category,
@@ -1117,7 +1153,7 @@ export class BimAuthoring {
           identity?.stableKey
         );
         command.recipeEligibility.set(fillerId, options?.solids === undefined);
-        this.access.makeRel(
+        this.#access.makeRel(
           {
             kind: 'FILLS_OPENING',
             openingLocalId: openingId,
@@ -1125,7 +1161,7 @@ export class BimAuthoring {
           },
           command
         );
-        this.access.makeRel(
+        this.#access.makeRel(
           {
             kind: 'ASSOCIATES_MATERIAL',
             materialName: snapshot.materialName,
@@ -1142,10 +1178,10 @@ export class BimAuthoring {
     input: SlabOpeningInput,
     options?: ElementIdentityOptions
   ): Result<RecordRef, BimError> {
-    return this.access.create('addSlabOpening', (command) => {
+    return this.#access.create('addSlabOpening', (command) => {
       const snapshot = Object.freeze({ ...input });
       const identity = options === undefined ? undefined : Object.freeze({ ...options });
-      const keyCheck = this.access.checkStableKey(identity);
+      const keyCheck = this.#access.checkStableKey(identity);
       if (!keyCheck.ok) return keyCheck;
       if ('kind' in snapshot && snapshot.kind !== 'SLAB_OPENING')
         return err(
@@ -1166,13 +1202,11 @@ export class BimAuthoring {
         return err(
           specError('INVALID_SLAB_OPENING_INPUT', 'Invalid slab opening dimensions or offsets')
         );
-      const slab = this.document.getElement(snapshot.slabLocalId);
+      const found = this.document.record(snapshot.slabLocalId);
+      const slab = found.ok ? found.value : null;
       if (slab === null || slab.category !== 'SLAB') {
         return err(
-          specError(
-            'SLAB_OPENING_SLAB_NOT_FOUND',
-            `No slab found for localId ${snapshot.slabLocalId}`
-          )
+          specError('SLAB_OPENING_SLAB_NOT_FOUND', 'Expected a Slab reference in this document')
         );
       }
       if (
@@ -1246,9 +1280,12 @@ export class BimAuthoring {
         hostKind: 'SLAB',
       });
       if (!cutResult.ok) return err(cutResult.error);
-      this.access.replaceGeneratedBody(command, slab, {kind:'PARAMETRIC', solids:[cutResult.value]});
+      this.#access.replaceGeneratedBody(command, slab, {
+        kind: 'PARAMETRIC',
+        solids: [cutResult.value],
+      });
 
-      const openingId = this.access.makeElement(
+      const openingId = this.#access.makeElement(
         command,
         {
           category: 'OPENING',
@@ -1260,9 +1297,10 @@ export class BimAuthoring {
         },
         identity?.stableKey
       );
-      this.access.makeRel(
+      this.#access.makeRel(
         {
-          kind:'VOIDS',hostCategory:'SLAB',
+          kind: 'VOIDS',
+          hostCategory: 'SLAB',
           hostLocalId: snapshot.slabLocalId,
           openingLocalId: openingId,
         },
@@ -1293,6 +1331,7 @@ function wallOpeningSolid(body: Body): Result<ValidSolid, BimError> {
   return ok(body.solids[0]);
 }
 
-
 /** Recipe commands operate on the supplied document's transaction. */
-export function authoring(document:BimDocument) { return new BimAuthoring(document); }
+export function authoring(document: BimDocument) {
+  return new BimAuthoring(document);
+}

@@ -417,7 +417,6 @@ function block({ flats = 2, pitch = 25 }: BlockParams = {}) {
   for (const [path, id] of idByKeyPath) {
     const element = model.getElement(id);
     if (!element || element.representation === 'NONE' || element.category === 'DOOR' || element.category === 'WINDOW') continue;
-    const lift = path.startsWith('block/first') ? STOREY : 0;
     const solids = unwrap(model.placedSolids(element.localId, 'WORLD'));
     temp.push(...solids);
     const tone = kind.get(path) ?? element.category;
@@ -1255,7 +1254,6 @@ function frame({ bays = 2, roofed = 1 }: FrameParams = {}) {
   for (const [path, id] of idByKeyPath) {
     const element = model.getElement(id);
     if (!element || element.representation === 'NONE') continue;
-    const level = Number(path.split('/')[1]?.slice(-1) ?? 0);
     const solids = unwrap(model.placedSolids(element.localId, 'WORLD'));
     temp.push(...solids);
     let tone: string = element.category;

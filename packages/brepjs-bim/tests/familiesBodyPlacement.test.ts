@@ -129,9 +129,7 @@ describe('retained Families Body placement and openings', () => {
             throw new Error('Wrong product');
           expect(product.geometry.kind).toBe('AUTHORITATIVE');
           expect(bodySolids(product.geometry)).toHaveLength(2);
-          const placed = unwrap(
-            model.placedSolids(product.localId, 'WORLD')
-          );
+          const placed = unwrap(model.placedSolids(product.localId, 'WORLD'));
           try {
             expect(placed).toHaveLength(2);
             placed.forEach((solid, index) => {
@@ -235,15 +233,14 @@ describe('retained Families Body placement and openings', () => {
       const inputs = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
       // eslint-disable-next-line @typescript-eslint/unbound-method -- Invoked below with the explicit model receiver via .call().
       const replace = BimDocument.prototype.replaceBody;
-      const replacement = vi.spyOn(BimDocument.prototype, 'replaceBody').mockImplementation(function (
-        this: BimDocument,
-        input
-      ) {
-        const candidate = this.getElement(input.localId);
-        if (candidate?.category !== 'WALL') throw new Error('Missing post-opening candidate');
-        expect(getKernel().volume(bodySolids(candidate.geometry)[0].wrapped)).toBeCloseTo(53, 8);
-        return replace.call(this, input);
-      });
+      const replacement = vi
+        .spyOn(BimDocument.prototype, 'replaceBody')
+        .mockImplementation(function (this: BimDocument, input) {
+          const candidate = this.getElement(input.localId);
+          if (candidate?.category !== 'WALL') throw new Error('Missing post-opening candidate');
+          expect(getKernel().volume(bodySolids(candidate.geometry)[0].wrapped)).toBeCloseTo(53, 8);
+          return replace.call(this, input);
+        });
       const { model, idByKeyPath } = unwrap(
         familiesToBim(root, { project: BODY_PROJECT, bodyEvaluator: evaluator })
       );
@@ -260,9 +257,7 @@ describe('retained Families Body placement and openings', () => {
           getBounds(bodySolids(wall.geometry)[0]),
           getBounds(bodySolids(expected.geometry)[0])
         );
-        expect(
-          model.getAllRelationships().filter(({ kind }) => kind === 'VOIDS')
-        ).toHaveLength(2);
+        expect(model.getAllRelationships().filter(({ kind }) => kind === 'VOIDS')).toHaveLength(2);
         expect(
           model.getAllRelationships().filter(({ kind }) => kind === 'FILLS_OPENING')
         ).toHaveLength(2);

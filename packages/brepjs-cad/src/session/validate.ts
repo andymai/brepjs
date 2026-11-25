@@ -25,7 +25,10 @@ function finding(check: CheckName, issue: BimIssueLike, resolve: Resolve): Findi
   const raw =
     typeof issue.entity === 'string' ? issue.entity.replace(/ \[\d+\]$/, '') : issue.entity;
   const id =
-    raw === undefined ? undefined : (resolve(raw) ?? (typeof raw === 'number' ? `#${raw}` : typeof raw === 'string' ? raw : undefined));
+    raw === undefined
+      ? undefined
+      : (resolve(raw) ??
+        (typeof raw === 'number' ? `#${raw}` : typeof raw === 'string' ? raw : undefined));
   return {
     check,
     severity: issue.severity,

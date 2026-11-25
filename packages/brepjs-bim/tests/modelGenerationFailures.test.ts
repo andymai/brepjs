@@ -49,7 +49,10 @@ const validationCreators: ReadonlyArray<readonly [string, Creator]> = [
   ['Beam', (model) => authoring(model).addBeam({ ...RAILING, profile })],
   ['Column', (model) => authoring(model).addColumn({ ...RAILING, profile })],
   ['Space', (model) => authoring(model).addSpace({ ...RAILING, width: 10, name: 'Room' })],
-  ['Roof', (model) => authoring(model).addRoof({ ...RAILING, width: 10, predefinedType: 'FLAT_ROOF' })],
+  [
+    'Roof',
+    (model) => authoring(model).addRoof({ ...RAILING, width: 10, predefinedType: 'FLAT_ROOF' }),
+  ],
   ['Footing', (model) => authoring(model).addFooting({ ...RAILING, width: 10 })],
   ['Pile', (model) => authoring(model).addPile({ ...RAILING, profile })],
   ['Covering', (model) => authoring(model).addCovering({ ...RAILING, width: 10 })],
@@ -152,7 +155,9 @@ it('reclaims every partial curtain-wall solid after a later native validity thro
     expect(model.getAllElements()).toEqual([]);
     expect(model.getAllRelationships()).toEqual([]);
     expectArena(baseline);
-    expect(authoring(model).addCurtainWall(CURTAIN, { stableKey: 'retry' })).toMatchObject({ ok: true });
+    expect(authoring(model).addCurtainWall(CURTAIN, { stableKey: 'retry' })).toMatchObject({
+      ok: true,
+    });
     model[Symbol.dispose]();
     expectArena(baseline);
   } finally {
@@ -219,7 +224,9 @@ it.each(['before', 'after'] as const)(
       expect(fixture.aliasAttempts).not.toHaveBeenCalled();
       expect(fixture.attempts).toHaveBeenCalledTimes(1);
       for (const release of releases) expect(release).toHaveBeenCalledTimes(1);
-      expect(authoring(model).addRailing(RAILING, { stableKey: 'retry' })).toMatchObject({ ok: true });
+      expect(authoring(model).addRailing(RAILING, { stableKey: 'retry' })).toMatchObject({
+        ok: true,
+      });
       expect(diagnostics).toHaveLength(1);
       model[Symbol.dispose]();
       model[Symbol.dispose]();
@@ -290,7 +297,10 @@ it.each(['before', 'after'] as const)(
       expect(model.getAllRelationships()).toEqual([]);
       for (const solid of [fixture.alias, fixture.source]) {
         expect(
-          authoring(model).addProxy({ name: 'Uncertain curtain item', solid }, { stableKey: 'retry' })
+          authoring(model).addProxy(
+            { name: 'Uncertain curtain item', solid },
+            { stableKey: 'retry' }
+          )
         ).toMatchObject({
           ok: false,
           error: { code: 'BODY_OWNERSHIP_CONFLICT', metadata: { ownerState: 'UNCERTAIN' } },
@@ -300,7 +310,9 @@ it.each(['before', 'after'] as const)(
       expect(model.getGeometryCleanupDiagnostics()).toMatchObject([
         { operation: 'curtainWallToGrid', itemIndex: 0, cause },
       ]);
-      expect(authoring(model).addCurtainWall(CURTAIN, { stableKey: 'retry' })).toMatchObject({ ok: true });
+      expect(authoring(model).addCurtainWall(CURTAIN, { stableKey: 'retry' })).toMatchObject({
+        ok: true,
+      });
       model[Symbol.dispose]();
       model[Symbol.dispose]();
       for (const release of releases) expect(release).toHaveBeenCalledTimes(1);

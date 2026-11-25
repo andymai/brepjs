@@ -116,14 +116,25 @@ const recipes: ReadonlyArray<readonly [string, Creator]> = [
   ['Beam', (m) => authoring(m).addBeam({ ...RECIPE, profile: rectangular }, options)],
   ['Column', (m) => authoring(m).addColumn({ ...RECIPE, profile: rectangular }, options)],
   ['Space', (m) => authoring(m).addSpace({ ...RECIPE, width: 10, name: 'Room' }, options)],
-  ['Flat roof', (m) => authoring(m).addRoof({ ...RECIPE, width: 10, predefinedType: 'FLAT_ROOF' }, options)],
+  [
+    'Flat roof',
+    (m) => authoring(m).addRoof({ ...RECIPE, width: 10, predefinedType: 'FLAT_ROOF' }, options),
+  ],
   [
     'Shed roof',
-    (m) => authoring(m).addRoof({ ...RECIPE, width: 10, predefinedType: 'SHED_ROOF', pitch: 15 }, options),
+    (m) =>
+      authoring(m).addRoof(
+        { ...RECIPE, width: 10, predefinedType: 'SHED_ROOF', pitch: 15 },
+        options
+      ),
   ],
   [
     'Gable roof',
-    (m) => authoring(m).addRoof({ ...RECIPE, width: 10, predefinedType: 'GABLE_ROOF', pitch: 15 }, options),
+    (m) =>
+      authoring(m).addRoof(
+        { ...RECIPE, width: 10, predefinedType: 'GABLE_ROOF', pitch: 15 },
+        options
+      ),
   ],
   ['Footing', (m) => authoring(m).addFooting({ ...RECIPE, width: 10 }, options)],
   ['Pile', (m) => authoring(m).addPile({ ...RECIPE, profile: rectangular }, options)],

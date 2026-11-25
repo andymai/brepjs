@@ -22,7 +22,6 @@ export function writeCoveringGeometry(
   geomSubContextId: number,
   localPlacementId: number
 ): CoveringRepresentationIds {
-
   const lengthM = toIfcLengthM(spec.length);
   const widthM = toIfcLengthM(spec.width);
   const thicknessM = toIfcLengthM(spec.thickness);

@@ -28,7 +28,6 @@ export function writeSlabGeometry(
   geomSubContextId: number,
   localPlacementId: number
 ): SlabRepresentationIds {
-
   const lengthM = toIfcLengthM(spec.length);
   const widthM = toIfcLengthM(spec.width);
   const thicknessM = toIfcLengthM(spec.thickness);
@@ -111,7 +110,6 @@ export function writeRoofGeometry(
   geomSubContextId: number,
   localPlacementId: number
 ): SlabRepresentationIds & { usedFallback: boolean } {
-
   // Shaped roof → tessellate the real solid (the placement is carried by the
   // owning product, so writeTessellation ignores localPlacementId).
   if (spec.pitch !== undefined) {
@@ -276,9 +274,8 @@ function writeLinearExtrusion(
   geomSubContextId: number,
   localPlacementId: number
 ): LinearElementRepresentationIds {
-
   const profileId = writeProfile(w, profile);
-  const extrusionPosId = writeAxis2Placement3D(w,[0,0,0],placementAxis,placementRefDirection);
+  const extrusionPosId = writeAxis2Placement3D(w, [0, 0, 0], placementAxis, placementRefDirection);
   const extrusionDirId = writeDirection(w, [0, 0, 1]);
   const extrusionId = w.nextId();
   w.writeLine({
@@ -322,8 +319,8 @@ export function writeBeamGeometry(
   return writeLinearExtrusion(
     w,
     spec.profile,
-    [1,0,0],
-    [0,1,0],
+    [1, 0, 0],
+    [0, 1, 0],
     toIfcLengthM(spec.length),
     geomSubContextId,
     localPlacementId
@@ -342,8 +339,8 @@ export function writeColumnGeometry(
   return writeLinearExtrusion(
     w,
     spec.profile,
-    [0,0,1],
-    [1,0,0],
+    [0, 0, 1],
+    [1, 0, 0],
     toIfcLengthM(spec.height),
     geomSubContextId,
     localPlacementId

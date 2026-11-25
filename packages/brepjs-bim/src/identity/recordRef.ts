@@ -1,20 +1,17 @@
-/** Only identity comparisons are meaningful outside the issuing document. */
-const sequence = Symbol('document sequence');
+/** Ordinals are private inputs to the existing deterministic GlobalId scheme. */
+const ordinals = new WeakMap<RecordRef, number>();
 export class RecordRef {
-  readonly [sequence]: number;
+  declare private readonly documentRecord: void;
   constructor(ordinal: number) {
-    this[sequence] = ordinal;
+    ordinals.set(this, ordinal);
     Object.freeze(this);
-  }
-
-  toString(): string {
-    return String(this[sequence]);
   }
 }
 
-/** Used only for existing positional GlobalId derivation. */
 export function ordinalOf(reference: RecordRef): number {
-  return reference[sequence];
+  const ordinal = ordinals.get(reference);
+  if (ordinal === undefined) throw new TypeError('Expected an issued reference');
+  return ordinal;
 }
 
 export function recordCounter(start = 1) {
@@ -22,6 +19,8 @@ export function recordCounter(start = 1) {
   return {
     next: () => new RecordRef(next++),
     current: () => next - 1,
-    advanceTo: (last: number) => { next = Math.max(next, last + 1); },
+    advanceTo: (last: number) => {
+      next = Math.max(next, last + 1);
+    },
   };
 }

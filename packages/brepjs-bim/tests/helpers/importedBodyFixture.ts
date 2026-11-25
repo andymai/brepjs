@@ -127,7 +127,11 @@ export async function bodyFixture(options: BodyFixtureOptions): Promise<Uint8Arr
         axisZ: [0, 0, 1],
         materialName: 'Test',
       },
-      writeBodyPlacement(writer,wallOpeningFrame({ kind: 'WALL_OPENING', offsetFromFloor: 0, ...opening }, 100),localPlacementId),
+      writeBodyPlacement(
+        writer,
+        wallOpeningFrame({ kind: 'WALL_OPENING', offsetFromFloor: 0, ...opening }, 100),
+        localPlacementId
+      ),
       openingContextId,
       ownerHistoryId,
       openingRepresentation

@@ -10,14 +10,7 @@ import {
   type Shape3D,
 } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
-import {
-  BimDocument,
-  disposeImportedModel,
-  fromIfc,
-  placedSolids,
-  toIfc,
-  type Profile,
-} from '../src/index.js';
+import { BimDocument, disposeImportedModel, fromIfc, toIfc, type Profile } from '../src/index.js';
 import { readBodyItems } from '../src/import/geometryRead.js';
 import { SpfReader } from '../src/import/spfReader.js';
 import type { ValidationIssue } from '../src/validation/severity.js';
@@ -97,7 +90,9 @@ async function exchangeColumn(
   assert.exists(column);
 
   using scope = new DisposalScope();
-  const placed = unwrap(placedSolids(column)).map((solid) => scope.register(solid));
+  const placed = unwrap(model.placedSolids(column.localId, 'WORLD')).map((solid) =>
+    scope.register(solid)
+  );
   expect(placed).toHaveLength(1);
   const [placedSolid] = placed;
   assert.exists(placedSolid);

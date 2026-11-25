@@ -157,7 +157,9 @@ it('preserves separate native cleanup attempts in nested aggregates while dedupl
     throw primary;
   });
   try {
-    expect(authoring(model).addWall({ ...axes, length: 10, height: 10, thickness: 1 })).toMatchObject({
+    expect(
+      authoring(model).addWall({ ...axes, length: 10, height: 10, thickness: 1 })
+    ).toMatchObject({
       ok: false,
       error: { cause: primary },
     });

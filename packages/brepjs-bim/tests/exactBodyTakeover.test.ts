@@ -1,5 +1,5 @@
 import { authoring } from '../src/model/authoring.js';
-import {addDeliveryStorey} from './helpers/deliveryStorey.js';
+import { addDeliveryStorey } from './helpers/deliveryStorey.js';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   box,
@@ -404,7 +404,7 @@ describe('exact Product Body IFC integration', () => {
       })
     );
 
-    addDeliveryStorey(model,wallId);
+    addDeliveryStorey(model, wallId);
     const serialized = required(await toIfc(model, META));
     const text = new TextDecoder().decode(serialized);
     expect(text.match(/IFCTRIANGULATEDFACESET\(/g)).toHaveLength(2);
@@ -457,7 +457,7 @@ describe('exact Product Body IFC integration', () => {
       afterWriteLine: () => writeCalls++,
     });
 
-    addDeliveryStorey(model,wallId);
+    addDeliveryStorey(model, wallId);
     const serialized = await toIfc(model, META);
     expect(errorCode(serialized)).toBe('BODY_TESSELLATION_FAILED');
     expect(prepareCalls).toBe(2);
@@ -499,7 +499,7 @@ function requiredElement(
 ): BimElement<'WALL'> | BimElement<'RAILING'> {
   const element = model.getElement(localId);
   if (element === null || element.category !== category) {
-    throw new Error(`Expected ${category} element ${localId}`);
+    throw new Error(`Expected ${category} record`);
   }
   return element;
 }

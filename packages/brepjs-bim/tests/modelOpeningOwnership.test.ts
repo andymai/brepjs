@@ -85,11 +85,15 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
             cause,
           },
         ]);
-        expect(authoring(model).addProxy({ name: 'Uncertain old host', solid: old })).toMatchObject({
-          ok: false,
-          error: { code: 'BODY_OWNERSHIP_CONFLICT', metadata: { ownerState: 'UNCERTAIN' } },
-        });
-        expect(authoring(model).addProxy({ name: 'Current host', solid: host.solid() })).toMatchObject({
+        expect(authoring(model).addProxy({ name: 'Uncertain old host', solid: old })).toMatchObject(
+          {
+            ok: false,
+            error: { code: 'BODY_OWNERSHIP_CONFLICT', metadata: { ownerState: 'UNCERTAIN' } },
+          }
+        );
+        expect(
+          authoring(model).addProxy({ name: 'Current host', solid: host.solid() })
+        ).toMatchObject({
           ok: false,
           error: { code: 'BODY_OWNERSHIP_CONFLICT', metadata: { ownerState: 'RETAINED' } },
         });
@@ -147,7 +151,9 @@ it.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)(
       );
       expect(model.getAllRelationships()).toEqual(relationships);
       expect(old.disposed).toBe(true);
-      expect(authoring(model).addWindowAndCutWall({ ...WINDOW, wallLocalId: wallId })).toMatchObject({
+      expect(
+        authoring(model).addWindowAndCutWall({ ...WINDOW, wallLocalId: wallId })
+      ).toMatchObject({
         ok: false,
         error: {
           code:
@@ -172,7 +178,9 @@ it('retains independent native geometry through repeated recipe door and window 
   try {
     const { wallId, doorId } = addWallWithDoor(model);
     const wallAfterDoor = singletonWallSolid(model, wallId);
-    const windowId = brepjs.unwrap(authoring(model).addWindowAndCutWall({ ...WINDOW, wallLocalId: wallId }));
+    const windowId = brepjs.unwrap(
+      authoring(model).addWindowAndCutWall({ ...WINDOW, wallLocalId: wallId })
+    );
     expect(brepjs.getKernel().volume(singletonWallSolid(model, wallId).wrapped)).toBeCloseTo(53, 7);
     expect(wallAfterDoor.disposed).toBe(true);
     expect(model.getElement(doorId)?.category).toBe('DOOR');
@@ -194,7 +202,9 @@ it('rejects an opening that would split a singleton Wall Body without partial ad
     const wallId = brepjs.unwrap(authoring(model).addWall(OPENING_WALL));
     const before = model.getAllElements();
     const relationships = model.getAllRelationships();
-    expect(authoring(model).addDoorAndCutWall({ ...DOOR, wallLocalId: wallId, height: 6 })).toMatchObject({
+    expect(
+      authoring(model).addDoorAndCutWall({ ...DOOR, wallLocalId: wallId, height: 6 })
+    ).toMatchObject({
       ok: false,
       error: { code: 'WALL_OPENING_INVALID_SOLID' },
     });
@@ -304,7 +314,11 @@ for (const method of ['addDoorAndCutWall', 'addWindowAndCutWall'] as const) {
           });
           expect(brepjs.getKernel().volume(solid.wrapped)).toBeCloseTo(solid === first ? 60 : 1, 7);
         }
-        expect(ordinalOf(brepjs.unwrap(authoring(model)[method]({ ...DOOR, wallLocalId: supportedId }, options)))).toBe(7);
+        expect(
+          ordinalOf(
+            brepjs.unwrap(authoring(model)[method]({ ...DOOR, wallLocalId: supportedId }, options))
+          )
+        ).toBe(7);
         expect(
           brepjs.getKernel().volume(singletonWallSolid(model, supportedId).wrapped)
         ).toBeCloseTo(54, 7);

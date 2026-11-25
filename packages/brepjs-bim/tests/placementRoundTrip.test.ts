@@ -15,7 +15,6 @@ import {
   BimDocument,
   disposeImportedModel,
   fromIfc,
-  placedSolids,
   toIfc,
   type GeometryFidelity,
   type ImportedModel,
@@ -275,8 +274,7 @@ interface EagerBody {
 
 function eagerBody(model: BimDocument, id: RecordRef): EagerBody {
   const element = model.getElement(id);
-  if (element === null) throw new Error(`element ${id} missing`);
-  const solids = unwrap(placedSolids(element));
+  const solids = unwrap(model.placedSolids(element.localId, 'WORLD'));
   try {
     return { guid: element.guid, bounds: unionBounds(solids), volume: totalVolume(solids) };
   } finally {
@@ -344,7 +342,9 @@ describe('element placement survives the IFC round trip', () => {
 
       const expected = [0, length].flatMap((s) => points.map(([u, v]) => worldPoint(s, u, v)));
       using scope = new DisposalScope();
-      const placed = unwrap(placedSolids(beam)).map((solid) => scope.register(solid));
+      const placed = unwrap(model.placedSolids(beam.localId, 'WORLD')).map((solid) =>
+        scope.register(solid)
+      );
       const imported = await roundTrip(model);
       try {
         const readBack = imported.elements.find((el) => el.guid === beam.guid);

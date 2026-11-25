@@ -64,7 +64,9 @@ it.each(['Proxy', 'Fill'] as const)(
       expect(getKernel().shapeType(face.wrapped)).toBe('face');
       expect(getKernel().isValid(face.wrapped)).toBe(true);
       const command =
-        kind === 'Proxy' ? authoring(model).addProxy.bind(authoring(model)) : authoring(model).addEarthworksFill.bind(authoring(model));
+        kind === 'Proxy'
+          ? authoring(model).addProxy.bind(authoring(model))
+          : authoring(model).addEarthworksFill.bind(authoring(model));
       const before = model.getAllElements();
       const relations = model.getAllRelationships();
       const result: unknown = Reflect.apply(command, model, [
@@ -191,8 +193,15 @@ const creators: ReadonlyArray<readonly [string, Creator]> = [
   ['Footing', (m) => authoring(m).addFooting({ ...WALL, width: 2 })],
   ['Pile', (m) => authoring(m).addPile({ ...WALL, profile: PROFILE })],
   ['Covering', (m) => authoring(m).addCovering({ ...WALL, width: 2 })],
-  ['Proxy', (m) => authoring(m).addProxy({ name: 'Proxy', solid: box(1, 1, 1), materialName: 'Steel' })],
-  ['Fill', (m) => authoring(m).addEarthworksFill({ name: 'Fill', solid: box(1, 1, 1), materialName: 'Soil' })],
+  [
+    'Proxy',
+    (m) => authoring(m).addProxy({ name: 'Proxy', solid: box(1, 1, 1), materialName: 'Steel' }),
+  ],
+  [
+    'Fill',
+    (m) =>
+      authoring(m).addEarthworksFill({ name: 'Fill', solid: box(1, 1, 1), materialName: 'Soil' }),
+  ],
   [
     'Curtain wall',
     (m) =>
@@ -305,13 +314,16 @@ it('preserves identity, descriptive spec, style, placement and relationship obje
   const project = unwrap(model.init({ name: 'Metadata' }));
   const storey = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 1000 }));
   const id = unwrap(
-    authoring(model).addWall({ ...WALL, classification: { code: 'A', description: 'Wall', system: 'Test' } })
+    authoring(model).addWall({
+      ...WALL,
+      classification: { code: 'A', description: 'Wall', system: 'Test' },
+    })
   );
   model.aggregate(project, storey);
   model.placeIn(id, storey);
   const style = { name: 'Brick', r: 0.8, g: 0.2, b: 0.1 };
   model.setSurfaceStyle(id, style);
-  const assignedStyle=model.getSurfaceStyle(id);
+  const assignedStyle = model.getSurfaceStyle(id);
   expect(assignedStyle).toEqual(style);
   const before = model.getElement(id);
   const relations = model.getAllRelationships();
@@ -349,7 +361,9 @@ it('rolls back generated adoption failures and later relationship failures witho
       return Reflect.get(target, key, receiver);
     },
   });
-  expect(authoring(model).addWall({ ...WALL, materialLayers: layers }, { stableKey: 'retry' })).toMatchObject({
+  expect(
+    authoring(model).addWall({ ...WALL, materialLayers: layers }, { stableKey: 'retry' })
+  ).toMatchObject({
     ok: false,
     error: { code: 'MODEL_COMMAND_FAILED' },
   });

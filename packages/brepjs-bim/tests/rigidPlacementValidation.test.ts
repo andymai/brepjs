@@ -4,7 +4,6 @@ import { unwrap, measureVolume } from 'brepjs';
 import { getKernel } from '@/kernel/index.js';
 import { initKernel } from '../../../tests/setup.js';
 import { BimDocument } from '../src/model/bimDocument.js';
-import { placedSolids } from '../src/elementFns/placedGeometry.js';
 import { el, family, resolve, tRotate, type Element } from 'brepjs-families';
 import type { FrameInput } from '../src/index.js';
 import { familiesToBim } from '../src/familiesAdapter.js';
@@ -86,18 +85,18 @@ it('rejects an invalid parent or element frame before any native placement alloc
   );
   const el = model.getElement(id);
   if (el?.category !== 'RAILING') throw new Error('Expected railing');
+  const parent = unwrap(authoring(model).addSite({ name: 'Parent' }));
+  unwrap(model.reparent(id, parent, 'KEEP_LOCAL'));
   const locate = vi.spyOn(getKernel(), 'locate');
   const transform = vi.spyOn(getKernel(), 'composeTransform');
   const invalid = { origin: [0, 0, 0], axisX: [2, 0, 0], axisZ: [0, 0, 1] } satisfies FrameInput;
-  expect(placedSolids(el, { parentFrame: invalid })).toMatchObject({
+  expect(model.move(parent, invalid)).toMatchObject({
     ok: false,
     error: { code: 'INVALID_RIGID_FRAME' },
   });
   expect(locate).not.toHaveBeenCalled();
   expect(transform).not.toHaveBeenCalled();
-  expect(
-    placedSolids({ ...el, placement: { kind: 'LOCAL_FRAME' as const, frame: invalid } })
-  ).toMatchObject({
+  expect(model.move(id, invalid)).toMatchObject({
     ok: false,
     error: { code: 'INVALID_RIGID_FRAME' },
   });
@@ -107,12 +106,12 @@ it('rejects an invalid parent or element frame before any native placement alloc
     axisX: [1, 0, 0],
     axisZ: [0, 0, 1],
   } satisfies FrameInput;
-  expect(
-    placedSolids(
-      { ...el, placement: { kind: 'LOCAL_FRAME' as const, frame: extreme } },
-      { parentFrame: extreme }
-    )
-  ).toMatchObject({ ok: false, error: { code: 'INVALID_RIGID_FRAME' } });
+  unwrap(model.move(id, extreme));
+  unwrap(model.move(parent, extreme));
+  expect(model.placedSolids(id, 'WORLD')).toMatchObject({
+    ok: false,
+    error: { code: 'INVALID_RIGID_FRAME' },
+  });
   expect(transform).not.toHaveBeenCalled();
   for (const solid of el.geometry.solids) {
     expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);

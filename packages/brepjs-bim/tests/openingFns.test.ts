@@ -1,4 +1,4 @@
-import {RecordRef} from '../src/identity/recordRef.js';
+import { RecordRef } from '../src/identity/recordRef.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
 import { measureVolume } from 'brepjs';
