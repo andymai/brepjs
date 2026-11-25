@@ -42,7 +42,24 @@ function shapeType(shape: KernelShape): ShapeType {
   // replaying the whole op-graph onto OCCT — the replay would erase the
   // point of a fast mesh-CSG preview kernel (and require an occt kernel to
   // even classify a shape). Non-manifold handles still classify via OCCT.
-  if (asManifoldShape(shape)) return 'solid';
+  const native = asManifoldShape(shape);
+  if (native) {
+    // Profiles carry construction data in a mesh handle before extrusion.
+    switch (native.node.op) {
+      case 'profileFace':
+        return 'face';
+      case 'profileWire':
+        return 'wire';
+      case 'profileEdge':
+        return 'edge';
+      default:
+        return 'solid';
+    }
+  }
+  if (shape && typeof shape === 'object' && '__manifoldSub' in shape && 'subType' in shape) {
+    const type = shape.subType;
+    if (type === 'edge' || type === 'face' || type === 'vertex') return type;
+  }
   const { occt, brep } = brepOf(shape, 'shapeType');
   return occt.shapeType(brep);
 }
