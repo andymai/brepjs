@@ -2,6 +2,7 @@ import { box, clone, translate, unwrap } from 'brepjs';
 import { beforeAll, expect, it } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
+import type { ColumnSpec } from '../src/specs/columnSpec.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { fromIfc } from '../src/import/fromIfc.js';
 import { disposeImportedModel } from '../src/import/importedModel.js';
@@ -51,6 +52,48 @@ it.each([
   } finally {
     disposeImportedModel(imported);
   }
+});
+
+it('writes the swept volume until a beam, column, or pile receives a replacement Body', async () => {
+  using model = new BimModel();
+  unwrap(model.init({ name: 'Swept quantities' }));
+  const section = {
+    profile: { kind: 'CIRCULAR', radius: 30 },
+    materialName: 'Steel',
+    origin: [0, 0, 0],
+    axisX: [1, 0, 0],
+    axisZ: [0, 0, 1],
+  } satisfies Omit<ColumnSpec, 'height'>;
+  const ids = [
+    unwrap(model.addBeam({ ...section, length: 600 })),
+    unwrap(model.addColumn({ ...section, height: 600 })),
+    unwrap(model.addPile({ ...section, length: 600 })),
+  ];
+
+  async function expectNetVolume(volumeM3: number) {
+    const imported = unwrap(await fromIfc(unwrap(await toIfc(model, meta))));
+    try {
+      for (const id of ids) {
+        const element = imported.elements.find((item) => item.guid === model.getElement(id)?.guid);
+        const qto = element?.psets.find(({ name }) => name.endsWith('BaseQuantities'));
+        expect(qto?.properties['NetVolume'], element?.category).toBeCloseTo(volumeM3, 12);
+      }
+    } finally {
+      disposeImportedModel(imported);
+    }
+  }
+
+  await expectNetVolume((Math.PI * 30 ** 2 * 600) / 1e9);
+  for (const id of ids) {
+    const cube = box(10, 10, 10);
+    unwrap(
+      model.replaceBody({
+        localId: id,
+        body: { kind: 'AUTHORITATIVE', solids: [cube, translate(cube, [5, 0, 0])] },
+      })
+    );
+  }
+  await expectNetVolume(1500 / 1e9);
 });
 
 it('invalidates slab swept geometry for coincident and repartitioned replacements', async () => {

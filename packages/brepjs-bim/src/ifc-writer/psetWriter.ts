@@ -509,6 +509,9 @@ export function writeColumnCommonPset(
   writeCommonPset(w, ownerHistoryId, columnExpressId, 'COLUMN', buildCommonValues(spec));
 }
 
+// For beam, column, and pile sweeps the IFC profile and depth define both gross
+// and net volume. The kernel can facet that same profile. A null spec means the
+// writer exported the retained items and must use their measured union instead.
 export function writeBeamBaseQuantities(
   w: IfcWriter,
   ownerHistoryId: number,
@@ -529,7 +532,7 @@ export function writeBeamBaseQuantities(
     writeQtyLength(w, 'Length', lengthM),
     writeQtyArea(w, 'CrossSectionArea', crossSectionAreaM2),
     writeQtyVolume(w, 'GrossVolume', grossVolumeM3),
-    writeQtyVolume(w, 'NetVolume', netVolumeM3),
+    writeQtyVolume(w, 'NetVolume', grossVolumeM3),
   ];
 
   const qtoId = writeElementQuantity(w, ownerHistoryId, 'Qto_BeamBaseQuantities', qtyIds);
@@ -561,7 +564,7 @@ export function writeColumnBaseQuantities(
     writeQtyLength(w, 'Length', heightM),
     writeQtyArea(w, 'CrossSectionArea', crossSectionAreaM2),
     writeQtyVolume(w, 'GrossVolume', grossVolumeM3),
-    writeQtyVolume(w, 'NetVolume', netVolumeM3),
+    writeQtyVolume(w, 'NetVolume', grossVolumeM3),
   ];
 
   const qtoId = writeElementQuantity(w, ownerHistoryId, 'Qto_ColumnBaseQuantities', qtyIds);
@@ -748,7 +751,7 @@ export function writePileBaseQuantities(
     writeQtyLength(w, 'Length', lengthM),
     writeQtyArea(w, 'CrossSectionArea', crossSectionAreaM2),
     writeQtyVolume(w, 'GrossVolume', grossVolumeM3),
-    writeQtyVolume(w, 'NetVolume', netVolumeM3),
+    writeQtyVolume(w, 'NetVolume', grossVolumeM3),
   ];
 
   const qtoId = writeElementQuantity(w, ownerHistoryId, 'Qto_PileBaseQuantities', qtyIds);
