@@ -59,7 +59,7 @@
     "vite": "^8.0.0",
     "vite-plugin-dts": "^5.0.0",
     "vitest": "^5.0.0",
-    "web-ifc": "^0.0.78",
+    "web-ifc": "^0.0.79",
     "zod": "4.6.7"
   },
   "dependencies": {
