@@ -206,23 +206,23 @@ export interface ZShapeParams {
 }
 
 export function zShapeProfile(p: ZShapeParams): ProfileNode {
-  // Matches the brepjs-bim Z_SHAPE contract: flangeWidth reaches from the web
-  // CENTER to the flange tip (each flange extends (flangeWidth - web)/2 past
-  // the web), bottom flange to -X, top flange to +X.
-  const halfFw = p.flangeWidth / 2;
+  // IfcZShapeProfileDef figure, as in brepjs-bim Z_SHAPE: web centred, top
+  // flange to -X, bottom flange to +X, and flangeWidth measured from a flange
+  // tip to the far face of the web.
   const halfD = p.depth / 2;
   const halfWeb = p.webThickness / 2;
+  const tip = p.flangeWidth - halfWeb;
   const ft = p.flangeThickness;
   return profile(
     centeredPoly([
-      [-halfFw, -halfD],
-      [halfWeb, -halfD],
-      [halfWeb, halfD - ft],
-      [halfFw, halfD - ft],
-      [halfFw, halfD],
-      [-halfWeb, halfD],
-      [-halfWeb, -halfD + ft],
-      [-halfFw, -halfD + ft],
+      [-halfWeb, -halfD],
+      [tip, -halfD],
+      [tip, -halfD + ft],
+      [halfWeb, -halfD + ft],
+      [halfWeb, halfD],
+      [-tip, halfD],
+      [-tip, halfD - ft],
+      [-halfWeb, halfD - ft],
     ])
   );
 }
@@ -272,13 +272,13 @@ export interface TrapeziumParams {
 }
 
 export function trapeziumProfile(p: TrapeziumParams): ProfileNode {
-  // Matches the brepjs-bim TRAPEZIUM contract: bottom edge centered on the
-  // origin, top edge centered at topXOffset (an offset of centers, not of
-  // left corners) — deliberately NOT bbox-recentered.
+  // IfcTrapeziumProfileDef, as in brepjs-bim TRAPEZIUM: bottom edge centered
+  // on the origin, and topXOffset runs from the bottom-left corner to the
+  // top-left corner. Deliberately NOT bbox-recentered.
   const halfB = p.bottomXDim / 2;
   const halfY = p.yDim / 2;
-  const topLeft = -p.topXDim / 2 + p.topXOffset;
-  const topRight = p.topXDim / 2 + p.topXOffset;
+  const topLeft = -halfB + p.topXOffset;
+  const topRight = topLeft + p.topXDim;
   return profile(
     contour(
       [-halfB, -halfY],
