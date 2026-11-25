@@ -458,7 +458,7 @@ async function serializeIfc(
 
   const openingsByWall = new Map<RecordRef, WallOpeningSpec[]>();
   for (const rel of relationships) {
-    if (rel.kind !== 'VOIDS_WALL') continue;
+    if (rel.kind !== 'VOIDS' || rel.hostCategory !== 'WALL') continue;
     const opening = elements.find((el) => el.localId === rel.openingLocalId);
     if (opening === undefined || opening.category !== 'OPENING')
       return err(
@@ -466,14 +466,14 @@ async function serializeIfc(
       );
     if (!isWallOpening(opening.spec))
       return err(ifcError('UNSUPPORTED_OPENING_DEFINITION', 'Unsupported wall Opening'));
-    const list = openingsByWall.get(rel.wallLocalId) ?? [];
+    const list = openingsByWall.get(rel.hostLocalId) ?? [];
     list.push(opening.spec);
-    openingsByWall.set(rel.wallLocalId, list);
+    openingsByWall.set(rel.hostLocalId, list);
   }
 
   const openingsBySlab = new Map<RecordRef, SlabOpeningSpec[]>();
   for (const rel of relationships) {
-    if (rel.kind !== 'VOIDS_SLAB') continue;
+    if (rel.kind !== 'VOIDS' || rel.hostCategory !== 'SLAB') continue;
     const opening = elements.find((el) => el.localId === rel.openingLocalId);
     if (opening === undefined || opening.category !== 'OPENING')
       return err(
@@ -481,9 +481,9 @@ async function serializeIfc(
       );
     if (!isSlabOpening(opening.spec))
       return err(ifcError('UNSUPPORTED_OPENING_DEFINITION', 'Unsupported slab Opening'));
-    const list = openingsBySlab.get(rel.slabLocalId) ?? [];
+    const list = openingsBySlab.get(rel.hostLocalId) ?? [];
     list.push(opening.spec);
-    openingsBySlab.set(rel.slabLocalId, list);
+    openingsBySlab.set(rel.hostLocalId, list);
   }
 
   for (const [i, preflighted] of preflightedWalls.entries()) {
@@ -1087,13 +1087,13 @@ async function serializeIfc(
   let referenceContextId: number | undefined;
 
   for (const rel of relationships) {
-    if (rel.kind !== 'VOIDS_WALL') continue;
+    if (rel.kind !== 'VOIDS' || rel.hostCategory !== 'WALL') continue;
     const wallElement = elements.find(
-      (el): el is BimElement<'WALL'> => el.category === 'WALL' && el.localId === rel.wallLocalId
+      (el): el is BimElement<'WALL'> => el.category === 'WALL' && el.localId === rel.hostLocalId
     );
     if (wallElement === undefined) continue;
-    const wallExpressId = idMap.get(rel.wallLocalId);
-    const wallPlacementId = placementMap.get(rel.wallLocalId);
+    const wallExpressId = idMap.get(rel.hostLocalId);
+    const wallPlacementId = placementMap.get(rel.hostLocalId);
     if (wallExpressId === undefined || wallPlacementId === undefined) continue;
 
     const openingElement = elements.find((el) => el.localId === rel.openingLocalId);
@@ -1132,13 +1132,13 @@ async function serializeIfc(
   }
 
   for (const rel of relationships) {
-    if (rel.kind !== 'VOIDS_SLAB') continue;
+    if (rel.kind !== 'VOIDS' || rel.hostCategory !== 'SLAB') continue;
     const slabElement = elements.find(
-      (el): el is BimElement<'SLAB'> => el.category === 'SLAB' && el.localId === rel.slabLocalId
+      (el): el is BimElement<'SLAB'> => el.category === 'SLAB' && el.localId === rel.hostLocalId
     );
     if (slabElement === undefined) continue;
-    const slabExpressId = idMap.get(rel.slabLocalId);
-    const slabPlacementId = placementMap.get(rel.slabLocalId);
+    const slabExpressId = idMap.get(rel.hostLocalId);
+    const slabPlacementId = placementMap.get(rel.hostLocalId);
     if (slabExpressId === undefined || slabPlacementId === undefined) continue;
 
     const openingElement = elements.find((el) => el.localId === rel.openingLocalId);

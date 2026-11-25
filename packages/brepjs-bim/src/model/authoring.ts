@@ -1,3 +1,6 @@
+import { z } from 'zod';
+import type {FrameInput} from '../placementFrame.js';
+import type {AuthoredBodyInput} from './bimDocument.js';
 import { snapshotData as captureRecipe } from './documentGraph.js';
 import { wallOpeningFrame, slabOpeningFrame } from '../elementFns/openingFrames.js';
 import { realizeFlights, bindFlightItems } from './flightBody.js';
@@ -59,7 +62,28 @@ import {
   type ElementIdentityOptions,
   type OpeningIdentityOptions,
 } from './bimDocument.js';
+const roofOpening = z.strictObject({kind:z.literal('ROOF_OPENING'),sizeX:z.number().positive(),sizeY:z.number().positive(),depth:z.number().positive()});
 export class BimAuthoring {
+  /** The supplied solids already contain the void. Its definition records intent only. */
+  addRoofWithOpening(input: Pick<AuthoredBodyInput,'solids'|'placement'|'metadata'> & {
+    readonly stableKey:string;
+    readonly opening:{readonly slot:string;readonly frame:FrameInput;readonly definition:z.infer<typeof roofOpening>};
+  }): Result<{readonly roof:RecordRef;readonly opening:RecordRef},BimError> {
+    return this.access.edit('addRoofWithOpening',command=>{
+      if(!input.stableKey?.trim() || !input.opening?.slot?.trim()) return err(specError('INVALID_OPENING_KEY','Roof and void slot require stable keys'));
+      const definition=roofOpening.safeParse(input.opening.definition);
+      if(!definition.success) return err(specError('UNSUPPORTED_OPENING_DEFINITION','Expected a rectangular already-cut through opening',definition.error));
+      const roof=this.access.adopt(command,{...input,category:'ROOF'});
+      if(!roof.ok) return roof;
+      const placement=capturePlacement({kind:'LOCAL_FRAME',frame:input.opening.frame},roof.value);
+      if(!placement.ok) return placement;
+      const opening=this.access.makeElement(command,{category:'OPENING',representation:'NONE',reason:'OPENING_REFERENCE',
+        placement:placement.value,spec:Object.freeze(definition.data),geometry:null},input.stableKey+'/void/'+encodeURIComponent(input.opening.slot));
+      this.access.makeRel({kind:'VOIDS',hostCategory:'ROOF',hostLocalId:roof.value,openingLocalId:opening},command);
+      return ok(Object.freeze({roof:roof.value,opening}));
+    });
+  }
+
   private readonly access;
   constructor(private readonly document: BimDocument) {
     this.access = document[prepareRecords]();
@@ -1073,8 +1097,8 @@ export class BimAuthoring {
         );
         this.access.makeRel(
           {
-            kind: 'VOIDS_WALL',
-            wallLocalId: snapshot.wallLocalId,
+            kind:'VOIDS',hostCategory:'WALL',
+            hostLocalId: snapshot.wallLocalId,
             openingLocalId: openingId,
           },
           command
@@ -1184,7 +1208,7 @@ export class BimAuthoring {
       const ay0 = snapshot.offsetY;
       const ay1 = snapshot.offsetY + snapshot.sizeY;
       for (const rel of this.document.getAllRelationships()) {
-        if (rel.kind !== 'VOIDS_SLAB' || rel.slabLocalId !== snapshot.slabLocalId) continue;
+        if (rel.kind !== 'VOIDS' || rel.hostLocalId !== snapshot.slabLocalId) continue;
         const other = this.document.getElement(rel.openingLocalId);
         if (other === null || other.category !== 'OPENING') continue;
         if (other.spec.kind !== 'SLAB_OPENING') continue;
@@ -1238,8 +1262,8 @@ export class BimAuthoring {
       );
       this.access.makeRel(
         {
-          kind: 'VOIDS_SLAB',
-          slabLocalId: snapshot.slabLocalId,
+          kind:'VOIDS',hostCategory:'SLAB',
+          hostLocalId: snapshot.slabLocalId,
           openingLocalId: openingId,
         },
         command

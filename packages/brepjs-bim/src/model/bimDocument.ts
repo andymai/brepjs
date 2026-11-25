@@ -103,6 +103,16 @@ export interface OpeningIdentityOptions extends ElementIdentityOptions {
   readonly solids?: NonEmpty<ValidSolid>;
 }
 export const prepareRecords = Symbol('prepareRecords');
+export interface AuthoredBodyInput {
+
+    readonly category: BodyClassification;
+    readonly placement: PlacementDefinition;
+    readonly solids: Extract<Body, { kind: 'AUTHORITATIVE' }>['solids'];
+    readonly stableKey?: string;
+    readonly metadata?: Readonly<{ name?: string; description?: string }>;
+    readonly openingLocalId?: RecordRef;
+}
+
 export class BimDocument {
   readonly #elements = new Map<RecordRef, AnyBimElement>();
   readonly #relationships = new Map<RecordRef, BimRelationship>();
@@ -502,15 +512,11 @@ export class BimDocument {
     return ok(undefined);
   }
 
-  addAuthoredBody(input: {
-    readonly category: BodyClassification;
-    readonly placement: PlacementDefinition;
-    readonly solids: Extract<Body, { kind: 'AUTHORITATIVE' }>['solids'];
-    readonly stableKey?: string;
-    readonly metadata?: Readonly<{ name?: string; description?: string }>;
-    readonly openingLocalId?: RecordRef;
-  }): Result<RecordRef, BimError> {
-    return this.#create('addAuthoredBody', (command) => {
+  addAuthoredBody(input: AuthoredBodyInput): Result<RecordRef,BimError> {
+    return this.#create('addAuthoredBody', command=>this.#stageAuthoredBody(command,input));
+  }
+
+  #stageAuthoredBody(command:ModelCommand,input:AuthoredBodyInput): Result<RecordRef,BimError> {
       const { category, stableKey } = input;
       if (!bodyClassifications.includes(category)) {
         return err(specError('BODY_UNSUPPORTED_CATEGORY', 'Unsupported Body classification'));
@@ -542,7 +548,6 @@ export class BimDocument {
         );
       command.recipeEligibility.set(id, false);
       return ok(id);
-    });
   }
 
   /** Ownership transfers only on COMMITTED, including when retirement reports failure. */
@@ -1343,7 +1348,7 @@ export class BimDocument {
   #makeRel(fields: RelationshipFields, command: ModelCommand): RecordRef {
     const localId = command.counter.next();
     const guid = deriveIfcGuidSync(
-      makeRelKey(command.modelScope, fields.kind, ordinalOf(localId))
+      makeRelKey(command.modelScope, fields.kind==='VOIDS' ? 'VOIDS_'+fields.hostCategory : fields.kind, ordinalOf(localId))
     );
     const rel = snapshotData({ ...fields, guid, localId });
     command.relationships.push(rel);
@@ -1352,6 +1357,8 @@ export class BimDocument {
   [prepareRecords]() {
     return {
       create: this.#create.bind(this),
+      edit: this.#edit.bind(this),
+      adopt: this.#stageAuthoredBody.bind(this),
       checkStableKey: this.#checkStableKey.bind(this),
       makeElement: this.#makeElement.bind(this),
       ownGenerated: this.#ownGenerated.bind(this),

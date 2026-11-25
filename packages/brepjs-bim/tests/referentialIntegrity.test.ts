@@ -4,8 +4,7 @@ import type {
   BimRelationship,
   ContainedInRel,
   AggregatesRel,
-  VoidsWallRel,
-  VoidsSlabRel,
+  VoidsRel,
   FillsOpeningRel,
 } from '../src/types/relationships.js';
 import { RecordRef } from '../src/identity/recordRef.js';
@@ -53,22 +52,22 @@ function aggregates(localId: number, parent: number, children: number[]): Aggreg
   };
 }
 
-function voidsWall(localId: number, wall: number, opening: number): VoidsWallRel {
+function voidsWall(localId: number, wall: number, opening: number): VoidsRel {
   return {
-    kind: 'VOIDS_WALL',
+    kind:'VOIDS',hostCategory:'WALL',
     guid: guid(`rel-${localId}`),
     localId: id(localId),
-    wallLocalId: id(wall),
+    hostLocalId: id(wall),
     openingLocalId: id(opening),
   };
 }
 
-function voidsSlab(localId: number, slab: number, opening: number): VoidsSlabRel {
+function voidsSlab(localId: number, slab: number, opening: number): VoidsRel {
   return {
-    kind: 'VOIDS_SLAB',
+    kind:'VOIDS',hostCategory:'SLAB',
     guid: guid(`rel-${localId}`),
     localId: id(localId),
-    slabLocalId: id(slab),
+    hostLocalId: id(slab),
     openingLocalId: id(opening),
   };
 }
@@ -172,7 +171,7 @@ describe('checkReferentialIntegrity', () => {
       const { elements, relationships } = cleanModel();
       // Opening 7 voids a nonexistent wall (99).
       const broken = relationships.map((r) =>
-        r.kind === 'VOIDS_WALL' ? voidsWall(104, 99, 7) : r
+        r.kind === 'VOIDS' ? voidsWall(104, 99, 7) : r
       );
       const report = checkReferentialIntegrity({ elements, relationships: broken });
       const issue = report.issues.find((i) => i.code === 'VOID_HOST_MISSING');
@@ -225,7 +224,7 @@ describe('checkReferentialIntegrity', () => {
       // Drop the VOIDS_WALL rel so opening 7 is orphaned. Keep the fill so the
       // opening is still referenced by FILLS (must NOT be treated as void-orphan
       // suppression — orphan is specifically "no VOIDS rel").
-      const broken = relationships.filter((r) => r.kind !== 'VOIDS_WALL');
+      const broken = relationships.filter((r) => r.kind !== 'VOIDS');
       const report = checkReferentialIntegrity({ elements, relationships: broken });
       const warn = report.issues.find((i) => i.code === 'ORPHANED_OPENING');
       expect(warn).toBeDefined();

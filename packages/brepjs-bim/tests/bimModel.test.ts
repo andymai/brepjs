@@ -558,7 +558,7 @@ describe('BimModel.addSlabOpening (M6)', () => {
       slabLocalId: slabId,
     });
     expect(result.ok).toBe(true);
-    const voidsRels = model.getAllRelationships().filter((r) => r.kind === 'VOIDS_SLAB');
+    const voidsRels = model.getAllRelationships().filter((r) => r.kind === 'VOIDS');
     expect(voidsRels).toHaveLength(1);
   });
 

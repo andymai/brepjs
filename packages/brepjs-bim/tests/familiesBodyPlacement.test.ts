@@ -267,7 +267,7 @@ describe('retained Families Body placement and openings', () => {
           getBounds(bodySolids(expected.geometry)[0])
         );
         expect(
-          model.getAllRelationships().filter(({ kind }) => kind === 'VOIDS_WALL')
+          model.getAllRelationships().filter(({ kind }) => kind === 'VOIDS')
         ).toHaveLength(2);
         expect(
           model.getAllRelationships().filter(({ kind }) => kind === 'FILLS_OPENING')

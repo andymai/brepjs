@@ -699,7 +699,7 @@ describe('archetype routing', () => {
     expect(candidateVolumes[1]).toBeCloseTo(expectedVolume, 3);
     expect(wall.geometry.kind).toBe('AUTHORITATIVE');
     expect(unwrap(measureVolume(bodySolids(wall.geometry)[0]))).toBeCloseTo(expectedVolume, 3);
-    expect(model.getAllRelationships().filter(({ kind }) => kind === 'VOIDS_WALL')).toHaveLength(1);
+    expect(model.getAllRelationships().filter(({ kind }) => kind === 'VOIDS')).toHaveLength(1);
     expect(model.getAllRelationships().filter(({ kind }) => kind === 'FILLS_OPENING')).toHaveLength(
       1
     );

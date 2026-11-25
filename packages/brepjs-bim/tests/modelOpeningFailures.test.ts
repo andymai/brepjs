@@ -1,3 +1,4 @@
+import { ordinalOf } from '../src/identity/recordRef.js';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import * as brepjs from 'brepjs';
 import { BimModel } from '../src/model/bimModel.js';
@@ -140,7 +141,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
           const uncertain = timing === 'after' ? 0 : 1;
           expectArena(nativeBefore, uncertain);
           inject = false;
-          expect(host.open()).toEqual({ ok: true, value: kind === 'Slab' ? 3 : 5 });
+          expect(ordinalOf(brepjs.unwrap(host.open()))).toBe(kind === 'Slab' ? 3 : 5);
           expect(brepjs.getKernel().volume(host.solid().wrapped)).toBeCloseTo(host.cutVolume, 7);
           model[Symbol.dispose]();
           model[Symbol.dispose]();
@@ -195,7 +196,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
         expect(observed.resources.every((entry) => entry.attempts === 1)).toBe(true);
         expectArena(nativeBefore);
         cut.mockRestore();
-        expect(host.open()).toEqual({ ok: true, value: kind === 'Slab' ? 3 : 5 });
+        expect(ordinalOf(brepjs.unwrap(host.open()))).toBe(kind === 'Slab' ? 3 : 5);
         expect(brepjs.getKernel().volume(host.solid().wrapped)).toBeCloseTo(host.cutVolume, 7);
         model[Symbol.dispose]();
         expect(observed.resources.every((entry) => entry.attempts === 1)).toBe(true);
@@ -245,7 +246,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
         expect(observed.resources.every((entry) => entry.attempts === 1)).toBe(true);
         expectArena(nativeBefore);
         validate.mockRestore();
-        expect(host.open()).toEqual({ ok: true, value: kind === 'Slab' ? 3 : 5 });
+        expect(ordinalOf(brepjs.unwrap(host.open()))).toBe(kind === 'Slab' ? 3 : 5);
         expect(brepjs.getKernel().volume(host.solid().wrapped)).toBeCloseTo(host.cutVolume, 7);
         model[Symbol.dispose]();
         expect(observed.resources.every((entry) => entry.attempts === 1)).toBe(true);
@@ -439,7 +440,7 @@ it.each(['Door', 'Slab'] as const)(
       expect(observed.resources.every((entry) => entry.attempts === 1)).toBe(true);
       expectArena(nativeBefore);
       copy.mockRestore();
-      expect(host.open()).toEqual({ ok: true, value: kind === 'Slab' ? 3 : 5 });
+      expect(ordinalOf(brepjs.unwrap(host.open()))).toBe(kind === 'Slab' ? 3 : 5);
       expect(brepjs.getKernel().volume(host.solid().wrapped)).toBeCloseTo(host.cutVolume, 7);
       model[Symbol.dispose]();
       expect(observed.resources.every((entry) => entry.attempts === 1)).toBe(true);

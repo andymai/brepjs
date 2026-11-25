@@ -176,7 +176,7 @@ it('retains independent native geometry through repeated recipe door and window 
     expect(wallAfterDoor.disposed).toBe(true);
     expect(model.getElement(doorId)?.category).toBe('DOOR');
     expect(model.getElement(windowId)?.category).toBe('WINDOW');
-    expect(model.getAllRelationships().filter((rel) => rel.kind === 'VOIDS_WALL')).toHaveLength(2);
+    expect(model.getAllRelationships().filter((rel) => rel.kind === 'VOIDS')).toHaveLength(2);
     expect(model.getAllRelationships().filter((rel) => rel.kind === 'FILLS_OPENING')).toHaveLength(
       2
     );
@@ -229,7 +229,7 @@ it('cuts a singleton recipe Wall and commits door identities, material and owner
     expect(model.getAllRelationships()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          kind: 'VOIDS_WALL',
+          kind: 'VOIDS',
           wallLocalId: wallId,
           openingLocalId: opening.localId,
         }),

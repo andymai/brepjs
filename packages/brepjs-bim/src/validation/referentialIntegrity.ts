@@ -76,7 +76,7 @@ export function checkReferentialIntegrity(input: IntegrityInput): ValidationRepo
       for (const elementId of rel.relatedElements) {
         containmentCount.set(elementId, (containmentCount.get(elementId) ?? 0) + 1);
       }
-    } else if (rel.kind === 'VOIDS_WALL' || rel.kind === 'VOIDS_SLAB') {
+    } else if (rel.kind === 'VOIDS') {
       voidedOpenings.add(rel.openingLocalId);
     }
   }
@@ -111,11 +111,8 @@ export function checkReferentialIntegrity(input: IntegrityInput): ValidationRepo
 
   // Rule 2 — voids/fills referential consistency.
   for (const rel of relationships) {
-    if (rel.kind === 'VOIDS_WALL') {
-      checkVoidHost(issues, elementsById, rel.wallLocalId, 'WALL');
-      checkOpeningExists(issues, elementsById, rel.openingLocalId, 'VOID_OPENING_MISSING');
-    } else if (rel.kind === 'VOIDS_SLAB') {
-      checkVoidHost(issues, elementsById, rel.slabLocalId, 'SLAB');
+    if (rel.kind === 'VOIDS') {
+      checkVoidHost(issues, elementsById, rel.hostLocalId, rel.hostCategory);
       checkOpeningExists(issues, elementsById, rel.openingLocalId, 'VOID_OPENING_MISSING');
     } else if (rel.kind === 'FILLS_OPENING') {
       checkOpeningExists(issues, elementsById, rel.openingLocalId, 'FILL_OPENING_MISSING');

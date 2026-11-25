@@ -78,7 +78,14 @@ export type SlabOpeningSpec = {
   readonly offsetY: number;
 };
 
-export type OpeningSpec = WallOpeningSpec | SlabOpeningSpec;
+export interface RoofOpeningSpec {
+  readonly kind: 'ROOF_OPENING';
+  readonly sizeX: number;
+  readonly sizeY: number;
+  readonly depth: number;
+}
+
+export type OpeningSpec = WallOpeningSpec | SlabOpeningSpec | RoofOpeningSpec;
 
 export function isWallOpening(spec: OpeningSpec): spec is WallOpeningSpec {
   return spec.kind === 'WALL_OPENING';

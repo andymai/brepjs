@@ -13,10 +13,7 @@ export function relationshipEnds(rel: BimRelationship): readonly RecordRef[] {
     case 'ASSOCIATES_MATERIAL':
     case 'ASSOCIATES_CLASSIFICATION':
       return rel.relatedObjects;
-    case 'VOIDS_WALL':
-      return [rel.wallLocalId, rel.openingLocalId];
-    case 'VOIDS_SLAB':
-      return [rel.slabLocalId, rel.openingLocalId];
+    case 'VOIDS': return [rel.hostLocalId,rel.openingLocalId];
     case 'FILLS_OPENING':
       return [rel.openingLocalId, rel.fillerLocalId];
     case 'SPACE_BOUNDARY':
@@ -153,16 +150,8 @@ export function validateDocumentGraph(
           decomposition.set(child, edge.relatingObject);
         }
         break;
-      case 'VOIDS_WALL':
-      case 'VOIDS_SLAB':
-        if (category(edge.openingLocalId) !== 'OPENING' || hosts.has(edge.openingLocalId))
-          return badRole();
-        if (
-          edge.kind === 'VOIDS_WALL'
-            ? category(edge.wallLocalId) !== 'WALL'
-            : category(edge.slabLocalId) !== 'SLAB'
-        )
-          return badRole();
+      case 'VOIDS':
+        if (category(edge.openingLocalId)!=='OPENING' || category(edge.hostLocalId)!==edge.hostCategory || hosts.has(edge.openingLocalId)) return badRole();
         hosts.add(edge.openingLocalId);
         break;
       case 'FILLS_OPENING':

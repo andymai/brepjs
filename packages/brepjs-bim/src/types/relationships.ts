@@ -41,19 +41,12 @@ export interface AssociatesClassificationRel {
   readonly relatedObjects: readonly RecordRef[];
 }
 
-export interface VoidsWallRel {
-  readonly kind: 'VOIDS_WALL';
+export interface VoidsRel {
+  readonly kind: 'VOIDS';
   readonly guid: IfcGuid;
   readonly localId: RecordRef;
-  readonly wallLocalId: RecordRef;
-  readonly openingLocalId: RecordRef;
-}
-
-export interface VoidsSlabRel {
-  readonly kind: 'VOIDS_SLAB';
-  readonly guid: IfcGuid;
-  readonly localId: RecordRef;
-  readonly slabLocalId: RecordRef;
+  readonly hostLocalId: RecordRef;
+  readonly hostCategory: 'WALL' | 'SLAB' | 'ROOF';
   readonly openingLocalId: RecordRef;
 }
 
@@ -132,8 +125,7 @@ export type BimRelationship =
   | ContainedInRel
   | AssociatesMaterialRel
   | AssociatesClassificationRel
-  | VoidsWallRel
-  | VoidsSlabRel
+  | VoidsRel
   | FillsOpeningRel
   | SpaceBoundaryRel
   | NestsRel
