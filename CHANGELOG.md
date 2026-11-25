@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.28.5](https://github.com/andymai/brepjs/compare/brepjs-v20.28.4...brepjs-v20.28.5) (2026-11-25)
+
+
+### Bug Fixes
+
+* **csg:** match the IFC figures for the Z and trapezium profiles ([#2741](https://github.com/andymai/brepjs/issues/2741)) ([cc7db1c](https://github.com/andymai/brepjs/commit/cc7db1cb6c0c117ad399a7d6caa037393464b6a2))
+
 ## [20.28.4](https://github.com/andymai/brepjs/compare/brepjs-v20.28.3...brepjs-v20.28.4) (2026-11-25)
 
 
