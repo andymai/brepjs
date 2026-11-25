@@ -1,0 +1,22 @@
+src/kernel/manifold/topologyOps.ts
+  s_d6a660b14b15ca::t_59cb53f00b53e9 45-62
+tests/manifoldProfileFace.test.ts
+  s_d6a660b14b15ca::t_59cb53f00b53e9 72,75-101
+  s_d6a660b14b15ca::t_9b583d42e4d17d 73-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d94b33493f43a2fc216c5050f3f9e81b631a7407",
+  "prompts": {},
+  "sessions": {
+    "s_d6a660b14b15ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a218cb2b-b826-4b28-85aa-d0b260cc9317",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
