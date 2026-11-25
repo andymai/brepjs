@@ -1,6 +1,7 @@
+import { authoring } from '../src/model/authoring.js';
 import { afterEach, beforeAll, expect, it, vi, type MockInstance } from 'vitest';
 import * as brepjs from 'brepjs';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import type { CurtainWallSpec } from '../src/specs/curtainWallSpec.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
@@ -40,9 +41,9 @@ it('releases each curtain profile before creating the next component', () => {
     return result;
   });
   {
-    using model = new BimModel();
+    using model = new BimDocument();
     brepjs.unwrap(model.init({ name: 'Curtain profile lifetime' }));
-    const localId = brepjs.unwrap(model.addCurtainWall(CURTAIN));
+    const localId = brepjs.unwrap(authoring(model).addCurtainWall(CURTAIN));
     const element = model.getElement(localId);
     if (element?.category !== 'CURTAIN_WALL') throw new Error('Expected curtain wall');
     const components = model.getChildren(localId);
@@ -64,7 +65,7 @@ it.each(['before', 'after'] as const)(
   'stops after a later profile release fails %s native cleanup and never retries it',
   (timing) => {
     const baseline = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
-    const model = new BimModel();
+    const model = new BimDocument();
     brepjs.unwrap(model.init({ name: 'Curtain profile failure' }));
     const initialElements = model.getAllElements();
     const initialRelationships = model.getAllRelationships();
@@ -96,7 +97,7 @@ it.each(['before', 'after'] as const)(
       return result;
     });
     try {
-      expect(model.addCurtainWall(CURTAIN)).toMatchObject({
+      expect(authoring(model).addCurtainWall(CURTAIN)).toMatchObject({
         ok: false,
         error: {
           code: 'CURTAIN_WALL_CLEANUP_FAILED',

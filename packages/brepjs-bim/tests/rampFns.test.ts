@@ -1,6 +1,7 @@
+import { authoring } from '../src/model/authoring.js';
 import {identityPlacement} from '../src/types/placementDefinition.js';
 import {writeBodyPlacement} from '../src/ifc-writer/tessellationWriter.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
 import { unwrap, measureVolume, isSolid } from 'brepjs';
@@ -193,8 +194,8 @@ describe('writeRampAssembly serialization + aggregation', () => {
 
   it('emits one IfcRamp aggregating one IfcRampFlight, flagged simplified', async () => {
     const base = await buildBaseModel();
-    using model = new BimModel();
-    const id = unwrap(model.addRamp(rampSpec));
+    using model = new BimDocument();
+    const id = unwrap(authoring(model).addRamp(rampSpec));
     const record = model.getElement(id);
     if (record?.category !== 'RAMP' || !record.spec) throw new Error('Missing generated flights');
     const written = writeRampAssembly(
@@ -254,8 +255,8 @@ describe('writeRampAssembly serialization + aggregation', () => {
 
   it('emits a tessellated body and an IfcRampType', async () => {
     const base = await buildBaseModel();
-    using model = new BimModel();
-    const id = unwrap(model.addRamp(rampSpec));
+    using model = new BimDocument();
+    const id = unwrap(authoring(model).addRamp(rampSpec));
     const record = model.getElement(id);
     if (record?.category !== 'RAMP' || !record.spec) throw new Error('Missing generated flights');
     const written = writeRampAssembly(

@@ -1,8 +1,9 @@
+import { authoring } from '../src/model/authoring.js';
 import {addDeliveryStorey} from './helpers/deliveryStorey.js';
 import { box, clone, translate, unwrap } from 'brepjs';
 import { beforeAll, expect, it } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import type { ColumnSpec } from '../src/specs/columnSpec.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { fromIfc } from '../src/import/fromIfc.js';
@@ -31,7 +32,7 @@ it.each([
   'PROXY',
   'EARTHWORKS_FILL',
 ] as const)('reloads both authored %s items at the retained placement', async (category) => {
-  using model = new BimModel();
+  using model = new BimDocument();
   unwrap(model.init({ name: 'Round trip' }));
   const solid = box(10, 10, 10);
   const id = unwrap(
@@ -57,7 +58,7 @@ it.each([
 });
 
 it('writes the swept volume until a beam, column, or pile receives a replacement Body', async () => {
-  using model = new BimModel();
+  using model = new BimDocument();
   unwrap(model.init({ name: 'Swept quantities' }));
   const section = {
     profile: { kind: 'CIRCULAR', radius: 30 },
@@ -67,9 +68,9 @@ it('writes the swept volume until a beam, column, or pile receives a replacement
     axisZ: [0, 0, 1],
   } satisfies Omit<ColumnSpec, 'height'>;
   const ids = [
-    unwrap(model.addBeam({ ...section, length: 600 })),
-    unwrap(model.addColumn({ ...section, height: 600 })),
-    unwrap(model.addPile({ ...section, length: 600 })),
+    unwrap(authoring(model).addBeam({ ...section, length: 600 })),
+    unwrap(authoring(model).addColumn({ ...section, height: 600 })),
+    unwrap(authoring(model).addPile({ ...section, length: 600 })),
   ];
 
   addDeliveryStorey(model,...ids);
@@ -100,10 +101,10 @@ it('writes the swept volume until a beam, column, or pile receives a replacement
 });
 
 it('invalidates slab swept geometry for coincident and repartitioned replacements', async () => {
-  using model = new BimModel();
+  using model = new BimDocument();
   unwrap(model.init({ name: 'Encoding' }));
   const id = unwrap(
-    model.addSlab({
+    authoring(model).addSlab({
       length: 10,
       width: 10,
       thickness: 10,

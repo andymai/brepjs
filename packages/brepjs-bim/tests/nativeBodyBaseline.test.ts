@@ -1,8 +1,8 @@
+import { authoring } from '../src/model/authoring.js';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { box, DisposalScope, fuseAll, getBounds, measureVolume, unwrap } from 'brepjs';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
-import { BimModel } from '../src/model/bimModel.js';
-import { placedSolids } from '../src/elementFns/placedGeometry.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
 import { createOverlapFixture } from './helpers/nativeBodyFixture.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
@@ -52,9 +52,9 @@ describe('native Body baseline', () => {
     const beforeFixture = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
     const inputReleases: ReturnType<typeof vi.fn>[] = [];
     {
-      using model = new BimModel();
+      using model = new BimDocument();
       const id = unwrap(
-        model.addRailing({
+        authoring(model).addRailing({
           length: 2,
           height: 1,
           thickness: 1,
@@ -89,7 +89,7 @@ describe('native Body baseline', () => {
           if (outputReleases.length === 2) throw new Error('injected later placement failure');
         },
       });
-      const result = placedSolids(element);
+      const result = model.placedSolids(element.localId, 'WORLD');
       expect(result.ok).toBe(false);
       if (result.ok) throw new Error('Expected placement rejection');
       expect(result.error.code).toBe('BODY_OPERATION_FAILED');

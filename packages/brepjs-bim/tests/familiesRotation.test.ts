@@ -22,7 +22,6 @@ import {
 } from 'brepjs-families';
 import { initKernel } from '../../../tests/setup.js';
 import { familiesToBim } from '../src/familiesAdapter.js';
-import { placedSolids } from '../src/elementFns/placedGeometry.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { SpfReader } from '../src/import/spfReader.js';
 import {
@@ -30,7 +29,7 @@ import {
   readLengthScale,
   type WorldPlacement,
 } from '../src/import/placement.js';
-import type { BimModel } from '../src/model/bimModel.js';
+import type { BimDocument } from '../src/model/bimDocument.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -81,7 +80,7 @@ const Storey = family<{ readonly items: readonly Element[] }>(
 
 /** Serializes to IFC and recovers an element's composed world placement in mm. */
 async function worldPlacement(
-  model: BimModel,
+  model: BimDocument,
   guid: string,
   ifcSchema: 'IFC4' | 'IFC4X3' = 'IFC4'
 ): Promise<WorldPlacement> {
@@ -103,7 +102,7 @@ async function worldPlacement(
   }
 }
 
-function guidOf(model: BimModel, localId: RecordRef): string {
+function guidOf(model: BimDocument, localId: RecordRef): string {
   const guid = model.getElement(localId as never)?.guid;
   if (guid === undefined) throw new Error('element guid missing');
   return guid;
@@ -135,7 +134,7 @@ function projectedBounds(tree: ReturnType<typeof resolve>, keyPath: string) {
   if (localId === undefined) throw new Error(`${keyPath} not projected`);
   const element = model.getElement(localId);
   if (element === null) throw new Error(`${keyPath} element missing`);
-  const solids = unwrap(placedSolids(element));
+  const solids = unwrap(model.placedSolids(element.localId, 'WORLD'));
   const solid = solids[0];
   if (solid === undefined) throw new Error(`${keyPath} body missing`);
   using disposeSolid = solid;
@@ -483,9 +482,7 @@ describe('familiesToBim rotation fold — civil spatial nodes', () => {
     // Reconstruct the world body through the rotated parent frame; bounds match
     // the world-baked source, proving the applyMatrix localization is exact.
     const placed = unwrap(
-      placedSolids(fill, {
-        parentFrame: { origin: [0, 0, 0], axisX: [0, 1, 0], axisZ: [0, 0, 1] },
-      })
+      model.placedSolids(fill.localId, 'WORLD')
     );
     const worldBody = placed[0];
     if (worldBody === undefined) throw new Error('no placed body');

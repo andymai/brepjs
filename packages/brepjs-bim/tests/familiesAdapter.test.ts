@@ -1,5 +1,6 @@
+import { authoring } from '../src/model/authoring.js';
 /**
- * families -> BimModel adapter — the identity gate end to end: two identical
+ * families -> BimDocument adapter — the identity gate end to end: two identical
  * walls share one IR materialization upstream while the BIM model carries two
  * elements with distinct, key-path-derived, reorder-stable GlobalIds and
  * distinct pset-backed spec fields; IFC output is byte-identical across runs.
@@ -22,7 +23,7 @@ import { toIfc } from '../src/serialize/toIfc.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 import { checkReferentialIntegrity } from '../src/validation/referentialIntegrity.js';
 import { bodySolids } from '../src/types/body.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -337,7 +338,7 @@ describe('familiesToBim', () => {
       axisZ: [0, 0, 1] as [number, number, number],
       materialName: 'Concrete',
     };
-    const dup = model.addWall(spec, { stableKey: 'storey-1/w1' });
+    const dup = authoring(model).addWall(spec, { stableKey: 'storey-1/w1' });
     expect(isOk(dup)).toBe(false);
   });
 
@@ -529,11 +530,11 @@ describe('familiesToBim openings', () => {
       wallLocalId: wallId,
       materialName: 'Wood',
     };
-    const dupFiller = model.addDoorAndCutWall(spec, { stableKey: 'storey-1/w1/voids:d1/fill' });
+    const dupFiller = authoring(model).addDoorAndCutWall(spec, { stableKey: 'storey-1/w1/voids:d1/fill' });
     expect(isOk(dupFiller)).toBe(false);
-    const dupOpening = model.addDoorAndCutWall(spec, { openingStableKey: 'storey-1/w1/voids:d1' });
+    const dupOpening = authoring(model).addDoorAndCutWall(spec, { openingStableKey: 'storey-1/w1/voids:d1' });
     expect(isOk(dupOpening)).toBe(false);
-    const selfCollision = model.addDoorAndCutWall(spec, { stableKey: 'k', openingStableKey: 'k' });
+    const selfCollision = authoring(model).addDoorAndCutWall(spec, { stableKey: 'k', openingStableKey: 'k' });
     expect(isOk(selfCollision)).toBe(false);
   });
 });
@@ -662,13 +663,13 @@ describe('archetype routing', () => {
     );
     using evaluator = new csg.Evaluator();
     const volumesByWall = new Map<
-      Parameters<BimModel['replaceBody']>[0]['localId'],
+      Parameters<BimDocument['replaceBody']>[0]['localId'],
       readonly [number, number]
     >();
     // eslint-disable-next-line @typescript-eslint/unbound-method -- Invoked below with the explicit model receiver via .call().
-    const replace = BimModel.prototype.replaceBody;
-    vi.spyOn(BimModel.prototype, 'replaceBody').mockImplementation(function (
-      this: BimModel,
+    const replace = BimDocument.prototype.replaceBody;
+    vi.spyOn(BimDocument.prototype, 'replaceBody').mockImplementation(function (
+      this: BimDocument,
       input
     ) {
       const candidate = this.getElement(input.localId);

@@ -1,6 +1,7 @@
+import { authoring } from '../src/model/authoring.js';
 import { box, clone, unwrap } from 'brepjs';
 import { expect, it } from 'vitest';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { bodyRecordContract } from './helpers/bodyRecordContract.js';
 import { currentKernel } from '../../../tests/setup.js';
@@ -10,7 +11,7 @@ const meta = { applicationName: 'Flight test', applicationVersion: '1' };
 const frame = { origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1] } as const;
 for (const category of ['STAIR', 'RAMP'] as const) {
   bodyRecordContract(category);
-  function addTwo(model: BimModel) {
+  function addTwo(model: BimDocument) {
     const flight = {
       width: 100,
       numberOfRisers: 2,
@@ -28,12 +29,12 @@ for (const category of ['STAIR', 'RAMP'] as const) {
       materialName: 'Test',
       flights: [flight, { ...flight, origin: [140, 0, 20] as [number, number, number] }],
     };
-    return category === 'STAIR' ? model.addStair(spec) : model.addRamp(spec);
+    return category === 'STAIR' ? authoring(model).addStair(spec) : authoring(model).addRamp(spec);
   }
   it.each(['direct', 'coincident', 'changed count'])(
     'explicitly rejects %s ' + category + ' export without bound flight descriptions',
     async (mode) => {
-      using model = new BimModel();
+      using model = new BimDocument();
       unwrap(model.init({ name: 'Flights' }));
       if (mode === 'direct')
         unwrap(
@@ -68,7 +69,7 @@ for (const category of ['STAIR', 'RAMP'] as const) {
     }
   );
   it('rolls back a later ' + category + ' flight failure', () => {
-    using model = new BimModel();
+    using model = new BimDocument();
     const baseline = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
     let transforms = 0;
     setBodyTestHooksForTesting({

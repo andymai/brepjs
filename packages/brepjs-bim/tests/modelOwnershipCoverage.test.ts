@@ -1,3 +1,4 @@
+import { authoring } from '../src/model/authoring.js';
 import { beforeAll, afterEach, expect, it, vi } from 'vitest';
 import {
   box,
@@ -9,13 +10,12 @@ import {
   type Result,
   type ValidSolid,
 } from 'brepjs';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import type { WallSpec } from '../src/specs/wallSpec.js';
 import type { RecordRef } from '../src/identity/recordRef.js';
 import type { BimError } from '../src/errors/bimError.js';
 import type { Body } from '../src/types/body.js';
 import { measureBodyMaterial, bodyBounds } from '../src/types/body.js';
-import { placedSolids } from '../src/elementFns/placedGeometry.js';
 import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
 import { ordinalOf, recordCounter } from '../src/identity/recordRef.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
@@ -52,8 +52,8 @@ it.each(['Proxy', 'Fill'] as const)(
   (kind) => {
     const baseline = arena();
     {
-      using model = new BimModel();
-      const existing = unwrap(model.addSite({ name: 'Existing' }));
+      using model = new BimDocument();
+      const existing = unwrap(authoring(model).addSite({ name: 'Existing' }));
       using face = unwrap(
         polygon([
           [0, 0, 0],
@@ -64,7 +64,7 @@ it.each(['Proxy', 'Fill'] as const)(
       expect(getKernel().shapeType(face.wrapped)).toBe('face');
       expect(getKernel().isValid(face.wrapped)).toBe(true);
       const command =
-        kind === 'Proxy' ? model.addProxy.bind(model) : model.addEarthworksFill.bind(model);
+        kind === 'Proxy' ? authoring(model).addProxy.bind(authoring(model)) : authoring(model).addEarthworksFill.bind(authoring(model));
       const before = model.getAllElements();
       const relations = model.getAllRelationships();
       const result: unknown = Reflect.apply(command, model, [
@@ -93,18 +93,18 @@ it.each(['Proxy', 'Fill'] as const)(
 
 it('creates bodyless records without native allocation or ownership', () => {
   const baseline = arena();
-  using model = new BimModel();
+  using model = new BimDocument();
   unwrap(model.init({ name: 'Bodyless' }));
-  unwrap(model.addSite({ name: 'Site' }));
-  unwrap(model.addBridge({ name: 'Bridge' }));
-  unwrap(model.addBridgePart({ name: 'Part', usageType: 'LONGITUDINAL' }));
-  unwrap(model.addBuilding({ name: 'Building' }));
-  unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
-  expect(model.addStair({ materialName: 'Concrete', flights: [] }).ok).toBe(false);
-  expect(model.addRamp({ materialName: 'Concrete', flights: [] }).ok).toBe(false);
-  unwrap(model.addElementAssembly({ name: 'Assembly' }));
-  unwrap(model.addZone({ name: 'Zone' }));
-  unwrap(model.addSystem({ name: 'System' }));
+  unwrap(authoring(model).addSite({ name: 'Site' }));
+  unwrap(authoring(model).addBridge({ name: 'Bridge' }));
+  unwrap(authoring(model).addBridgePart({ name: 'Part', usageType: 'LONGITUDINAL' }));
+  unwrap(authoring(model).addBuilding({ name: 'Building' }));
+  unwrap(authoring(model).addStorey({ name: 'L1', elevation: 0 }));
+  expect(authoring(model).addStair({ materialName: 'Concrete', flights: [] }).ok).toBe(false);
+  expect(authoring(model).addRamp({ materialName: 'Concrete', flights: [] }).ok).toBe(false);
+  unwrap(authoring(model).addElementAssembly({ name: 'Assembly' }));
+  unwrap(authoring(model).addZone({ name: 'Zone' }));
+  unwrap(authoring(model).addSystem({ name: 'System' }));
   for (const element of model.getAllElements()) {
     expect(element.geometry).toBeNull();
     expect(Object.isFrozen(element)).toBe(true);
@@ -116,8 +116,8 @@ it('creates bodyless records without native allocation or ownership', () => {
 });
 
 it('rejects missing or unsupported targets before reading the incoming Body', () => {
-  using model = new BimModel();
-  const site = unwrap(model.addSite({ name: 'Site' }));
+  using model = new BimDocument();
+  const site = unwrap(authoring(model).addSite({ name: 'Site' }));
   using input = box(1, 1, 1);
   let reads = 0;
   const body = { kind: 'AUTHORITATIVE', solids: [input] } satisfies Body;
@@ -140,11 +140,11 @@ it('rejects missing or unsupported targets before reading the incoming Body', ()
 });
 
 it('snapshots caller ownership descriptors without freezing the caller or cloning its native handle', () => {
-  using model = new BimModel();
+  using model = new BimDocument();
   const first = box(1, 1, 1);
   using second = box(2, 2, 2);
   const spec = { name: 'Caller', solid: first };
-  const id = unwrap(model.addProxy(spec));
+  const id = unwrap(authoring(model).addProxy(spec));
   spec.solid = second;
   const element = model.getElement(id);
   if (element?.category !== 'PROXY') throw new Error('Expected Proxy');
@@ -161,8 +161,8 @@ it('snapshots caller ownership descriptors without freezing the caller or clonin
 it('leaves earlier live inputs unregistered when a later item has an ownership conflict', () => {
   const baseline = arena();
   {
-    using model = new BimModel();
-    const id = unwrap(model.addWall(WALL));
+    using model = new BimDocument();
+    const id = unwrap(authoring(model).addWall(WALL));
     const before = model.getElement(id);
     if (before?.category !== 'WALL') throw new Error('Expected Wall');
     const first = box(1, 1, 1);
@@ -174,29 +174,29 @@ it('leaves earlier live inputs unregistered when a later item has an ownership c
     ).toMatchObject({ ok: false, error: { metadata: { itemIndex: 1 } } });
     expect(first.disposed).toBe(false);
     expect(model.getElement(id)).toBe(before);
-    unwrap(model.addProxy({ name: 'Retry first input', solid: first }));
+    unwrap(authoring(model).addProxy({ name: 'Retry first input', solid: first }));
   }
   expectArena(baseline);
 });
 
-type Creator = (model: BimModel) => Result<RecordRef, BimError>;
+type Creator = (model: BimDocument) => Result<RecordRef, BimError>;
 const creators: ReadonlyArray<readonly [string, Creator]> = [
-  ['Wall', (m) => m.addWall(WALL)],
-  ['Railing', (m) => m.addRailing(WALL)],
-  ['Slab', (m) => m.addSlab({ ...WALL, width: 2, predefinedType: 'FLOOR' })],
-  ['Beam', (m) => m.addBeam({ ...WALL, profile: PROFILE })],
-  ['Column', (m) => m.addColumn({ ...WALL, profile: PROFILE })],
-  ['Space', (m) => m.addSpace({ ...WALL, name: 'Room', width: 2 })],
-  ['Roof', (m) => m.addRoof({ ...WALL, width: 2, predefinedType: 'FLAT_ROOF' })],
-  ['Footing', (m) => m.addFooting({ ...WALL, width: 2 })],
-  ['Pile', (m) => m.addPile({ ...WALL, profile: PROFILE })],
-  ['Covering', (m) => m.addCovering({ ...WALL, width: 2 })],
-  ['Proxy', (m) => m.addProxy({ name: 'Proxy', solid: box(1, 1, 1), materialName: 'Steel' })],
-  ['Fill', (m) => m.addEarthworksFill({ name: 'Fill', solid: box(1, 1, 1), materialName: 'Soil' })],
+  ['Wall', (m) => authoring(m).addWall(WALL)],
+  ['Railing', (m) => authoring(m).addRailing(WALL)],
+  ['Slab', (m) => authoring(m).addSlab({ ...WALL, width: 2, predefinedType: 'FLOOR' })],
+  ['Beam', (m) => authoring(m).addBeam({ ...WALL, profile: PROFILE })],
+  ['Column', (m) => authoring(m).addColumn({ ...WALL, profile: PROFILE })],
+  ['Space', (m) => authoring(m).addSpace({ ...WALL, name: 'Room', width: 2 })],
+  ['Roof', (m) => authoring(m).addRoof({ ...WALL, width: 2, predefinedType: 'FLAT_ROOF' })],
+  ['Footing', (m) => authoring(m).addFooting({ ...WALL, width: 2 })],
+  ['Pile', (m) => authoring(m).addPile({ ...WALL, profile: PROFILE })],
+  ['Covering', (m) => authoring(m).addCovering({ ...WALL, width: 2 })],
+  ['Proxy', (m) => authoring(m).addProxy({ name: 'Proxy', solid: box(1, 1, 1), materialName: 'Steel' })],
+  ['Fill', (m) => authoring(m).addEarthworksFill({ name: 'Fill', solid: box(1, 1, 1), materialName: 'Soil' })],
   [
     'Curtain wall',
     (m) =>
-      m.addCurtainWall({
+      authoring(m).addCurtainWall({
         ...WALL,
         width: 10,
         height: 10,
@@ -213,8 +213,8 @@ it.each(creators)(
   'tracks every %s handle through public reads, rejection, and disposal',
   (_, create) => {
     const baseline = arena();
-    using model = new BimModel();
-    const target = unwrap(model.addWall(WALL));
+    using model = new BimDocument();
+    const target = unwrap(authoring(model).addWall(WALL));
     const id = unwrap(create(model));
     const element = model.getElement(id);
     if (element === null) throw new Error('Missing created element');
@@ -238,16 +238,16 @@ it.each(creators)(
           body: { kind: 'AUTHORITATIVE', solids: [item] },
         })
       ).toMatchObject({ ok: false, error: { code: 'BODY_OWNERSHIP_CONFLICT' } });
-      expect(model.addProxy({ name: 'Reuse', solid: item })).toMatchObject({
+      expect(authoring(model).addProxy({ name: 'Reuse', solid: item })).toMatchObject({
         ok: false,
         error: { code: 'BODY_OWNERSHIP_CONFLICT' },
       });
       expect(
-        model.addEarthworksFill({ name: 'Reuse', materialName: 'Soil', solid: item })
+        authoring(model).addEarthworksFill({ name: 'Reuse', materialName: 'Soil', solid: item })
       ).toMatchObject({ ok: false, error: { code: 'BODY_OWNERSHIP_CONFLICT' } });
       expect(item.disposed).toBe(false);
       const independent = unwrap(clone(item));
-      unwrap(model.addProxy({ name: 'Copy', solid: independent }));
+      unwrap(authoring(model).addProxy({ name: 'Copy', solid: independent }));
     }
     model[Symbol.dispose]();
     model[Symbol.dispose]();
@@ -262,8 +262,8 @@ it.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)(
     for (const offset of [0, 0.5, 3]) {
       const baseline = arena();
       {
-        using model = new BimModel();
-        const id = unwrap(model.addWall(WALL));
+        using model = new BimDocument();
+        const id = unwrap(authoring(model).addWall(WALL));
         const first = box(1, 1, 1, { at: [0.5, 0.5, 0.5] });
         const second = box(1, 1, 1, { at: [offset + 0.5, 0.5, 0.5] });
         const input = { kind, solids: [first, second] } satisfies Body;
@@ -286,7 +286,7 @@ it.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)(
         const bounds = unwrap(bodyBounds(element.geometry, { kind: 'LOCAL' }));
         expect(bounds.bounds.xMin).toBeCloseTo(0, 6);
         expect(bounds.bounds.xMax).toBeCloseTo(1 + offset, 6);
-        const placed = unwrap(placedSolids(element));
+        const placed = unwrap(model.placedSolids(element.localId, 'WORLD'));
         try {
           expect(placed).toHaveLength(2);
           for (const item of placed) expect(element.geometry.solids).not.toContain(item);
@@ -301,11 +301,11 @@ it.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)(
 );
 
 it('preserves identity, descriptive spec, style, placement and relationship objects across replacement', () => {
-  using model = new BimModel();
+  using model = new BimDocument();
   const project = unwrap(model.init({ name: 'Metadata' }));
-  const storey = unwrap(model.addStorey({ name: 'L1', elevation: 1000 }));
+  const storey = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 1000 }));
   const id = unwrap(
-    model.addWall({ ...WALL, classification: { code: 'A', description: 'Wall', system: 'Test' } })
+    authoring(model).addWall({ ...WALL, classification: { code: 'A', description: 'Wall', system: 'Test' } })
   );
   model.aggregate(project, storey);
   model.placeIn(id, storey);
@@ -330,8 +330,8 @@ it('preserves identity, descriptive spec, style, placement and relationship obje
 });
 
 it('rolls back generated adoption failures and later relationship failures without consuming identity', () => {
-  using model = new BimModel();
-  const original = unwrap(model.addWall(WALL));
+  using model = new BimDocument();
+  const original = unwrap(authoring(model).addWall(WALL));
   const records = model.getAllElements();
   const relationships = model.getAllRelationships();
   const live = arena();
@@ -340,7 +340,7 @@ it('rolls back generated adoption failures and later relationship failures witho
       if (step === 'validate') throw new Error('Adoption validation');
     },
   });
-  expect(model.addWall(WALL, { stableKey: 'retry' })).toMatchObject({ ok: false });
+  expect(authoring(model).addWall(WALL, { stableKey: 'retry' })).toMatchObject({ ok: false });
   setBodyTestHooksForTesting(null);
   expectArena(live);
   const layers = new Proxy([{ name: 'Brick', thicknessMm: 1 }], {
@@ -349,20 +349,20 @@ it('rolls back generated adoption failures and later relationship failures witho
       return Reflect.get(target, key, receiver);
     },
   });
-  expect(model.addWall({ ...WALL, materialLayers: layers }, { stableKey: 'retry' })).toMatchObject({
+  expect(authoring(model).addWall({ ...WALL, materialLayers: layers }, { stableKey: 'retry' })).toMatchObject({
     ok: false,
     error: { code: 'MODEL_COMMAND_FAILED' },
   });
   expectArena(live);
   expect(model.getAllElements()).toEqual(records);
   expect(model.getAllRelationships()).toEqual(relationships);
-  const retry = unwrap(model.addWall(WALL, { stableKey: 'retry' }));
+  const retry = unwrap(authoring(model).addWall(WALL, { stableKey: 'retry' }));
   expect(ordinalOf(retry)).toBe(ordinalOf(original) + 2);
 });
 
 it('rejects malformed runtime Bodies and later native validation throws without transfer', () => {
-  using model = new BimModel();
-  const id = unwrap(model.addWall(WALL));
+  using model = new BimDocument();
+  const id = unwrap(authoring(model).addWall(WALL));
   const original = model.getElement(id);
   using first = box(1, 1, 1);
   using second = box(2, 2, 2);

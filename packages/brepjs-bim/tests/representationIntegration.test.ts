@@ -1,8 +1,7 @@
 import { box, DisposalScope, getEdges, getFaces, polygon, sewShells, unwrap } from 'brepjs';
 import { expect, it } from 'vitest';
 import { currentKernel } from '../../../tests/setup.js';
-import { BimModel } from '../src/model/bimModel.js';
-import { placedSolids } from '../src/elementFns/placedGeometry.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { measureBodyMaterial } from '../src/types/body.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { bodyRecordContract } from './helpers/bodyRecordContract.js';
@@ -12,7 +11,7 @@ bodyRecordContract('RAILING');
 it.each(['GRID_REFERENCE', 'LINEAR_REFERENCE'] as const)(
   'retains unresolved %s through replacement',
   async (kind) => {
-    using model = new BimModel();
+    using model = new BimDocument();
     unwrap(model.init({ name: 'Reference placement' }));
     const references = [{ kind: 'EXTERNAL' as const, identifier: 'datum-1' }];
     const parameters = { offset: 21 };
@@ -40,7 +39,7 @@ it.each(['GRID_REFERENCE', 'LINEAR_REFERENCE'] as const)(
     });
     expect(unwrap(measureBodyMaterial(record.geometry.solids))).toBeCloseTo(27, 6);
     const failure = { ok: false, error: { code: 'PLACEMENT_REFERENCE_UNRESOLVED' } };
-    expect(placedSolids(record)).toMatchObject(failure);
+    expect(model.placedSolids(record.localId, 'WORLD')).toMatchObject(failure);
     expect(await toIfc(model, { applicationName: 'Test', applicationVersion: '1' })).toMatchObject(
       failure
     );
@@ -49,7 +48,7 @@ it.each(['GRID_REFERENCE', 'LINEAR_REFERENCE'] as const)(
 );
 
 it('rejects faces, open shells, edges and raw meshes before any item transfers', () => {
-  using model = new BimModel();
+  using model = new BimDocument();
   using first = box(1, 1, 1);
   using face = unwrap(
     polygon([

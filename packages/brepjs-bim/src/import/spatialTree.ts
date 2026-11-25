@@ -131,7 +131,7 @@ function readNode(
   if (category === 'STOREY') {
     const raw = (line['Elevation'] as IfcValue | null | undefined)?.value;
     // Writer emits Elevation in metres; scale converts file units → metres,
-    // then ×1000 yields mm to match the BimModel input contract.
+    // then ×1000 yields mm to match the BimDocument input contract.
     if (typeof raw === 'number') elevation = raw * scale * 1000;
   }
 
@@ -152,7 +152,7 @@ function readNode(
  * from the single `IfcProject`. Returns `null` when no `IfcProject` is present.
  *
  * @param scale metres-per-file-unit; storey elevations are scaled to mm as
- *   `Elevation × scale × 1000` to match the `BimModel` input contract.
+ *   `Elevation × scale × 1000` to match the `BimDocument` input contract.
  */
 export function buildSpatialTree(reader: SpfReader, scale: number): SpatialNode | null {
   const projectIds = reader.getLinesOfType(WebIFC.IFCPROJECT);

@@ -1,7 +1,8 @@
+import { authoring } from '../src/model/authoring.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { unwrap, measureVolume, box } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 import { measureBodyMaterial } from '../src/types/body.js';
 import { identityPlacement } from '../src/types/placementDefinition.js';
@@ -20,9 +21,9 @@ const WALL_SPEC = {
   materialName: 'Brick',
 };
 
-describe('BimModel', () => {
+describe('BimDocument', () => {
   it('every minting method accepts a stableKey and rejects duplicates via Result', () => {
-    using model = new BimModel();
+    using model = new BimDocument();
     unwrap(model.init({ name: 'P', projectId: 'proj' }));
     const spaceSpec = {
       name: 'Office',
@@ -34,11 +35,11 @@ describe('BimModel', () => {
       axisZ: [0, 0, 1] as [number, number, number],
       materialName: 'Air',
     };
-    const space = unwrap(model.addSpace(spaceSpec, { stableKey: 'zone/office' }));
+    const space = unwrap(authoring(model).addSpace(spaceSpec, { stableKey: 'zone/office' }));
     const el = model.getAllElements().find((e) => e.localId === space);
     expect(el?.guid).toBe(deriveIfcGuidSync('elem:proj:zone/office'));
 
-    const railing = model.addRailing(
+    const railing = authoring(model).addRailing(
       {
         length: 2000,
         height: 1000,
@@ -61,7 +62,7 @@ describe('BimModel', () => {
     const minted: Array<[string, { ok: boolean; value?: unknown }]> = [
       [
         'cw',
-        model.addCurtainWall(
+        authoring(model).addCurtainWall(
           {
             width: 3000,
             height: 2700,
@@ -78,21 +79,21 @@ describe('BimModel', () => {
       ],
       [
         'footing',
-        model.addFooting(
+        authoring(model).addFooting(
           { length: 1200, width: 1200, thickness: 400, ...frame },
           { stableKey: 'k/footing' }
         ),
       ],
       [
         'pile',
-        model.addPile(
+        authoring(model).addPile(
           { length: 6000, profile: { kind: 'CIRCULAR', radius: 300 }, ...frame },
           { stableKey: 'k/pile' }
         ),
       ],
       [
         'covering',
-        model.addCovering(
+        authoring(model).addCovering(
           { length: 2000, width: 2000, thickness: 20, ...frame, predefinedType: 'FLOORING' },
           undefined,
           { stableKey: 'k/covering' }
@@ -100,7 +101,7 @@ describe('BimModel', () => {
       ],
       [
         'proxy',
-        model.addProxy({ name: 'Blob', solid: box(100, 100, 100) }, { stableKey: 'k/proxy' }),
+        authoring(model).addProxy({ name: 'Blob', solid: box(100, 100, 100) }, { stableKey: 'k/proxy' }),
       ],
     ];
     for (const [label, added] of minted) {
@@ -112,7 +113,7 @@ describe('BimModel', () => {
   });
 
   it('init creates a project element', () => {
-    const model = new BimModel();
+    const model = new BimDocument();
     unwrap(model.init({ name: 'Test Project' }));
     const project = model.getProject();
     expect(project).not.toBeNull();
@@ -120,18 +121,18 @@ describe('BimModel', () => {
   });
 
   it('addWall returns a RecordRef on success', () => {
-    const model = new BimModel();
+    const model = new BimDocument();
     unwrap(model.init({ name: 'P' }));
-    const siteId = unwrap(model.addSite({ name: 'S' }));
-    const buildingId = unwrap(model.addBuilding({ name: 'B' }));
-    const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
+    const siteId = unwrap(authoring(model).addSite({ name: 'S' }));
+    const buildingId = unwrap(authoring(model).addBuilding({ name: 'B' }));
+    const storeyId = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 0 }));
     const project = model.getProject();
     if (project === null) throw new Error('Expected project to exist');
     model.aggregate(project.localId, siteId);
     model.aggregate(siteId, buildingId);
     model.aggregate(buildingId, storeyId);
 
-    const result = model.addWall(WALL_SPEC);
+    const result = authoring(model).addWall(WALL_SPEC);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     model.placeIn(result.value, storeyId);
@@ -139,13 +140,13 @@ describe('BimModel', () => {
   });
 
   it('addWall fails with invalid spec', () => {
-    const model = new BimModel();
-    const result = model.addWall({ ...WALL_SPEC, length: -1 });
+    const model = new BimDocument();
+    const result = authoring(model).addWall({ ...WALL_SPEC, length: -1 });
     expect(result.ok).toBe(false);
   });
 
   it('init() called twice returns DUPLICATE_PROJECT error', () => {
-    const model = new BimModel();
+    const model = new BimDocument();
     unwrap(model.init({ name: 'First' }));
     const second = model.init({ name: 'Second' });
     expect(second.ok).toBe(false);
@@ -154,13 +155,13 @@ describe('BimModel', () => {
   });
 
   it('getProject returns null before init()', () => {
-    const model = new BimModel();
+    const model = new BimDocument();
     expect(model.getProject()).toBeNull();
   });
 
   it('[Symbol.dispose] disposes wall geometry handles', () => {
-    const model = new BimModel();
-    const result = model.addWall(WALL_SPEC);
+    const model = new BimDocument();
+    const result = authoring(model).addWall(WALL_SPEC);
     if (!result.ok) throw new Error(result.error.message);
     const wall = model.getElement(result.value);
     if (!wall || wall.category !== 'WALL') throw new Error('Expected wall element');
@@ -171,12 +172,12 @@ describe('BimModel', () => {
   });
 
   it('addEarthworksFill keeps a rejected duplicate body caller-owned', () => {
-    const model = new BimModel();
+    const model = new BimDocument();
     unwrap(model.init({ name: 'Civil', projectId: 'civil' }));
     const acceptedBody = box(400, 300, 200);
     const rejectedBody = box(200, 150, 100);
     unwrap(
-      model.addEarthworksFill(
+      authoring(model).addEarthworksFill(
         {
           name: 'Accepted fill',
           solid: acceptedBody,
@@ -187,7 +188,7 @@ describe('BimModel', () => {
       )
     );
 
-    const rejected = model.addEarthworksFill(
+    const rejected = authoring(model).addEarthworksFill(
       {
         name: 'Rejected fill',
         solid: rejectedBody,
@@ -209,17 +210,17 @@ describe('BimModel', () => {
   });
 
   it('getWalls returns only wall elements', () => {
-    const model = new BimModel();
+    const model = new BimDocument();
     unwrap(model.init({ name: 'P' }));
-    const siteId = unwrap(model.addSite({ name: 'S' }));
-    const buildingId = unwrap(model.addBuilding({ name: 'B' }));
-    const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
+    const siteId = unwrap(authoring(model).addSite({ name: 'S' }));
+    const buildingId = unwrap(authoring(model).addBuilding({ name: 'B' }));
+    const storeyId = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 0 }));
     const project = model.getProject();
     if (project === null) throw new Error('Expected project to exist');
     model.aggregate(project.localId, siteId);
     model.aggregate(siteId, buildingId);
     model.aggregate(buildingId, storeyId);
-    const wallResult = model.addWall(WALL_SPEC);
+    const wallResult = authoring(model).addWall(WALL_SPEC);
     if (!wallResult.ok) throw new Error(wallResult.error.message);
     model.placeIn(wallResult.value, storeyId);
 
@@ -228,12 +229,12 @@ describe('BimModel', () => {
   });
 });
 
-describe('BimModel.addDoorAndCutWall', () => {
+describe('BimDocument.addDoorAndCutWall', () => {
   function buildWallModel() {
-    const model = new BimModel();
+    const model = new BimDocument();
     const initResult = model.init({ name: 'Test' });
     if (!initResult.ok) throw new Error(initResult.error.message);
-    const wallResult = model.addWall({
+    const wallResult = authoring(model).addWall({
       length: 5000,
       height: 3000,
       thickness: 250,
@@ -248,7 +249,7 @@ describe('BimModel.addDoorAndCutWall', () => {
 
   it('adds a door and creates opening + relationships', () => {
     const { model, wallLocalId } = buildWallModel();
-    const result = model.addDoorAndCutWall({
+    const result = authoring(model).addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 500,
@@ -262,7 +263,7 @@ describe('BimModel.addDoorAndCutWall', () => {
 
   it('rejects door that exceeds wall length', () => {
     const { model, wallLocalId } = buildWallModel();
-    const result = model.addDoorAndCutWall({
+    const result = authoring(model).addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 4500,
@@ -276,7 +277,7 @@ describe('BimModel.addDoorAndCutWall', () => {
 
   it('rejects door that exceeds wall height', () => {
     const { model, wallLocalId } = buildWallModel();
-    const result = model.addDoorAndCutWall({
+    const result = authoring(model).addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 500,
@@ -290,7 +291,7 @@ describe('BimModel.addDoorAndCutWall', () => {
 
   it('rejects door referencing non-existent wall', () => {
     const { model } = buildWallModel();
-    const result = model.addDoorAndCutWall({
+    const result = authoring(model).addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 500,
@@ -303,12 +304,12 @@ describe('BimModel.addDoorAndCutWall', () => {
   });
 });
 
-describe('BimModel.addWindowAndCutWall', () => {
+describe('BimDocument.addWindowAndCutWall', () => {
   function buildWallModel() {
-    const model = new BimModel();
+    const model = new BimDocument();
     const initResult = model.init({ name: 'Test' });
     if (!initResult.ok) throw new Error(initResult.error.message);
-    const wallResult = model.addWall({
+    const wallResult = authoring(model).addWall({
       length: 5000,
       height: 3000,
       thickness: 250,
@@ -323,7 +324,7 @@ describe('BimModel.addWindowAndCutWall', () => {
 
   it('adds a window and creates opening + relationships', () => {
     const { model, wallLocalId } = buildWallModel();
-    const result = model.addWindowAndCutWall({
+    const result = authoring(model).addWindowAndCutWall({
       width: 1200,
       height: 1400,
       offsetAlongWall: 1000,
@@ -337,7 +338,7 @@ describe('BimModel.addWindowAndCutWall', () => {
 
   it('rejects window that exceeds wall bounds', () => {
     const { model, wallLocalId } = buildWallModel();
-    const result = model.addWindowAndCutWall({
+    const result = authoring(model).addWindowAndCutWall({
       width: 1200,
       height: 1400,
       offsetAlongWall: 4500,
@@ -350,15 +351,15 @@ describe('BimModel.addWindowAndCutWall', () => {
   });
 });
 
-describe('BimModel — wall geometry is cut by openings (M4)', () => {
+describe('BimDocument — wall geometry is cut by openings (M4)', () => {
   function buildWallModel() {
-    const model = new BimModel();
+    const model = new BimDocument();
     unwrap(model.init({ name: 'Test' }));
-    const wallId = unwrap(model.addWall(WALL_SPEC));
+    const wallId = unwrap(authoring(model).addWall(WALL_SPEC));
     return { model, wallId };
   }
 
-  function wallVolume(model: BimModel): number {
+  function wallVolume(model: BimDocument): number {
     const wall = model.getWalls()[0];
     if (!wall) throw new Error('Expected one wall');
     if (wall.geometry.kind !== 'PARAMETRIC') throw new Error('Expected parametric wall Body');
@@ -369,7 +370,7 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
     const { model, wallId } = buildWallModel();
     const grossVol = wallVolume(model);
 
-    const doorResult = model.addDoorAndCutWall({
+    const doorResult = authoring(model).addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 1000,
@@ -389,7 +390,7 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
     const grossVol = wallVolume(model);
 
     unwrap(
-      model.addDoorAndCutWall({
+      authoring(model).addDoorAndCutWall({
         width: 900,
         height: 2100,
         offsetAlongWall: 500,
@@ -399,7 +400,7 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
       })
     );
     unwrap(
-      model.addWindowAndCutWall({
+      authoring(model).addWindowAndCutWall({
         width: 1200,
         height: 1500,
         offsetAlongWall: 2500,
@@ -420,7 +421,7 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
     const relsBefore = model.getAllRelationships().length;
     const grossVol = wallVolume(model);
 
-    const result = model.addDoorAndCutWall({
+    const result = authoring(model).addDoorAndCutWall({
       width: WALL_SPEC.length + 100,
       height: 2100,
       offsetAlongWall: 0,
@@ -441,7 +442,7 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
     const relsBefore = model.getAllRelationships().length;
     const grossVol = wallVolume(model);
 
-    const result = model.addDoorAndCutWall({
+    const result = authoring(model).addDoorAndCutWall({
       width: 900,
       height: 2100,
       offsetAlongWall: 0,
@@ -458,7 +459,7 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
   });
 });
 
-describe('BimModel.addSlab', () => {
+describe('BimDocument.addSlab', () => {
   const SLAB_SPEC = {
     length: 5000,
     width: 4000,
@@ -471,8 +472,8 @@ describe('BimModel.addSlab', () => {
   };
 
   it('adds a slab and returns a RecordRef', () => {
-    const model = new BimModel();
-    const result = model.addSlab(SLAB_SPEC);
+    const model = new BimDocument();
+    const result = authoring(model).addSlab(SLAB_SPEC);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(model.getSlabs()).toHaveLength(1);
@@ -480,22 +481,22 @@ describe('BimModel.addSlab', () => {
   });
 
   it('addSlab fails with invalid spec', () => {
-    const model = new BimModel();
-    const result = model.addSlab({ ...SLAB_SPEC, length: -1 });
+    const model = new BimDocument();
+    const result = authoring(model).addSlab({ ...SLAB_SPEC, length: -1 });
     expect(result.ok).toBe(false);
   });
 
   it('stores the predefinedType on the spec', () => {
-    const model = new BimModel();
-    unwrap(model.addSlab(SLAB_SPEC));
-    unwrap(model.addSlab({ ...SLAB_SPEC, predefinedType: 'ROOF' }));
+    const model = new BimDocument();
+    unwrap(authoring(model).addSlab(SLAB_SPEC));
+    unwrap(authoring(model).addSlab({ ...SLAB_SPEC, predefinedType: 'ROOF' }));
     const slabs = model.getSlabs();
     expect(slabs.map((s) => s.spec?.predefinedType).sort()).toEqual(['FLOOR', 'ROOF']);
   });
 
   it('volume of stored slab geometry matches dimensions', () => {
-    const model = new BimModel();
-    const result = model.addSlab(SLAB_SPEC);
+    const model = new BimDocument();
+    const result = authoring(model).addSlab(SLAB_SPEC);
     if (!result.ok) throw new Error(result.error.message);
     const slab = model.getSlabs()[0];
     if (!slab) throw new Error('Expected one slab');
@@ -504,8 +505,8 @@ describe('BimModel.addSlab', () => {
   });
 
   it('[Symbol.dispose] disposes slab geometry', () => {
-    const model = new BimModel();
-    const result = model.addSlab(SLAB_SPEC);
+    const model = new BimDocument();
+    const result = authoring(model).addSlab(SLAB_SPEC);
     if (!result.ok) throw new Error(result.error.message);
     const slab = model.getSlabs()[0];
     if (!slab) throw new Error('Expected one slab');
@@ -514,8 +515,8 @@ describe('BimModel.addSlab', () => {
   });
 
   it('emits an ASSOCIATES_MATERIAL relationship', () => {
-    const model = new BimModel();
-    const result = model.addSlab(SLAB_SPEC);
+    const model = new BimDocument();
+    const result = authoring(model).addSlab(SLAB_SPEC);
     if (!result.ok) throw new Error(result.error.message);
     const matRels = model.getAllRelationships().filter((r) => r.kind === 'ASSOCIATES_MATERIAL');
     expect(matRels).toHaveLength(1);
@@ -523,7 +524,7 @@ describe('BimModel.addSlab', () => {
   });
 });
 
-describe('BimModel.addSlabOpening (M6)', () => {
+describe('BimDocument.addSlabOpening (M6)', () => {
   const SLAB_SPEC = {
     length: 6000,
     width: 4000,
@@ -536,13 +537,13 @@ describe('BimModel.addSlabOpening (M6)', () => {
   };
 
   function buildSlabModel() {
-    const model = new BimModel();
+    const model = new BimDocument();
     unwrap(model.init({ name: 'Test' }));
-    const slabId = unwrap(model.addSlab(SLAB_SPEC));
+    const slabId = unwrap(authoring(model).addSlab(SLAB_SPEC));
     return { model, slabId };
   }
 
-  function slabVolume(model: BimModel): number {
+  function slabVolume(model: BimDocument): number {
     const slab = model.getSlabs()[0];
     if (!slab) throw new Error('Expected one slab');
     return unwrap(measureVolume(slab.geometry.solids[0]));
@@ -550,7 +551,7 @@ describe('BimModel.addSlabOpening (M6)', () => {
 
   it('adds a slab opening and creates VOIDS_SLAB rel', () => {
     const { model, slabId } = buildSlabModel();
-    const result = model.addSlabOpening({
+    const result = authoring(model).addSlabOpening({
       sizeX: 1000,
       sizeY: 1500,
       offsetX: 1000,
@@ -567,7 +568,7 @@ describe('BimModel.addSlabOpening (M6)', () => {
     const grossVol = slabVolume(model);
 
     unwrap(
-      model.addSlabOpening({
+      authoring(model).addSlabOpening({
         sizeX: 1000,
         sizeY: 1500,
         offsetX: 1000,
@@ -586,7 +587,7 @@ describe('BimModel.addSlabOpening (M6)', () => {
     const grossVol = slabVolume(model);
 
     unwrap(
-      model.addSlabOpening({
+      authoring(model).addSlabOpening({
         sizeX: 800,
         sizeY: 1200,
         offsetX: 200,
@@ -595,7 +596,7 @@ describe('BimModel.addSlabOpening (M6)', () => {
       })
     );
     unwrap(
-      model.addSlabOpening({
+      authoring(model).addSlabOpening({
         sizeX: 600,
         sizeY: 600,
         offsetX: 4000,
@@ -615,7 +616,7 @@ describe('BimModel.addSlabOpening (M6)', () => {
     const relsBefore = model.getAllRelationships().length;
     const grossVol = slabVolume(model);
 
-    const result = model.addSlabOpening({
+    const result = authoring(model).addSlabOpening({
       sizeX: SLAB_SPEC.length + 100,
       sizeY: 100,
       offsetX: 0,
@@ -635,7 +636,7 @@ describe('BimModel.addSlabOpening (M6)', () => {
     const elementsBefore = model.getAllElements().length;
     const relsBefore = model.getAllRelationships().length;
 
-    const result = model.addSlabOpening({
+    const result = authoring(model).addSlabOpening({
       sizeX: 500,
       sizeY: 500,
       offsetX: 0,
@@ -652,7 +653,7 @@ describe('BimModel.addSlabOpening (M6)', () => {
   it('addSlabOpening rejects overlap with an existing opening on the same slab', () => {
     const { model, slabId } = buildSlabModel();
     unwrap(
-      model.addSlabOpening({
+      authoring(model).addSlabOpening({
         sizeX: 1000,
         sizeY: 1000,
         offsetX: 500,
@@ -664,7 +665,7 @@ describe('BimModel.addSlabOpening (M6)', () => {
     const relsBefore = model.getAllRelationships().length;
     const volAfterFirst = slabVolume(model);
 
-    const result = model.addSlabOpening({
+    const result = authoring(model).addSlabOpening({
       sizeX: 600,
       sizeY: 600,
       offsetX: 1000,
@@ -682,7 +683,7 @@ describe('BimModel.addSlabOpening (M6)', () => {
   it('addSlabOpening allows two openings that touch edge-to-edge (non-overlap)', () => {
     const { model, slabId } = buildSlabModel();
     unwrap(
-      model.addSlabOpening({
+      authoring(model).addSlabOpening({
         sizeX: 1000,
         sizeY: 1000,
         offsetX: 0,
@@ -690,7 +691,7 @@ describe('BimModel.addSlabOpening (M6)', () => {
         slabLocalId: slabId,
       })
     );
-    const second = model.addSlabOpening({
+    const second = authoring(model).addSlabOpening({
       sizeX: 1000,
       sizeY: 1000,
       offsetX: 1000,
@@ -701,7 +702,7 @@ describe('BimModel.addSlabOpening (M6)', () => {
   });
 });
 
-describe('BimModel.addBeam (M7)', () => {
+describe('BimDocument.addBeam (M7)', () => {
   const BEAM_SPEC = {
     length: 5000,
     profile: { kind: 'RECTANGULAR' as const, width: 200, height: 400 },
@@ -712,8 +713,8 @@ describe('BimModel.addBeam (M7)', () => {
   };
 
   it('adds a beam and returns a RecordRef', () => {
-    const model = new BimModel();
-    const result = model.addBeam(BEAM_SPEC);
+    const model = new BimDocument();
+    const result = authoring(model).addBeam(BEAM_SPEC);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(model.getBeams()).toHaveLength(1);
@@ -721,14 +722,14 @@ describe('BimModel.addBeam (M7)', () => {
   });
 
   it('addBeam fails with invalid spec', () => {
-    const model = new BimModel();
-    const result = model.addBeam({ ...BEAM_SPEC, length: -1 });
+    const model = new BimDocument();
+    const result = authoring(model).addBeam({ ...BEAM_SPEC, length: -1 });
     expect(result.ok).toBe(false);
   });
 
   it('beam volume matches profile area × length', () => {
-    const model = new BimModel();
-    const result = model.addBeam(BEAM_SPEC);
+    const model = new BimDocument();
+    const result = authoring(model).addBeam(BEAM_SPEC);
     if (!result.ok) throw new Error(result.error.message);
     const beam = model.getBeams()[0];
     if (!beam) throw new Error('Expected one beam');
@@ -737,8 +738,8 @@ describe('BimModel.addBeam (M7)', () => {
   });
 
   it('[Symbol.dispose] disposes beam geometry', () => {
-    const model = new BimModel();
-    const result = model.addBeam(BEAM_SPEC);
+    const model = new BimDocument();
+    const result = authoring(model).addBeam(BEAM_SPEC);
     if (!result.ok) throw new Error(result.error.message);
     const beam = model.getBeams()[0];
     if (!beam) throw new Error('Expected one beam');
@@ -747,8 +748,8 @@ describe('BimModel.addBeam (M7)', () => {
   });
 
   it('emits an ASSOCIATES_MATERIAL relationship', () => {
-    const model = new BimModel();
-    const result = model.addBeam(BEAM_SPEC);
+    const model = new BimDocument();
+    const result = authoring(model).addBeam(BEAM_SPEC);
     if (!result.ok) throw new Error(result.error.message);
     const matRels = model.getAllRelationships().filter((r) => r.kind === 'ASSOCIATES_MATERIAL');
     expect(matRels).toHaveLength(1);
@@ -756,7 +757,7 @@ describe('BimModel.addBeam (M7)', () => {
   });
 });
 
-describe('BimModel.addColumn (M7)', () => {
+describe('BimDocument.addColumn (M7)', () => {
   const COLUMN_SPEC = {
     height: 3000,
     profile: { kind: 'CIRCULAR' as const, radius: 200 },
@@ -767,22 +768,22 @@ describe('BimModel.addColumn (M7)', () => {
   };
 
   it('adds a column and returns a RecordRef', () => {
-    const model = new BimModel();
-    const result = model.addColumn(COLUMN_SPEC);
+    const model = new BimDocument();
+    const result = authoring(model).addColumn(COLUMN_SPEC);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(model.getColumns()).toHaveLength(1);
   });
 
   it('addColumn fails with invalid spec', () => {
-    const model = new BimModel();
-    const result = model.addColumn({ ...COLUMN_SPEC, height: 0 });
+    const model = new BimDocument();
+    const result = authoring(model).addColumn({ ...COLUMN_SPEC, height: 0 });
     expect(result.ok).toBe(false);
   });
 
   it('column volume matches profile area × height', () => {
-    const model = new BimModel();
-    const result = model.addColumn(COLUMN_SPEC);
+    const model = new BimDocument();
+    const result = authoring(model).addColumn(COLUMN_SPEC);
     if (!result.ok) throw new Error(result.error.message);
     const column = model.getColumns()[0];
     if (!column) throw new Error('Expected one column');
@@ -793,8 +794,8 @@ describe('BimModel.addColumn (M7)', () => {
   });
 
   it('[Symbol.dispose] disposes column geometry', () => {
-    const model = new BimModel();
-    const result = model.addColumn(COLUMN_SPEC);
+    const model = new BimDocument();
+    const result = authoring(model).addColumn(COLUMN_SPEC);
     if (!result.ok) throw new Error(result.error.message);
     const column = model.getColumns()[0];
     if (!column) throw new Error('Expected one column');
@@ -803,13 +804,13 @@ describe('BimModel.addColumn (M7)', () => {
   });
 });
 
-describe('BimModel.toTreeSummary', () => {
+describe('BimDocument.toTreeSummary', () => {
   it('labels authored elements by metadata name or category', () => {
-    using model = new BimModel();
+    using model = new BimDocument();
     const project = unwrap(model.init({ name: 'Project' }));
-    const site = unwrap(model.addSite({ name: 'Site' }));
-    const building = unwrap(model.addBuilding({ name: 'Building' }));
-    const storey = unwrap(model.addStorey({ name: 'Ground', elevation: 0 }));
+    const site = unwrap(authoring(model).addSite({ name: 'Site' }));
+    const building = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+    const storey = unwrap(authoring(model).addStorey({ name: 'Ground', elevation: 0 }));
     model.aggregate(project, site);
     model.aggregate(site, building);
     model.aggregate(building, storey);
@@ -840,29 +841,29 @@ describe('BimModel.toTreeSummary', () => {
   });
 
   it('returns null root for an uninitialized model', () => {
-    const model = new BimModel();
+    const model = new BimDocument();
     const tree = model.toTreeSummary();
     expect(tree.root).toBeNull();
     expect(tree.elementCount).toBe(0);
   });
 
   it('walks the spatial hierarchy and contained elements', () => {
-    const model = new BimModel();
+    const model = new BimDocument();
     unwrap(model.init({ name: 'Project' }));
     const project = model.getProject();
     if (!project) throw new Error('no project');
-    const siteId = unwrap(model.addSite({ name: 'Site' }));
-    const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
-    const storeyId = unwrap(model.addStorey({ name: 'Level 1', elevation: 3000 }));
+    const siteId = unwrap(authoring(model).addSite({ name: 'Site' }));
+    const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+    const storeyId = unwrap(authoring(model).addStorey({ name: 'Level 1', elevation: 3000 }));
     model.aggregate(project.localId, siteId);
     model.aggregate(siteId, buildingId);
     model.aggregate(buildingId, storeyId);
 
-    const wall = model.addWall(WALL_SPEC);
+    const wall = authoring(model).addWall(WALL_SPEC);
     if (!wall.ok) throw new Error(wall.error.message);
     model.placeIn(wall.value, storeyId);
 
-    const door = model.addDoorAndCutWall({
+    const door = authoring(model).addDoorAndCutWall({
       wallLocalId: wall.value,
       width: 800,
       height: 2000,

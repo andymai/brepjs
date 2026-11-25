@@ -1,8 +1,9 @@
+import { authoring } from '../src/model/authoring.js';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { unwrap, measureVolume } from 'brepjs';
 import { getKernel } from '@/kernel/index.js';
 import { initKernel } from '../../../tests/setup.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { placedSolids } from '../src/elementFns/placedGeometry.js';
 import { el, family, resolve, tRotate, type Element } from 'brepjs-families';
 import type { FrameInput } from '../src/index.js';
@@ -71,9 +72,9 @@ it('retains and exports the canonical basis for accepted drift on the unrotated 
 });
 
 it('rejects an invalid parent or element frame before any native placement allocation', () => {
-  using model = new BimModel();
+  using model = new BimDocument();
   const id = unwrap(
-    model.addRailing({
+    authoring(model).addRailing({
       length: 2,
       height: 1,
       thickness: 1,

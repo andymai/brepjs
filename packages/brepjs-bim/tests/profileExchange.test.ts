@@ -1,3 +1,4 @@
+import { authoring } from '../src/model/authoring.js';
 import { assert, beforeAll, describe, expect, it } from 'vitest';
 import {
   DisposalScope,
@@ -10,7 +11,7 @@ import {
 } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
 import {
-  BimModel,
+  BimDocument,
   disposeImportedModel,
   fromIfc,
   placedSolids,
@@ -73,16 +74,16 @@ async function exchangeColumn(
     readonly inspect?: (solid: Shape3D, label: string) => void;
   } = {}
 ): Promise<Exchanged> {
-  using model = new BimModel();
+  using model = new BimDocument();
   const projectId = unwrap(model.init({ name: 'Profile exchange' }));
-  const siteId = unwrap(model.addSite({ name: 'Site' }));
-  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
-  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
+  const siteId = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
   const id = unwrap(
-    model.addColumn({
+    authoring(model).addColumn({
       height: HEIGHT,
       profile,
       origin: ORIGIN,

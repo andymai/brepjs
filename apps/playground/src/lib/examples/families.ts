@@ -1,7 +1,7 @@
 /**
  * Declarative-model examples: the `brepjs-families` element layer. Trees of
  * typed families resolve to key-path identity plus content-addressed CSG
- * geometry; one example projects the tree into a BimModel for IFC export.
+ * geometry; one example projects the tree into a BimDocument for IFC export.
  * See the module-authoring rules in ./types.
  */
 import type { Example } from './types';
@@ -273,11 +273,11 @@ export default house();`,
     id: 'families-ifc',
     label: 'Families to IFC',
     description:
-      'A block of flats on two storeys, authored as families and projected into a BimModel with familiesToBim: spatial containment, wall openings as IfcOpeningElement relationships with IfcDoor and IfcWindow fillers, and GlobalIds derived from key paths. The console shows that every GlobalId is the same after the tree is reversed. Families with no IFC mapping, the door leaves and the glass panes, go out as proxies. The BIM panel shows the spatial tree and the IFC button downloads the file. The stair rise, going and landing are published figures. The plan and the sizes are a display model.',
+      'A block of flats on two storeys, authored as families and projected into a BimDocument with familiesToBim: spatial containment, wall openings as IfcOpeningElement relationships with IfcDoor and IfcWindow fillers, and GlobalIds derived from key paths. The console shows that every GlobalId is the same after the tree is reversed. Families with no IFC mapping, the door leaves and the glass panes, go out as proxies. The BIM panel shows the spatial tree and the IFC button downloads the file. The stair rise, going and landing are published figures. The plan and the sizes are a display model.',
     code: `import { compound, csg, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 import { family, el, resolve, tTranslate, type Element } from 'brepjs-families';
-import { familiesToBim, placedSolids, toIfc } from 'brepjs-bim';
+import { familiesToBim, toIfc } from 'brepjs-bim';
 
 // A block of flats on two storeys, authored as families and projected to a BIM model and an IFC file.
 // Units are millimetres, Z is up. The stair figures are published. The plan and the sizes are a display model.
@@ -385,7 +385,7 @@ function tree(flats: number, pitch: number, reversed: boolean) {
 }
 
 function block({ flats = 2, pitch = 25 }: BlockParams = {}) {
-  // Project the tree into a BimModel: storeys, walls, slabs, openings, psets and materials.
+  // Project the tree into a BimDocument: storeys, walls, slabs, openings, psets and materials.
   // Leaf and Pane have no IFC mapping: proxyEvaluator sends them out as IfcBuildingElementProxy.
   const ev = new csg.Evaluator();
   const options = {
@@ -418,7 +418,7 @@ function block({ flats = 2, pitch = 25 }: BlockParams = {}) {
     const element = model.getElement(id);
     if (!element || element.representation === 'NONE' || element.category === 'DOOR' || element.category === 'WINDOW') continue;
     const lift = path.startsWith('block/first') ? STOREY : 0;
-    const solids = unwrap(placedSolids(element, { parentFrame: { origin: [0, 0, lift], axisX: [1, 0, 0], axisZ: [0, 0, 1] } }));
+    const solids = unwrap(model.placedSolids(element.localId, 'WORLD'));
     temp.push(...solids);
     const tone = kind.get(path) ?? element.category;
     if (solids.length > 0) groups.set(tone, [...(groups.get(tone) ?? []), ...solids]);
@@ -1075,7 +1075,7 @@ export default suite();`,
     code: `import { compound, csg, measureVolume, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 import { family, el, resolve, tTranslate, type Element } from 'brepjs-families';
-import { familiesToBim, placedSolids, toIfc } from 'brepjs-bim';
+import { familiesToBim, toIfc } from 'brepjs-bim';
 
 // A steel frame on two storeys, authored as one tree of families and projected through familiesToBim.
 // Units are millimetres, Z is up. The sections, their masses and the stair figures are published.
@@ -1234,7 +1234,7 @@ function tree(bays: number, roofed: number) {
 
 function frame({ bays = 2, roofed = 1 }: FrameParams = {}) {
   const count = Math.max(1, Math.round(bays));
-  // Project onto a BimModel: storeys, footings, columns, beams, slabs, roof, stair and railings, each
+  // Project onto a BimDocument: storeys, footings, columns, beams, slabs, roof, stair and railings, each
   // with a GlobalId derived from its key path. BasePlate has no IFC mapping and goes out as a proxy.
   const ev = new csg.Evaluator();
   const projected = familiesToBim(tree(count, Math.min(count, Math.max(0, Math.round(roofed)))), {
@@ -1256,7 +1256,7 @@ function frame({ bays = 2, roofed = 1 }: FrameParams = {}) {
     const element = model.getElement(id);
     if (!element || element.representation === 'NONE') continue;
     const level = Number(path.split('/')[1]?.slice(-1) ?? 0);
-    const solids = unwrap(placedSolids(element, { parentFrame: { origin: [0, 0, level * STOREY], axisX: [1, 0, 0], axisZ: [0, 0, 1] } }));
+    const solids = unwrap(model.placedSolids(element.localId, 'WORLD'));
     temp.push(...solids);
     let tone: string = element.category;
     if ((element.category === 'BEAM' || element.category === 'COLUMN') && element.spec) {

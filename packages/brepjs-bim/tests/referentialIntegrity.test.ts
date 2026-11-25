@@ -233,7 +233,7 @@ describe('checkReferentialIntegrity', () => {
     });
   });
 
-  describe('accepts a BimModel-like accessor object', () => {
+  describe('accepts a BimDocument-like accessor object', () => {
     it('reads via getAllElements / getAllRelationships', () => {
       const { elements, relationships } = cleanModel();
       const modelLike = {

@@ -1,6 +1,6 @@
 /**
  * BIM examples — parametric IFC4 building elements authored with the
- * `brepjs-bim` domain package. Each builds a `BimModel`, reads element geometry
+ * `brepjs-bim` domain package. Each builds a `BimDocument`, reads element geometry
  * back out for display, and could serialize to IFC via `toIfc`. See the
  * module-authoring rules in ./types.
  */
@@ -12,7 +12,7 @@ export const BIM_EXAMPLES: readonly Example[] = [
     label: 'Steel Floor Beam',
     description:
       'A steel floor beam as a BIM model: an IfcBeam with a rolled I profile between two column stubs, with fin plates, bolts, shear studs and a strip of the slab with its mesh. The sections, the fin plate, the bolts, the studs and the mesh are published figures, and the kernel measures the mass of the beam for each metre against the section table. The view shows each M20 bolt as a screw with a helical thread in its nut, and the IFC file keeps it as a plain proxy. The span, the column stubs and the slab strip are a display model.',
-    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+    code: `import { BimDocument, toIfc, authoring, type BimAuthoring } from 'brepjs-bim';
 import { box, clone, compound, cutAll, cylinder, extrude, fuseAll, getSolids, line, loft, measureVolume, polygon, rotate, translate, unwrap, wire } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
@@ -50,24 +50,26 @@ const COLORS = { beam: '#12b5b0', column: '#c3c9d1', plate: '#ff5a1f', bolt: '#f
 type Tone = keyof typeof COLORS;
 type P3 = [number, number, number];
 type Body = ReturnType<typeof box>;
-type Id = Extract<ReturnType<BimModel['addBeam']>, { ok: true }>['value']; // the id of an element in the model
+type Id = Extract<ReturnType<BimAuthoring['addBeam']>, { ok: true }>['value']; // the id of an element in the model
 const X: P3 = [1, 0, 0], Y: P3 = [0, 1, 0], Z: P3 = [0, 0, 1];
 
 function beamModel({ section = 'IPE 300', span = 2000, slab = 0.5 }: BeamParams = {}) {
-  const model = new BimModel(), owned: { delete(): void }[] = [];
+  const model = new BimDocument(), owned: { delete(): void }[] = [];
   const own = <T extends { delete(): void }>(s: T): T => { owned.push(s); return s; };
   try {
     model.init({ name: 'Beam example' });
     // The spatial structure makes this a BIM model: project, site, building, storey.
     const project = model.getProject();
-    const site = unwrap(model.addSite({ name: 'Site' }));
-    const building = unwrap(model.addBuilding({ name: 'Building' }));
-    const storey = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
+    const site = unwrap(authoring(model).addSite({ name: 'Site' }));
+    const building = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+    const storey = unwrap(authoring(model).addStorey({ name: 'Level 1', elevation: 0 }));
     if (project) model.aggregate(project.localId, site);
-    model.aggregate(site, building);
-    model.aggregate(building, storey);
+    unwrap(model.aggregate(site, building));
+    unwrap(model.reparent(building, site, 'KEEP_LOCAL'));
+    unwrap(model.aggregate(building, storey));
+    unwrap(model.reparent(storey, building, 'KEEP_LOCAL'));
     const tones = new Map<Id, Tone>();
-    const put = (tone: Tone, made: ReturnType<BimModel['addBeam']>): Id => {
+    const put = (tone: Tone, made: ReturnType<BimAuthoring['addBeam']>): Id => {
       const id = unwrap(made);
       model.placeIn(id, storey);
       tones.set(id, tone);
@@ -77,7 +79,7 @@ function beamModel({ section = 'IPE 300', span = 2000, slab = 0.5 }: BeamParams 
     // The beam. The profile carries the figures of the section table. filletRadius is the root radius between the
     // web and the flanges. The beam stops 10 mm short of each column face.
     const s = IPE[section], face = span / 2 - HE200B.h / 2, length = 2 * (face - FIN.gap);
-    const beam = put('beam', model.addBeam({
+    const beam = put('beam', authoring(model).addBeam({
       length,
       profile: { kind: 'I_BEAM', overallWidth: s.b, overallDepth: s.h, flangeThickness: s.tf, webThickness: s.tw, filletRadius: s.r },
       origin: [0, -length / 2, -s.h / 2],
@@ -89,15 +91,15 @@ function beamModel({ section = 'IPE 300', span = 2000, slab = 0.5 }: BeamParams 
     // Two column stubs. Their flanges face the beam.
     const column = { kind: 'I_BEAM', overallWidth: HE200B.b, overallDepth: HE200B.h, flangeThickness: HE200B.tf, webThickness: HE200B.tw, filletRadius: HE200B.r } as const;
     for (const side of [-1, 1])
-      put('column', model.addColumn({ height: s.h + STUB.below + STUB.above, profile: column, origin: [0, side * span / 2, -s.h - STUB.below], axisX: X, axisZ: Z, materialName: 'Steel S355' }));
+      put('column', authoring(model).addColumn({ height: s.h + STUB.below + STUB.above, profile: column, origin: [0, side * span / 2, -s.h - STUB.below], axisX: X, axisZ: Z, materialName: 'Steel S355' }));
 
     // A slab strip on the top flange, between the column faces.
-    const deck = put('slab', model.addSlab({ length: STRIP.width, width: 2 * face, thickness: STRIP.depth, origin: [-STRIP.width / 2, -face, 0], axisX: X, axisZ: Z, predefinedType: 'FLOOR', materialName: 'Concrete C30/37' }));
+    const deck = put('slab', authoring(model).addSlab({ length: STRIP.width, width: 2 * face, thickness: STRIP.depth, origin: [-STRIP.width / 2, -face, 0], axisX: X, axisZ: Z, predefinedType: 'FLOOR', materialName: 'Concrete C30/37' }));
 
     // Parts with no class in this library go in as proxies: the model owns their solids.
     // A boolean gives a compound, and a proxy takes a solid: one() copies the solid out.
     const one = (shape: Parameters<typeof getSolids>[0]): Body => unwrap(clone(getSolids(own(shape))[0]!)) as Body;
-    const part = (tone: Tone, name: string, solid: Body, materialName: string): Id => put(tone, model.addProxy({ name, solid, materialName }));
+    const part = (tone: Tone, name: string, solid: Body, materialName: string): Id => put(tone, authoring(model).addProxy({ name, solid, materialName }));
     const hex = (flats: number, x: number, depth: number): Body => {
       const r = flats / Math.sqrt(3);
       const ring = own(unwrap(polygon(Array.from({ length: 6 }, (_, i): P3 => [x, r * Math.cos(i * Math.PI / 3), r * Math.sin(i * Math.PI / 3)]))));
@@ -171,7 +173,7 @@ function beamModel({ section = 'IPE 300', span = 2000, slab = 0.5 }: BeamParams 
     for (const el of model.getAllElements()) {
       const tone = tones.get(el.localId);
       if (!tone) continue;
-      const placed = unwrap(placedSolids(el)).map((body) => own(body));
+      const placed = unwrap(model.placedSolids(el.localId, 'WORLD')).map((body) => own(body));
       if (el.localId === beam) {
         kg = unwrap(measureVolume(placed[0]!)) * STEEL / (length / 1000);
         groups.beam.push(own(unwrap(cutAll(placed[0]!, holes))));
@@ -206,7 +208,7 @@ export default present(scene.shown, {
     label: 'Wall with Door and Window',
     description:
       'The outer wall of a house as a BIM model: an IfcWall that hosts a door and a window in a project, site, building and storey structure. Each opening is a void that the model cuts into the wall solid, and the view shows the three layers of the cavity wall. The brick, the wall layers, the door leaf and the lintel bearing are published figures, and the kernel measures the wall volume against the box less the two voids. The openings, the window, the frames and the ground are a display model.',
-    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+    code: `import { BimDocument, toIfc, authoring, type BimAuthoring } from 'brepjs-bim';
 import { box, clone, compound, cutAll, cylinder, extrude, fuseAll, getSolids, intersect, measureVolume, polygon, rotate, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
@@ -237,24 +239,26 @@ const COLORS = { wall: '#c97f5f', insulation: '#e3c65a', block: '#b9b5aa', stone
 type Tone = keyof typeof COLORS;
 type P3 = [number, number, number];
 type Body = ReturnType<typeof box>;
-type Id = Extract<ReturnType<BimModel['addWall']>, { ok: true }>['value']; // the id of an element in the model
+type Id = Extract<ReturnType<BimAuthoring['addWall']>, { ok: true }>['value']; // the id of an element in the model
 const Y: P3 = [0, 1, 0], Z: P3 = [0, 0, 1];
 
 function wallModel({ doorOpen = 50, windowOpen = 25, length = 4500 }: WallParams = {}) {
-  const model = new BimModel(), owned: { delete(): void }[] = [];
+  const model = new BimDocument(), owned: { delete(): void }[] = [];
   const own = <T extends { delete(): void }>(s: T): T => { owned.push(s); return s; };
   try {
     model.init({ name: 'Wall example' });
     // The spatial structure makes this a BIM model: project, site, building, storey.
     const project = model.getProject();
-    const site = unwrap(model.addSite({ name: 'Site' }));
-    const building = unwrap(model.addBuilding({ name: 'House' }));
-    const storey = unwrap(model.addStorey({ name: 'Ground floor', elevation: 0 }));
+    const site = unwrap(authoring(model).addSite({ name: 'Site' }));
+    const building = unwrap(authoring(model).addBuilding({ name: 'House' }));
+    const storey = unwrap(authoring(model).addStorey({ name: 'Ground floor', elevation: 0 }));
     if (project) model.aggregate(project.localId, site);
-    model.aggregate(site, building);
-    model.aggregate(building, storey);
+    unwrap(model.aggregate(site, building));
+    unwrap(model.reparent(building, site, 'KEEP_LOCAL'));
+    unwrap(model.aggregate(building, storey));
+    unwrap(model.reparent(storey, building, 'KEEP_LOCAL'));
     const tones = new Map<Id, Tone>();
-    const put = (tone: Tone, made: ReturnType<BimModel['addWall']>): Id => {
+    const put = (tone: Tone, made: ReturnType<BimAuthoring['addWall']>): Id => {
       const id = unwrap(made);
       model.placeIn(id, storey);
       tones.set(id, tone);
@@ -262,23 +266,23 @@ function wallModel({ doorOpen = 50, windowOpen = 25, length = 4500 }: WallParams
     };
 
     // The wall. Its thickness goes to the left of axisX, so a wall along +Y is thick toward -X.
-    const wall = put('wall', model.addWall({ length, height: HEIGHT, thickness: T, origin: [0, 0, 0], axisX: Y, axisZ: Z, materialName: 'Brick', materialLayers: LAYERS, layerSetName: 'Cavity wall', isExternal: true, loadBearing: true }));
+    const wall = put('wall', authoring(model).addWall({ length, height: HEIGHT, thickness: T, origin: [0, 0, 0], axisX: Y, axisZ: Z, materialName: 'Brick', materialLayers: LAYERS, layerSetName: 'Cavity wall', isExternal: true, loadBearing: true }));
     // The door and the window name their host wall. The model cuts a void for each, and the IFC file relates
     // wall, void and filling. The view below uses detailed frame, leaf and glazing proxies for both fillers.
     const doorAt = 550, windowAt = length - WINDOW.opening[0]! - 550;
-    model.placeIn(unwrap(model.addDoorAndCutWall({ wallLocalId: wall, width: DOOR.opening[0]!, height: DOOR.opening[1]!, offsetAlongWall: doorAt, offsetFromFloor: 0, materialName: 'Timber', isExternal: true })), storey);
-    model.placeIn(unwrap(model.addWindowAndCutWall({ wallLocalId: wall, width: WINDOW.opening[0]!, height: WINDOW.opening[1]!, offsetAlongWall: windowAt, offsetFromFloor: WINDOW.sill, materialName: 'Timber', isExternal: true })), storey);
+    model.placeIn(unwrap(authoring(model).addDoorAndCutWall({ wallLocalId: wall, width: DOOR.opening[0]!, height: DOOR.opening[1]!, offsetAlongWall: doorAt, offsetFromFloor: 0, materialName: 'Timber', isExternal: true })), storey);
+    model.placeIn(unwrap(authoring(model).addWindowAndCutWall({ wallLocalId: wall, width: WINDOW.opening[0]!, height: WINDOW.opening[1]!, offsetAlongWall: windowAt, offsetFromFloor: WINDOW.sill, materialName: 'Timber', isExternal: true })), storey);
 
     // A lintel over each opening carries the wall. It bears 150 mm on each side.
     const lintelDepth = LINTEL.courses * COURSE;
-    const lintel = (at: number, width: number, z: number): Id => put('stone', model.addBeam({
+    const lintel = (at: number, width: number, z: number): Id => put('stone', authoring(model).addBeam({
       length: width + 2 * LINTEL.bearing, profile: { kind: 'RECTANGULAR', width: T, height: lintelDepth },
       origin: [-T / 2, at - LINTEL.bearing, z + lintelDepth / 2], axisX: Y, axisZ: Z, predefinedType: 'LINTEL', materialName: 'Precast concrete',
     }));
     const lintels = [lintel(doorAt, DOOR.opening[0]!, DOOR.opening[1]!), lintel(windowAt, WINDOW.opening[0]!, WINDOW.sill + WINDOW.opening[1]!)];
     // The floor of the room, and the ground outside: 150 mm lower.
-    put('floor', model.addSlab({ length: T + 1500, width: length, thickness: 200, origin: [-T - 1500, 0, -200], axisX: [1, 0, 0], axisZ: Z, predefinedType: 'FLOOR', materialName: 'Concrete' }));
-    put('ground', model.addSlab({ length: 900, width: length, thickness: 50, origin: [0, 0, -200], axisX: [1, 0, 0], axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Paving' }));
+    put('floor', authoring(model).addSlab({ length: T + 1500, width: length, thickness: 200, origin: [-T - 1500, 0, -200], axisX: [1, 0, 0], axisZ: Z, predefinedType: 'FLOOR', materialName: 'Concrete' }));
+    put('ground', authoring(model).addSlab({ length: 900, width: length, thickness: 50, origin: [0, 0, -200], axisX: [1, 0, 0], axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Paving' }));
 
     furnish(model, put, own, { doorAt, windowAt, doorOpen, windowOpen });
 
@@ -287,12 +291,12 @@ function wallModel({ doorOpen = 50, windowOpen = 25, length = 4500 }: WallParams
     // marks the bed joints of the brick leaf.
     const groups: Record<Tone, Body[]> = { wall: [], insulation: [], block: [], stone: [], frame: [], leaf: [], glass: [], metal: [], floor: [], ground: [] };
     const all = new Map(model.getAllElements().map((el) => [el.localId, el]));
-    const seats = lintels.flatMap((id) => unwrap(placedSolids(all.get(id)!)).map((body) => own(body)));
+    const seats = lintels.flatMap((id) => unwrap(model.placedSolids(id, 'WORLD')).map((body) => own(body)));
     let net = 0;
     for (const [id, el] of all) {
       const tone = tones.get(id);
       if (!tone) continue;
-      const placed = unwrap(placedSolids(el)).map((body) => own(body));
+      const placed = unwrap(model.placedSolids(el.localId, 'WORLD')).map((body) => own(body));
       if (id === wall) {
         net = unwrap(measureVolume(placed[0]!));
         const seated = own(unwrap(cutAll(placed[0]!, seats)));
@@ -317,14 +321,14 @@ function wallModel({ doorOpen = 50, windowOpen = 25, length = 4500 }: WallParams
 
 // The door set, the window, the sill and the step. Each part is a proxy in the storey.
 function furnish(
-  model: BimModel,
-  put: (tone: Tone, made: ReturnType<BimModel['addWall']>) => Id,
+  model: BimDocument,
+  put: (tone: Tone, made: ReturnType<BimAuthoring['addWall']>) => Id,
   own: <T extends { delete(): void }>(s: T) => T,
   at: { doorAt: number; windowAt: number; doorOpen: number; windowOpen: number },
 ): void {
   // A boolean gives a compound, and a proxy takes a solid: one() copies the solid out.
   const one = (shape: Parameters<typeof getSolids>[0]): Body => unwrap(clone(getSolids(own(shape))[0]!)) as Body;
-  const part = (tone: Tone, name: string, solid: Body, materialName: string): Id => put(tone, model.addProxy({ name, solid, materialName }));
+  const part = (tone: Tone, name: string, solid: Body, materialName: string): Id => put(tone, authoring(model).addProxy({ name, solid, materialName }));
   const block = (x0: number, x1: number, y0: number, y1: number, z0: number, z1: number): Body => box(x1 - x0, y1 - y0, z1 - z0, { at: [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2] });
   const ring = (x0: number, x1: number, y0: number, y1: number, z0: number, z1: number, rim: number): Body =>
     one(unwrap(cutAll(own(block(x0, x1, y0, y1, z0, z1)), [own(block(x0 - 1, x1 + 1, y0 + rim, y1 - rim, z0 + rim, z1 - rim))])));
@@ -389,7 +393,7 @@ export default present(scene.shown, {
     label: 'Curtain Wall',
     description:
       'A curtain wall on a facade that turns a corner, as a BIM model. Each facet is a stack of IfcCurtainWall grids of glass panes between mullions and transoms, on its own wall line, and placedSolids() applies the two levels of the placement. The planning module, the storey height, the mullion and the glass unit are published figures, and the kernel measures the area of the vision glass. The slabs, the brackets, the back pans and the corner post are a display model.',
-    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+    code: `import { BimDocument, toIfc, authoring, type BimAuthoring } from 'brepjs-bim';
 import { box, clone, compound, cylinder, extrude, fuseAll, getSolids, measureVolume, polygon, rotate, translate, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
@@ -419,24 +423,26 @@ const COLORS = { glass: '#9fc3d4', spandrel: '#e4e7ea', frame: '#c3c9d1', slab: 
 type Tone = keyof typeof COLORS;
 type P3 = [number, number, number];
 type Body = ReturnType<typeof box>;
-type Id = Extract<ReturnType<BimModel['addCurtainWall']>, { ok: true }>['value']; // the id of an element in the model
+type Id = Extract<ReturnType<BimAuthoring['addCurtainWall']>, { ok: true }>['value']; // the id of an element in the model
 const Z: P3 = [0, 0, 1];
 
 function facade({ skew = 30, storeys = 2, cutaway = 1 }: FacadeParams = {}) {
-  const model = new BimModel(), owned: { delete(): void }[] = [];
+  const model = new BimDocument(), owned: { delete(): void }[] = [];
   const own = <T extends { delete(): void }>(s: T): T => { owned.push(s); return s; };
   try {
     model.init({ name: 'Curtain wall' });
     // The spatial structure makes this a BIM model: project, site, building, storey.
     const project = model.getProject();
-    const site = unwrap(model.addSite({ name: 'Site' }));
-    const building = unwrap(model.addBuilding({ name: 'Building' }));
-    const storey = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
+    const site = unwrap(authoring(model).addSite({ name: 'Site' }));
+    const building = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+    const storey = unwrap(authoring(model).addStorey({ name: 'Level 1', elevation: 0 }));
     if (project) model.aggregate(project.localId, site);
-    model.aggregate(site, building);
-    model.aggregate(building, storey);
+    unwrap(model.aggregate(site, building));
+    unwrap(model.reparent(building, site, 'KEEP_LOCAL'));
+    unwrap(model.aggregate(building, storey));
+    unwrap(model.reparent(storey, building, 'KEEP_LOCAL'));
     const tones = new Map<Id, Tone>(), hidden = new Map<Id, number[]>();
-    const put = (tone: Tone, made: ReturnType<BimModel['addCurtainWall']>): Id => {
+    const put = (tone: Tone, made: ReturnType<BimAuthoring['addCurtainWall']>): Id => {
       const id = unwrap(made);
       model.placeIn(id, storey);
       tones.set(id, tone);
@@ -461,7 +467,7 @@ function facade({ skew = 30, storeys = 2, cutaway = 1 }: FacadeParams = {}) {
       ? { z: i / 2 * STOREY + SLAB - SPANDREL, height: SPANDREL, tone: 'spandrel' as const }
       : { z: (i - 1) / 2 * STOREY + SLAB, height: VISION, tone: 'glass' as const }));
     for (const line of lines) for (const band of bands) {
-      const id = put(band.tone, model.addCurtainWall({
+      const id = put(band.tone, authoring(model).addCurtainWall({
         width, height: band.height - MULLION.face, columns: modules, rows: 1,
         panelThickness: GLASS.unit, mullionWidth: MULLION.face, mullionDepth: MULLION.depth,
         origin: [line.origin[0], line.origin[1], band.z + MULLION.face / 2], axisX: line.axisX, axisZ: Z,
@@ -485,8 +491,8 @@ function facade({ skew = 30, storeys = 2, cutaway = 1 }: FacadeParams = {}) {
       if (!tone) continue;
       const frame = el.placement?.kind === 'LOCAL_FRAME' ? el.placement.frame : undefined;
       const placed = el.category === 'CURTAIN_WALL'
-        ? model.getChildren(el.localId).flatMap((child) => unwrap(placedSolids(child, { parentFrame: frame })).map(own))
-        : unwrap(placedSolids(el)).map(own);
+        ? model.getChildren(el.localId).flatMap((child) => unwrap(model.placedSolids(child.localId, 'WORLD')).map(own))
+        : unwrap(model.placedSolids(el.localId, 'WORLD')).map(own);
       const skip = hidden.get(el.localId);
       if (!skip) { groups[tone].push(...placed); continue; }
       const panes = placed.slice(0, modules);
@@ -507,35 +513,35 @@ function facade({ skew = 30, storeys = 2, cutaway = 1 }: FacadeParams = {}) {
 
 type Line = { side: number; axisX: P3; inward: P3; origin: P3; turn: number };
 type Sizes = { width: number; reach: number; half: number; modules: number; levels: number };
-type Put = (tone: Tone, made: ReturnType<BimModel['addCurtainWall']>) => Id;
+type Put = (tone: Tone, made: ReturnType<BimAuthoring['addCurtainWall']>) => Id;
 type Own = <T extends { delete(): void }>(s: T) => T;
 // A point of a wall line: u along the wall from the corner, t into the building.
 const point = (line: Line, u: number, t: number, z: number): P3 => [u * line.axisX[0] + t * line.inward[0], u * line.axisX[1] + t * line.inward[1], z];
 
 // A strip of each floor slab behind the facade, and a steel column behind the end module of each facet.
-function structure(model: BimModel, put: Put, own: Own, lines: Line[], { width, reach, half, levels }: Sizes): void {
+function structure(model: BimDocument, put: Put, own: Own, lines: Line[], { width, reach, half, levels }: Sizes): void {
   const edge = MULLION.depth + EDGE.gap, far = width + reach + MULLION.face / 2, near = (edge + EDGE.depth) * Math.tan(half);
   const tops = Array.from({ length: levels + 1 }, (_, i) => i * STOREY);
   for (const top of tops) {
     for (const line of lines) {
       const from = line.side < 0 ? -far : near;
-      put('slab', model.addSlab({ length: far - near, width: EDGE.depth, thickness: SLAB, origin: point(line, from, edge, top - SLAB), axisX: line.axisX, axisZ: Z, predefinedType: 'FLOOR', materialName: 'Concrete' }));
+      put('slab', authoring(model).addSlab({ length: far - near, width: EDGE.depth, thickness: SLAB, origin: point(line, from, edge, top - SLAB), axisX: line.axisX, axisZ: Z, predefinedType: 'FLOOR', materialName: 'Concrete' }));
     }
     // The slabs stop at the corner. A piece with four sides fills the place between them.
     if (near > 1) {
       const [a, b] = [lines[0]!, lines[1]!];
       const kite = own(unwrap(polygon([point(a, -near, edge, top - SLAB), point(a, -edge * Math.tan(half), edge, top - SLAB), point(b, near, edge, top - SLAB), point(a, -near, edge + EDGE.depth, top - SLAB)])));
-      put('slab', model.addProxy({ name: 'Slab corner', solid: unwrap(extrude(kite, [0, 0, SLAB])) as Body, materialName: 'Concrete' }));
+      put('slab', authoring(model).addProxy({ name: 'Slab corner', solid: unwrap(extrude(kite, [0, 0, SLAB])) as Body, materialName: 'Concrete' }));
     }
   }
   const column = { kind: 'I_BEAM', overallWidth: HE240B.b, overallDepth: HE240B.h, flangeThickness: HE240B.tf, webThickness: HE240B.tw } as const;
   for (const line of lines) for (const top of tops.slice(0, -1))
-    put('steel', model.addColumn({ height: STOREY - SLAB, profile: column, origin: point(line, line.side * (reach + width - MODULE / 2), edge + EDGE.column, top), axisX: line.axisX, axisZ: Z, materialName: 'Steel S355' }));
+    put('steel', authoring(model).addColumn({ height: STOREY - SLAB, profile: column, origin: point(line, line.side * (reach + width - MODULE / 2), edge + EDGE.column, top), axisX: line.axisX, axisZ: Z, materialName: 'Steel S355' }));
 }
 
 // The parts that hold and close the wall: a bracket at each mullion, a back pan behind each spandrel pane, a fire
 // stop at each slab edge and a post at the corner. Each part is a proxy in the storey.
-function dress(model: BimModel, put: Put, own: Own, lines: Line[], { width, reach, half, modules, levels }: Sizes): void {
+function dress(model: BimDocument, put: Put, own: Own, lines: Line[], { width, reach, half, modules, levels }: Sizes): void {
   const one = (shape: Parameters<typeof getSolids>[0]): Body => unwrap(clone(getSolids(own(shape))[0]!)) as Body;
   const block = (u0: number, u1: number, t0: number, t1: number, z0: number, z1: number): Body => box(u1 - u0, t1 - t0, z1 - z0, { at: [(u0 + u1) / 2, (t0 + t1) / 2, (z0 + z1) / 2] });
   // A body made at the corner, with x along the wall and y into the building, goes on a wall line.
@@ -550,21 +556,21 @@ function dress(model: BimModel, put: Put, own: Own, lines: Line[], { width, reac
     const first = line.side < 0 ? -(width + reach) : reach, corner = line.side < 0 ? modules : 0; // no bracket at the corner
     for (let level = 0; level <= levels; level++) {
       const top = level * STOREY;
-      for (let k = 0; k <= modules; k++) if (k !== corner) put('bracket', model.addProxy({ name: 'Bracket', solid: onLine(line, translate(bracket, [first + k * MODULE, 0, top])), materialName: 'Steel, galvanised' }));
+      for (let k = 0; k <= modules; k++) if (k !== corner) put('bracket', authoring(model).addProxy({ name: 'Bracket', solid: onLine(line, translate(bracket, [first + k * MODULE, 0, top])), materialName: 'Steel, galvanised' }));
       const from = line.side < 0 ? -far : edge * Math.tan(half), to = line.side < 0 ? -edge * Math.tan(half) : far;
-      put('fire', model.addProxy({ name: 'Fire stop', solid: onLine(line, block(from, to, MULLION.depth, edge, top - SLAB, top)), materialName: 'Mineral wool' }));
+      put('fire', authoring(model).addProxy({ name: 'Fire stop', solid: onLine(line, block(from, to, MULLION.depth, edge, top - SLAB, top)), materialName: 'Mineral wool' }));
     }
     for (let level = 0; level <= levels; level++) for (let k = 0; k < modules; k++) {
       const z = level * STOREY + SLAB - SPANDREL;
       const u = first + k * MODULE + MULLION.face / 2;
-      put('pan', model.addProxy({ name: 'Back pan', solid: onLine(line, block(u, u + MODULE - MULLION.face, 60, MULLION.depth, z + MULLION.face, z + SPANDREL - MULLION.face)), materialName: 'Insulated steel pan' }));
+      put('pan', authoring(model).addProxy({ name: 'Back pan', solid: onLine(line, block(u, u + MODULE - MULLION.face, 60, MULLION.depth, z + MULLION.face, z + SPANDREL - MULLION.face)), materialName: 'Insulated steel pan' }));
     }
   }
   // The corner post closes the wall between the end mullions of the two facets.
   if (g > 1) {
     const [a, b] = [lines[0]!, lines[1]!], z0 = SLAB - SPANDREL;
     const kite = own(unwrap(polygon([point(a, -g, 0, z0), [0, 0, z0], point(b, g, 0, z0), point(a, -g, MULLION.depth, z0)])));
-    put('frame', model.addProxy({ name: 'Corner post', solid: unwrap(extrude(kite, [0, 0, levels * STOREY + SPANDREL])) as Body, materialName: 'Aluminium' }));
+    put('frame', authoring(model).addProxy({ name: 'Corner post', solid: unwrap(extrude(kite, [0, 0, levels * STOREY + SPANDREL])) as Body, materialName: 'Aluminium' }));
   }
 }
 
@@ -582,7 +588,7 @@ export default present(scene.shown, {
     label: 'Braced Steel Frame',
     description:
       'A braced steel frame of two storeys as a BIM model: columns on a grid, a beam grid at each floor, tube bracing with gusset plates, a slab on each level and a base under each column, all grouped as one IfcElementAssembly. The sections, the grid, the storey height, the slab depth and the column base are published figures, and the kernel measures the mass of the steel against the section tables. The view shows each M24 holding down bolt as a screw with a helical thread in its nut, and the IFC file keeps it as a plain proxy. The layout of the bracing, the gussets and the footings are a display model.',
-    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+    code: `import { BimDocument, toIfc, authoring, type BimAuthoring } from 'brepjs-bim';
 import { box, clone, compound, cutAll, cylinder, extrude, fuseAll, getSolids, line, loft, measureVolume, polygon, translate, unwrap, wire } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
@@ -618,26 +624,28 @@ const COLORS = { column: '#c3c9d1', beam: '#12b5b0', brace: '#ff5a1f', plate: '#
 type Tone = keyof typeof COLORS;
 type P3 = [number, number, number];
 type Body = ReturnType<typeof box>;
-type Id = Extract<ReturnType<BimModel['addBeam']>, { ok: true }>['value']; // the id of an element in the model
+type Id = Extract<ReturnType<BimAuthoring['addBeam']>, { ok: true }>['value']; // the id of an element in the model
 type Section = { h: number; b: number; tw: number; tf: number; r: number };
 const X: P3 = [1, 0, 0], Y: P3 = [0, 1, 0], Z: P3 = [0, 0, 1];
 const rolled = (s: Section) => ({ kind: 'I_BEAM', overallWidth: s.b, overallDepth: s.h, flangeThickness: s.tf, webThickness: s.tw, filletRadius: s.r }) as const;
 
 function frame({ storeys = 2, bays = 2, deck = 0.5 }: FrameParams = {}) {
-  const model = new BimModel(), owned: { delete(): void }[] = [];
+  const model = new BimDocument(), owned: { delete(): void }[] = [];
   const own = <T extends { delete(): void }>(s: T): T => { owned.push(s); return s; };
   try {
     model.init({ name: 'Steel frame' });
-    const site = unwrap(model.addSite({ name: 'Site' }));
-    const building = unwrap(model.addBuilding({ name: 'Building' }));
-    const storey = unwrap(model.addStorey({ name: 'Ground floor', elevation: 0 }));
+    const site = unwrap(authoring(model).addSite({ name: 'Site' }));
+    const building = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+    const storey = unwrap(authoring(model).addStorey({ name: 'Ground floor', elevation: 0 }));
     const project = model.getProject();
     if (project) model.aggregate(project.localId, site);
-    model.aggregate(site, building);
-    model.aggregate(building, storey);
+    unwrap(model.aggregate(site, building));
+    unwrap(model.reparent(building, site, 'KEEP_LOCAL'));
+    unwrap(model.aggregate(building, storey));
+    unwrap(model.reparent(storey, building, 'KEEP_LOCAL'));
     const tones = new Map<Id, Tone>();
     let tableKg = 0;
-    const put = (tone: Tone, made: ReturnType<BimModel['addBeam']>, kg = 0): Id => {
+    const put = (tone: Tone, made: ReturnType<BimAuthoring['addBeam']>, kg = 0): Id => {
       const id = unwrap(made);
       model.placeIn(id, storey);
       tones.set(id, tone);
@@ -652,24 +660,24 @@ function frame({ storeys = 2, bays = 2, deck = 0.5 }: FrameParams = {}) {
     // Columns on the grid, from the base to the roof steel. Their flanges face along Y.
     const height = tops[levels - 1]!;
     for (const x of lines) for (const y of rows)
-      put('column', model.addColumn({ height, profile: rolled(HE240B), origin: [x, y, 0], axisX: X, axisZ: Z, ...steel }), height / 1000 * HE240B.kg);
+      put('column', authoring(model).addColumn({ height, profile: rolled(HE240B), origin: [x, y, 0], axisX: X, axisZ: Z, ...steel }), height / 1000 * HE240B.kg);
     const slabs: Id[] = [];
     for (const top of tops) {
       // Primary beams across the frame, between the column flanges.
       const span = GRID.y - HE240B.h;
       for (const x of lines)
-        put('beam', model.addBeam({ length: span, profile: rolled(IPE400), origin: [x, HE240B.h / 2, top - IPE400.h / 2], axisX: Y, axisZ: Z, ...steel }), span / 1000 * IPE400.kg);
+        put('beam', authoring(model).addBeam({ length: span, profile: rolled(IPE400), origin: [x, HE240B.h / 2, top - IPE400.h / 2], axisX: Y, axisZ: Z, ...steel }), span / 1000 * IPE400.kg);
       // Floor beams along the frame at 3 m. On a grid line they go to the column webs, and between the grid lines
       // they stop at the flanges of the primary beams.
       for (let y = 0; y <= GRID.y; y += SECONDARY) for (let i = 0; i < nx; i++) {
         const gap = y === 0 || y === GRID.y ? HE240B.tw / 2 : IPE400.b / 2;
-        put('beam', model.addBeam({ length: GRID.x - 2 * gap, profile: rolled(IPE300), origin: [i * GRID.x + gap, y, top - IPE300.h / 2], axisX: X, axisZ: Z, ...steel }), (GRID.x - 2 * gap) / 1000 * IPE300.kg);
+        put('beam', authoring(model).addBeam({ length: GRID.x - 2 * gap, profile: rolled(IPE300), origin: [i * GRID.x + gap, y, top - IPE300.h / 2], axisX: X, axisZ: Z, ...steel }), (GRID.x - 2 * gap) / 1000 * IPE300.kg);
       }
       // The slab on the beams. An opening lets each column go through the floor slabs.
-      const slab = put('slab', model.addSlab({ length: nx * GRID.x + 2 * EDGE, width: GRID.y + 2 * EDGE, thickness: SLAB, origin: [-EDGE, -EDGE, top], axisX: X, axisZ: Z, predefinedType: top === height ? 'ROOF' : 'FLOOR', materialName: 'Concrete C30/37' }));
+      const slab = put('slab', authoring(model).addSlab({ length: nx * GRID.x + 2 * EDGE, width: GRID.y + 2 * EDGE, thickness: SLAB, origin: [-EDGE, -EDGE, top], axisX: X, axisZ: Z, predefinedType: top === height ? 'ROOF' : 'FLOOR', materialName: 'Concrete C30/37' }));
       slabs.push(slab);
       if (top < height) for (const x of lines) for (const y of rows)
-        unwrap(model.addSlabOpening({ slabLocalId: slab, offsetX: x + EDGE - HE240B.b / 2, offsetY: y + EDGE - HE240B.h / 2, sizeX: HE240B.b, sizeY: HE240B.h }));
+        unwrap(authoring(model).addSlabOpening({ slabLocalId: slab, offsetX: x + EDGE - HE240B.b / 2, offsetY: y + EDGE - HE240B.h / 2, sizeX: HE240B.b, sizeY: HE240B.h }));
     }
 
     const kit = { model, put, own, levels, nx, tops };
@@ -677,7 +685,7 @@ function frame({ storeys = 2, bays = 2, deck = 0.5 }: FrameParams = {}) {
     const anchor = bases(kit, lines, rows);
 
     // One assembly holds the frame: the IFC file groups all the parts under it.
-    const assembly = unwrap(model.addElementAssembly({ name: 'Frame', predefinedType: 'BRACED_FRAME' }));
+    const assembly = unwrap(authoring(model).addElementAssembly({ name: 'Frame', predefinedType: 'BRACED_FRAME' }));
     for (const id of tones.keys()) model.aggregate(assembly, id);
 
     // The view and the takeoff. placedSolids() gives each element in its place. The kernel measures each steel
@@ -690,7 +698,7 @@ function frame({ storeys = 2, bays = 2, deck = 0.5 }: FrameParams = {}) {
     for (const el of model.getAllElements()) {
       const tone = tones.get(el.localId);
       if (!tone) continue;
-      const placed = unwrap(placedSolids(el)).map((body) => own(body));
+      const placed = unwrap(model.placedSolids(el.localId, 'WORLD')).map((body) => own(body));
       if (tone === 'column' || tone === 'beam' || tone === 'brace') kg += placed.reduce((sum, body) => sum + unwrap(measureVolume(body)), 0) * STEEL;
       if (slabs.includes(el.localId)) {
         if (share <= 0) continue;
@@ -711,7 +719,7 @@ function frame({ storeys = 2, bays = 2, deck = 0.5 }: FrameParams = {}) {
   }
 }
 
-type Kit = { model: BimModel; put: (tone: Tone, made: ReturnType<BimModel['addBeam']>, kg?: number) => Id; own: <T extends { delete(): void }>(s: T) => T; levels: number; nx: number; tops: number[] };
+type Kit = { model: BimDocument; put: (tone: Tone, made: ReturnType<BimAuthoring['addBeam']>, kg?: number) => Id; own: <T extends { delete(): void }>(s: T) => T; levels: number; nx: number; tops: number[] };
 
 // Bracing: two tubes in each braced bay go from the column feet to the middle of the beam over them. A gusset
 // plate at each end joins the tube to the frame. Both end frames and one bay of each side are braced.
@@ -723,7 +731,7 @@ function bracing({ model, put, own, levels, nx, tops }: Kit): void {
     const normal: P3 = [-h[1], h[0], 0], t = GUSSET.plate;
     const plate = (points: [number, number][]): void => {
       const face = own(unwrap(polygon(points.map(([s, z]): P3 => { const p = at(s, z); return [p[0] - normal[0] * t / 2, p[1] - normal[1] * t / 2, p[2]]; }))));
-      put('plate', model.addProxy({ name: 'Gusset plate', solid: unwrap(extrude(face, [normal[0] * t, normal[1] * t, 0])) as Body, materialName: 'Steel S355' }));
+      put('plate', authoring(model).addProxy({ name: 'Gusset plate', solid: unwrap(extrude(face, [normal[0] * t, normal[1] * t, 0])) as Body, materialName: 'Steel S355' }));
     };
     const angle = Math.atan2(high, wide / 2), c = Math.cos(angle), s = Math.sin(angle), r = GUSSET.reach, w = GUSSET.half;
     // The plate under the beam takes both tubes.
@@ -737,7 +745,7 @@ function bracing({ model, put, own, levels, nx, tops }: Kit): void {
       const length = Math.hypot(to[0] - from[0], to[1] - from[1], to[2] - from[2]);
       const axisX: P3 = [(to[0] - from[0]) / length, (to[1] - from[1]) / length, (to[2] - from[2]) / length];
       const axisZ: P3 = [normal[1] * axisX[2] - normal[2] * axisX[1], normal[2] * axisX[0] - normal[0] * axisX[2], normal[0] * axisX[1] - normal[1] * axisX[0]];
-      put('brace', model.addBeam({ length, profile: tube, origin: from, axisX, axisZ, materialName: 'Steel S355' }), length / 1000 * SHS.kg);
+      put('brace', authoring(model).addBeam({ length, profile: tube, origin: from, axisX, axisZ, materialName: 'Steel S355' }), length / 1000 * SHS.kg);
     }
   };
   for (let level = 0; level < levels; level++) {
@@ -782,10 +790,10 @@ function bases({ model, put, own }: Kit, lines: number[], rows: number[]) {
     const spots = [-hold, hold].flatMap((dx) => [-hold, hold].map((dy): P3 => [x + dx, y + dy, 0]));
     const drill = (r: number, z0: number, z1: number): Body[] => spots.map(([sx, sy]) => own(cylinder(r, z1 - z0, { at: [sx, sy, z0] })));
     screws.push(...spots);
-    holes.set(put('base', model.addFooting({ length: FOOTING.size, width: FOOTING.size, thickness: FOOTING.depth, origin: [x - FOOTING.size / 2, y - FOOTING.size / 2, under - FOOTING.depth], axisX: X, axisZ: Z, predefinedType: 'PAD_FOOTING', materialName: 'Concrete C30/37' })), drill(BASE.bolt / 2, low, under + 1));
-    holes.set(put('base', model.addProxy({ name: 'Grout', solid: box(p + 60, p + 60, BASE.grout, { at: [x, y, under + BASE.grout / 2] }), materialName: 'Grout' })), drill(BASE.bolt / 2 + 0.2, under - 1, -BASE.thickness + 1));
-    holes.set(put('plate', model.addProxy({ name: 'Base plate', solid: box(p, p, BASE.thickness, { at: [x, y, -BASE.thickness / 2] }), materialName: 'Steel S355' })), drill(ANCHOR.hole / 2, -BASE.thickness - 1, 1));
-    for (const at of spots) put('bolt', model.addProxy({ name: 'Holding down bolt M24', solid: translate(bolt, at), materialName: 'Steel 8.8' }));
+    holes.set(put('base', authoring(model).addFooting({ length: FOOTING.size, width: FOOTING.size, thickness: FOOTING.depth, origin: [x - FOOTING.size / 2, y - FOOTING.size / 2, under - FOOTING.depth], axisX: X, axisZ: Z, predefinedType: 'PAD_FOOTING', materialName: 'Concrete C30/37' })), drill(BASE.bolt / 2, low, under + 1));
+    holes.set(put('base', authoring(model).addProxy({ name: 'Grout', solid: box(p + 60, p + 60, BASE.grout, { at: [x, y, under + BASE.grout / 2] }), materialName: 'Grout' })), drill(BASE.bolt / 2 + 0.2, under - 1, -BASE.thickness + 1));
+    holes.set(put('plate', authoring(model).addProxy({ name: 'Base plate', solid: box(p, p, BASE.thickness, { at: [x, y, -BASE.thickness / 2] }), materialName: 'Steel S355' })), drill(ANCHOR.hole / 2, -BASE.thickness - 1, 1));
+    for (const at of spots) put('bolt', authoring(model).addProxy({ name: 'Holding down bolt M24', solid: translate(bolt, at), materialName: 'Steel 8.8' }));
   }
   return { screw, screws, holes };
 }
@@ -804,7 +812,7 @@ export default present(scene.shown, {
     label: 'Building Shell',
     description:
       'A garden studio as a BIM model: a foundation slab, four walls that meet at the corners, a door and three windows, a gable roof on the wall heads and an IfcSpace for the room, in a project, site, building and storey structure. The brick, the wall layers, the door leaf, the lintel bearing, the step up from the ground and the least roof pitch are published figures, and the kernel measures the volume of the room. The plan, the windows and the trim are a display model.',
-    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+    code: `import { BimDocument, toIfc, authoring, type BimAuthoring } from 'brepjs-bim';
 import { box, clone, compound, cutAll, cylinder, extrude, fuseAll, getSolids, measureVolume, polygon, rotate, translate, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
@@ -838,25 +846,27 @@ const COLORS = { wall: '#d08a68', roof: '#6f7b8a', timber: '#d3a956', stone: '#d
 type Tone = keyof typeof COLORS;
 type P3 = [number, number, number];
 type Body = ReturnType<typeof box>;
-type Id = Extract<ReturnType<BimModel['addWall']>, { ok: true }>['value']; // the id of an element in the model
+type Id = Extract<ReturnType<BimAuthoring['addWall']>, { ok: true }>['value']; // the id of an element in the model
 const X: P3 = [1, 0, 0], Y: P3 = [0, 1, 0], Z: P3 = [0, 0, 1];
 // A wall as the openings see it: u goes along the wall, d goes from the outer face into the wall.
 type Side = { along: 'x' | 'y'; from: number; face: number; into: 1 | -1 };
 
 function studio({ roofLift = 0, pitch = MIN_PITCH, length = 6000 }: StudioParams = {}) {
-  const model = new BimModel(), owned: { delete(): void }[] = [];
+  const model = new BimDocument(), owned: { delete(): void }[] = [];
   const own = <T extends { delete(): void }>(s: T): T => { owned.push(s); return s; };
   try {
     model.init({ name: 'Building shell' });
-    const site = unwrap(model.addSite({ name: 'Site' }));
-    const building = unwrap(model.addBuilding({ name: 'Garden studio' }));
-    const storey = unwrap(model.addStorey({ name: 'Ground floor', elevation: 0 }));
+    const site = unwrap(authoring(model).addSite({ name: 'Site' }));
+    const building = unwrap(authoring(model).addBuilding({ name: 'Garden studio' }));
+    const storey = unwrap(authoring(model).addStorey({ name: 'Ground floor', elevation: 0 }));
     const project = model.getProject();
     if (project) model.aggregate(project.localId, site);
-    model.aggregate(site, building);
-    model.aggregate(building, storey);
+    unwrap(model.aggregate(site, building));
+    unwrap(model.reparent(building, site, 'KEEP_LOCAL'));
+    unwrap(model.aggregate(building, storey));
+    unwrap(model.reparent(storey, building, 'KEEP_LOCAL'));
     const tones = new Map<Id, Tone>(), lifted = new Set<Id>();
-    const put = (tone: Tone, made: ReturnType<BimModel['addWall']>): Id => {
+    const put = (tone: Tone, made: ReturnType<BimAuthoring['addWall']>): Id => {
       const id = unwrap(made);
       model.placeIn(id, storey);
       tones.set(id, tone);
@@ -865,11 +875,11 @@ function studio({ roofLift = 0, pitch = MIN_PITCH, length = 6000 }: StudioParams
     const L = Math.max(length, 3600), slope = Math.max(pitch, MIN_PITCH);
 
     // The foundation slab is 100 mm proud of the walls. Its top is the floor level, z = 0.
-    put('base', model.addSlab({ length: L + 200, width: W + 200, thickness: 300, origin: [-100, -100, -300], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Concrete' }));
+    put('base', authoring(model).addSlab({ length: L + 200, width: W + 200, thickness: 300, origin: [-100, -100, -300], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Concrete' }));
 
     // Four walls. The thickness of a wall is on the left of its axisX. The two long walls have the full length,
     // and the two gable walls fit between them, so the corners meet and do not double up.
-    const wall = (origin: P3, axisX: P3, run: number): Id => put('wall', model.addWall({ length: run, height: H, thickness: T, origin, axisX, axisZ: Z, materialName: 'Brick', materialLayers: LAYERS, layerSetName: 'Cavity wall', isExternal: true }));
+    const wall = (origin: P3, axisX: P3, run: number): Id => put('wall', authoring(model).addWall({ length: run, height: H, thickness: T, origin, axisX, axisZ: Z, materialName: 'Brick', materialLayers: LAYERS, layerSetName: 'Cavity wall', isExternal: true }));
     const south = wall([0, 0, 0], X, L), north = wall([0, W - T, 0], X, L);
     const east = wall([L, T, 0], Y, W - 2 * T);
     wall([T, T, 0], Y, W - 2 * T);
@@ -884,15 +894,15 @@ function studio({ roofLift = 0, pitch = MIN_PITCH, length = 6000 }: StudioParams
     ] as const;
     for (const o of openings) {
       const spec = { wallLocalId: hosts[o.host], width: o.width, height: o.height, offsetAlongWall: o.at, offsetFromFloor: o.sill, isExternal: true };
-      model.placeIn(unwrap(o.door ? model.addDoorAndCutWall({ ...spec, materialName: 'Timber' }) : model.addWindowAndCutWall({ ...spec, materialName: 'Timber' })), storey);
+      model.placeIn(unwrap(o.door ? authoring(model).addDoorAndCutWall({ ...spec, materialName: 'Timber' }) : authoring(model).addWindowAndCutWall({ ...spec, materialName: 'Timber' })), storey);
     }
 
     // A gable roof on the wall heads. Its base is at z = H, and it goes past the walls at the eaves and the verges.
-    const roof = put('roof', model.addRoof({ length: L + 2 * ROOF.verge, width: W + 2 * ROOF.eave, thickness: ROOF.depth, origin: [-ROOF.verge, -ROOF.eave, H], axisX: X, axisZ: Z, predefinedType: 'GABLE_ROOF', pitch: slope, materialName: 'Plain tile' }));
+    const roof = put('roof', authoring(model).addRoof({ length: L + 2 * ROOF.verge, width: W + 2 * ROOF.eave, thickness: ROOF.depth, origin: [-ROOF.verge, -ROOF.eave, H], axisX: X, axisZ: Z, predefinedType: 'GABLE_ROOF', pitch: slope, materialName: 'Plain tile' }));
     lifted.add(roof);
 
     // The room is an IfcSpace: a volume in the model and in the IFC tree, with no solid in the view.
-    const room = unwrap(model.addSpace({ name: 'Studio', length: L - 2 * T, width: W - 2 * T, height: H, origin: [T, T, 0], axisX: X, axisZ: Z, materialName: 'Air' }));
+    const room = unwrap(authoring(model).addSpace({ name: 'Studio', length: L - 2 * T, width: W - 2 * T, height: H, origin: [T, T, 0], axisX: X, axisZ: Z, materialName: 'Air' }));
     model.placeIn(room, storey);
 
     const kit = { model, put, own, lifted, L, slope };
@@ -903,7 +913,7 @@ function studio({ roofLift = 0, pitch = MIN_PITCH, length = 6000 }: StudioParams
     // walls, marks the tile courses on the roof, and lifts the roof and its trim when roofLift is not 0.
     const groups = Object.fromEntries(Object.keys(COLORS).map((tone) => [tone, []])) as unknown as Record<Tone, Body[]>;
     const all = new Map(model.getAllElements().map((el) => [el.localId, el]));
-    const lintels = seats.flatMap((id) => unwrap(placedSolids(all.get(id)!)).map((body) => own(body)));
+    const lintels = seats.flatMap((id) => unwrap(model.placedSolids(id, 'WORLD')).map((body) => own(body)));
     const rad = slope * Math.PI / 180, ridge: P3 = [L / 2, W / 2, H + ROOF.depth + (W / 2 + ROOF.eave) * Math.tan(rad)];
     const run = (W / 2 + ROOF.eave) / Math.cos(rad);
     const groove = own(box(L + 2 * ROOF.verge + 2, 8, 14, { at: [0, 0, 0] }));
@@ -914,10 +924,10 @@ function studio({ roofLift = 0, pitch = MIN_PITCH, length = 6000 }: StudioParams
     const lift = Math.min(Math.max(roofLift, 0), 1) * 1800;
     let spaceM3 = 0;
     for (const [id, el] of all) {
-      if (id === room) spaceM3 = unwrap(placedSolids(el)).map((body) => own(body)).reduce((sum, body) => sum + unwrap(measureVolume(body)), 0) / 1e9;
+      if (id === room) spaceM3 = unwrap(model.placedSolids(el.localId, 'WORLD')).map((body) => own(body)).reduce((sum, body) => sum + unwrap(measureVolume(body)), 0) / 1e9;
       const tone = tones.get(id);
       if (!tone) continue;
-      let placed: Body[] = unwrap(placedSolids(el)).map((body) => own(body));
+      let placed: Body[] = unwrap(model.placedSolids(el.localId, 'WORLD')).map((body) => own(body));
       if (tone === 'wall') placed = placed.map((body) => own(unwrap(cutAll(body, lintels))) as Body);
       if (id === roof) placed = placed.map((body) => own(unwrap(cutAll(body, courses))) as Body);
       if (lifted.has(id) && lift > 0) placed = placed.map((body) => own(translate(body, [0, 0, lift])));
@@ -933,14 +943,14 @@ function studio({ roofLift = 0, pitch = MIN_PITCH, length = 6000 }: StudioParams
   }
 }
 
-type Kit = { model: BimModel; put: (tone: Tone, made: ReturnType<BimModel['addWall']>) => Id; own: <T extends { delete(): void }>(s: T) => T; lifted: Set<Id>; L: number; slope: number };
+type Kit = { model: BimDocument; put: (tone: Tone, made: ReturnType<BimAuthoring['addWall']>) => Id; own: <T extends { delete(): void }>(s: T) => T; lifted: Set<Id>; L: number; slope: number };
 type Opening = { side: Side; door: boolean; at: number; width: number; height: number; sill: number };
 
 // What fills each opening: a lintel over it, a frame, glass or a door leaf, and a sill or a step. The lintel is an
 // IfcBeam and the other parts are proxies. It gives back the lintels.
 function fillOpenings({ model, put, own }: Kit, openings: Opening[]): Id[] {
   const one = (shape: Parameters<typeof getSolids>[0]): Body => unwrap(clone(getSolids(own(shape))[0]!)) as Body;
-  const part = (tone: Tone, name: string, solid: Body, materialName: string): Id => put(tone, model.addProxy({ name, solid, materialName }));
+  const part = (tone: Tone, name: string, solid: Body, materialName: string): Id => put(tone, authoring(model).addProxy({ name, solid, materialName }));
   const lintels: Id[] = [];
   for (const { side, door, at, width, height, sill } of openings) {
     // A block in the wall of this opening: u along the wall from the opening, d into the wall, z from the floor.
@@ -949,7 +959,7 @@ function fillOpenings({ model, put, own }: Kit, openings: Opening[]): Id[] {
       return side.along === 'x' ? box(u1 - u0, d1 - d0, z1 - z0, { at: [a, b, (z0 + z1) / 2] }) : box(d1 - d0, u1 - u0, z1 - z0, { at: [b, a, (z0 + z1) / 2] });
     };
     const top = sill + height, depth = 3 * COURSE, mid = side.face + side.into * T / 2, start = side.from + at - BEARING;
-    lintels.push(put('stone', model.addBeam({
+    lintels.push(put('stone', authoring(model).addBeam({
       length: width + 2 * BEARING, profile: { kind: 'RECTANGULAR', width: T, height: depth },
       origin: side.along === 'x' ? [start, mid, top + depth / 2] : [mid, start, top + depth / 2], axisX: side.along === 'x' ? X : Y, axisZ: Z, predefinedType: 'LINTEL', materialName: 'Precast concrete',
     })));
@@ -981,7 +991,7 @@ function fillOpenings({ model, put, own }: Kit, openings: Opening[]): Id[] {
 // path to the door. The parts on the roof go up with it.
 function trim({ model, put, own, lifted, L, slope }: Kit): void {
   const one = (shape: Parameters<typeof getSolids>[0]): Body => unwrap(clone(getSolids(own(shape))[0]!)) as Body;
-  const part = (tone: Tone, name: string, solid: Body, materialName: string): Id => put(tone, model.addProxy({ name, solid, materialName }));
+  const part = (tone: Tone, name: string, solid: Body, materialName: string): Id => put(tone, authoring(model).addProxy({ name, solid, materialName }));
   const rad = slope * Math.PI / 180, tan = Math.tan(rad), top = H + ROOF.depth, rise = (W / 2 + ROOF.eave) * tan;
   for (const x of [-ROOF.verge - 22, L + ROOF.verge]) {
     // The boards leave the edge of the roof free: 120 mm in from the eaves, and a constant drop under the slopes.
@@ -998,10 +1008,10 @@ function trim({ model, put, own, lifted, L, slope }: Kit): void {
     const channel = one(unwrap(cutAll(own(box(L + 2 * ROOF.verge, 120, 75, { at: [L / 2, y, H + 60] })), [own(box(L + 2 * ROOF.verge - 12, 108, 75, { at: [L / 2, y, H + 66] }))])));
     lifted.add(part('metal', 'Gutter', channel, 'Aluminium'));
   }
-  put('floor', model.addCovering({ length: L - 2 * T, width: W - 2 * T, thickness: 20, origin: [T, T, 0], axisX: X, axisZ: Z, predefinedType: 'FLOORING', materialName: 'Oak boards' }));
+  put('floor', authoring(model).addCovering({ length: L - 2 * T, width: W - 2 * T, thickness: 20, origin: [T, T, 0], axisX: X, axisZ: Z, predefinedType: 'FLOORING', materialName: 'Oak boards' }));
   // The ground is 150 mm under the floor. An opening in it takes the foundation slab.
-  const ground = put('ground', model.addSlab({ length: L + 4200, width: W + 2600, thickness: 100, origin: [-1300, -1300, -STEP - 100], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Topsoil' }));
-  unwrap(model.addSlabOpening({ slabLocalId: ground, offsetX: 1200, offsetY: 1200, sizeX: L + 200, sizeY: W + 200 }));
+  const ground = put('ground', authoring(model).addSlab({ length: L + 4200, width: W + 2600, thickness: 100, origin: [-1300, -1300, -STEP - 100], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Topsoil' }));
+  unwrap(authoring(model).addSlabOpening({ slabLocalId: ground, offsetX: 1200, offsetY: 1200, sizeX: L + 200, sizeY: W + 200 }));
   for (let i = 0; i < 3; i++) part('stone', 'Paving slab', box(600, 900, 40, { at: [L + 950 + i * 640, W / 2, -STEP + 20] }), 'Cast stone');
 }
 
@@ -1019,7 +1029,7 @@ export default present(scene.shown, {
     label: 'Switchback Stair',
     description:
       'A stair core as a BIM model: a half-turn stair for each storey, with two flights that go opposite ways, a half landing at the turn, a wall with a door at each floor, railings on the landings and a balustrade along each flight. The stair is an IfcStair with no solid of its own, and placedSolids() gives its flights. The rise, the going, the flight length, the widths and the heights of handrail and guarding follow the limits of a building code for a general access stair, and the kernel measures the concrete. The wall, the doors and the shape of the balustrade are a display model.',
-    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+    code: `import { BimDocument, toIfc, authoring, type BimAuthoring } from 'brepjs-bim';
 import { box, clone, compound, cutAll, cylinder, extrude, fuseAll, getSolids, measureVolume, polygon, translate, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
@@ -1051,23 +1061,25 @@ const COLORS = { stair: '#d8d4c8', landing: '#c2bdaf', wall: '#a8a294', rail: '#
 type Tone = keyof typeof COLORS;
 type P3 = [number, number, number];
 type Body = ReturnType<typeof box>;
-type Id = Extract<ReturnType<BimModel['addStair']>, { ok: true }>['value']; // the id of an element in the model
+type Id = Extract<ReturnType<BimAuthoring['addStair']>, { ok: true }>['value']; // the id of an element in the model
 const X: P3 = [1, 0, 0], Y: P3 = [0, 1, 0], Z: P3 = [0, 0, 1], BACK: P3 = [0, -1, 0];
 
 function stairCore({ storeys = 2, storeyHeight = 3600, width = MIN_WIDTH }: StairParams = {}) {
-  const model = new BimModel(), owned: { delete(): void }[] = [];
+  const model = new BimDocument(), owned: { delete(): void }[] = [];
   const own = <T extends { delete(): void }>(s: T): T => { owned.push(s); return s; };
   try {
     model.init({ name: 'Stair core' });
-    const site = unwrap(model.addSite({ name: 'Site' }));
-    const building = unwrap(model.addBuilding({ name: 'Building' }));
-    const storey = unwrap(model.addStorey({ name: 'Ground floor', elevation: 0 }));
+    const site = unwrap(authoring(model).addSite({ name: 'Site' }));
+    const building = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+    const storey = unwrap(authoring(model).addStorey({ name: 'Ground floor', elevation: 0 }));
     const project = model.getProject();
     if (project) model.aggregate(project.localId, site);
-    model.aggregate(site, building);
-    model.aggregate(building, storey);
+    unwrap(model.aggregate(site, building));
+    unwrap(model.reparent(building, site, 'KEEP_LOCAL'));
+    unwrap(model.aggregate(building, storey));
+    unwrap(model.reparent(storey, building, 'KEEP_LOCAL'));
     const tones = new Map<Id, Tone>();
-    const put = (tone: Tone, made: ReturnType<BimModel['addStair']>): Id => {
+    const put = (tone: Tone, made: ReturnType<BimAuthoring['addStair']>): Id => {
       const id = unwrap(made);
       model.placeIn(id, storey);
       tones.set(id, tone);
@@ -1087,16 +1099,16 @@ function stairCore({ storeys = 2, storeyHeight = 3600, width = MIN_WIDTH }: Stai
     const stairs: Id[] = [];
     for (let level = 0; level < levels; level++) {
       const z = level * H;
-      stairs.push(put('stair', model.addStair({
+      stairs.push(put('stair', authoring(model).addStair({
         name: 'Stair ' + (level + 1),
         predefinedType: 'HALF_TURN_STAIR',
         flights: [{ ...flight, origin: [across, 0, z], axisX: Y }, { ...flight, origin: [0, run + foot, z + H / 2], axisX: BACK }],
         ...concrete,
       })));
       // The half landing at the turn. Both flights meet it.
-      put('landing', model.addSlab({ length: across, width: landing, thickness: SLAB, origin: [0, run, z + H / 2 - SLAB], axisX: X, axisZ: Z, predefinedType: 'LANDING', ...concrete }));
+      put('landing', authoring(model).addSlab({ length: across, width: landing, thickness: SLAB, origin: [0, run, z + H / 2 - SLAB], axisX: X, axisZ: Z, predefinedType: 'LANDING', ...concrete }));
       // The landing at the floor over it, where flight 2 arrives.
-      put('landing', model.addSlab({ length: across, width: landing, thickness: SLAB, origin: [0, foot - landing, z + H - SLAB], axisX: X, axisZ: Z, predefinedType: 'LANDING', ...concrete }));
+      put('landing', authoring(model).addSlab({ length: across, width: landing, thickness: SLAB, origin: [0, foot - landing, z + H - SLAB], axisX: X, axisZ: Z, predefinedType: 'LANDING', ...concrete }));
     }
 
     const kit = { model, storey, put, own, levels, H, W, across, run, foot, landing, far, rise, n };
@@ -1111,7 +1123,7 @@ function stairCore({ storeys = 2, storeyHeight = 3600, width = MIN_WIDTH }: Stai
     for (const el of model.getAllElements()) {
       const tone = tones.get(el.localId);
       if (!tone) continue;
-      const placed = unwrap(placedSolids(el)).map((body) => own(body));
+      const placed = unwrap(model.placedSolids(el.localId, 'WORLD')).map((body) => own(body));
       if (tone === 'stair' || tone === 'landing') concreteM3 += placed.reduce((sum, body) => sum + unwrap(measureVolume(body)), 0) / 1e9;
       const level = stairs.indexOf(el.localId);
       if (level < 0) { groups[tone].push(...placed); continue; }
@@ -1132,7 +1144,7 @@ function stairCore({ storeys = 2, storeyHeight = 3600, width = MIN_WIDTH }: Stai
 }
 
 type Kit = {
-  model: BimModel; storey: Id; put: (tone: Tone, made: ReturnType<BimModel['addStair']>) => Id; own: <T extends { delete(): void }>(s: T) => T;
+  model: BimDocument; storey: Id; put: (tone: Tone, made: ReturnType<BimAuthoring['addStair']>) => Id; own: <T extends { delete(): void }>(s: T) => T;
   levels: number; H: number; W: number; across: number; run: number; foot: number; landing: number; far: number; rise: number; n: number;
 };
 
@@ -1141,17 +1153,17 @@ type Kit = {
 function enclose({ model, storey, put, own, levels, H, across, foot, landing, far }: Kit): void {
   const one = (shape: Parameters<typeof getSolids>[0]): Body => unwrap(clone(getSolids(own(shape))[0]!)) as Body;
   const y0 = foot - landing, length = far - y0;
-  put('ground', model.addSlab({ length: across + WALL + 300, width: length + 600, thickness: 250, origin: [-WALL, y0 - 300, -250], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Concrete' }));
+  put('ground', authoring(model).addSlab({ length: across + WALL + 300, width: length + 600, thickness: 250, origin: [-WALL, y0 - 300, -250], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Concrete' }));
   // The wall is along +Y, so its thickness goes to -X.
-  const wall = put('wall', model.addWall({ length, height: levels * H + DOOR.height + 300, thickness: WALL, origin: [0, y0, 0], axisX: Y, axisZ: Z, materialName: 'Concrete', loadBearing: true }));
+  const wall = put('wall', authoring(model).addWall({ length, height: levels * H + DOOR.height + 300, thickness: WALL, origin: [0, y0, 0], axisX: Y, axisZ: Z, materialName: 'Concrete', loadBearing: true }));
   for (let level = 0; level <= levels; level++) {
     const z = level * H, at = 150, d0 = -WALL + 40, d1 = d0 + 100, jamb = 45, head = 45;
-    model.placeIn(unwrap(model.addDoorAndCutWall({ wallLocalId: wall, width: DOOR.width, height: DOOR.height, offsetAlongWall: at, offsetFromFloor: z, materialName: 'Steel', fireRating: 'FD30' })), storey);
+    model.placeIn(unwrap(authoring(model).addDoorAndCutWall({ wallLocalId: wall, width: DOOR.width, height: DOOR.height, offsetAlongWall: at, offsetFromFloor: z, materialName: 'Steel', fireRating: 'FD30' })), storey);
     const block = (u0: number, u1: number, x0: number, x1: number, z0: number, z1: number): Body => box(x1 - x0, u1 - u0, z1 - z0, { at: [(x0 + x1) / 2, y0 + at + (u0 + u1) / 2, z + (z0 + z1) / 2] });
     const w = DOOR.width, h = DOOR.height;
-    put('frame', model.addProxy({ name: 'Door frame', solid: one(unwrap(fuseAll([own(block(0, jamb, d0, d1, 0, h)), own(block(w - jamb, w, d0, d1, 0, h)), own(block(jamb, w - jamb, d0, d1, h - head, h))]))), materialName: 'Steel' }));
+    put('frame', authoring(model).addProxy({ name: 'Door frame', solid: one(unwrap(fuseAll([own(block(0, jamb, d0, d1, 0, h)), own(block(w - jamb, w, d0, d1, 0, h)), own(block(jamb, w - jamb, d0, d1, h - head, h))]))), materialName: 'Steel' }));
     const light = own(block(w - jamb - 330, w - jamb - 130, d1 - 60, d1 - 10, 1250, 1750));
-    put('leaf', model.addProxy({ name: 'Fire door leaf', solid: one(unwrap(cutAll(own(block(jamb + 3, w - jamb - 3, d1 - 55, d1 - 11, 8, h - head - 3)), [light]))), materialName: 'Timber, painted' }));
+    put('leaf', authoring(model).addProxy({ name: 'Fire door leaf', solid: one(unwrap(cutAll(own(block(jamb + 3, w - jamb - 3, d1 - 55, d1 - 11, 8, h - head - 3)), [light]))), materialName: 'Timber, painted' }));
   }
 }
 
@@ -1163,7 +1175,7 @@ function guard({ model, put, own, levels, H, W, across, run, foot, landing, far,
   // A railing from one point to the next at level z. Its thickness is on the left of its direction.
   const rail = (from: [number, number], to: [number, number], z: number): void => {
     const length = Math.hypot(to[0] - from[0], to[1] - from[1]);
-    put('rail', model.addRailing({ length, height: GUARD, thickness: t, origin: [from[0], from[1], z], axisX: [(to[0] - from[0]) / length, (to[1] - from[1]) / length, 0], axisZ: Z, predefinedType: 'GUARDRAIL', infill: 'POSTED', materialName: 'Steel' }));
+    put('rail', authoring(model).addRailing({ length, height: GUARD, thickness: t, origin: [from[0], from[1], z], axisX: [(to[0] - from[0]) / length, (to[1] - from[1]) / length, 0], axisZ: Z, predefinedType: 'GUARDRAIL', infill: 'POSTED', materialName: 'Steel' }));
   };
   // The balustrade of one flight: posts on the treads, a handrail and a mid rail. u goes up the flight, and the
   // pitch line joins the nosings.
@@ -1184,8 +1196,8 @@ function guard({ model, put, own, levels, H, W, across, run, foot, landing, far,
   const y0 = foot - landing;
   for (let level = 0; level < levels; level++) {
     const z = level * H;
-    put('rail', model.addProxy({ name: 'Balustrade', solid: translate(first, [0, 0, z]), materialName: 'Steel' }));
-    put('rail', model.addProxy({ name: 'Balustrade', solid: translate(second, [0, 0, z]), materialName: 'Steel' }));
+    put('rail', authoring(model).addProxy({ name: 'Balustrade', solid: translate(first, [0, 0, z]), materialName: 'Steel' }));
+    put('rail', authoring(model).addProxy({ name: 'Balustrade', solid: translate(second, [0, 0, z]), materialName: 'Steel' }));
     // Half landing: the +X edge and the far end.
     rail([across, run], [across, far - t], z + H / 2);
     rail([across, far], [0, far], z + H / 2);
@@ -1211,7 +1223,7 @@ export default present(scene.shown, {
     label: 'Roof Gallery',
     description:
       'Six roofs of the brepjs-bim roof builder on six small pavilions: gable, hip, pyramid, flat, shed and dome. Each one is a real IfcRoof solid that one addRoof call shapes from its type and its pitch, and the IFC export writes each body. The 35 degree pitch is the published minimum for clay plain tiles. The kernel measures the tiled area of each roof: the gable and the hip have the same area. The pavilions are a display model.',
-    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+    code: `import { BimDocument, toIfc, authoring, type BimAuthoring } from 'brepjs-bim';
 import { box, compound, faceCenter, getBounds, getFaces, measureArea, normalAt, translate, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
@@ -1225,7 +1237,7 @@ interface GalleryParams {
 }
 
 type P3 = [number, number, number];
-type Id = Extract<ReturnType<BimModel['addRoof']>, { ok: true }>['value'];
+type Id = Extract<ReturnType<BimAuthoring['addRoof']>, { ok: true }>['value'];
 type Body = ReturnType<typeof box>;
 const X: P3 = [1, 0, 0], Y: P3 = [0, 1, 0], Z: P3 = [0, 0, 1];
 
@@ -1251,16 +1263,18 @@ const CATALOGUE = [
 type Entry = (typeof CATALOGUE)[number];
 
 function gallery({ pitch = TILE_PITCH, eaves = 450, lift = 0 }: GalleryParams = {}) {
-  const model = new BimModel();
+  const model = new BimDocument();
   model.init({ name: 'Roof gallery' });
-  const site = unwrap(model.addSite({ name: 'Site' }));
-  const building = unwrap(model.addBuilding({ name: 'Pavilions' }));
-  const storey = unwrap(model.addStorey({ name: 'Ground floor', elevation: 0 }));
+  const site = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const building = unwrap(authoring(model).addBuilding({ name: 'Pavilions' }));
+  const storey = unwrap(authoring(model).addStorey({ name: 'Ground floor', elevation: 0 }));
   const project = model.getProject();
   if (project) model.aggregate(project.localId, site);
-  model.aggregate(site, building);
-  model.aggregate(building, storey);
-  const put = (made: ReturnType<BimModel['addRoof']>): Id => {
+  unwrap(model.aggregate(site, building));
+  unwrap(model.reparent(building, site, 'KEEP_LOCAL'));
+  unwrap(model.aggregate(building, storey));
+  unwrap(model.reparent(storey, building, 'KEEP_LOCAL'));
+  const put = (made: ReturnType<BimAuthoring['addRoof']>): Id => {
     const id = unwrap(made);
     model.placeIn(id, storey);
     return id;
@@ -1273,7 +1287,7 @@ function gallery({ pitch = TILE_PITCH, eaves = 450, lift = 0 }: GalleryParams = 
     const dome = e.kind === 'DOME_ROOF';
     const out = dome ? -300 : eaves; // the dome stands inside the edge of its flat deck
     const slope = e.pitch === undefined ? undefined : e.kind === 'SHED_ROOF' || dome ? e.pitch : pitch;
-    return put(model.addRoof({
+    return put(authoring(model).addRoof({
       length: b + 2 * out, width: a + 2 * out, thickness: e.kind === 'FLAT_ROOF' ? 250 : 120,
       origin: [x0 + a + out, y0 - out, WALL.height + lift + (dome ? 200 : 0)], axisX: Y, axisZ: Z,
       predefinedType: e.kind, pitch: slope, materialName: e.kind === 'FLAT_ROOF' ? 'Membrane' : 'Clay tile',
@@ -1287,27 +1301,27 @@ function gallery({ pitch = TILE_PITCH, eaves = 450, lift = 0 }: GalleryParams = 
   const block = (name: string, lo: P3, hi: P3, material: string): Id => {
     const unit = box(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]);
     owned.push(unit);
-    return put(model.addProxy({ name, solid: translate(unit, lo), materialName: material }));
+    return put(authoring(model).addProxy({ name, solid: translate(unit, lo), materialName: material }));
   };
   for (const e of CATALOGUE) {
     const [a, b] = e.plan, t = WALL.thickness, x0 = e.at[0] * GRID, y0 = e.at[1] * GRID;
     const wall = (length: number, origin: P3, axisX: P3): Id =>
-      put(model.addWall({ length, height: WALL.height, thickness: t, origin, axisX, axisZ: Z, materialName: 'Rendered masonry', isExternal: true }));
+      put(authoring(model).addWall({ length, height: WALL.height, thickness: t, origin, axisX, axisZ: Z, materialName: 'Rendered masonry', isExternal: true }));
     const front = wall(b, [x0 + a, y0, 0], Y); // the thickness goes toward -X
     wall(b, [x0, y0 + b, 0], [0, -1, 0]);
     const south = wall(a - 2 * t, [x0 + t, y0, 0], X);
     const north = wall(a - 2 * t, [x0 + a - t, y0 + b, 0], [-1, 0, 0]);
-    put(model.addSlab({ length: a + 2 * FLOOR.edge, width: b + 2 * FLOOR.edge, thickness: FLOOR.thickness, origin: [x0 - FLOOR.edge, y0 - FLOOR.edge, -FLOOR.thickness], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Concrete' }));
-    if (e.kind === 'DOME_ROOF') put(model.addSlab({ length: a + 2 * eaves, width: b + 2 * eaves, thickness: 200, origin: [x0 - eaves, y0 - eaves, WALL.height], axisX: X, axisZ: Z, predefinedType: 'ROOF', materialName: 'Concrete' }));
+    put(authoring(model).addSlab({ length: a + 2 * FLOOR.edge, width: b + 2 * FLOOR.edge, thickness: FLOOR.thickness, origin: [x0 - FLOOR.edge, y0 - FLOOR.edge, -FLOOR.thickness], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Concrete' }));
+    if (e.kind === 'DOME_ROOF') put(authoring(model).addSlab({ length: a + 2 * eaves, width: b + 2 * eaves, thickness: 200, origin: [x0 - eaves, y0 - eaves, WALL.height], axisX: X, axisZ: Z, predefinedType: 'ROOF', materialName: 'Concrete' }));
 
     // The door and a window in the front, and a window in each side. Each opening is a void in its wall.
     const door = { ...DOOR, offsetAlongWall: 900, offsetFromFloor: 0 };
     const pane = { width: 1500, height: 1200, offsetAlongWall: b - 2700, offsetFromFloor: 900 };
     const side = { ...pane, offsetAlongWall: (a - 2 * t - pane.width) / 2 };
-    put(model.addDoorAndCutWall({ ...door, wallLocalId: front, materialName: 'Timber' }));
-    put(model.addWindowAndCutWall({ ...pane, wallLocalId: front, materialName: 'Aluminium' }));
-    put(model.addWindowAndCutWall({ ...side, wallLocalId: south, materialName: 'Aluminium' }));
-    put(model.addWindowAndCutWall({ ...side, wallLocalId: north, materialName: 'Aluminium' }));
+    put(authoring(model).addDoorAndCutWall({ ...door, wallLocalId: front, materialName: 'Timber' }));
+    put(authoring(model).addWindowAndCutWall({ ...pane, wallLocalId: front, materialName: 'Aluminium' }));
+    put(authoring(model).addWindowAndCutWall({ ...side, wallLocalId: south, materialName: 'Aluminium' }));
+    put(authoring(model).addWindowAndCutWall({ ...side, wallLocalId: north, materialName: 'Aluminium' }));
     // A leaf, a pane of glass and a sill are proxies in the outer part of each opening. The IFC writer gives
     // each door and window a panel in the inner 100 mm of its wall, so the proxies stay out of that part.
     const fx = x0 + a, sx = x0 + t + side.offsetAlongWall, top = pane.offsetFromFloor + pane.height;
@@ -1320,12 +1334,12 @@ function gallery({ pitch = TILE_PITCH, eaves = 450, lift = 0 }: GalleryParams = 
       fills.sill.push(block('Sill', [sx, sillAt, 900], [sx + side.width, sillAt + t - 40, 950], 'Stone'));
     }
   }
-  const court = put(model.addSlab({ length: GRID + 5400 + 2 * COURT, width: 2 * GRID + 6600 + 2 * COURT, thickness: 150, origin: [-COURT, -COURT, -FLOOR.thickness - 150], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Paving' }));
+  const court = put(authoring(model).addSlab({ length: GRID + 5400 + 2 * COURT, width: 2 * GRID + 6600 + 2 * COURT, thickness: 150, origin: [-COURT, -COURT, -FLOOR.thickness - 150], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Paving' }));
 
   // The kernel measures the tiled area of each roof: every face that is not vertical and is not the underside.
   const elements = new Map(model.getAllElements().map((el) => [el.localId, el]));
   const solidsOf = (ids: readonly Id[]): Body[] => {
-    const list = ids.flatMap((id) => unwrap(placedSolids(elements.get(id) as never)) as Body[]);
+    const list = ids.flatMap((id) => unwrap(model.placedSolids(id, 'WORLD')) as Body[]);
     owned.push(...list);
     return list;
   };
@@ -1373,7 +1387,7 @@ export default present(
     label: 'Space Volume',
     description:
       'An IfcSpace is the volume of a room, an element of its own that plain solid modelling does not have. Two rooms of an office floor, each with its space lifted out above it to show the volume as a solid: set lift to 0 to put it back. The kernel measures each volume, and the published rule of 11 cubic metres of room for each person gives the people that the room has volume for. The rooms and the furniture are a display model.',
-    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+    code: `import { BimDocument, toIfc, authoring, type BimAuthoring } from 'brepjs-bim';
 import { box, compound, cylinder, measureVolume, translate, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
@@ -1387,7 +1401,7 @@ interface SpaceParams {
 }
 
 type P3 = [number, number, number];
-type Made = ReturnType<BimModel['addSpace']>;
+type Made = ReturnType<BimAuthoring['addSpace']>;
 type Id = Extract<Made, { ok: true }>['value'];
 type Body = ReturnType<typeof box>;
 type Tone = 'space' | 'wall' | 'slab' | 'carpet' | 'rug' | 'glass' | 'wood' | 'seat' | 'dark';
@@ -1408,15 +1422,17 @@ const SPACES = [
 ] as const;
 
 function floor({ lift = 4800, height = 2700, cutaway = true }: SpaceParams = {}) {
-  const model = new BimModel();
+  const model = new BimDocument();
   model.init({ name: 'Space volume' });
-  const site = unwrap(model.addSite({ name: 'Site' }));
-  const building = unwrap(model.addBuilding({ name: 'Office building' }));
-  const storey = unwrap(model.addStorey({ name: 'First floor', elevation: 0 }));
+  const site = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const building = unwrap(authoring(model).addBuilding({ name: 'Office building' }));
+  const storey = unwrap(authoring(model).addStorey({ name: 'First floor', elevation: 0 }));
   const project = model.getProject();
   if (project) model.aggregate(project.localId, site);
-  model.aggregate(site, building);
-  model.aggregate(building, storey);
+  unwrap(model.aggregate(site, building));
+  unwrap(model.reparent(building, site, 'KEEP_LOCAL'));
+  unwrap(model.aggregate(building, storey));
+  unwrap(model.reparent(storey, building, 'KEEP_LOCAL'));
   const placed: { id: Id; tone: Tone; hidden: boolean }[] = [];
   const put = (tone: Tone, made: Made, hidden = false): Id => {
     const id = unwrap(made);
@@ -1428,7 +1444,7 @@ function floor({ lift = 4800, height = 2700, cutaway = true }: SpaceParams = {})
   // THE LESSON. A space is a box of air: a name, a plan, a clear height and a place. It fills its room from the
   // floor finish to the ceiling and from wall face to wall face. It is in the storey like each other element.
   const spaces = SPACES.map((s) =>
-    put('space', model.addSpace({
+    put('space', authoring(model).addSpace({
       name: s.name, longName: s.longName, length: s.size[0], width: s.size[1], height,
       origin: [s.at[0], s.at[1], FINISH], axisX: X, axisZ: Z, predefinedType: 'INTERNAL', materialName: 'Air',
     })),
@@ -1436,25 +1452,25 @@ function floor({ lift = 4800, height = 2700, cutaway = true }: SpaceParams = {})
 
   // The rooms. The facade is at x = 0. A wall goes toward its local Y from its axis: that is -X when it runs along +Y.
   const wall = { height: WALL.height, axisZ: Z, materialName: 'Plasterboard on studs' };
-  const facade = put('wall', model.addWall({ ...wall, length: LENGTH, thickness: WALL.facade, origin: [0, 0, 0], axisX: Y, materialName: 'Rendered masonry', isExternal: true }));
-  const cross = put('wall', model.addWall({ ...wall, length: DEPTH, thickness: WALL.partition, origin: [0, SPLIT, 0], axisX: X }));
-  const aisle = put('wall', model.addWall({ ...wall, length: LENGTH, thickness: WALL.partition, origin: [DEPTH + WALL.partition, 0, 0], axisX: Y }), cutaway);
+  const facade = put('wall', authoring(model).addWall({ ...wall, length: LENGTH, thickness: WALL.facade, origin: [0, 0, 0], axisX: Y, materialName: 'Rendered masonry', isExternal: true }));
+  const cross = put('wall', authoring(model).addWall({ ...wall, length: DEPTH, thickness: WALL.partition, origin: [0, SPLIT, 0], axisX: X }));
+  const aisle = put('wall', authoring(model).addWall({ ...wall, length: LENGTH, thickness: WALL.partition, origin: [DEPTH + WALL.partition, 0, 0], axisX: Y }), cutaway);
   // Each space knows the walls that bound it.
   for (const space of spaces) for (const bound of [facade, cross, aisle])
     model.addSpaceBoundary(space, bound, 'PHYSICAL');
 
-  const slab = put('slab', model.addSlab({ length: DEPTH + WALL.partition + WALL.facade, width: LENGTH, thickness: 250, origin: [-WALL.facade, 0, -250], axisX: X, axisZ: Z, predefinedType: 'FLOOR', materialName: 'Concrete' }));
+  const slab = put('slab', authoring(model).addSlab({ length: DEPTH + WALL.partition + WALL.facade, width: LENGTH, thickness: 250, origin: [-WALL.facade, 0, -250], axisX: X, axisZ: Z, predefinedType: 'FLOOR', materialName: 'Concrete' }));
   SPACES.forEach((s, i) => {
-    const made = model.addCovering({ length: s.size[0], width: s.size[1], thickness: FINISH, origin: [s.at[0], s.at[1], 0], axisX: X, axisZ: Z, predefinedType: 'FLOORING', materialName: 'Carpet' }, slab);
+    const made = authoring(model).addCovering({ length: s.size[0], width: s.size[1], thickness: FINISH, origin: [s.at[0], s.at[1], 0], axisX: X, axisZ: Z, predefinedType: 'FLOORING', materialName: 'Carpet' }, slab);
     put(i === 0 ? 'carpet' : 'rug', made);
   });
   const window = { width: 1800, height: 1500, offsetFromFloor: 900, wallLocalId: facade, materialName: 'Aluminium' };
   const door = { width: 900, height: 2100, offsetFromFloor: 0, materialName: 'Timber' };
   const lights = [600, 2700, 4800, 8500];
-  for (const y of lights) model.placeIn(unwrap(model.addWindowAndCutWall({ ...window, offsetAlongWall: y })), storey);
-  model.placeIn(unwrap(model.addDoorAndCutWall({ ...door, wallLocalId: cross, offsetAlongWall: 3300 })), storey);
-  model.placeIn(unwrap(model.addDoorAndCutWall({ ...door, wallLocalId: aisle, offsetAlongWall: 5900 })), storey);
-  model.placeIn(unwrap(model.addDoorAndCutWall({ ...door, wallLocalId: aisle, offsetAlongWall: 7600 })), storey);
+  for (const y of lights) model.placeIn(unwrap(authoring(model).addWindowAndCutWall({ ...window, offsetAlongWall: y })), storey);
+  model.placeIn(unwrap(authoring(model).addDoorAndCutWall({ ...door, wallLocalId: cross, offsetAlongWall: 3300 })), storey);
+  model.placeIn(unwrap(authoring(model).addDoorAndCutWall({ ...door, wallLocalId: aisle, offsetAlongWall: 5900 })), storey);
+  model.placeIn(unwrap(authoring(model).addDoorAndCutWall({ ...door, wallLocalId: aisle, offsetAlongWall: 7600 })), storey);
 
   // Glass, window boards and the furniture are proxies: plain solids with a name. The IFC writer gives each
   // door and window a panel of its own, in the 100 mm of its wall that is farthest from the wall axis.
@@ -1464,8 +1480,8 @@ function floor({ lift = 4800, height = 2700, cutaway = true }: SpaceParams = {})
     return s;
   };
   const block = (tone: Tone, name: string, lo: P3, hi: P3, hidden = false): Id =>
-    put(tone, model.addProxy({ name, solid: translate(own(box(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2])), lo) }), hidden);
-  const post = (tone: Tone, name: string, at: P3, radius: number, tall: number): Id => put(tone, model.addProxy({ name, solid: cylinder(radius, tall, { at }) }));
+    put(tone, authoring(model).addProxy({ name, solid: translate(own(box(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2])), lo) }), hidden);
+  const post = (tone: Tone, name: string, at: P3, radius: number, tall: number): Id => put(tone, authoring(model).addProxy({ name, solid: cylinder(radius, tall, { at }) }));
   for (const y of lights) {
     block('glass', 'Glazing', [-170, y, 950], [-140, y + window.width, 2400]);
     block('slab', 'Window board', [-200, y, 900], [0, y + window.width, 950]);
@@ -1498,7 +1514,7 @@ function floor({ lift = 4800, height = 2700, cutaway = true }: SpaceParams = {})
 
   // The kernel measures each space. The published rule gives the people that the room has volume for.
   const elements = new Map(model.getAllElements().map((el) => [el.localId, el]));
-  const solidsOf = (id: Id): Body[] => (unwrap(placedSolids(elements.get(id) as never)) as Body[]).map(own);
+  const solidsOf = (id: Id): Body[] => (unwrap(model.placedSolids(id, 'WORLD')) as Body[]).map(own);
   const report = SPACES.map((s, i) => {
     const m3 = unwrap(measureVolume(solidsOf(spaces[i] as Id)[0] as Body)) / 1e9;
     const counted = m3 * Math.min(1, COUNTED_HEIGHT / height);
@@ -1533,7 +1549,7 @@ export default present(
     label: 'Profile Gallery',
     description:
       'Eight structural sections as real IfcColumn stubs on bolted base plates: I, L, T, U, Z, C, rectangular hollow and circular hollow. Beams and columns share one profile vocabulary, and each named kind exports as its own parametric IFC profile def, so the section stays editable data downstream. The IPE 300, the angle, the UPE 200 and the two hollow sections have their published dimensions, and the kernel measures the mass of each metre to set against the steel table. The view shows each M20 holding-down bolt as a screw with a helical thread in its nut, and the IFC file keeps plain proxies. The tee, the zed, the lipped channel, the base plates and the trestles are a display model.',
-    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+    code: `import { BimDocument, toIfc, authoring, type BimAuthoring } from 'brepjs-bim';
 import { box, compound, cutAll, cylinder, extrude, getBounds, line, loft, measureVolume, polygon, translate, unwrap, wire } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
@@ -1548,10 +1564,10 @@ interface StockParams {
 }
 
 type P3 = [number, number, number];
-type Made = ReturnType<BimModel['addBeam']>;
+type Made = ReturnType<BimAuthoring['addBeam']>;
 type Id = Extract<Made, { ok: true }>['value'];
-type Profile = Parameters<BimModel['addBeam']>[0]['profile'];
-type Body = Extract<ReturnType<typeof placedSolids>, { ok: true }>['value'][number];
+type Profile = Parameters<BimAuthoring['addBeam']>[0]['profile'];
+type Body = Extract<ReturnType<BimDocument['placedSolids']>, { ok: true }>['value'][number];
 type Tone = 'rolled' | 'hollow' | 'formed' | 'primer' | 'bolt' | 'floor';
 const X: P3 = [1, 0, 0], Y: P3 = [0, 1, 0], Z: P3 = [0, 0, 1];
 
@@ -1583,15 +1599,17 @@ const ANCHOR = { embed: 120, hole: 22, play: 0.15 }; // a bolt in the footing, i
 const TRESTLE = { height: 400, bearer: 100, leg: 80, stop: 150 };
 
 function stock({ as = 'columns', length = 320, radii = true }: StockParams = {}) {
-  const model = new BimModel();
+  const model = new BimDocument();
   model.init({ name: 'Profile gallery' });
-  const site = unwrap(model.addSite({ name: 'Site' }));
-  const building = unwrap(model.addBuilding({ name: 'Workshop' }));
-  const storey = unwrap(model.addStorey({ name: 'Shop floor', elevation: 0 }));
+  const site = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const building = unwrap(authoring(model).addBuilding({ name: 'Workshop' }));
+  const storey = unwrap(authoring(model).addStorey({ name: 'Shop floor', elevation: 0 }));
   const project = model.getProject();
   if (project) model.aggregate(project.localId, site);
-  model.aggregate(site, building);
-  model.aggregate(building, storey);
+  unwrap(model.aggregate(site, building));
+  unwrap(model.reparent(building, site, 'KEEP_LOCAL'));
+  unwrap(model.aggregate(building, storey));
+  unwrap(model.reparent(storey, building, 'KEEP_LOCAL'));
   const placed: { id: Id; tone: Tone }[] = [];
   const owned: Body[] = [];
   const put = (tone: Tone, made: Made): Id => {
@@ -1603,17 +1621,17 @@ function stock({ as = 'columns', length = 320, radii = true }: StockParams = {})
   const steel = { materialName: 'Steel S355' };
   const lying = as === 'beams';
   // THE CALL. A beam runs along its local X and a column goes up its local Z. The profile is the same for both.
-  const member = (into: BimModel, profile: Profile, origin: P3, roll: number): Made => {
+  const member = (into: BimDocument, profile: Profile, origin: P3, roll: number): Made => {
     const turn = (roll * Math.PI) / 180;
     return lying
-      ? into.addBeam({ length, profile, origin, axisX: X, axisZ: [0, -Math.sin(turn), Math.cos(turn)], ...steel })
-      : into.addColumn({ height: length, profile, origin, axisX: [Math.cos(turn), Math.sin(turn), 0], axisZ: Z, ...steel });
+      ? authoring(into).addBeam({ length, profile, origin, axisX: X, axisZ: [0, -Math.sin(turn), Math.cos(turn)], ...steel })
+      : authoring(into).addColumn({ height: length, profile, origin, axisX: [Math.cos(turn), Math.sin(turn), 0], axisZ: Z, ...steel });
   };
   // The origin of a profile is not at a corner. A trial member in a scratch model gives the box of the section.
   const boxOf = (profile: Profile, roll: number) => {
-    const scratch = new BimModel();
+    const scratch = new BimDocument();
     scratch.init({ name: 'Scratch' });
-    const solid = (unwrap(placedSolids(scratch.getElement(unwrap(member(scratch, profile, [0, 0, 0], roll))) as never)) as Body[])[0] as Body;
+    const solid = (unwrap(scratch.placedSolids(unwrap(member(scratch, profile, [0, 0, 0], roll)), 'WORLD')) as Body[])[0] as Body;
     const box = getBounds(solid);
     solid.delete();
     scratch[Symbol.dispose]();
@@ -1663,31 +1681,31 @@ function stock({ as = 'columns', length = 320, radii = true }: StockParams = {})
     owned.push(unit);
     const spots = [p.x + 32, p.x + p.deep - 32].flatMap((x) => [p.y + 32, p.y + p.wide - 32].map((y): P3 => [x, y, 0]));
     screws.push(...spots);
-    drills.set(put('primer', model.addProxy({ name: 'Base plate', solid: translate(unit, [p.x, p.y, 0]), ...steel })), spots.map(([x, y]) => keep(cylinder(ANCHOR.hole / 2, PLATE.thick + 2, { at: [x, y, -1] }))));
+    drills.set(put('primer', authoring(model).addProxy({ name: 'Base plate', solid: translate(unit, [p.x, p.y, 0]), ...steel })), spots.map(([x, y]) => keep(cylinder(ANCHOR.hole / 2, PLATE.thick + 2, { at: [x, y, -1] }))));
     inFooting[p.x + p.deep / 2 > 0 ? 0 : 1]!.push(...spots.map(([x, y]) => keep(cylinder(M20.d / 2, ANCHOR.embed + 1, { at: [x, y, -ANCHOR.embed] }))));
     for (const [x, y] of spots) {
-      put('bolt', model.addProxy({ name: 'Nut', solid: cylinder(1.7 * PLATE.bolt, 16, { at: [x, y, PLATE.thick] }), ...steel }));
-      put('bolt', model.addProxy({ name: 'Holding-down bolt', solid: cylinder(PLATE.bolt, 24, { at: [x, y, PLATE.thick + 16] }), ...steel }));
+      put('bolt', authoring(model).addProxy({ name: 'Nut', solid: cylinder(1.7 * PLATE.bolt, 16, { at: [x, y, PLATE.thick] }), ...steel }));
+      put('bolt', authoring(model).addProxy({ name: 'Holding-down bolt', solid: cylinder(PLATE.bolt, 24, { at: [x, y, PLATE.thick + 16] }), ...steel }));
     }
   }
   // For the beams: two trestles of square hollow section, with a stop at each end of a bearer, on a floor slab.
   const shs = (size: number, wall: number): Profile => ({ kind: 'RECTANGLE_HOLLOW', xDim: size, yDim: size, wallThickness: wall });
   const over = 160, t = TRESTLE;
   if (lying) for (const x of [0.2 * length, 0.8 * length]) {
-    put('primer', model.addBeam({ length: width + 2 * over, profile: shs(t.bearer, 5), origin: [x, -over, t.height - t.bearer / 2], axisX: Y, axisZ: Z, ...steel }));
+    put('primer', authoring(model).addBeam({ length: width + 2 * over, profile: shs(t.bearer, 5), origin: [x, -over, t.height - t.bearer / 2], axisX: Y, axisZ: Z, ...steel }));
     for (const y of [-over + t.leg / 2 + 60, width + over - t.leg / 2 - 60]) {
-      put('primer', model.addColumn({ height: t.height - t.bearer - 12, profile: shs(t.leg, 4), origin: [x, y, 12], axisX: X, axisZ: Z, ...steel }));
-      put('primer', model.addColumn({ height: 12, profile: { kind: 'RECTANGULAR', width: 320, height: 200 }, origin: [x, y, 0], axisX: X, axisZ: Z, ...steel }));
+      put('primer', authoring(model).addColumn({ height: t.height - t.bearer - 12, profile: shs(t.leg, 4), origin: [x, y, 12], axisX: X, axisZ: Z, ...steel }));
+      put('primer', authoring(model).addColumn({ height: 12, profile: { kind: 'RECTANGULAR', width: 320, height: 200 }, origin: [x, y, 0], axisX: X, axisZ: Z, ...steel }));
     }
-    for (const y of [-over + 30, width + over - 30]) put('primer', model.addColumn({ height: t.stop, profile: shs(50, 4), origin: [x, y, t.height], axisX: X, axisZ: Z, ...steel }));
+    for (const y of [-over + 30, width + over - 30]) put('primer', authoring(model).addColumn({ height: t.stop, profile: shs(50, 4), origin: [x, y, t.height], axisX: X, axisZ: Z, ...steel }));
   }
-  if (lying) put('floor', model.addSlab({ length: length + 500, width: width + 2 * over + 500, thickness: 150, origin: [-250, -over - 250, -150], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Concrete' }));
-  else [ROW / 2, -ROW / 2].forEach((cx, row) => drills.set(put('floor', model.addFooting({ length: width + 400, width: deepest + 200, thickness: 200, origin: [cx + deepest / 2 + 100, -200, -200], axisX: Y, axisZ: Z, predefinedType: 'STRIP_FOOTING', materialName: 'Concrete' })), inFooting[row]!));
+  if (lying) put('floor', authoring(model).addSlab({ length: length + 500, width: width + 2 * over + 500, thickness: 150, origin: [-250, -over - 250, -150], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Concrete' }));
+  else [ROW / 2, -ROW / 2].forEach((cx, row) => drills.set(put('floor', authoring(model).addFooting({ length: width + 400, width: deepest + 200, thickness: 200, origin: [cx + deepest / 2 + 100, -200, -200], axisX: Y, axisZ: Z, predefinedType: 'STRIP_FOOTING', materialName: 'Concrete' })), inFooting[row]!));
 
   // The kernel measures each member. Volume and density give the mass for each metre, to set against the table.
   const elements = new Map(model.getAllElements().map((el) => [el.localId, el]));
   const solidsOf = (id: Id): Body[] => {
-    const list = unwrap(placedSolids(elements.get(id) as never)) as Body[];
+    const list = unwrap(model.placedSolids(id, 'WORLD')) as Body[];
     owned.push(...list);
     return list;
   };
@@ -1725,7 +1743,7 @@ export default present(
     label: 'Validated Export',
     description:
       'One toIfcValidated call exports the model and runs the full set of checkers: referential integrity before the file is written, then schema, round trip, geometry validity and the buildingSMART gherkin rules. This steel-framed block has two faults on purpose. A column that is in no storey makes the integrity gate block the export: the view paints the column that the gate names in orange, and the code repairs it. A project with no coordinate reference system gives the GRF003 warning. The export runs against IFC4 and IFC4X3, and the Files button saves the full report. The sections are published sizes, and the block is a display model.',
-    code: `import { BimModel, countBySeverity, placedSolids, toIfcValidated } from 'brepjs-bim';
+    code: `import { BimDocument, countBySeverity, toIfcValidated, authoring, type BimAuthoring } from 'brepjs-bim';
 import { box, compound, translate, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
@@ -1742,10 +1760,10 @@ interface CheckParams {
 }
 
 type P3 = [number, number, number];
-type Made = ReturnType<BimModel['addColumn']>;
+type Made = ReturnType<BimAuthoring['addColumn']>;
 type Id = Extract<Made, { ok: true }>['value'];
 type Body = ReturnType<typeof box>;
-type Finding = { severity: string; code: string; message: string; entity?: string | number };
+type Finding = { severity: string; code: string; message: string; entity?: Id | string | number };
 type Tone = 'steel' | 'slab' | 'wall' | 'ground' | 'glass' | 'rail' | 'named';
 const X: P3 = [1, 0, 0], Y: P3 = [0, 1, 0], Z: P3 = [0, 0, 1];
 
@@ -1796,23 +1814,26 @@ console.log('IFC4X3: ' + x3.error + ' errors, ' + x3.warning + ' warnings, ' + x
 
 // ---- THE SCENERY: a steel frame on pad footings, with a floor slab, a masonry wall at the back and guard rails.
 function block({ storeys = 2, stray = true, georeference = false }: CheckParams = {}) {
-  const model = new BimModel();
+  const model = new BimDocument();
   // A project with no crs gives GRF003. The eastings and northings are the map position of the origin, in metres.
   model.init({ name: 'Validated building', projectId: 'validation-demo', ...(georeference ? { crs: { name: 'EPSG:25832', eastings: 566000, northings: 5933000 } } : {}) });
-  const ground = unwrap(model.addSite({ name: 'Site' }));
-  const building = unwrap(model.addBuilding({ name: 'Building' }));
+  const ground = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const building = unwrap(authoring(model).addBuilding({ name: 'Building' }));
   const project = model.getProject();
   if (project) model.aggregate(project.localId, ground);
-  model.aggregate(ground, building);
+  unwrap(model.aggregate(ground, building));
+  unwrap(model.reparent(building, ground, 'KEEP_LOCAL'));
   const levels = Array.from({ length: storeys + 1 }, (_, i) => {
-    const id = unwrap(model.addStorey({ name: i === storeys ? 'Roof' : i === 0 ? 'Ground floor' : 'Floor ' + i, elevation: i * GRID.storey }));
-    model.aggregate(building, id);
+    const id = unwrap(authoring(model).addStorey({ name: i === storeys ? 'Roof' : i === 0 ? 'Ground floor' : 'Floor ' + i, elevation: i * GRID.storey }));
+    unwrap(model.aggregate(building, id));
+    unwrap(model.reparent(id, building, 'KEEP_LOCAL'));
     return id;
   });
   const placed: { id: Id; level: number; tone: Tone }[] = [];
   const put = (level: number, tone: Tone, made: Made, contained = true): Id => {
     const id = unwrap(made);
-    if (contained) model.placeIn(id, levels[level] as Id);
+    unwrap(model.reparent(id, levels[level] as Id, 'KEEP_LOCAL'));
+    if (contained) unwrap(model.placeIn(id, levels[level] as Id));
     placed.push({ id, level, tone });
     return id;
   };
@@ -1824,30 +1845,30 @@ function block({ storeys = 2, stray = true, georeference = false }: CheckParams 
   const pane = (level: number, lo: P3, hi: P3): Id => {
     const unit = box(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]);
     owned.push(unit);
-    return put(level, 'glass', model.addProxy({ name: 'Glazing', solid: translate(unit, lo), materialName: 'Glass' }));
+    return put(level, 'glass', authoring(model).addProxy({ name: 'Glazing', solid: translate(unit, lo), materialName: 'Glass' }));
   };
 
   for (let level = 0; level <= storeys; level++) {
     if (level === 0) {
-      put(0, 'ground', model.addSlab({ length: LENGTH + 2400, width: WIDTH + 2400, thickness: 150, origin: [-1200, -1200, -150], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', ...concrete }));
-      for (const x of xs) for (const y of ys) put(0, 'ground', model.addFooting({ length: 1400, width: 1400, thickness: 500, origin: [x - 700, y - 700, -650], axisX: X, axisZ: Z, predefinedType: 'PAD_FOOTING', ...concrete }));
+      put(0, 'ground', authoring(model).addSlab({ length: LENGTH + 2400, width: WIDTH + 2400, thickness: 150, origin: [-1200, -1200, -150], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', ...concrete }));
+      for (const x of xs) for (const y of ys) put(0, 'ground', authoring(model).addFooting({ length: 1400, width: 1400, thickness: 500, origin: [x - 700, y - 700, -650], axisX: X, axisZ: Z, predefinedType: 'PAD_FOOTING', ...concrete }));
     } else {
       // The beams of a level are in the storey on top of them. The primary beams stop at the column faces, and
       // the secondary beams at the third points stop at the flanges of the primary beams.
       const z = -SLAB.depth - IPE300.overallDepth / 2, flange = IPE300.overallWidth / 2;
-      for (const x of xs) for (const y of ys.slice(0, -1)) put(level, 'steel', model.addBeam({ length: GRID.y - 200, profile: IPE300, origin: [x, y + 100, z], axisX: Y, axisZ: Z, ...steel }));
-      for (const y of ys) for (const x of xs.slice(0, -1)) put(level, 'steel', model.addBeam({ length: GRID.x - 200, profile: IPE300, origin: [x + 100, y, z], axisX: X, axisZ: Z, ...steel }));
+      for (const x of xs) for (const y of ys.slice(0, -1)) put(level, 'steel', authoring(model).addBeam({ length: GRID.y - 200, profile: IPE300, origin: [x, y + 100, z], axisX: Y, axisZ: Z, ...steel }));
+      for (const y of ys) for (const x of xs.slice(0, -1)) put(level, 'steel', authoring(model).addBeam({ length: GRID.x - 200, profile: IPE300, origin: [x + 100, y, z], axisX: X, axisZ: Z, ...steel }));
       for (const y of ys.slice(0, -1)) for (const third of [1, 2]) for (const x of xs.slice(0, -1))
-        put(level, 'steel', model.addBeam({ length: GRID.x - 2 * flange, profile: IPE240, origin: [x + flange, y + (third * GRID.y) / 3, -SLAB.depth - IPE240.overallDepth / 2], axisX: X, axisZ: Z, predefinedType: 'JOIST', ...steel }));
+        put(level, 'steel', authoring(model).addBeam({ length: GRID.x - 2 * flange, profile: IPE240, origin: [x + flange, y + (third * GRID.y) / 3, -SLAB.depth - IPE240.overallDepth / 2], axisX: X, axisZ: Z, predefinedType: 'JOIST', ...steel }));
       // The roof steel is open: its deck is not in the model yet. Each floor has its slab and its guard rails.
       if (level === storeys) continue;
-      put(level, 'slab', model.addSlab({ length: LENGTH + 2 * e, width: WIDTH + 2 * e, thickness: SLAB.depth, origin: [-e, -e, -SLAB.depth], axisX: X, axisZ: Z, predefinedType: 'FLOOR', ...concrete }));
+      put(level, 'slab', authoring(model).addSlab({ length: LENGTH + 2 * e, width: WIDTH + 2 * e, thickness: SLAB.depth, origin: [-e, -e, -SLAB.depth], axisX: X, axisZ: Z, predefinedType: 'FLOOR', ...concrete }));
       // Guard rails on the open edges. A railing goes toward its local Y, as a wall does.
       const rail = { height: GUARD.height, thickness: GUARD.bar, axisZ: Z, infill: 'POSTED', predefinedType: 'GUARDRAIL', ...steel } as const;
       const run = (from: P3, axisX: P3, total: number, parts: number): void => {
         for (let k = 0; k < parts; k++) {
           const at = (k * total) / parts;
-          put(level, 'rail', model.addRailing({ ...rail, length: total / parts, origin: [from[0] + axisX[0] * at, from[1] + axisX[1] * at, 0], axisX }));
+          put(level, 'rail', authoring(model).addRailing({ ...rail, length: total / parts, origin: [from[0] + axisX[0] * at, from[1] + axisX[1] * at, 0], axisX }));
         }
       };
       run([LENGTH + e, -e, 0], Y, WIDTH + 2 * e, ny);
@@ -1858,14 +1879,14 @@ function block({ storeys = 2, stray = true, georeference = false }: CheckParams 
     // Columns from the floor to the slab over it. The stray column is made, but it is not put in its storey.
     for (const x of xs) for (const y of ys) {
       const lost = stray && level === 0 && x === LENGTH && y === 2 * GRID.y;
-      put(level, 'steel', model.addColumn({ height: GRID.storey - SLAB.depth, profile: HE200B, origin: [x, y, 0], axisX: X, axisZ: Z, ...steel }), !lost);
+      put(level, 'steel', authoring(model).addColumn({ height: GRID.storey - SLAB.depth, profile: HE200B, origin: [x, y, 0], axisX: X, axisZ: Z, ...steel }), !lost);
     }
     // A masonry panel with a window in each bay of the back. The glass is a proxy in the opening, clear of the
     // panel that the IFC writer gives each window in the 100 mm of the wall that is farthest from the wall axis.
     const tall = GRID.storey - SLAB.depth - IPE300.overallDepth;
     for (const y of ys.slice(0, -1)) {
-      const wall = put(level, 'wall', model.addWall({ length: GRID.y - 200, height: tall, thickness: 200, origin: [100, y + 100, 0], axisX: Y, axisZ: Z, materialName: 'Blockwork', isExternal: true }));
-      model.placeIn(unwrap(model.addWindowAndCutWall({ wallLocalId: wall, width: 3000, height: 1500, offsetAlongWall: 1400, offsetFromFloor: 900, materialName: 'Aluminium' })), levels[level] as Id);
+      const wall = put(level, 'wall', authoring(model).addWall({ length: GRID.y - 200, height: tall, thickness: 200, origin: [100, y + 100, 0], axisX: Y, axisZ: Z, materialName: 'Blockwork', isExternal: true }));
+      model.placeIn(unwrap(authoring(model).addWindowAndCutWall({ wallLocalId: wall, width: 3000, height: 1500, offsetAlongWall: 1400, offsetFromFloor: 900, materialName: 'Aluminium' })), levels[level] as Id);
       pane(level, [20, y + 1500, 900], [50, y + 4500, 2400]);
     }
   }
@@ -1875,7 +1896,7 @@ function block({ storeys = 2, stray = true, georeference = false }: CheckParams 
     const elements = new Map(model.getAllElements().map((el) => [el.localId, el]));
     const groups = new Map<Tone, Body[]>();
     for (const p of placed) {
-      const list = unwrap(placedSolids(elements.get(p.id) as never, { parentFrame: { origin: [0, 0, p.level * GRID.storey], axisX: X, axisZ: Z } })) as Body[];
+      const list = unwrap(model.placedSolids(p.id, 'WORLD')) as Body[];
       owned.push(...list);
       const tone = flagged.includes(p.id) ? 'named' : p.tone;
       groups.set(tone, [...(groups.get(tone) ?? []), ...list]);
@@ -1905,7 +1926,7 @@ export default present(site.view(named), {
     label: 'COBie, IDS and BCF',
     description:
       'The three formats that carry the work around a model, as one chain on a small office block. COBie 2.4 handover sheets come from the spatial structure. An IDS 1.0 requirement is checked against the exported file, and the front wall fails it. A BCF 3.0 issue is then filed on that wall by its GlobalId, with a camera on it, and the view paints the wall orange. Results print to the console, and the Files button saves the COBie sheets and the BCF markup and viewpoint. The block is a display model, shown with its roof off.',
-    code: `import { BimModel, SpfReader, checkIds, deriveCobieModel, parseIdsXml, placedSolids, serializeBcfFiles, serializeCobieToCsv, toIfc } from 'brepjs-bim';
+    code: `import { BimDocument, SpfReader, checkIds, deriveCobieModel, parseIdsXml, serializeBcfFiles, serializeCobieToCsv, toIfc, authoring, type BimAuthoring } from 'brepjs-bim';
 import { box, compound, getBounds, translate, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
@@ -1920,7 +1941,7 @@ interface BlockParams {
 }
 
 type P3 = [number, number, number];
-type Made = ReturnType<BimModel['addWall']>;
+type Made = ReturnType<BimAuthoring['addWall']>;
 type Id = Extract<Made, { ok: true }>['value'];
 type Body = ReturnType<typeof box>;
 type Tone = 'wall' | 'flagged' | 'space' | 'slab' | 'glass' | 'door' | 'roof';
@@ -2005,15 +2026,17 @@ const viewpointKey = [...bcf.keys()].find((k) => k.endsWith('.bcfv')) ?? '';
 
 // ---- THE SCENERY: a lobby and a row of offices in one storey, with a space in each room.
 function riverside({ offices = 2, declared = false, roof = false }: BlockParams = {}) {
-  const model = new BimModel();
+  const model = new BimDocument();
   model.init({ name: 'Interop demo', projectId: 'interop-demo' });
-  const site = unwrap(model.addSite({ name: 'Site' }));
-  const building = unwrap(model.addBuilding({ name: 'Riverside Block' }));
-  const storey = unwrap(model.addStorey({ name: 'Ground Floor', elevation: 0 }));
+  const site = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const building = unwrap(authoring(model).addBuilding({ name: 'Riverside Block' }));
+  const storey = unwrap(authoring(model).addStorey({ name: 'Ground Floor', elevation: 0 }));
   const project = model.getProject();
   if (project) model.aggregate(project.localId, site);
-  model.aggregate(site, building);
-  model.aggregate(building, storey);
+  unwrap(model.aggregate(site, building));
+  unwrap(model.reparent(building, site, 'KEEP_LOCAL'));
+  unwrap(model.aggregate(building, storey));
+  unwrap(model.reparent(storey, building, 'KEEP_LOCAL'));
   const placed: { id: Id; tone: Tone }[] = [];
   const owned: Body[] = [];
   const put = (tone: Tone, made: Made): Id => {
@@ -2025,56 +2048,56 @@ function riverside({ offices = 2, declared = false, roof = false }: BlockParams 
   const fill = (tone: Tone, name: string, lo: P3, hi: P3): Id => {
     const unit = box(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]);
     owned.push(unit);
-    return put(tone, model.addProxy({ name, solid: translate(unit, lo) }));
+    return put(tone, authoring(model).addProxy({ name, solid: translate(unit, lo) }));
   };
   const LENGTH = OUTER + LOBBY + offices * (INNER + OFFICE) + OUTER, inside = DEPTH - 2 * OUTER;
   const outer = { height: HEIGHT.wall, thickness: OUTER, axisZ: Z, materialName: 'Concrete' };
   // The outer walls. A wall goes toward its local Y from its axis. The front wall is the one with the fault:
   // it is an external wall, but it does not say so.
-  const front = put('wall', model.addWall({ ...outer, length: LENGTH, origin: [DEPTH, 0, 0], axisX: Y, ...(declared ? { isExternal: true } : {}) }));
-  const back = put('wall', model.addWall({ ...outer, length: LENGTH, origin: [0, LENGTH, 0], axisX: [0, -1, 0], isExternal: true }));
-  const south = put('wall', model.addWall({ ...outer, length: inside, origin: [OUTER, 0, 0], axisX: X, isExternal: true }));
-  const north = put('wall', model.addWall({ ...outer, length: inside, origin: [DEPTH - OUTER, LENGTH, 0], axisX: [-1, 0, 0], isExternal: true }));
-  put('slab', model.addSlab({ length: DEPTH, width: LENGTH, thickness: 250, origin: [0, 0, -250], axisX: X, axisZ: Z, predefinedType: 'FLOOR', materialName: 'Concrete' }));
-  const top = put('roof', model.addSlab({ length: DEPTH + 600, width: LENGTH + 600, thickness: 200, origin: [-300, -300, HEIGHT.wall], axisX: X, axisZ: Z, predefinedType: 'ROOF', materialName: 'Concrete' }));
+  const front = put('wall', authoring(model).addWall({ ...outer, length: LENGTH, origin: [DEPTH, 0, 0], axisX: Y, ...(declared ? { isExternal: true } : {}) }));
+  const back = put('wall', authoring(model).addWall({ ...outer, length: LENGTH, origin: [0, LENGTH, 0], axisX: [0, -1, 0], isExternal: true }));
+  const south = put('wall', authoring(model).addWall({ ...outer, length: inside, origin: [OUTER, 0, 0], axisX: X, isExternal: true }));
+  const north = put('wall', authoring(model).addWall({ ...outer, length: inside, origin: [DEPTH - OUTER, LENGTH, 0], axisX: [-1, 0, 0], isExternal: true }));
+  put('slab', authoring(model).addSlab({ length: DEPTH, width: LENGTH, thickness: 250, origin: [0, 0, -250], axisX: X, axisZ: Z, predefinedType: 'FLOOR', materialName: 'Concrete' }));
+  const top = put('roof', authoring(model).addSlab({ length: DEPTH + 600, width: LENGTH + 600, thickness: 200, origin: [-300, -300, HEIGHT.wall], axisX: X, axisZ: Z, predefinedType: 'ROOF', materialName: 'Concrete' }));
 
   // The rooms: a space for each one, which is the source of the COBie Space sheet.
   const room = (name: string, y: number, width: number): Id =>
-    put('space', model.addSpace({ name, length: inside, width, height: HEIGHT.room, origin: [OUTER, y, 0], axisX: X, axisZ: Z, materialName: 'Air' }));
+    put('space', authoring(model).addSpace({ name, length: inside, width, height: HEIGHT.room, origin: [OUTER, y, 0], axisX: X, axisZ: Z, materialName: 'Air' }));
   const pane = { width: 1500, height: 1350, offsetFromFloor: 900, materialName: 'Aluminium' };
   const door = { width: 900, height: 2100, offsetFromFloor: 0, materialName: 'Timber' };
   // A window at y in the front wall and in the back wall, with its glass and its sill. The back wall runs toward
   // -Y. The IFC writer gives each door and window a panel in the inner 100 mm of its wall: the proxies stay out of it.
   const lights = (y: number): void => {
-    model.placeIn(unwrap(model.addWindowAndCutWall({ ...pane, wallLocalId: front, offsetAlongWall: y })), storey);
-    model.placeIn(unwrap(model.addWindowAndCutWall({ ...pane, wallLocalId: back, offsetAlongWall: LENGTH - y - pane.width })), storey);
+    model.placeIn(unwrap(authoring(model).addWindowAndCutWall({ ...pane, wallLocalId: front, offsetAlongWall: y })), storey);
+    model.placeIn(unwrap(authoring(model).addWindowAndCutWall({ ...pane, wallLocalId: back, offsetAlongWall: LENGTH - y - pane.width })), storey);
     fill('glass', 'Glazing', [DEPTH - 165, y, 950], [DEPTH - 135, y + pane.width, 2250]);
     fill('glass', 'Glazing', [135, y, 950], [165, y + pane.width, 2250]);
     fill('slab', 'Sill', [DEPTH - OUTER + 100, y, 900], [DEPTH + 60, y + pane.width, 950]);
     fill('slab', 'Sill', [-60, y, 900], [OUTER - 100, y + pane.width, 950]);
   };
   room('Lobby', OUTER, LOBBY);
-  model.placeIn(unwrap(model.addDoorAndCutWall({ ...door, width: 1000, wallLocalId: front, offsetAlongWall: OUTER + 850 })), storey);
+  model.placeIn(unwrap(authoring(model).addDoorAndCutWall({ ...door, width: 1000, wallLocalId: front, offsetAlongWall: OUTER + 850 })), storey);
   fill('door', 'Door leaf', [DEPTH - 170, OUTER + 850, 0], [DEPTH - 120, OUTER + 1850, 2100]);
   fill('slab', 'Step', [DEPTH, OUTER + 650, -250], [DEPTH + 600, OUTER + 2050, -20]);
-  put('roof', model.addSlab({ length: DEPTH + 2400, width: LENGTH + 2000, thickness: 150, origin: [-1000, -1000, -400], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Paving' }));
+  put('roof', authoring(model).addSlab({ length: DEPTH + 2400, width: LENGTH + 2000, thickness: 150, origin: [-1000, -1000, -400], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Paving' }));
   for (let k = 0; k < offices; k++) {
     const y = OUTER + LOBBY + k * (INNER + OFFICE);
-    const partition = put('wall', model.addWall({ length: inside, height: HEIGHT.wall, thickness: INNER, origin: [OUTER, y, 0], axisX: X, axisZ: Z, materialName: 'Plasterboard', isExternal: false }));
-    model.placeIn(unwrap(model.addDoorAndCutWall({ ...door, wallLocalId: partition, offsetAlongWall: 4500 })), storey);
+    const partition = put('wall', authoring(model).addWall({ length: inside, height: HEIGHT.wall, thickness: INNER, origin: [OUTER, y, 0], axisX: X, axisZ: Z, materialName: 'Plasterboard', isExternal: false }));
+    model.placeIn(unwrap(authoring(model).addDoorAndCutWall({ ...door, wallLocalId: partition, offsetAlongWall: 4500 })), storey);
     room('Office 0' + (k + 1), y + INNER, OFFICE);
     lights(y + INNER + 500);
     lights(y + INNER + 2350);
   }
   for (const [wall, y] of [[south, 135], [north, LENGTH - 165]] as const) {
-    model.placeIn(unwrap(model.addWindowAndCutWall({ ...pane, wallLocalId: wall, offsetAlongWall: (inside - pane.width) / 2 })), storey);
+    model.placeIn(unwrap(authoring(model).addWindowAndCutWall({ ...pane, wallLocalId: wall, offsetAlongWall: (inside - pane.width) / 2 })), storey);
     fill('glass', 'Glazing', [DEPTH / 2 - pane.width / 2, y, 950], [DEPTH / 2 + pane.width / 2, y + 30, 2250]);
     fill('slab', 'Sill', [DEPTH / 2 - pane.width / 2, y < OUTER ? -60 : LENGTH - OUTER + 100, 900], [DEPTH / 2 + pane.width / 2, y < OUTER ? OUTER - 100 : LENGTH + 60, 950]);
   }
 
   const elements = new Map(model.getAllElements().map((el) => [el.localId, el]));
   const solidsOf = (id: Id): Body[] => {
-    const list = unwrap(placedSolids(elements.get(id) as never)) as Body[];
+    const list = unwrap(model.placedSolids(id, 'WORLD')) as Body[];
     owned.push(...list);
     return list;
   };
@@ -2120,7 +2143,7 @@ export default present(block.view(failed), {
     label: 'IFC Round Trip',
     description:
       'Export a pavilion to IFC, read the file back with fromIfc, and show the source model and the model from the file side by side. Each solid of the second pavilion comes from the exported file, so a difference between the writer and the importer is visible. Its colour is the geometry fidelity of each element: teal for a parametric solid, orange for a mesh that the importer sewed into a solid. The console reports the fidelity counts, the GlobalIds that survived, and the largest volume difference that the kernel measures between a source body and its copy. The pavilion is a display model.',
-    code: `import { BimModel, disposeImportedModel, fromIfc, placedSolids, toIfc } from 'brepjs-bim';
+    code: `import { BimDocument, disposeImportedModel, fromIfc, toIfc, authoring, type BimAuthoring } from 'brepjs-bim';
 import { box, compound, measureVolume, translate, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
@@ -2135,7 +2158,7 @@ interface TripParams {
 }
 
 type P3 = [number, number, number];
-type Made = ReturnType<BimModel['addWall']>;
+type Made = ReturnType<BimAuthoring['addWall']>;
 type Id = Extract<Made, { ok: true }>['value'];
 type Body = ReturnType<typeof box>;
 type Tone = 'wall' | 'slab' | 'roof' | 'steel' | 'glass' | 'door' | 'ground';
@@ -2193,15 +2216,17 @@ async function trip({ show = 'both', gap = 1500, pitch = 25 }: TripParams = {}) 
 
 // ---- THE SCENERY: a pavilion with a porch, on a deck with two steps.
 function pavilion(pitch: number) {
-  const model = new BimModel();
+  const model = new BimDocument();
   model.init({ name: 'Round trip', projectId: 'round-trip-demo' });
-  const site = unwrap(model.addSite({ name: 'Site' }));
-  const building = unwrap(model.addBuilding({ name: 'Pavilion' }));
-  const storey = unwrap(model.addStorey({ name: 'Ground Floor', elevation: 0 }));
+  const site = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const building = unwrap(authoring(model).addBuilding({ name: 'Pavilion' }));
+  const storey = unwrap(authoring(model).addStorey({ name: 'Ground Floor', elevation: 0 }));
   const project = model.getProject();
   if (project) model.aggregate(project.localId, site);
-  model.aggregate(site, building);
-  model.aggregate(building, storey);
+  unwrap(model.aggregate(site, building));
+  unwrap(model.reparent(building, site, 'KEEP_LOCAL'));
+  unwrap(model.aggregate(building, storey));
+  unwrap(model.reparent(storey, building, 'KEEP_LOCAL'));
   const placed: { id: Id; tone: Tone }[] = [];
   const owned: Body[] = [];
   const put = (tone: Tone, made: Made): Id => {
@@ -2213,44 +2238,44 @@ function pavilion(pitch: number) {
   const fill = (tone: Tone, name: string, lo: P3, hi: P3): Id => {
     const unit = box(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]);
     owned.push(unit);
-    return put(tone, model.addProxy({ name, solid: translate(unit, lo) }));
+    return put(tone, authoring(model).addProxy({ name, solid: translate(unit, lo) }));
   };
   const { depth: A, length: B, height: H, wall: T } = ROOM;
   const front = A + PORCH; // the edge of the deck
-  put('ground', model.addSlab({ length: front + 1900, width: B + 1400, thickness: 150, origin: [-700, -700, -DECK - 150], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Paving' }));
-  put('slab', model.addSlab({ length: front + 150, width: B + 300, thickness: DECK, origin: [-150, -150, -DECK], axisX: X, axisZ: Z, predefinedType: 'FLOOR', materialName: 'Concrete' }));
+  put('ground', authoring(model).addSlab({ length: front + 1900, width: B + 1400, thickness: 150, origin: [-700, -700, -DECK - 150], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Paving' }));
+  put('slab', authoring(model).addSlab({ length: front + 150, width: B + 300, thickness: DECK, origin: [-150, -150, -DECK], axisX: X, axisZ: Z, predefinedType: 'FLOOR', materialName: 'Concrete' }));
   // Four walls. A wall goes toward its local Y from its axis, so each axis is on the outer face.
   const wall = { height: H, thickness: T, axisZ: Z, materialName: 'Masonry', isExternal: true };
-  const face = put('wall', model.addWall({ ...wall, length: B, origin: [A, 0, 0], axisX: Y }));
-  put('wall', model.addWall({ ...wall, length: B, origin: [0, B, 0], axisX: [0, -1, 0] }));
-  const south = put('wall', model.addWall({ ...wall, length: A - 2 * T, origin: [T, 0, 0], axisX: X }));
-  const north = put('wall', model.addWall({ ...wall, length: A - 2 * T, origin: [A - T, B, 0], axisX: [-1, 0, 0] }));
+  const face = put('wall', authoring(model).addWall({ ...wall, length: B, origin: [A, 0, 0], axisX: Y }));
+  put('wall', authoring(model).addWall({ ...wall, length: B, origin: [0, B, 0], axisX: [0, -1, 0] }));
+  const south = put('wall', authoring(model).addWall({ ...wall, length: A - 2 * T, origin: [T, 0, 0], axisX: X }));
+  const north = put('wall', authoring(model).addWall({ ...wall, length: A - 2 * T, origin: [A - T, B, 0], axisX: [-1, 0, 0] }));
   // The openings: a door and a window in the front, and a window in each end. A door or a window has no body
   // in the source model. The writer gives each one a panel in the inner 100 mm of its wall, so the file has four
   // more bodies than the source view. The leaf and the glass are proxies in the outer part of each opening.
-  model.placeIn(unwrap(model.addDoorAndCutWall({ wallLocalId: face, width: 1000, height: 2100, offsetAlongWall: 900, offsetFromFloor: 0, materialName: 'Timber' })), storey);
+  model.placeIn(unwrap(authoring(model).addDoorAndCutWall({ wallLocalId: face, width: 1000, height: 2100, offsetAlongWall: 900, offsetFromFloor: 0, materialName: 'Timber' })), storey);
   fill('door', 'Door leaf', [A - 70, 900, 0], [A - 20, 1900, 2100]);
-  model.placeIn(unwrap(model.addWindowAndCutWall({ wallLocalId: face, width: 1800, height: 1200, offsetAlongWall: 3000, offsetFromFloor: 900, materialName: 'Aluminium' })), storey);
+  model.placeIn(unwrap(authoring(model).addWindowAndCutWall({ wallLocalId: face, width: 1800, height: 1200, offsetAlongWall: 3000, offsetFromFloor: 900, materialName: 'Aluminium' })), storey);
   fill('glass', 'Glazing', [A - 60, 3000, 900], [A - 30, 4800, 2100]);
   const side = (A - 2 * T - 1500) / 2;
   for (const [id, y] of [[south, 40], [north, B - 70]] as const) {
-    model.placeIn(unwrap(model.addWindowAndCutWall({ wallLocalId: id, width: 1500, height: 1200, offsetAlongWall: side, offsetFromFloor: 900, materialName: 'Aluminium' })), storey);
+    model.placeIn(unwrap(authoring(model).addWindowAndCutWall({ wallLocalId: id, width: 1500, height: 1200, offsetAlongWall: side, offsetFromFloor: 900, materialName: 'Aluminium' })), storey);
     fill('glass', 'Glazing', [T + side, y, 900], [T + side + 1500, y + 30, 2100]);
   }
   // The porch: three round posts with a square beam, a guard rail, and two steps up to the deck.
   const steel = { materialName: 'Steel S355' };
-  for (const y of [150, B / 2, B - 150]) put('steel', model.addColumn({ height: H - 150, profile: { kind: 'CIRCLE_HOLLOW', radius: 57, wallThickness: 5 }, origin: [front - 200, y, 0], axisX: X, axisZ: Z, ...steel }));
-  put('steel', model.addBeam({ length: B, profile: { kind: 'RECTANGLE_HOLLOW', xDim: 150, yDim: 150, wallThickness: 6 }, origin: [front - 200, 0, H - 75], axisX: Y, axisZ: Z, ...steel }));
+  for (const y of [150, B / 2, B - 150]) put('steel', authoring(model).addColumn({ height: H - 150, profile: { kind: 'CIRCLE_HOLLOW', radius: 57, wallThickness: 5 }, origin: [front - 200, y, 0], axisX: X, axisZ: Z, ...steel }));
+  put('steel', authoring(model).addBeam({ length: B, profile: { kind: 'RECTANGLE_HOLLOW', xDim: 150, yDim: 150, wallThickness: 6 }, origin: [front - 200, 0, H - 75], axisX: Y, axisZ: Z, ...steel }));
   const rail = { height: 1000, thickness: 40, axisX: Y, axisZ: Z, infill: 'POSTED', predefinedType: 'GUARDRAIL', ...steel } as const;
-  put('steel', model.addRailing({ ...rail, length: 500, origin: [front, 250, 0] }));
-  put('steel', model.addRailing({ ...rail, length: 3500, origin: [front, 2250, 0] }));
-  for (const n of [1, 2]) put('slab', model.addSlab({ length: 300 * n, width: 1500, thickness: DECK / 2, origin: [front, 750, -(DECK * n) / 2], axisX: X, axisZ: Z, predefinedType: 'LANDING', materialName: 'Concrete' }));
+  put('steel', authoring(model).addRailing({ ...rail, length: 500, origin: [front, 250, 0] }));
+  put('steel', authoring(model).addRailing({ ...rail, length: 3500, origin: [front, 2250, 0] }));
+  for (const n of [1, 2]) put('slab', authoring(model).addSlab({ length: 300 * n, width: 1500, thickness: DECK / 2, origin: [front, 750, -(DECK * n) / 2], axisX: X, axisZ: Z, predefinedType: 'LANDING', materialName: 'Concrete' }));
   // One gable roof over the room and the porch. Its width goes toward -X from the front eaves.
-  put('roof', model.addRoof({ length: B + 2 * EAVES, width: front + 2 * EAVES - 300, thickness: 150, origin: [front + EAVES - 300, -EAVES, H], axisX: Y, axisZ: Z, predefinedType: 'GABLE_ROOF', pitch, materialName: 'Slate' }));
+  put('roof', authoring(model).addRoof({ length: B + 2 * EAVES, width: front + 2 * EAVES - 300, thickness: 150, origin: [front + EAVES - 300, -EAVES, H], axisX: Y, axisZ: Z, predefinedType: 'GABLE_ROOF', pitch, materialName: 'Slate' }));
 
   const elements = new Map(model.getAllElements().map((el) => [el.localId, el]));
   const solidsOf = (id: Id): Body[] => {
-    const list = unwrap(placedSolids(elements.get(id) as never)) as Body[];
+    const list = unwrap(model.placedSolids(id, 'WORLD')) as Body[];
     owned.push(...list);
     return list;
   };
@@ -2275,7 +2300,7 @@ export default present(run.shown, {
     label: 'Quantity Takeoff',
     description:
       'A quantity schedule of a brick and block house shell, computed from the model: the kernel measures the net volume of each element after the openings are cut, and the schedule groups the volumes by category and material. The brick and block sizes, the joint and the stair limits are published figures, and the console compares the brick and block counts with the guide figures of 60 and 10 for each square metre. The plan, the openings, the joists and the roof are a display model. The Files button saves the schedule as CSV.',
-    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+    code: `import { BimDocument, toIfc, authoring, type BimAuthoring } from 'brepjs-bim';
 import { box, compound, measureVolume, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
@@ -2318,7 +2343,7 @@ const TINT: Record<string, string> = {
 
 type P3 = [number, number, number];
 type Side = 'south' | 'north' | 'west' | 'east';
-type Id = Extract<ReturnType<BimModel['addSlab']>, { ok: true }>['value'];
+type Id = Extract<ReturnType<BimAuthoring['addSlab']>, { ok: true }>['value'];
 type Body = ReturnType<typeof box>;
 type Row = { category: string; material: string; count: number; m3: number };
 type Opening = { side: Side; level: number; at: number; width: number; sill: number; height: number; door: boolean };
@@ -2326,7 +2351,7 @@ const X: P3 = [1, 0, 0], Y: P3 = [0, 1, 0], Z: P3 = [0, 0, 1];
 
 // The model stays alive for the IFC file. Each temporary solid is freed, also when the build throws.
 function takeoff({ storeys = 2, cutaway = true }: TakeoffParams = {}) {
-  const model = new BimModel(), owned: Body[] = [];
+  const model = new BimDocument(), owned: Body[] = [];
   try {
     const house = shell(model, storeys);
 
@@ -2336,7 +2361,7 @@ function takeoff({ storeys = 2, cutaway = true }: TakeoffParams = {}) {
     for (const el of model.getAllElements()) {
       const level = house.level.get(el.localId);
       if (level === undefined) continue; // the site, the building and the storeys have no solid
-      const solids = unwrap(placedSolids(el, { parentFrame: { origin: [0, 0, level * STOREY], axisX: X, axisZ: Z } }));
+      const solids = unwrap(model.placedSolids(el.localId, 'WORLD'));
       owned.push(...solids);
       if (solids.length === 0) continue; // a door or a window is a void in its wall
       const material = (el.spec as { materialName?: string }).materialName ?? '(none)';
@@ -2391,22 +2416,25 @@ export default present(job.shown, {
 });
 
 // ---- the building. Each element is in the frame of its storey: z = 0 is the top of the floor.
-function shell(model: BimModel, storeys: number) {
+function shell(model: BimDocument, storeys: number) {
   model.init({ name: 'Takeoff demo', projectId: 'takeoff-demo' });
-  const site = unwrap(model.addSite({ name: 'Site' }));
-  const building = unwrap(model.addBuilding({ name: 'House' }));
+  const site = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const building = unwrap(authoring(model).addBuilding({ name: 'House' }));
   const project = model.getProject();
   if (project) model.aggregate(project.localId, site);
-  model.aggregate(site, building);
+  unwrap(model.aggregate(site, building));
+  unwrap(model.reparent(building, site, 'KEEP_LOCAL'));
   const levels = Array.from({ length: storeys + 1 }, (_, i) => {
-    const id = unwrap(model.addStorey({ name: i === storeys ? 'Roof' : i === 0 ? 'Ground floor' : 'Floor ' + i, elevation: i * STOREY }));
-    model.aggregate(building, id);
+    const id = unwrap(authoring(model).addStorey({ name: i === storeys ? 'Roof' : i === 0 ? 'Ground floor' : 'Floor ' + i, elevation: i * STOREY }));
+    unwrap(model.aggregate(building, id));
+    unwrap(model.reparent(id, building, 'KEEP_LOCAL'));
     return id;
   });
   const level = new Map<Id, number>(), hidden = new Set<Id>(), openings: Opening[] = [];
-  const put = (at: number, made: ReturnType<BimModel['addSlab']>, hide = false): Id => {
+  const put = (at: number, made: ReturnType<BimAuthoring['addSlab']>, hide = false): Id => {
     const id = unwrap(made);
-    model.placeIn(id, levels[at]!);
+    unwrap(model.reparent(id, levels[at]!, 'KEEP_LOCAL'));
+    unwrap(model.placeIn(id, levels[at]!));
     level.set(id, at);
     if (hide) hidden.add(id);
     return id;
@@ -2425,29 +2453,29 @@ function shell(model: BimModel, storeys: number) {
     const r = ring(inset, t), wall = { height, thickness: t, axisZ: Z, materialName, isExternal: true };
     const run = (side: Side): Id => {
       const [x0, y0, x1, y1] = r[side];
-      if (side === 'south') return put(at, model.addWall({ ...wall, length: x1 - x0, origin: [x0, y0, z], axisX: X }));
-      if (side === 'north') return put(at, model.addWall({ ...wall, length: x1 - x0, origin: [x1, y1, z], axisX: [-1, 0, 0] }));
-      if (side === 'west') return put(at, model.addWall({ ...wall, length: y1 - y0, origin: [x0, y1, z], axisX: [0, -1, 0] }));
-      return put(at, model.addWall({ ...wall, length: y1 - y0, origin: [x1, y0, z], axisX: Y }), above);
+      if (side === 'south') return put(at, authoring(model).addWall({ ...wall, length: x1 - x0, origin: [x0, y0, z], axisX: X }));
+      if (side === 'north') return put(at, authoring(model).addWall({ ...wall, length: x1 - x0, origin: [x1, y1, z], axisX: [-1, 0, 0] }));
+      if (side === 'west') return put(at, authoring(model).addWall({ ...wall, length: y1 - y0, origin: [x0, y1, z], axisX: [0, -1, 0] }));
+      return put(at, authoring(model).addWall({ ...wall, length: y1 - y0, origin: [x1, y0, z], axisX: Y }), above);
     };
     return { south: run('south'), north: run('north'), west: run('west'), east: run('east') };
   };
   const slab = (at: number, x0: number, y0: number, x1: number, y1: number, z: number, thickness: number, predefinedType: 'FLOOR' | 'ROOF' | 'BASESLAB', materialName: string, hide = false): Id =>
-    put(at, model.addSlab({ length: x1 - x0, width: y1 - y0, thickness, origin: [x0, y0, z], axisX: X, axisZ: Z, predefinedType, materialName }), hide);
+    put(at, authoring(model).addSlab({ length: x1 - x0, width: y1 - y0, thickness, origin: [x0, y0, z], axisX: X, axisZ: Z, predefinedType, materialName }), hide);
 
   // Below the ground: strip footings, foundation blocks up to the floor, and the ground slab between them.
   const strip = { thickness: FOOTING.depth, axisX: X, axisZ: Z, predefinedType: 'STRIP_FOOTING', materialName: MATERIAL.concrete } as const;
   const under = ring(WALL / 2 - FOOTING.width / 2, FOOTING.width);
   for (const side of SIDES) {
     const [x0, y0, x1, y1] = under[side];
-    put(0, model.addFooting({ ...strip, length: x1 - x0, width: y1 - y0, origin: [x0, y0, FOOTING.top - FOOTING.depth] }));
+    put(0, authoring(model).addFooting({ ...strip, length: x1 - x0, width: y1 - y0, origin: [x0, y0, FOOTING.top - FOOTING.depth] }));
   }
   const inside = under.south[3];
-  put(0, model.addFooting({ ...strip, length: FOOTING.width, width: PLAN.y - 2 * inside, origin: [SPINE.x + SPINE.width / 2 - FOOTING.width / 2, inside, FOOTING.top - FOOTING.depth] }));
+  put(0, authoring(model).addFooting({ ...strip, length: FOOTING.width, width: PLAN.y - 2 * inside, origin: [SPINE.x + SPINE.width / 2 - FOOTING.width / 2, inside, FOOTING.top - FOOTING.depth] }));
   leaf(0, 0, WALL, FOOTING.top, -FOOTING.top, MATERIAL.trench, false);
   const bays: [number, number][] = [[WALL, SPINE.x], [SPINE.x + SPINE.width, PLAN.x - WALL]];
   const spineWall = { length: PLAN.y - 2 * WALL, thickness: SPINE.width, axisX: Y, axisZ: Z, materialName: MATERIAL.block };
-  put(0, model.addWall({ ...spineWall, height: -FOOTING.top, origin: [SPINE.x + SPINE.width, WALL, FOOTING.top] }));
+  put(0, authoring(model).addWall({ ...spineWall, height: -FOOTING.top, origin: [SPINE.x + SPINE.width, WALL, FOOTING.top] }));
   for (const [x0, x1] of bays) slab(0, x0, WALL, x1, PLAN.y - WALL, -100, 100, 'BASESLAB', MATERIAL.concrete);
 
   // Openings stand on the brick module. A cavity wall is two leaves, so each opening is cut in both.
@@ -2473,17 +2501,17 @@ function shell(model: BimModel, storeys: number) {
           if (bay === 1 && !cut && y < well.y0) before = y + JOIST.width / 2;
           if (bay === 1 && !cut && y > well.y1 && after > y) after = y - JOIST.width / 2;
           const from = cut ? well.x + JOIST.width : x0;
-          put(at, model.addBeam({ ...joist, length: x1 - from, origin: [from, y, z], axisX: X }));
+          put(at, authoring(model).addBeam({ ...joist, length: x1 - from, origin: [from, y, z], axisX: X }));
         }
         const deck = slab(at, x0, WALL, x1, PLAN.y - WALL, -JOIST.deck, JOIST.deck, top ? 'ROOF' : 'FLOOR', MATERIAL.deck, top && bay === 1);
-        if (!top && bay === 1) unwrap(model.addSlabOpening({ slabLocalId: deck, offsetX: 0, offsetY: well.y0 - WALL, sizeX: STAIR.width, sizeY: well.y1 - well.y0 }));
+        if (!top && bay === 1) unwrap(authoring(model).addSlabOpening({ slabLocalId: deck, offsetX: 0, offsetY: well.y0 - WALL, sizeX: STAIR.width, sizeY: well.y1 - well.y0 }));
       });
       // The trimmer carries the cut joists at the side of the stairwell.
-      if (!top) put(at, model.addBeam({ ...joist, length: after - before, origin: [well.x + JOIST.width / 2, before, z], axisX: Y }));
+      if (!top) put(at, authoring(model).addBeam({ ...joist, length: after - before, origin: [well.x + JOIST.width / 2, before, z], axisX: Y }));
       // A guard on the two open sides of the stairwell.
       const guard = { height: 900, thickness: JOIST.width, axisZ: Z, predefinedType: 'BALUSTRADE', infill: 'POSTED', materialName: MATERIAL.guard } as const;
-      if (!top) put(at, model.addRailing({ ...guard, length: well.y1 - well.y0 + JOIST.width, origin: [well.x + JOIST.width, well.y0 - JOIST.width, 0], axisX: Y }));
-      if (!top) put(at, model.addRailing({ ...guard, length: STAIR.width, origin: [well.x - STAIR.width, well.y0 - JOIST.width, 0], axisX: X }));
+      if (!top) put(at, authoring(model).addRailing({ ...guard, length: well.y1 - well.y0 + JOIST.width, origin: [well.x + JOIST.width, well.y0 - JOIST.width, 0], axisX: Y }));
+      if (!top) put(at, authoring(model).addRailing({ ...guard, length: STAIR.width, origin: [well.x - STAIR.width, well.y0 - JOIST.width, 0], axisX: X }));
     }
     if (top) {
       // The flat roof: a parapet of six courses with a coping, insulation on the deck and a membrane on top.
@@ -2492,14 +2520,14 @@ function shell(model: BimModel, storeys: number) {
       const cap = ring(-24, WALL + 48), cover = { axisX: X, axisZ: Z, predefinedType: 'ROOFING' } as const;
       for (const side of SIDES) {
         const [x0, y0, x1, y1] = cap[side];
-        put(at, model.addCovering({ ...cover, length: x1 - x0, width: y1 - y0, thickness: 50, origin: [x0, y0, PARAPET], materialName: MATERIAL.coping }), side === 'east');
+        put(at, authoring(model).addCovering({ ...cover, length: x1 - x0, width: y1 - y0, thickness: 50, origin: [x0, y0, PARAPET], materialName: MATERIAL.coping }), side === 'east');
       }
       // The roof finish is in two parts that meet on the spine wall. The view leaves the east part off.
       const middle = SPINE.x + SPINE.width / 2;
       [[WALL, middle], [middle, PLAN.x - WALL]].forEach(([x0, x1], part) => {
         const field = { ...cover, length: x1! - x0!, width: PLAN.y - 2 * WALL };
-        put(at, model.addCovering({ ...field, predefinedType: 'INSULATION', thickness: ROOF.insulation, origin: [x0!, WALL, 0], materialName: MATERIAL.insulation }), part === 1);
-        put(at, model.addCovering({ ...field, thickness: ROOF.membrane, origin: [x0!, WALL, ROOF.insulation], materialName: MATERIAL.membrane }), part === 1);
+        put(at, authoring(model).addCovering({ ...field, predefinedType: 'INSULATION', thickness: ROOF.insulation, origin: [x0!, WALL, 0], materialName: MATERIAL.insulation }), part === 1);
+        put(at, authoring(model).addCovering({ ...field, thickness: ROOF.membrane, origin: [x0!, WALL, ROOF.insulation], materialName: MATERIAL.membrane }), part === 1);
       });
       continue;
     }
@@ -2513,16 +2541,16 @@ function shell(model: BimModel, storeys: number) {
         // The distance along a wall is from its own start: the north and the west wall run backward.
         const offsetAlongWall = o.side === 'south' ? o.at - inset : o.side === 'north' ? PLAN.x - inset - o.at - o.width : PLAN.y - inset - t - o.at - o.width;
         const hole = { wallLocalId: ids[o.side], width: o.width, height: o.height, offsetAlongWall, offsetFromFloor: o.sill, isExternal: true };
-        model.placeIn(unwrap(o.door ? model.addDoorAndCutWall({ ...hole, materialName: 'Timber door' }) : model.addWindowAndCutWall({ ...hole, materialName: 'Glazing' })), levels[at]!);
+        model.placeIn(unwrap(o.door ? authoring(model).addDoorAndCutWall({ ...hole, materialName: 'Timber door' }) : authoring(model).addWindowAndCutWall({ ...hole, materialName: 'Glazing' })), levels[at]!);
       });
     }
-    const spine = put(at, model.addWall({ ...spineWall, height: STOREY, origin: [SPINE.x + SPINE.width, WALL, 0] }));
-    model.placeIn(unwrap(model.addDoorAndCutWall({ wallLocalId: spine, width: 4 * CO.x + 10, height: 28 * CO.z, offsetAlongWall: 4250, offsetFromFloor: 0, materialName: 'Timber door' })), levels[at]!);
+    const spine = put(at, authoring(model).addWall({ ...spineWall, height: STOREY, origin: [SPINE.x + SPINE.width, WALL, 0] }));
+    model.placeIn(unwrap(authoring(model).addDoorAndCutWall({ wallLocalId: spine, width: 4 * CO.x + 10, height: 28 * CO.z, offsetAlongWall: 4250, offsetFromFloor: 0, materialName: 'Timber door' })), levels[at]!);
 
     // The stair to the next floor: one straight flight along the spine wall.
     if (at < storeys - 1) {
       const flight = { width: STAIR.width, riserHeight: STOREY / STAIR.risers, treadLength: STAIR.going, numberOfRisers: STAIR.risers, axisX: Y, axisZ: Z, materialName: MATERIAL.stair };
-      put(at, model.addStair({ name: 'Stair', predefinedType: 'STRAIGHT_RUN_STAIR', flights: [{ ...flight, origin: [SPINE.x + SPINE.width + STAIR.width, STAIR.y, 0] }], materialName: MATERIAL.stair }));
+      put(at, authoring(model).addStair({ name: 'Stair', predefinedType: 'STRAIGHT_RUN_STAIR', flights: [{ ...flight, origin: [SPINE.x + SPINE.width + STAIR.width, STAIR.y, 0] }], materialName: MATERIAL.stair }));
     }
   }
   return { level, hidden, openings };
@@ -2560,7 +2588,7 @@ function dressing(openings: Opening[], owned: Body[]) {
     label: 'Piled Foundations',
     description:
       'The foundations of a concrete frame with the ground cut open: bored piles, pile caps, ground beams, columns and the suspended slab that they carry. Piles and footings are typed IFC elements (IfcPile, IfcFooting), so a structural model can schedule them. The pile spacing, the cap edge distance, the concrete cover and the guide rate for the steel in a cap are published figures, and the kernel measures the concrete of each class and the bars of one cap. The grid, the sizes, the strata and the cage are a display model.',
-    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+    code: `import { BimDocument, toIfc, authoring, type BimAuthoring } from 'brepjs-bim';
 import { box, compound, cutAll, cylinder, measureVolume, torus, translate, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
@@ -2593,24 +2621,26 @@ const CONCRETE = 'Concrete C32/40';
 
 type P3 = [number, number, number];
 type Body = ReturnType<typeof box>;
-type Id = Extract<ReturnType<BimModel['addSlab']>, { ok: true }>['value'];
+type Id = Extract<ReturnType<BimAuthoring['addSlab']>, { ok: true }>['value'];
 const X: P3 = [1, 0, 0], Y: P3 = [0, 1, 0], Z: P3 = [0, 0, 1];
 
 // The model stays alive for the IFC file. Each temporary solid is freed, also when the build throws.
 function foundations({ pileLength = 8000, cutaway = true }: FoundationParams = {}) {
-  const model = new BimModel(), owned: Body[] = [];
+  const model = new BimDocument(), owned: Body[] = [];
   const own = <T extends Body>(s: T): T => { owned.push(s); return s; };
   try {
     model.init({ name: 'Foundations', projectId: 'foundations-demo' });
-    const site = unwrap(model.addSite({ name: 'Site' }));
-    const building = unwrap(model.addBuilding({ name: 'Block A' }));
-    const storey = unwrap(model.addStorey({ name: 'Substructure', elevation: 0 }));
+    const site = unwrap(authoring(model).addSite({ name: 'Site' }));
+    const building = unwrap(authoring(model).addBuilding({ name: 'Block A' }));
+    const storey = unwrap(authoring(model).addStorey({ name: 'Substructure', elevation: 0 }));
     const project = model.getProject();
     if (project) model.aggregate(project.localId, site);
-    model.aggregate(site, building);
-    model.aggregate(building, storey);
+    unwrap(model.aggregate(site, building));
+    unwrap(model.reparent(building, site, 'KEEP_LOCAL'));
+    unwrap(model.aggregate(building, storey));
+    unwrap(model.reparent(storey, building, 'KEEP_LOCAL'));
     const tone = new Map<Id, string>(), hidden = new Set<Id>();
-    const put = (made: ReturnType<BimModel['addSlab']>, tint: string, hide = false): Id => {
+    const put = (made: ReturnType<BimAuthoring['addSlab']>, tint: string, hide = false): Id => {
       const id = unwrap(made);
       model.placeIn(id, storey);
       tone.set(id, tint);
@@ -2627,11 +2657,11 @@ function foundations({ pileLength = 8000, cutaway = true }: FoundationParams = {
       const across = four ? [-SPACING / 2, SPACING / 2] : [0];
       for (const dx of across) for (const dy of [-SPACING / 2, SPACING / 2]) {
         piles.push([x + dx, y + dy, CUT_OFF - pileLength]);
-        put(model.addPile({ length: pileLength, profile: { kind: 'CIRCULAR', radius: PILE.diameter / 2 }, origin: [x + dx, y + dy, CUT_OFF - pileLength], axisX: X, axisZ: Z, predefinedType: 'BORED', constructionType: 'CAST_IN_PLACE', materialName: CONCRETE }), '#9d978b', bare);
+        put(authoring(model).addPile({ length: pileLength, profile: { kind: 'CIRCULAR', radius: PILE.diameter / 2 }, origin: [x + dx, y + dy, CUT_OFF - pileLength], axisX: X, axisZ: Z, predefinedType: 'BORED', constructionType: 'CAST_IN_PLACE', materialName: CONCRETE }), '#9d978b', bare);
       }
       const length = four ? CAP.long : CAP.short;
-      put(model.addFooting({ length, width: CAP.long, thickness: CAP.depth, origin: [x - length / 2, y - CAP.long / 2, CUT_OFF], axisX: X, axisZ: Z, predefinedType: 'PILE_CAP', materialName: CONCRETE }), '#a8a294', bare);
-      put(model.addColumn({ height: COLUMN.height - TOP, profile: { kind: 'RECTANGULAR', width: COLUMN.side, height: COLUMN.side }, origin: [x, y, TOP], axisX: X, axisZ: Z, materialName: CONCRETE }), '#d8d4c8', bare);
+      put(authoring(model).addFooting({ length, width: CAP.long, thickness: CAP.depth, origin: [x - length / 2, y - CAP.long / 2, CUT_OFF], axisX: X, axisZ: Z, predefinedType: 'PILE_CAP', materialName: CONCRETE }), '#a8a294', bare);
+      put(authoring(model).addColumn({ height: COLUMN.height - TOP, profile: { kind: 'RECTANGULAR', width: COLUMN.side, height: COLUMN.side }, origin: [x, y, TOP], axisX: X, axisZ: Z, materialName: CONCRETE }), '#d8d4c8', bare);
     }));
 
     // Ground beams tie the caps together. Each beam stops at the faces of its two caps.
@@ -2639,16 +2669,16 @@ function foundations({ pileLength = 8000, cutaway = true }: FoundationParams = {
     const z = TOP - BEAM.depth / 2;
     for (const line of GRID) for (const k of [0, 1]) {
       const a = GRID[k]!, b = GRID[k + 1]!, wide = (i: number): number => (i === 1 && line === GRID[1] ? CAP.long : CAP.short) / 2;
-      put(model.addBeam({ ...beam, length: b - a - wide(k) - wide(k + 1), origin: [a + wide(k), line, z], axisX: X }), '#bdb7aa');
-      put(model.addBeam({ ...beam, length: b - a - CAP.long, origin: [line, a + CAP.long / 2, z], axisX: Y }), '#bdb7aa');
+      put(authoring(model).addBeam({ ...beam, length: b - a - wide(k) - wide(k + 1), origin: [a + wide(k), line, z], axisX: X }), '#bdb7aa');
+      put(authoring(model).addBeam({ ...beam, length: b - a - CAP.long, origin: [line, a + CAP.long / 2, z], axisX: Y }), '#bdb7aa');
     }
 
     // The suspended ground slab, in two pours that meet at the cut. Each column goes through a hole in it.
     const joint = GRID[1]! + SLAB.edge, far = GRID[2]! + SLAB.edge, wide = far + SLAB.edge;
     [[-SLAB.edge, joint], [joint, far]].forEach(([x0, x1], pour) => {
-      const slab = put(model.addSlab({ length: x1! - x0!, width: wide, thickness: SLAB.depth, origin: [x0!, -SLAB.edge, TOP], axisX: X, axisZ: Z, predefinedType: 'FLOOR', materialName: CONCRETE }), '#e9e5da', pour === 1);
+      const slab = put(authoring(model).addSlab({ length: x1! - x0!, width: wide, thickness: SLAB.depth, origin: [x0!, -SLAB.edge, TOP], axisX: X, axisZ: Z, predefinedType: 'FLOOR', materialName: CONCRETE }), '#e9e5da', pour === 1);
       for (const x of GRID) for (const y of GRID) if (x > x0! && x < x1!)
-        unwrap(model.addSlabOpening({ slabLocalId: slab, offsetX: x - COLUMN.side / 2 - x0!, offsetY: y - COLUMN.side / 2 + SLAB.edge, sizeX: COLUMN.side, sizeY: COLUMN.side }));
+        unwrap(authoring(model).addSlabOpening({ slabLocalId: slab, offsetX: x - COLUMN.side / 2 - x0!, offsetY: y - COLUMN.side / 2 + SLAB.edge, sizeX: COLUMN.side, sizeY: COLUMN.side }));
     });
     console.log(model.getPiles().length + ' piles, ' + model.getFootings().length + ' pile caps, ' + model.getColumns().length + ' columns, ' + model.getBeams().length + ' ground beams');
 
@@ -2657,7 +2687,7 @@ function foundations({ pileLength = 8000, cutaway = true }: FoundationParams = {
     for (const el of model.getAllElements()) {
       const tint = tone.get(el.localId);
       if (tint === undefined) continue;
-      const solids = unwrap(placedSolids(el));
+      const solids = unwrap(model.placedSolids(el.localId, 'WORLD'));
       owned.push(...solids);
       m3.set(el.category, (m3.get(el.category) ?? 0) + solids.reduce((sum, s) => sum + unwrap(measureVolume(s)), 0) / 1e9);
       if (!(cutaway && hidden.has(el.localId))) groups.set(tint, [...(groups.get(tint) ?? []), ...solids]);
@@ -2749,7 +2779,7 @@ export default present(job.shown, {
     label: 'Room Schedule and Zones',
     description:
       'The room programme of a two-bedroom flat. Each room is an IfcSpace with a name, an area and a volume, and two sets of zones group the spaces: one by use and one by ventilation. The console prints the room schedule with the total of each zone, and compares the areas that the kernel measures with the published space standard for a flat of this size. The plan, the walls and the furniture are a display model.',
-    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+    code: `import { BimDocument, toIfc, authoring, type BimAuthoring } from 'brepjs-bim';
 import { box, compound, cut, cylinder, intersect, measureVolume, sphere, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
@@ -2788,37 +2818,39 @@ const FLOOR = 12; // the view shows the lowest 12 mm of each space as a coloured
 
 type P3 = [number, number, number];
 type Body = ReturnType<typeof box>;
-type Id = Extract<ReturnType<BimModel['addSlab']>, { ok: true }>['value'];
+type Id = Extract<ReturnType<BimAuthoring['addSlab']>, { ok: true }>['value'];
 const X: P3 = [1, 0, 0], Y: P3 = [0, 1, 0], Z: P3 = [0, 0, 1];
 
 // The model stays alive for the IFC file. Each temporary solid is freed, also when the build throws.
 function flat({ zoneBy = 'use', volumes = false, cutHeight = 1200 }: FlatParams = {}) {
-  const model = new BimModel(), owned: Body[] = [];
+  const model = new BimDocument(), owned: Body[] = [];
   const own = <T extends Body>(s: T): T => { owned.push(s); return s; };
   try {
     model.init({ name: 'Space programme', projectId: 'spaces-demo' });
-    const site = unwrap(model.addSite({ name: 'Site' }));
-    const building = unwrap(model.addBuilding({ name: 'Block A' }));
-    const storey = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
+    const site = unwrap(authoring(model).addSite({ name: 'Site' }));
+    const building = unwrap(authoring(model).addBuilding({ name: 'Block A' }));
+    const storey = unwrap(authoring(model).addStorey({ name: 'Level 1', elevation: 0 }));
     const project = model.getProject();
     if (project) model.aggregate(project.localId, site);
-    model.aggregate(site, building);
-    model.aggregate(building, storey);
+    unwrap(model.aggregate(site, building));
+    unwrap(model.reparent(building, site, 'KEEP_LOCAL'));
+    unwrap(model.aggregate(building, storey));
+    unwrap(model.reparent(storey, building, 'KEEP_LOCAL'));
 
     // ---- the lesson. One space for each room of the programme.
     const spaceIds = PROGRAMME.map(([name, x, y, length, width, use]) => {
-      const space = unwrap(model.addSpace({ name, length, width, height: H, origin: [x, y, 0], axisX: X, axisZ: Z, materialName: 'Air', predefinedType: use === 'Outdoor' ? 'EXTERNAL' : 'INTERNAL' }));
+      const space = unwrap(authoring(model).addSpace({ name, length, width, height: H, origin: [x, y, 0], axisX: X, axisZ: Z, materialName: 'Air', predefinedType: use === 'Outdoor' ? 'EXTERNAL' : 'INTERNAL' }));
       model.placeIn(space, storey);
       return space;
     });
     // Zones cut across the plan. assignToGroup is the IfcRelAssignsToGroup relationship, and each space gets two.
     for (const column of [5, 6] as const) for (const name of new Set(PROGRAMME.map((p) => p[column]))) {
       if (name === '-') continue;
-      const zone = unwrap(model.addZone({ name, longName: name + (column === 5 ? ' rooms' : ' air'), objectType: column === 5 ? 'Use' : 'Ventilation' }));
+      const zone = unwrap(authoring(model).addZone({ name, longName: name + (column === 5 ? ' rooms' : ' air'), objectType: column === 5 ? 'Use' : 'Ventilation' }));
       model.assignToGroup(zone, spaceIds.filter((_, i) => PROGRAMME[i]![column] === name));
     }
     // One more space for the gross internal area: all of the floor inside the outer walls.
-    const gross = unwrap(model.addSpace({ name: 'Flat 1', longName: 'Gross internal area', length: FLAT.x, width: FLAT.y, height: H, origin: [0, 0, 0], axisX: X, axisZ: Z, materialName: 'Air', predefinedType: 'GFA' }));
+    const gross = unwrap(authoring(model).addSpace({ name: 'Flat 1', longName: 'Gross internal area', length: FLAT.x, width: FLAT.y, height: H, origin: [0, 0, 0], axisX: X, axisZ: Z, materialName: 'Air', predefinedType: 'GFA' }));
     model.placeIn(gross, storey);
 
     // The schedule. The kernel measures the volume of each space, and the area is the volume / the height.
@@ -2828,7 +2860,7 @@ function flat({ zoneBy = 'use', volumes = false, cutHeight = 1200 }: FlatParams 
     console.log('room                use          air        area m2  volume m3');
     for (const el of model.getSpaces()) {
       if (!el.spec) continue;
-      const [solid] = unwrap(placedSolids(el));
+      const [solid] = unwrap(model.placedSolids(el.localId, 'WORLD'));
       if (!solid) continue;
       own(solid);
       const m3 = unwrap(measureVolume(solid)) / 1e9, m2 = m3 / (H / 1000), row = byName.get(el.spec.name);
@@ -2856,7 +2888,7 @@ function flat({ zoneBy = 'use', volumes = false, cutHeight = 1200 }: FlatParams 
     const built: Record<string, Body[]> = {};
     for (const el of model.getAllElements()) {
       if (el.category !== 'WALL' && el.category !== 'SLAB' && el.category !== 'RAILING') continue;
-      for (const s of unwrap(placedSolids(el))) (built[el.category] ??= []).push(el.category === 'WALL' && cutHeight < H ? own(unwrap(intersect(own(s), keep))) : own(s));
+      for (const s of unwrap(model.placedSolids(el.localId, 'WORLD'))) (built[el.category] ??= []).push(el.category === 'WALL' && cutHeight < H ? own(unwrap(intersect(own(s), keep))) : own(s));
     }
     shown.push(color(compound(built.WALL ?? []), '#f5f2ea'), color(compound(built.SLAB ?? []), '#b9b3a6'), color(compound(built.RAILING ?? []), '#9fc3d4'));
     shown.push(...openings(holes, Math.min(cutHeight, H), !volumes, own));
@@ -2879,22 +2911,22 @@ export default present(home.shown, {
 
 // ---- the building: a slab, the outer walls, the partitions, a balcony, and a door or a window in each opening.
 type Hole = { along: 'x' | 'y'; x0: number; y0: number; t: number; at: number; width: number; sill: number; height: number; leaf: -1 | 0 | 1; hinge: 0 | 1 };
-function shell(model: BimModel, storey: Id): Hole[] {
+function shell(model: BimDocument, storey: Id): Hole[] {
   const holes: Hole[] = [];
-  const put = (made: ReturnType<BimModel['addSlab']>) => { const id = unwrap(made); model.placeIn(id, storey); return id; };
+  const put = (made: ReturnType<BimAuthoring['addSlab']>) => { const id = unwrap(made); model.placeIn(id, storey); return id; };
   // A wall from its rectangle on the plan. Each opening: [distance along, width, sill, height, side of the leaf, hinge end].
   const wall = (x0: number, y0: number, x1: number, y1: number, materialName: string, cuts: [number, number, number, number, -1 | 0 | 1, 0 | 1][] = []): void => {
     const along = x1 - x0 > y1 - y0 ? 'x' : 'y', t = along === 'x' ? y1 - y0 : x1 - x0, isExternal = t === FLAT.wall;
     // The thickness of a wall is on the left of its direction: +Y for a wall along X, -X for a wall along Y.
-    const id = put(model.addWall({ length: along === 'x' ? x1 - x0 : y1 - y0, height: H, thickness: t, origin: along === 'x' ? [x0, y0, 0] : [x1, y0, 0], axisX: along === 'x' ? X : Y, axisZ: Z, materialName, isExternal }));
+    const id = put(authoring(model).addWall({ length: along === 'x' ? x1 - x0 : y1 - y0, height: H, thickness: t, origin: along === 'x' ? [x0, y0, 0] : [x1, y0, 0], axisX: along === 'x' ? X : Y, axisZ: Z, materialName, isExternal }));
     for (const [at, width, sill, height, leaf, hinge] of cuts) {
       const hole = { wallLocalId: id, width, height, offsetAlongWall: at - (along === 'x' ? x0 : y0), offsetFromFloor: sill, isExternal };
-      put(sill > 0 ? model.addWindowAndCutWall({ ...hole, materialName: 'Glazing' }) : model.addDoorAndCutWall({ ...hole, materialName: isExternal && leaf === 0 ? 'Glazing' : 'Timber door' }));
+      put(sill > 0 ? authoring(model).addWindowAndCutWall({ ...hole, materialName: 'Glazing' }) : authoring(model).addDoorAndCutWall({ ...hole, materialName: isExternal && leaf === 0 ? 'Glazing' : 'Timber door' }));
       holes.push({ along, x0, y0, t, at, width, sill, height, leaf, hinge });
     }
   };
   const { x: LX, y: LY, wall: E, partition: P } = FLAT, outer = 'Brick cavity wall', inner = 'Plasterboard partition';
-  put(model.addSlab({ length: LX + 2 * E, width: LY + 2 * E, thickness: FLAT.slab, origin: [-E, -E, -FLAT.slab], axisX: X, axisZ: Z, predefinedType: 'FLOOR', materialName: 'Concrete' }));
+  put(authoring(model).addSlab({ length: LX + 2 * E, width: LY + 2 * E, thickness: FLAT.slab, origin: [-E, -E, -FLAT.slab], axisX: X, axisZ: Z, predefinedType: 'FLOOR', materialName: 'Concrete' }));
   wall(-E, -E, LX + E, 0, outer, [[900, 1800, 900, 1200, 0, 0], [5600, 2400, 0, 2100, 0, 0], [8500, 1200, 900, 1200, 0, 0]]); // south: the facade
   wall(-E, LY, LX + E, LY + E, outer, [[3745, 1010, 0, 2100, -1, 0]]); // north: the access deck and the front door
   wall(-E, 0, 0, LY, outer, [[1000, 1200, 900, 1200, 0, 0], [4500, 1800, 900, 1200, 0, 0]]); // west: the end of the block
@@ -2907,11 +2939,11 @@ function shell(model: BimModel, storey: Id): Hole[] {
   wall(7200, 5400, 7300, LY, inner);
   // The balcony: a slab with a glass guard on three sides.
   const { x: bx, y: by, length: bl, width: bw } = BALCONY;
-  put(model.addSlab({ length: bl, width: bw, thickness: 200, origin: [bx, by, -200], axisX: X, axisZ: Z, predefinedType: 'FLOOR', materialName: 'Concrete' }));
+  put(authoring(model).addSlab({ length: bl, width: bw, thickness: 200, origin: [bx, by, -200], axisX: X, axisZ: Z, predefinedType: 'FLOOR', materialName: 'Concrete' }));
   const guard = { height: 1100, thickness: 20, axisZ: Z, predefinedType: 'BALUSTRADE', materialName: 'Laminated glass' } as const;
-  put(model.addRailing({ ...guard, length: bl, origin: [bx, by, 0], axisX: X }));
-  put(model.addRailing({ ...guard, length: bw - 20, origin: [bx + 20, by + 20, 0], axisX: Y }));
-  put(model.addRailing({ ...guard, length: bw - 20, origin: [bx + bl, by + 20, 0], axisX: Y }));
+  put(authoring(model).addRailing({ ...guard, length: bl, origin: [bx, by, 0], axisX: X }));
+  put(authoring(model).addRailing({ ...guard, length: bw - 20, origin: [bx + 20, by + 20, 0], axisX: Y }));
+  put(authoring(model).addRailing({ ...guard, length: bw - 20, origin: [bx + bl, by + 20, 0], axisX: Y }));
   return holes;
 }
 
@@ -3004,7 +3036,7 @@ function furniture(top: number, own: <T extends Body>(s: T) => T) {
     label: 'Finishes and Access',
     description:
       'The finishes of one corner of a building, cut back layer by layer: the floor, the walls, the ceiling and the roof are built up from separate IfcCovering elements, each with its own material and thickness on the slab or the wall that it covers. A 1:15 entrance ramp with a landing, two steps and a posted guardrail gives access. The ramp limits, the step rise, the conductivities and the U-value limits are published figures, and the kernel measures the area of each covering. The room and the build-ups are a display model.',
-    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+    code: `import { BimDocument, toIfc, authoring, type BimAuthoring } from 'brepjs-bim';
 import { box, compound, intersect, measureVolume, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
@@ -3033,26 +3065,28 @@ const CONCRETE = '#a8a294', BLOCK = '#bdb7aa';
 
 type P3 = [number, number, number];
 type Body = ReturnType<typeof box>;
-type Id = Extract<ReturnType<BimModel['addSlab']>, { ok: true }>['value'];
+type Id = Extract<ReturnType<BimAuthoring['addSlab']>, { ok: true }>['value'];
 type Kind = 'FLOORING' | 'CEILING' | 'CLADDING' | 'INSULATION' | 'ROOFING' | 'SKIRTINGBOARD';
 type Keep = [number, number, number, number]; // the part of the plan that the view keeps: x0, y0, x1, y1
 const X: P3 = [1, 0, 0], Y: P3 = [0, 1, 0], Z: P3 = [0, 0, 1], FAR = 20000;
 
 // The model stays alive for the IFC file. Each temporary solid is freed, also when the build throws.
 function finishes({ peel = 450, rise = 300 }: FinishParams = {}) {
-  const model = new BimModel(), owned: Body[] = [];
+  const model = new BimDocument(), owned: Body[] = [];
   const own = <T extends Body>(s: T): T => { owned.push(s); return s; };
   try {
     model.init({ name: 'Finishes and access', projectId: 'finishes-demo' });
-    const site = unwrap(model.addSite({ name: 'Site' }));
-    const building = unwrap(model.addBuilding({ name: 'Block A' }));
-    const storey = unwrap(model.addStorey({ name: 'Ground Floor', elevation: 0 }));
+    const site = unwrap(authoring(model).addSite({ name: 'Site' }));
+    const building = unwrap(authoring(model).addBuilding({ name: 'Block A' }));
+    const storey = unwrap(authoring(model).addStorey({ name: 'Ground Floor', elevation: 0 }));
     const project = model.getProject();
     if (project) model.aggregate(project.localId, site);
-    model.aggregate(site, building);
-    model.aggregate(building, storey);
+    unwrap(model.aggregate(site, building));
+    unwrap(model.reparent(building, site, 'KEEP_LOCAL'));
+    unwrap(model.aggregate(building, storey));
+    unwrap(model.reparent(storey, building, 'KEEP_LOCAL'));
     const view = new Map<Id, { tint: string; keep?: Keep }>();
-    const put = (made: ReturnType<BimModel['addSlab']>, tint: string, keep?: Keep): Id => {
+    const put = (made: ReturnType<BimAuthoring['addSlab']>, tint: string, keep?: Keep): Id => {
       const id = unwrap(made);
       model.placeIn(id, storey);
       view.set(id, keep ? { tint, keep } : { tint });
@@ -3064,26 +3098,26 @@ function finishes({ peel = 450, rise = 300 }: FinishParams = {}) {
     // ---- the lesson. A covering is a sheet: its length and width are in its local XY plane, and its
     // thickness is along its local Z. The host is the element that it covers.
     const flat = (host: Id, kind: Kind, [materialName, thickness, tint]: readonly [string, number, string], z: number, keep: Keep, x0 = 0, y1 = LY): Id =>
-      put(model.addCovering({ length: LX - x0, width: y1, thickness, origin: [x0, 0, z], axisX: X, axisZ: Z, predefinedType: kind, materialName }, host), tint, keep);
+      put(authoring(model).addCovering({ length: LX - x0, width: y1, thickness, origin: [x0, 0, z], axisX: X, axisZ: Z, predefinedType: kind, materialName }, host), tint, keep);
     // A sheet on the north wall has its thickness along +Y. Its local Y is axisZ x axisX, so axisX is -X to keep it upright.
     const north = (host: Id, kind: Kind, [materialName, thickness, tint]: readonly [string, number, string], y: number, x0: number, x1: number, z0: number, z1: number, keep: Keep): Id =>
-      put(model.addCovering({ length: x1 - x0, width: z1 - z0, thickness, origin: [x1, y, z0], axisX: [-1, 0, 0], axisZ: Y, predefinedType: kind, materialName }, host), tint, keep);
+      put(authoring(model).addCovering({ length: x1 - x0, width: z1 - z0, thickness, origin: [x1, y, z0], axisX: [-1, 0, 0], axisZ: Y, predefinedType: kind, materialName }, host), tint, keep);
     // A sheet on the west wall has its thickness along +X, and runs along +Y.
     const west = (host: Id, kind: Kind, [materialName, thickness, tint]: readonly [string, number, string], x: number, y0: number, y1: number, z0: number, z1: number, keep: Keep): Id =>
-      put(model.addCovering({ length: y1 - y0, width: z1 - z0, thickness, origin: [x, y0, z0], axisX: Y, axisZ: X, predefinedType: kind, materialName }, host), tint, keep);
+      put(authoring(model).addCovering({ length: y1 - y0, width: z1 - z0, thickness, origin: [x, y0, z0], axisX: Y, axisZ: X, predefinedType: kind, materialName }, host), tint, keep);
     const upTo = (k: number): Keep => [-FAR, -FAR, LX - k * peel, FAR]; // cut back from the east end
     const from = (k: number): Keep => [-FAR, k * peel, FAR, FAR]; // cut back from the south end
 
     // The floor: insulation, screed and boards on the ground slab.
-    const slab = put(model.addSlab({ length: LX + out, width: LY + out, thickness: FLOOR.slab, origin: [-out, 0, floorTop - FLOOR.slab], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Concrete' }), CONCRETE);
+    const slab = put(authoring(model).addSlab({ length: LX + out, width: LY + out, thickness: FLOOR.slab, origin: [-out, 0, floorTop - FLOOR.slab], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Concrete' }), CONCRETE);
     let z = floorTop;
     FLOOR.layers.forEach((layer, i) => { flat(slab, i === 0 ? 'INSULATION' : 'FLOORING', layer, z, upTo(i + 1)); z += layer[1]; });
 
     // The walls: blockwork with plaster and a skirting inside, and insulation, battens and panels outside.
     const wall = { height: soffit - floorTop, thickness: WALL.block, axisZ: Z, materialName: 'Concrete block', isExternal: true };
     const outside = WALL.outside.length, plaster = WALL.inside[0], skirting = ['Painted softwood skirting', 15, '#e3dfd3'] as const;
-    const northWall = put(model.addWall({ ...wall, length: LX + WALL.block, origin: [-WALL.block, LY, floorTop], axisX: X }), BLOCK, upTo(outside));
-    const westWall = put(model.addWall({ ...wall, length: LY, origin: [0, 0, floorTop], axisX: Y }), BLOCK, from(outside));
+    const northWall = put(authoring(model).addWall({ ...wall, length: LX + WALL.block, origin: [-WALL.block, LY, floorTop], axisX: X }), BLOCK, upTo(outside));
+    const westWall = put(authoring(model).addWall({ ...wall, length: LY, origin: [0, 0, floorTop], axisX: Y }), BLOCK, from(outside));
     north(northWall, 'CLADDING', plaster, LY - plaster[1], 0, LX, 0, ROOM.clear, upTo(outside + 1));
     west(westWall, 'CLADDING', plaster, 0, 0, LY - plaster[1], 0, ROOM.clear, from(outside + 1));
     north(northWall, 'SKIRTINGBOARD', skirting, LY - plaster[1] - skirting[1], plaster[1], LX, 0, 95, upTo(outside + 1));
@@ -3104,7 +3138,7 @@ function finishes({ peel = 450, rise = 300 }: FinishParams = {}) {
 
     // The roof: a hung ceiling under the slab, and insulation and a membrane on it. The view keeps one corner.
     const corner = (k: number): Keep => (peel > 0 ? [-FAR, LY - 3000 + k * peel, 3300 - k * peel, FAR] : [-FAR, -FAR, FAR, FAR]);
-    const roof = put(model.addSlab({ length: LX + WALL.block, width: LY + WALL.block, thickness: ROOF.slab, origin: [-WALL.block, 0, soffit], axisX: X, axisZ: Z, predefinedType: 'ROOF', materialName: 'Concrete' }), CONCRETE, corner(1));
+    const roof = put(authoring(model).addSlab({ length: LX + WALL.block, width: LY + WALL.block, thickness: ROOF.slab, origin: [-WALL.block, 0, soffit], axisX: X, axisZ: Z, predefinedType: 'ROOF', materialName: 'Concrete' }), CONCRETE, corner(1));
     flat(roof, 'CEILING', ROOF.ceiling, ROOM.clear, corner(0), plaster[1], LY - plaster[1]);
     z = soffit + ROOF.slab;
     ROOF.layers.forEach((layer, i) => { flat(roof, i === 0 ? 'INSULATION' : 'ROOFING', layer, z, corner(i + 2), -WALL.block, LY + WALL.block); z += layer[1]; });
@@ -3113,17 +3147,17 @@ function finishes({ peel = 450, rise = 300 }: FinishParams = {}) {
     // The slope is rise / run, so the run follows from the rise. The width of a flight is on the left of its direction.
     const run = rise * RAMP.gradient, risers = Math.ceil(rise / STEP.rise), paving = '#6f6a60', stone = '#d8d4c8';
     const concrete = { materialName: 'Concrete' };
-    put(model.addRamp({ name: 'Entrance ramp', predefinedType: 'STRAIGHT_RUN_RAMP', ...concrete, flights: [
+    put(authoring(model).addRamp({ name: 'Entrance ramp', predefinedType: 'STRAIGHT_RUN_RAMP', ...concrete, flights: [
       { width: RAMP.width, length: run, slope: 1 / RAMP.gradient, thickness: 150, origin: [RAMP.width + run, 0, -rise], axisX: [-1, 0, 0], axisZ: Z, predefinedType: 'STRAIGHT', ...concrete },
     ] }), stone);
-    put(model.addSlab({ length: RAMP.width, width: RAMP.width, thickness: 150, origin: [0, -RAMP.width, -150], axisX: X, axisZ: Z, predefinedType: 'LANDING', ...concrete }), stone);
-    put(model.addStair({ name: 'Entrance steps', predefinedType: 'STRAIGHT_RUN_STAIR', ...concrete, flights: [
+    put(authoring(model).addSlab({ length: RAMP.width, width: RAMP.width, thickness: 150, origin: [0, -RAMP.width, -150], axisX: X, axisZ: Z, predefinedType: 'LANDING', ...concrete }), stone);
+    put(authoring(model).addStair({ name: 'Entrance steps', predefinedType: 'STRAIGHT_RUN_STAIR', ...concrete, flights: [
       { width: RAMP.width, riserHeight: rise / risers, treadLength: 300, numberOfRisers: risers, origin: [RAMP.width, -RAMP.width - risers * 300, -rise], axisX: Y, axisZ: Z, ...concrete },
     ] }), stone);
-    put(model.addRailing({ length: RAMP.width, height: 1100, thickness: 60, origin: [60, -RAMP.width, 0], axisX: Y, axisZ: Z, predefinedType: 'GUARDRAIL', infill: 'POSTED', materialName: 'Steel' }), '#c3c9d1');
+    put(authoring(model).addRailing({ length: RAMP.width, height: 1100, thickness: 60, origin: [60, -RAMP.width, 0], axisX: Y, axisZ: Z, predefinedType: 'GUARDRAIL', infill: 'POSTED', materialName: 'Steel' }), '#c3c9d1');
     // The ground around the ramp, in three pieces.
     const ground = (x0: number, y0: number, x1: number, y1: number): Id =>
-      put(model.addSlab({ length: x1 - x0, width: y1 - y0, thickness: 100, origin: [x0, y0, -rise - 100], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Concrete paving' }), paving);
+      put(authoring(model).addSlab({ length: x1 - x0, width: y1 - y0, thickness: 100, origin: [x0, y0, -rise - 100], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Concrete paving' }), paving);
     const east = Math.max(LX, RAMP.width + run) + 1200, front = -RAMP.width - risers * 300;
     ground(-out, front - 1200, east, front);
     ground(RAMP.width, front, east, -RAMP.width);
@@ -3136,7 +3170,7 @@ function finishes({ peel = 450, rise = 300 }: FinishParams = {}) {
     for (const el of model.getAllElements()) {
       const seen = view.get(el.localId);
       if (!seen) continue;
-      for (const solid of unwrap(placedSolids(el))) {
+      for (const solid of unwrap(model.placedSolids(el.localId, 'WORLD'))) {
         own(solid);
         if (el.category === 'COVERING' && el.spec) {
           const { predefinedType: type = 'COVERING', materialName: material, thickness } = el.spec;
@@ -3178,7 +3212,7 @@ export default present(job.shown, {
     label: 'Datacenter Hall',
     description:
       'A data hall designed on the 600 mm tile grid: four rows of 42U racks on the metric 8-tile pitch with hot-aisle containment, a fully perforated cold-aisle floor over a raised-floor plenum, six CRAH units sized N+1, and A+B power down redundant 250 A overhead busway. Each element carries datacenter psets (with the IFC class that a native writer would use) and is in a zone or a system. The console runs the capacity checks of a design review, and the Files button saves the equipment schedule. The view lifts the floor at one end to show the plenum. The rack fronts, the supports, the cables and the pipes are a display model.',
-    code: `import { BimModel, countBySeverity, placedSolids, toIfcValidated } from 'brepjs-bim';
+    code: `import { BimDocument, countBySeverity, toIfcValidated, authoring, type BimAuthoring } from 'brepjs-bim';
 import { box, compound, cylinder, extrude, polygon, translate, unwrap, validSolid } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
@@ -3226,17 +3260,19 @@ const facesUp = (r: number): boolean => r % 2 === 1; // rows A, C front -y. Rows
 
 // The model stays alive for the IFC file. Each temporary solid is freed, also when the build throws.
 async function hall({ perRow = 10, rackKW = 8, cutaway = true }: HallParams = {}) {
-  const model = new BimModel(), owned: Body[] = [];
+  const model = new BimDocument(), owned: Body[] = [];
   const own = <T extends Body>(s: T): T => { owned.push(s); return s; };
   try {
     model.init({ name: 'Data Hall 1', projectId: 'dc-hall-demo', crs: { name: 'EPSG:25832', eastings: 691000, northings: 5335000 } });
-    const site = unwrap(model.addSite({ name: 'Campus' }));
-    const building = unwrap(model.addBuilding({ name: 'DC1' }));
-    const storey = unwrap(model.addStorey({ name: 'Data Hall Level', elevation: 0 }));
+    const site = unwrap(authoring(model).addSite({ name: 'Campus' }));
+    const building = unwrap(authoring(model).addBuilding({ name: 'DC1' }));
+    const storey = unwrap(authoring(model).addStorey({ name: 'Data Hall Level', elevation: 0 }));
     const project = model.getProject();
     if (project) model.aggregate(project.localId, site);
-    model.aggregate(site, building);
-    model.aggregate(building, storey);
+    unwrap(model.aggregate(site, building));
+    unwrap(model.reparent(building, site, 'KEEP_LOCAL'));
+    unwrap(model.aggregate(building, storey));
+    unwrap(model.reparent(storey, building, 'KEEP_LOCAL'));
     const ROW_LEN = (perRow + 2) * TILE; // the racks + a remote power panel at each end
     const HALL_X = END + ROW_LEN + END; // 10.8 m for 10 racks: 18 tiles
     const rowMidX = END + ROW_LEN / 2, rackX = (j: number): number => END + TILE * (1 + j) + TILE / 2;
@@ -3245,21 +3281,21 @@ async function hall({ perRow = 10, rackKW = 8, cutaway = true }: HallParams = {}
     // The structural slab goes 200 past the hall on the walled sides, so the walls stand on it. The access
     // floor is 600 above it, in four fields: one at each end of the rows and one under each pair of rows.
     // The perforated tiles of the cold aisles fill the space between them.
-    placed(unwrap(model.addSlab({ length: HALL_X + 200, width: HALL_Y + 200, thickness: 250, origin: [-200, 0, -250], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Concrete' })));
+    placed(unwrap(authoring(model).addSlab({ length: HALL_X + 200, width: HALL_Y + 200, thickness: 250, origin: [-200, 0, -250], axisX: X, axisZ: Z, predefinedType: 'BASESLAB', materialName: 'Concrete' })));
     const COLD = [0, 4, 8];
     const field = (x0: number, y0: number, x1: number, y1: number) =>
-      placed(unwrap(model.addSlab({ length: x1 - x0, width: y1 - y0, thickness: 35, origin: [x0, y0, RF - 35], axisX: X, axisZ: Z, predefinedType: 'FLOOR', materialName: 'Raised access floor' })));
+      placed(unwrap(authoring(model).addSlab({ length: x1 - x0, width: y1 - y0, thickness: 35, origin: [x0, y0, RF - 35], axisX: X, axisZ: Z, predefinedType: 'FLOOR', materialName: 'Raised access floor' })));
     field(0, 0, END, HALL_Y);
     field(END, bandY(1), END + ROW_LEN, bandY(4));
     field(END, bandY(5), END + ROW_LEN, bandY(8));
     const lifted = field(END + ROW_LEN, 0, HALL_X, HALL_Y);
     // Two of the four hall walls. The thickness of a wall is on the left of its direction (+Y for the north
     // wall, -X for the west wall), so the two walls are outside the tile field.
-    const north = placed(unwrap(model.addWall({ length: HALL_X, height: WALL_H, thickness: 200, origin: [0, HALL_Y, 0], axisX: X, axisZ: Z, materialName: 'Concrete' })));
-    placed(unwrap(model.addWall({ length: HALL_Y + 200, height: WALL_H, thickness: 200, origin: [0, 0, 0], axisX: Y, axisZ: Z, materialName: 'Concrete' })));
+    const north = placed(unwrap(authoring(model).addWall({ length: HALL_X, height: WALL_H, thickness: 200, origin: [0, HALL_Y, 0], axisX: X, axisZ: Z, materialName: 'Concrete' })));
+    placed(unwrap(authoring(model).addWall({ length: HALL_Y + 200, height: WALL_H, thickness: 200, origin: [0, 0, 0], axisX: Y, axisZ: Z, materialName: 'Concrete' })));
 
     const addEquip = (name: string, solid: Body, material: string, psets: Record<string, Record<string, string | number | boolean>>) =>
-      placed(unwrap(model.addProxy({ name, solid, materialName: material, customProperties: psets })));
+      placed(unwrap(authoring(model).addProxy({ name, solid, materialName: material, customProperties: psets })));
 
     // Racks: row letter + position, with two cords to the A and B feeds of the row. The pset records the
     // IFC class that a native writer would use for each element.
@@ -3272,7 +3308,7 @@ async function hall({ perRow = 10, rackKW = 8, cutaway = true }: HallParams = {}
 
     // Each cold aisle gets a fully perforated floor: at 8 kW for each rack, one tile for each rack is not
     // enough (a 25%-open tile carries 400 to 600 CFM, about 3 kW). The tiles fill the openings of the floor.
-    const tileIds = COLD.flatMap((band) => seq(2 * (perRow + 2)).map((p) => placed(unwrap(model.addCovering({
+    const tileIds = COLD.flatMap((band) => seq(2 * (perRow + 2)).map((p) => placed(unwrap(authoring(model).addCovering({
       length: TILE, width: TILE, thickness: 35, origin: [END + TILE * (p % (perRow + 2)), bandY(band) + TILE * Math.floor(p / (perRow + 2)), RF - 35],
       axisX: X, axisZ: Z, predefinedType: 'FLOORING', materialName: 'Perforated tile, 25% open',
     })))));
@@ -3325,17 +3361,17 @@ async function hall({ perRow = 10, rackKW = 8, cutaway = true }: HallParams = {}
     // The aisles are IfcSpaces (not in the view), with the names of the rows on each side. Zones group the
     // spaces, and systems group the equipment that gives one service.
     const aisleSpace = (name: string, longName: string, y0: number, h: number) =>
-      placed(unwrap(model.addSpace({ name, longName, length: ROW_LEN, width: AISLE, height: h, origin: [END, y0, RF], axisX: X, axisZ: Z, materialName: 'Air' })));
+      placed(unwrap(authoring(model).addSpace({ name, longName, length: ROW_LEN, width: AISLE, height: h, origin: [END, y0, RF], axisX: X, axisZ: Z, materialName: 'Air' })));
     const coldSpaces = [aisleSpace('CA-A', 'Cold aisle, row A front', bandY(0), WALL_H - RF), aisleSpace('CA-BC', 'Cold aisle between rows B and C', bandY(4), WALL_H - RF), aisleSpace('CA-D', 'Cold aisle, row D front', bandY(8), WALL_H - RF)];
     const hotSpaces = [aisleSpace('HA-AB', 'Contained hot aisle between rows A and B', bandY(2), RACK.h), aisleSpace('HA-CD', 'Contained hot aisle between rows C and D', bandY(6), RACK.h)];
-    model.assignToGroup(unwrap(model.addZone({ name: 'Cold Aisles', longName: 'Supply air zone' })), coldSpaces);
-    model.assignToGroup(unwrap(model.addZone({ name: 'Hot Aisles', longName: 'Return air zone' })), hotSpaces);
+    model.assignToGroup(unwrap(authoring(model).addZone({ name: 'Cold Aisles', longName: 'Supply air zone' })), coldSpaces);
+    model.assignToGroup(unwrap(authoring(model).addZone({ name: 'Hot Aisles', longName: 'Return air zone' })), hotSpaces);
     const feedIds = (feed: string) => [...rpps, ...buses].filter((e) => e.feed === feed).map((e) => e.id);
-    model.assignToGroup(unwrap(model.addSystem({ name: 'Critical Power A' })), feedIds('A'));
-    model.assignToGroup(unwrap(model.addSystem({ name: 'Critical Power B' })), feedIds('B'));
-    model.assignToGroup(unwrap(model.addSystem({ name: 'Air Cooling' })), [...crahs.map((c) => c.id), ...tileIds, ...hacIds]);
-    model.assignToGroup(unwrap(model.addSystem({ name: 'Structured Cabling' })), trayIds);
-    model.assignToGroup(unwrap(model.addSystem({ name: 'IT Equipment' })), racks.map((r) => r.id));
+    model.assignToGroup(unwrap(authoring(model).addSystem({ name: 'Critical Power A' })), feedIds('A'));
+    model.assignToGroup(unwrap(authoring(model).addSystem({ name: 'Critical Power B' })), feedIds('B'));
+    model.assignToGroup(unwrap(authoring(model).addSystem({ name: 'Air Cooling' })), [...crahs.map((c) => c.id), ...tileIds, ...hacIds]);
+    model.assignToGroup(unwrap(authoring(model).addSystem({ name: 'Structured Cabling' })), trayIds);
+    model.assignToGroup(unwrap(authoring(model).addSystem({ name: 'IT Equipment' })), racks.map((r) => r.id));
 
     // ---- the checks of a design review, from the model.
     const itKW = racks.length * rackKW, firmKW = (crahs.length - 1) * CRAH.kW;
@@ -3371,7 +3407,7 @@ async function hall({ perRow = 10, rackKW = 8, cutaway = true }: HallParams = {}
     for (const el of model.getAllElements()) {
       if (el.representation === 'NONE' || el.category === 'SPACE' || (cutaway && (el.localId === north || el.localId === lifted))) continue; // the aisle volumes would hide the hall
       const feed = busFeed.get(el.localId), material = el.spec && 'materialName' in el.spec ? (el.spec.materialName ?? '') : '';
-      for (const s of unwrap(placedSolids(el))) add(feed ? FEED[feed]! : (PALETTE[material] ?? '#8b8b8b'), own(s));
+      for (const s of unwrap(model.placedSolids(el.localId, 'WORLD'))) add(feed ? FEED[feed]! : (PALETTE[material] ?? '#8b8b8b'), own(s));
     }
 
     // ---- display only: the detail that the view needs and the model does not. The model stays one element

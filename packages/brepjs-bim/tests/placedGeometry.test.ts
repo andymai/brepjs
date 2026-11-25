@@ -1,9 +1,9 @@
+import { authoring } from '../src/model/authoring.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { measureVolumeProps, isValidSolid, unwrap, box, DisposalScope } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { frameFromPlacement, frameToMatrix } from '../src/placementFrame.js';
-import { placedSolids } from '../src/elementFns/placedGeometry.js';
 
 function required<T>(value: T | undefined, label: string): T {
   if (value === undefined) throw new Error(`Expected ${label}`);
@@ -41,10 +41,10 @@ describe('placedSolids', () => {
   // through to the empty-array default, so a finish schedule or an accessible
   // entrance had nothing to display.
   it('returns a placed solid for a covering', () => {
-    using m = new BimModel();
+    using m = new BimDocument();
     m.init({ name: 'T' });
     unwrap(
-      m.addCovering({
+      authoring(m).addCovering({
         length: 2000,
         width: 1000,
         thickness: 20,
@@ -57,7 +57,7 @@ describe('placedSolids', () => {
     );
     const covering = required(m.getCoverings()[0], 'covering');
     using scope = new DisposalScope();
-    const placed = unwrap(placedSolids(covering));
+    const placed = unwrap(m.placedSolids(covering.localId, 'WORLD'));
     for (const solid of placed) scope.register(solid);
     expect(placed.length).toBe(1);
     expect(isValidSolid(required(placed[0], 'placed item 1'))).toBe(true);
@@ -72,10 +72,10 @@ describe('placedSolids', () => {
   });
 
   it('returns one placed solid per ramp flight', () => {
-    using m = new BimModel();
+    using m = new BimDocument();
     m.init({ name: 'T' });
     unwrap(
-      m.addRamp({
+      authoring(m).addRamp({
         name: 'R',
         materialName: 'Concrete',
         flights: [
@@ -104,7 +104,7 @@ describe('placedSolids', () => {
     );
     const ramp = required(m.getRamps()[0], 'ramp');
     using scope = new DisposalScope();
-    const placed = unwrap(placedSolids(ramp));
+    const placed = unwrap(m.placedSolids(ramp.localId, 'WORLD'));
     for (const solid of placed) scope.register(solid);
     expect(placed.length).toBe(2);
     expect(placed.every((sol) => isValidSolid(sol))).toBe(true);
@@ -118,11 +118,11 @@ describe('placedSolids', () => {
   // Proxies used to fall through to the empty-array default, so any equipment
   // modeled as IfcBuildingElementProxy rendered nothing and took off at 0 m3.
   it('returns a fresh caller-owned copy of a proxy solid', () => {
-    using m = new BimModel();
+    using m = new BimDocument();
     m.init({ name: 'T' });
-    unwrap(m.addProxy({ name: 'Rack', solid: box(600, 1070, 2000) }));
+    unwrap(authoring(m).addProxy({ name: 'Rack', solid: box(600, 1070, 2000) }));
     const proxy = required(m.getProxies()[0], 'proxy');
-    const placed = unwrap(placedSolids(proxy));
+    const placed = unwrap(m.placedSolids(proxy.localId, 'WORLD'));
     expect(placed.length).toBe(1);
     expect(isValidSolid(required(placed[0], 'placed item 1'))).toBe(true);
     // World coordinates pass through unchanged (proxies carry no frame).
@@ -136,7 +136,7 @@ describe('placedSolids', () => {
     expect(com[2]).toBeCloseTo(1000, 1);
     // The copy is independent: disposing it must not touch the model's solid.
     for (const s of placed) s[Symbol.dispose]();
-    const again = unwrap(placedSolids(proxy));
+    const again = unwrap(m.placedSolids(proxy.localId, 'WORLD'));
     expect(unwrap(measureVolumeProps(required(again[0], 'again item 1'))).mass).toBeCloseTo(
       600 * 1070 * 2000,
       -3
@@ -145,10 +145,10 @@ describe('placedSolids', () => {
   });
 
   it('places a solid element at its world origin (centroid shifts by origin)', () => {
-    using m = new BimModel();
+    using m = new BimDocument();
     m.init({ name: 'T' });
     unwrap(
-      m.addBeam({
+      authoring(m).addBeam({
         length: 1000,
         profile: { kind: 'RECTANGULAR', width: 100, height: 100 },
         origin: [500, 0, 0],
@@ -159,7 +159,7 @@ describe('placedSolids', () => {
     );
     const beam = required(m.getBeams()[0], 'beam');
     const local = beam.geometry.solids[0];
-    const placed = unwrap(placedSolids(beam));
+    const placed = unwrap(m.placedSolids(beam.localId, 'WORLD'));
     expect(placed.length).toBe(1);
     const localCoM = unwrap(measureVolumeProps(local)).centerOfMass;
     const placedCoM = unwrap(measureVolumeProps(required(placed[0], 'placed item 1'))).centerOfMass;
@@ -171,7 +171,7 @@ describe('placedSolids', () => {
   });
 
   it('returns N placed flight solids for a stair (whose .geometry is null)', () => {
-    using m = new BimModel();
+    using m = new BimDocument();
     m.init({ name: 'T' });
     const flight = {
       width: 1000,
@@ -184,12 +184,12 @@ describe('placedSolids', () => {
       materialName: 'Concrete',
     };
     unwrap(
-      m.addStair({
+      authoring(m).addStair({
         flights: [flight, { ...flight, origin: [2500, 0, 1750] }],
         materialName: 'Concrete',
       })
     );
-    const placed = unwrap(placedSolids(required(m.getStairs()[0], 'stair')));
+    const placed = unwrap(m.placedSolids(required(m.getStairs()[0], 'stair').localId, 'WORLD'));
     expect(placed.length).toBe(2);
     for (const s of placed) expect(isValidSolid(s)).toBe(true);
     for (const s of placed) s[Symbol.dispose]();

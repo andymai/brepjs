@@ -1,7 +1,8 @@
+import { authoring } from '../src/model/authoring.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { unwrap } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { checkGherkinRules } from '../src/validation/gherkinChecks.js';
 
@@ -11,23 +12,23 @@ beforeAll(async () => {
 
 const META = { applicationName: 'gherkin-test', applicationVersion: '1' };
 
-function buildModel(withCrs: boolean): BimModel {
-  const model = new BimModel();
+function buildModel(withCrs: boolean): BimDocument {
+  const model = new BimDocument();
   unwrap(
     model.init({
       name: 'G',
       ...(withCrs ? { crs: { name: 'EPSG:25832', eastings: 400000, northings: 5700000 } } : {}),
     })
   );
-  const siteId = unwrap(model.addSite({ name: 'S' }));
-  const buildingId = unwrap(model.addBuilding({ name: 'B' }));
-  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
+  const siteId = unwrap(authoring(model).addSite({ name: 'S' }));
+  const buildingId = unwrap(authoring(model).addBuilding({ name: 'B' }));
+  const storeyId = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 0 }));
   const project = model.getProject();
   if (project) model.aggregate(project.localId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
   const stair = unwrap(
-    model.addStair({
+    authoring(model).addStair({
       materialName: 'Concrete',
       flights: [
         {
@@ -45,7 +46,7 @@ function buildModel(withCrs: boolean): BimModel {
   );
   model.placeIn(stair, storeyId);
   const roof = unwrap(
-    model.addRoof({
+    authoring(model).addRoof({
       length: 8000,
       width: 5000,
       thickness: 200,

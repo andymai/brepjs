@@ -12,7 +12,7 @@ export interface ProxySpec {
   /**
    * The proxy body. Its coordinates are written as supplied under an identity
    * placement relative to its containing spatial structure. OWNERSHIP TRANSFERS
-   * to the BimModel on addProxy(): the model disposes this handle when it is
+   * to the BimDocument on addProxy(): the model disposes this handle when it is
    * disposed, so the caller MUST NOT dispose it itself (no `using`) — doing so
    * double-frees the underlying WASM shape.
    */

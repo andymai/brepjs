@@ -1,3 +1,4 @@
+import { authoring } from '../src/model/authoring.js';
 import {addDeliveryStorey} from './helpers/deliveryStorey.js';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
@@ -12,8 +13,7 @@ import {
   translate,
 } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
-import { BimModel } from '../src/model/bimModel.js';
-import { placedSolids } from '../src/elementFns/placedGeometry.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { bodySolids } from '../src/types/body.js';
 import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
 import type { BimElement } from '../src/types/bimTypes.js';
@@ -61,10 +61,10 @@ const RAILING_SPEC = {
   materialName: 'Steel',
 };
 
-describe('BimModel.replaceBody', () => {
+describe('BimDocument.replaceBody', () => {
   it('atomically transfers every exact handle and disposes the superseded Body once', () => {
-    using model = new BimModel();
-    const wallId = required(model.addWall(WALL_SPEC));
+    using model = new BimDocument();
+    const wallId = required(authoring(model).addWall(WALL_SPEC));
     const wallBefore = requiredElement(model, wallId, 'WALL');
     const oldSolid = bodySolids(wallBefore.geometry)[0];
     const oldRelease = vi.spyOn(oldSolid, Symbol.dispose);
@@ -93,7 +93,7 @@ describe('BimModel.replaceBody', () => {
   });
 
   it('rejects missing and unsupported targets without taking caller inputs', () => {
-    using model = new BimModel();
+    using model = new BimDocument();
     const projectId = required(model.init({ name: 'Project without geometry' }));
     using missingInput = box(10, 10, 10);
     using categoryInput = box(20, 20, 20);
@@ -121,8 +121,8 @@ describe('BimModel.replaceBody', () => {
   });
 
   it('rejects empty, duplicate, disposed, and invalid collections before mutation', () => {
-    using model = new BimModel();
-    const wallId = required(model.addWall(WALL_SPEC));
+    using model = new BimDocument();
+    const wallId = required(authoring(model).addWall(WALL_SPEC));
     const original = requiredElement(model, wallId, 'WALL').geometry;
 
     expect(
@@ -171,8 +171,8 @@ describe('BimModel.replaceBody', () => {
   });
 
   it('replaces an authoritative Body and releases each adopted collection exactly once', () => {
-    using model = new BimModel();
-    const railingId = required(model.addRailing(RAILING_SPEC));
+    using model = new BimDocument();
+    const railingId = required(authoring(model).addRailing(RAILING_SPEC));
     const selected = box(100, 20, 20);
     const replacement = box(100, 30, 30);
     const selectedRelease = vi.spyOn(selected, Symbol.dispose);
@@ -208,8 +208,8 @@ describe('BimModel.replaceBody', () => {
   });
 
   it('rejects reuse of the model-owned parametric solid', () => {
-    using model = new BimModel();
-    const wallId = required(model.addWall(WALL_SPEC));
+    using model = new BimDocument();
+    const wallId = required(authoring(model).addWall(WALL_SPEC));
     const original = requiredElement(model, wallId, 'WALL').geometry;
     if (original.kind !== 'PARAMETRIC') throw new Error('Expected a parametric wall Body');
     const originalRelease = vi.spyOn(original.solids[0], Symbol.dispose);
@@ -232,8 +232,8 @@ describe('BimModel.replaceBody', () => {
 
 describe('exact wall mutation and multi-solid placement', () => {
   it('rejects later doors and windows without changing Body or relationships', () => {
-    using model = new BimModel();
-    const wallId = required(model.addWall(WALL_SPEC));
+    using model = new BimDocument();
+    const wallId = required(authoring(model).addWall(WALL_SPEC));
     const exact = box(1_000, 100, 500);
     required(
       model.replaceBody({
@@ -245,7 +245,7 @@ describe('exact wall mutation and multi-solid placement', () => {
     const relationshipsBefore = model.getAllRelationships();
     const elementsBefore = model.getAllElements();
 
-    const door = model.addDoorAndCutWall({
+    const door = authoring(model).addDoorAndCutWall({
       wallLocalId: wallId,
       width: 100,
       height: 200,
@@ -253,7 +253,7 @@ describe('exact wall mutation and multi-solid placement', () => {
       offsetFromFloor: 0,
       materialName: 'Wood',
     });
-    const window = model.addWindowAndCutWall({
+    const window = authoring(model).addWindowAndCutWall({
       wallLocalId: wallId,
       width: 100,
       height: 100,
@@ -271,8 +271,8 @@ describe('exact wall mutation and multi-solid placement', () => {
   });
 
   it('returns one independent caller-owned placed copy per exact Body item', () => {
-    using model = new BimModel();
-    const railingId = required(model.addRailing(RAILING_SPEC));
+    using model = new BimDocument();
+    const railingId = required(authoring(model).addRailing(RAILING_SPEC));
     const first = box(100, 20, 20);
     const second = box(100, 30, 30);
     required(
@@ -282,7 +282,7 @@ describe('exact wall mutation and multi-solid placement', () => {
       })
     );
 
-    const placed = required(placedSolids(requiredElement(model, railingId, 'RAILING')));
+    const placed = required(model.placedSolids(railingId, 'WORLD'));
     expect(placed).toHaveLength(2);
     expect(placed[0]).not.toBe(first);
     expect(placed[1]).not.toBe(second);
@@ -293,10 +293,10 @@ describe('exact wall mutation and multi-solid placement', () => {
   });
 
   it('preserves curved exact-Body volume through rotated placement', () => {
-    using model = new BimModel();
+    using model = new BimDocument();
     const angle = Math.PI / 6;
     const wallId = required(
-      model.addWall({
+      authoring(model).addWall({
         ...WALL_SPEC,
         origin: [1_000, 2_000, 3_000],
         axisX: [Math.cos(angle), Math.sin(angle), 0],
@@ -320,7 +320,7 @@ describe('exact wall mutation and multi-solid placement', () => {
       })
     );
 
-    const placed = required(placedSolids(requiredElement(model, wallId, 'WALL')));
+    const placed = required(model.placedSolids(wallId, 'WORLD'));
     try {
       expect(placed).toHaveLength(1);
       const placedSolid = placed[0];
@@ -334,8 +334,8 @@ describe('exact wall mutation and multi-solid placement', () => {
   });
 
   it('disposes all partial placement outputs while preserving stored exact inputs', () => {
-    using model = new BimModel();
-    const railingId = required(model.addRailing(RAILING_SPEC));
+    using model = new BimDocument();
+    const railingId = required(authoring(model).addRailing(RAILING_SPEC));
     const first = box(100, 20, 20);
     const second = box(100, 30, 30);
     required(
@@ -352,7 +352,7 @@ describe('exact wall mutation and multi-solid placement', () => {
       },
     });
 
-    const placed = placedSolids(requiredElement(model, railingId, 'RAILING'));
+    const placed = model.placedSolids(railingId, 'WORLD');
     expect(errorCode(placed)).toBe('BODY_OPERATION_FAILED');
     expect(placedReleases).toHaveLength(2);
     placedReleases.forEach((release) => expect(release).toHaveBeenCalledTimes(1));
@@ -365,7 +365,7 @@ describe('exact wall mutation and multi-solid placement', () => {
 describe('exact Product Body IFC integration', () => {
   it('round-trips a two-item exact railing without changing IFC classification', async () => {
     using model = initializedModel();
-    const railingId = required(model.addRailing(RAILING_SPEC));
+    const railingId = required(authoring(model).addRailing(RAILING_SPEC));
     const first = box(1_000, 20, 20);
     const source = box(1_000, 20, 20);
     const second = translate(source, [0, 0, 480]);
@@ -392,7 +392,7 @@ describe('exact Product Body IFC integration', () => {
 
   it('keeps overlapping exact wall items separate and writes union NetVolume', async () => {
     using model = initializedModel();
-    const wallId = required(model.addWall(WALL_SPEC));
+    const wallId = required(authoring(model).addWall(WALL_SPEC));
     const first = box(100, 100, 100);
     const source = box(100, 100, 100);
     const second = translate(source, [50, 0, 0]);
@@ -426,8 +426,8 @@ describe('exact Product Body IFC integration', () => {
 
   it('preflights every exact Body before writing IFC lines', async () => {
     using model = initializedModel();
-    const wallId = required(model.addWall(WALL_SPEC));
-    const railingId = required(model.addRailing(RAILING_SPEC));
+    const wallId = required(authoring(model).addWall(WALL_SPEC));
+    const railingId = required(authoring(model).addRailing(RAILING_SPEC));
     const exactWall = box(100, 100, 100);
     const exactRailing = box(200, 20, 20);
     required(
@@ -471,8 +471,8 @@ describe('exact Product Body IFC integration', () => {
 
 const META = { applicationName: 'exact-body-test', applicationVersion: '1' };
 
-function initializedModel(): BimModel {
-  const model = new BimModel();
+function initializedModel(): BimDocument {
+  const model = new BimDocument();
   required(model.init({ name: 'Exact Body Test', projectId: 'exact-body-test' }));
   return model;
 }
@@ -493,7 +493,7 @@ function errorCode(result: {
 }
 
 function requiredElement(
-  model: BimModel,
+  model: BimDocument,
   localId: RecordRef,
   category: 'WALL' | 'RAILING'
 ): BimElement<'WALL'> | BimElement<'RAILING'> {

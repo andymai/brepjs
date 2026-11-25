@@ -69,7 +69,7 @@ A copy-in starter registry (storey, wall, slab, column, beam, roof, stair, door,
 
 ## BIM projection
 
-`brepjs-bim`'s `familiesToBim()` projects a resolved tree into a `BimModel`: storeys, walls, slabs, columns, beams, roofs, stairs, and wall openings, with property sets, materials, spatial containment, and reorder-stable GlobalIds, exportable to IFC with independent validation. See the [families docs](https://brepjs.dev/families/overview) and [for BIM professionals](https://brepjs.dev/families/for-bim-professionals).
+`brepjs-bim`'s `familiesToBim()` projects a resolved tree into a `BimDocument`: storeys, walls, slabs, columns, beams, roofs, stairs, and wall openings, with property sets, materials, spatial containment, and reorder-stable GlobalIds, exportable to IFC with independent validation. See the [families docs](https://brepjs.dev/families/overview) and [for BIM professionals](https://brepjs.dev/families/for-bim-professionals).
 
 ## Docs
 

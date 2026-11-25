@@ -1,3 +1,4 @@
+import { authoring } from '../src/model/authoring.js';
 import { assert, describe, it, expect, beforeAll } from 'vitest';
 import {
   DisposalScope,
@@ -11,7 +12,7 @@ import {
 } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
 import {
-  BimModel,
+  BimDocument,
   disposeImportedModel,
   fromIfc,
   placedSolids,
@@ -34,7 +35,7 @@ const Z: [number, number, number] = [0, 0, 1];
 interface Case {
   readonly name: string;
   readonly fidelity: GeometryFidelity;
-  readonly add: (model: BimModel) => RecordRef;
+  readonly add: (model: BimDocument) => RecordRef;
 }
 
 const CASES: readonly Case[] = [
@@ -43,7 +44,7 @@ const CASES: readonly Case[] = [
     fidelity: 'TESSELLATED_MANIFOLD',
     add: (m) =>
       unwrap(
-        m.addWall({
+        authoring(m).addWall({
           length: 5000,
           height: 3000,
           thickness: 200,
@@ -59,7 +60,7 @@ const CASES: readonly Case[] = [
     fidelity: 'TESSELLATED_MANIFOLD',
     add: (m) =>
       unwrap(
-        m.addWall({
+        authoring(m).addWall({
           length: 5000,
           height: 3000,
           thickness: 200,
@@ -75,7 +76,7 @@ const CASES: readonly Case[] = [
     fidelity: 'PARAMETRIC',
     add: (m) =>
       unwrap(
-        m.addSlab({
+        authoring(m).addSlab({
           length: 500,
           width: 300,
           thickness: 40,
@@ -92,7 +93,7 @@ const CASES: readonly Case[] = [
     fidelity: 'PARAMETRIC',
     add: (m) =>
       unwrap(
-        m.addSlab({
+        authoring(m).addSlab({
           length: 500,
           width: 300,
           thickness: 40,
@@ -109,7 +110,7 @@ const CASES: readonly Case[] = [
     fidelity: 'PARAMETRIC',
     add: (m) =>
       unwrap(
-        m.addFooting({
+        authoring(m).addFooting({
           length: 500,
           width: 300,
           thickness: 100,
@@ -125,7 +126,7 @@ const CASES: readonly Case[] = [
     fidelity: 'PARAMETRIC',
     add: (m) =>
       unwrap(
-        m.addCovering({
+        authoring(m).addCovering({
           length: 2000,
           width: 1000,
           thickness: 20,
@@ -141,7 +142,7 @@ const CASES: readonly Case[] = [
     fidelity: 'TESSELLATED_MANIFOLD',
     add: (m) =>
       unwrap(
-        m.addRailing({
+        authoring(m).addRailing({
           length: 1000,
           height: 1100,
           thickness: 50,
@@ -157,7 +158,7 @@ const CASES: readonly Case[] = [
     fidelity: 'TESSELLATED_MANIFOLD',
     add: (m) =>
       unwrap(
-        m.addRailing({
+        authoring(m).addRailing({
           length: 1000,
           height: 1100,
           thickness: 50,
@@ -174,7 +175,7 @@ const CASES: readonly Case[] = [
     fidelity: 'PARAMETRIC',
     add: (m) =>
       unwrap(
-        m.addRoof({
+        authoring(m).addRoof({
           length: 4000,
           width: 3000,
           thickness: 200,
@@ -191,7 +192,7 @@ const CASES: readonly Case[] = [
     fidelity: 'TESSELLATED_MANIFOLD',
     add: (m) =>
       unwrap(
-        m.addRoof({
+        authoring(m).addRoof({
           length: 4000,
           width: 3000,
           thickness: 200,
@@ -209,7 +210,7 @@ const CASES: readonly Case[] = [
     fidelity: 'PARAMETRIC',
     add: (m) =>
       unwrap(
-        m.addSpace({
+        authoring(m).addSpace({
           name: 'Room',
           length: 4000,
           width: 3000,
@@ -226,7 +227,7 @@ const CASES: readonly Case[] = [
     fidelity: 'PARAMETRIC',
     add: (m) =>
       unwrap(
-        m.addPile({
+        authoring(m).addPile({
           length: 6000,
           profile: { kind: 'RECTANGULAR', width: 300, height: 300 },
           origin: ORIGIN,
@@ -254,12 +255,12 @@ function totalVolume(shapes: readonly Shape3D[]): number {
   return shapes.reduce((sum, s) => sum + unwrap(measureVolume(s)), 0);
 }
 
-function newModel(): { readonly model: BimModel; readonly storeyId: RecordRef } {
-  const model = new BimModel();
+function newModel(): { readonly model: BimDocument; readonly storeyId: RecordRef } {
+  const model = new BimDocument();
   const projectId = unwrap(model.init({ name: 'Placement RoundTrip' }));
-  const siteId = unwrap(model.addSite({ name: 'Site' }));
-  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
-  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
+  const siteId = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
@@ -272,7 +273,7 @@ interface EagerBody {
   readonly volume: number;
 }
 
-function eagerBody(model: BimModel, id: RecordRef): EagerBody {
+function eagerBody(model: BimDocument, id: RecordRef): EagerBody {
   const element = model.getElement(id);
   if (element === null) throw new Error(`element ${id} missing`);
   const solids = unwrap(placedSolids(element));
@@ -283,7 +284,7 @@ function eagerBody(model: BimModel, id: RecordRef): EagerBody {
   }
 }
 
-async function roundTrip(model: BimModel): Promise<ImportedModel> {
+async function roundTrip(model: BimDocument): Promise<ImportedModel> {
   const bytes = unwrap(await toIfc(model, META));
   return unwrap(await fromIfc(bytes));
 }
@@ -328,7 +329,7 @@ describe('element placement survives the IFC round trip', () => {
       const points = section.map(([u, v]): [number, number] => [sign * u, v]);
       const length = 600;
       const id = unwrap(
-        model.addBeam({
+        authoring(model).addBeam({
           length,
           profile: { kind: 'ARBITRARY_CLOSED', points },
           origin: ORIGIN,
@@ -393,7 +394,7 @@ describe('element placement survives the IFC round trip', () => {
   it('cuts a door void where the corner-anchored wall body has it', async () => {
     const { model, storeyId } = newModel();
     const wallId = unwrap(
-      model.addWall({
+      authoring(model).addWall({
         length: 5000,
         height: 3000,
         thickness: 200,
@@ -405,7 +406,7 @@ describe('element placement survives the IFC round trip', () => {
     );
     model.placeIn(wallId, storeyId);
     const doorId = unwrap(
-      model.addDoorAndCutWall({
+      authoring(model).addDoorAndCutWall({
         wallLocalId: wallId,
         width: 900,
         height: 2100,

@@ -1,7 +1,8 @@
+import { authoring } from '../src/model/authoring.js';
 import { ordinalOf } from '../src/identity/recordRef.js';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import * as brepjs from 'brepjs';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 import { openingHost } from './helpers/openingFixture.js';
@@ -76,7 +77,7 @@ function observeOpening(
 
 it('releases a successful cut output when tool cleanup cancels the opening command', () => {
   const baseline = arena();
-  const model = new BimModel();
+  const model = new BimDocument();
   const host = openingHost(model, 'Door');
   const before = model.getAllElements();
   const relationships = model.getAllRelationships();
@@ -111,7 +112,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
       `${kind} cancels safely when %s cleanup throws ${timing} native release`,
       (role) => {
         const baseline = arena();
-        const model = new BimModel();
+        const model = new BimDocument();
         const host = openingHost(model, kind);
         const old = host.solid();
         const before = model.getAllElements();
@@ -131,7 +132,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
           expect(model.getAllRelationships()).toEqual(relationships);
           expect(host.solid()).toBe(old);
           expect(brepjs.getKernel().volume(old.wrapped)).toBeCloseTo(host.volume, 7);
-          expect(model.addProxy({ name: 'Still owned', solid: old })).toMatchObject({
+          expect(authoring(model).addProxy({ name: 'Still owned', solid: old })).toMatchObject({
             ok: false,
             error: { code: 'BODY_OWNERSHIP_CONFLICT' },
           });
@@ -160,7 +161,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
     `${kind} preserves its host and all identities after a cut %s failure`,
     (failure) => {
       const baseline = arena();
-      const model = new BimModel();
+      const model = new BimDocument();
       const host = openingHost(model, kind);
       const before = model.getAllElements();
       const relationships = model.getAllRelationships();
@@ -214,7 +215,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
     `${kind} rolls back generated-output adoption when validation returns %s`,
     (failure) => {
       const baseline = arena();
-      const model = new BimModel();
+      const model = new BimDocument();
       const host = openingHost(model, kind);
       const before = model.getAllElements();
       const relationships = model.getAllRelationships();
@@ -265,7 +266,7 @@ it.each(['Door', 'Slab'] as const)(
   '%s releases the generated tool when native validity throws',
   (kind) => {
     const baseline = arena();
-    const model = new BimModel();
+    const model = new BimDocument();
     const host = openingHost(model, kind);
     const before = model.getAllElements();
     const relationships = model.getAllRelationships();
@@ -295,7 +296,7 @@ it.each(['Door', 'Slab'] as const)(
 
 it('preserves native validation failure and attempts every failed tool/profile cleanup once', () => {
   const baseline = arena();
-  const model = new BimModel();
+  const model = new BimDocument();
   const host = openingHost(model, 'Door');
   const primary = new Error('Native validity failure');
   const cleanup = new Error('Released but failed');
@@ -328,7 +329,7 @@ it('preserves native validation failure and attempts every failed tool/profile c
 
 it('keeps a rejected generated output uncertain when its release throws, without retry or readoption', () => {
   const baseline = arena();
-  const model = new BimModel();
+  const model = new BimDocument();
   const host = openingHost(model, 'Door');
   const before = model.getAllElements();
   const cleanup = new Error('Output release did not complete');
@@ -361,7 +362,7 @@ it('keeps a rejected generated output uncertain when its release throws, without
     }
     expect(kernel.volume(output.wrapped)).toBeCloseTo(54, 7);
     expect(kernel.volume(host.solid().wrapped)).toBeCloseTo(60, 7);
-    expect(model.addProxy({ name: 'Uncertain output', solid: output })).toMatchObject({
+    expect(authoring(model).addProxy({ name: 'Uncertain output', solid: output })).toMatchObject({
       ok: false,
       error: {
         code: 'BODY_OWNERSHIP_CONFLICT',
@@ -382,7 +383,7 @@ it('keeps a rejected generated output uncertain when its release throws, without
 
 it('reports both temporary and cancelled-output cleanup failures after an otherwise successful cut', () => {
   const baseline = arena();
-  const model = new BimModel();
+  const model = new BimDocument();
   const host = openingHost(model, 'Door');
   const temporary = new Error('Tool cleanup');
   const output = new Error('Cancelled output cleanup');
@@ -421,7 +422,7 @@ it.each(['Door', 'Slab'] as const)(
   '%s preserves its host when copying the cut subsolid fails',
   (kind) => {
     const baseline = arena();
-    const model = new BimModel();
+    const model = new BimDocument();
     const host = openingHost(model, kind);
     const before = model.getAllElements();
     const nativeBefore = arena();
@@ -460,7 +461,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
       `${kind} keeps a cancelled ${role} uncertain after its release throws %s native release`,
       (timing) => {
         const baseline = arena();
-        const model = new BimModel();
+        const model = new BimDocument();
         const host = openingHost(model, kind);
         const before = model.getAllElements();
         const relationships = model.getAllRelationships();
@@ -506,7 +507,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
           expect(observed.resources.every((entry) => entry.attempts === 1)).toBe(true);
           expectArena(nativeBefore, timing === 'before' ? 1 : 0);
           expect
-            .soft(model.addProxy({ name: 'Uncertain cancelled solid', solid: output }))
+            .soft(authoring(model).addProxy({ name: 'Uncertain cancelled solid', solid: output }))
             .toMatchObject({
               ok: false,
               error: { code: 'BODY_OWNERSHIP_CONFLICT', metadata: { ownerState: 'UNCERTAIN' } },
@@ -516,7 +517,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
             const alias = brepjs.unwrap(brepjs.validSolid(brepjs.createSolid(raw)));
             try {
               expect(
-                model.addProxy({ name: 'Aliased uncertain output', solid: alias })
+                authoring(model).addProxy({ name: 'Aliased uncertain output', solid: alias })
               ).toMatchObject({
                 ok: false,
                 error: { code: 'BODY_OWNERSHIP_CONFLICT', metadata: { ownerState: 'UNCERTAIN' } },

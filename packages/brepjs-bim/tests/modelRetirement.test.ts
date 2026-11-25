@@ -1,6 +1,7 @@
+import { authoring } from '../src/model/authoring.js';
 import { beforeAll, afterEach, expect, it, vi } from 'vitest';
 import { box, unwrap, type ValidSolid } from 'brepjs';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import type { WallSpec } from '../src/specs/wallSpec.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
@@ -26,9 +27,9 @@ afterEach(() => vi.restoreAllMocks());
 
 it('reports post-release failure as COMMITTED, attempts every old item once, and exposes only committed reads', () => {
   const baseline = arena();
-  const model = new BimModel();
+  const model = new BimDocument();
   try {
-    const id = unwrap(model.addWall(WALL));
+    const id = unwrap(authoring(model).addWall(WALL));
     const first = box(1, 1, 1);
     const second = box(1, 1, 1);
     unwrap(
@@ -47,7 +48,7 @@ it('reports post-release failure as COMMITTED, attempts every old item once, and
     let specReads = 0;
     const firstAttempt = vi.spyOn(first, Symbol.dispose).mockImplementation(() => {
       callbackRead = model.getElement(id)?.geometry;
-      reentrant = model.addWall({
+      reentrant = authoring(model).addWall({
         ...WALL,
         get length() {
           specReads++;
@@ -103,8 +104,8 @@ it('reports post-release failure as COMMITTED, attempts every old item once, and
 
 it('retains responsibility for a live uncertain retirement and never readopts or retries it', () => {
   const baseline = arena();
-  const model = new BimModel();
-  const id = unwrap(model.addWall(WALL));
+  const model = new BimDocument();
+  const id = unwrap(authoring(model).addWall(WALL));
   const wall = model.getElement(id);
   if (wall?.category !== 'WALL') throw new Error('Expected Wall');
   const uncertain = wall.geometry.solids[0];
@@ -129,7 +130,7 @@ it('retains responsibility for a live uncertain retirement and never readopts or
       ok: false,
       error: { code: 'BODY_OWNERSHIP_CONFLICT', metadata: { ownerState: 'UNCERTAIN' } },
     });
-    expect(model.addProxy({ name: 'Uncertain', solid: uncertain })).toMatchObject({
+    expect(authoring(model).addProxy({ name: 'Uncertain', solid: uncertain })).toMatchObject({
       ok: false,
       error: { code: 'BODY_OWNERSHIP_CONFLICT' },
     });
@@ -153,11 +154,11 @@ it('retains responsibility for a live uncertain retirement and never readopts or
 
 it('attempts all model-owned releases before throwing an aggregate, and disposal twice never retries', () => {
   const baseline = arena();
-  const model = new BimModel();
+  const model = new BimDocument();
   try {
     const inputs: ValidSolid[] = [box(1, 1, 1), box(2, 2, 2), box(3, 3, 3)];
     const attempts = inputs.map((solid, index) => {
-      unwrap(model.addProxy({ name: `Proxy ${index}`, solid }));
+      unwrap(authoring(model).addProxy({ name: `Proxy ${index}`, solid }));
       const release = solid[Symbol.dispose].bind(solid);
       return vi.spyOn(solid, Symbol.dispose).mockImplementation(() => {
         release();
@@ -171,7 +172,7 @@ it('attempts all model-owned releases before throwing an aggregate, and disposal
     const before = model.getAllElements();
     let reads = 0;
     expect(
-      model.addWall({
+      authoring(model).addWall({
         ...WALL,
         get length() {
           reads++;
@@ -183,7 +184,7 @@ it('attempts all model-owned releases before throwing an aggregate, and disposal
       ok: false,
       error: { code: 'MODEL_DISPOSED' },
     });
-    expect(model.addSite({ name: 'After close' })).toMatchObject({
+    expect(authoring(model).addSite({ name: 'After close' })).toMatchObject({
       ok: false,
       error: { code: 'MODEL_DISPOSED' },
     });
@@ -198,9 +199,9 @@ it('attempts all model-owned releases before throwing an aggregate, and disposal
 
 it('keeps a successful RecordRef outcome and diagnostics when retiring a slab opening host fails', () => {
   const baseline = arena();
-  const model = new BimModel();
+  const model = new BimDocument();
   try {
-    const id = unwrap(model.addSlab({ ...WALL, length: 10, width: 10, predefinedType: 'FLOOR' }));
+    const id = unwrap(authoring(model).addSlab({ ...WALL, length: 10, width: 10, predefinedType: 'FLOOR' }));
     const before = model.getElement(id);
     if (before?.category !== 'SLAB') throw new Error('Expected Slab');
     const release = before.geometry.solids[0][Symbol.dispose].bind(before.geometry.solids[0]);
@@ -212,7 +213,7 @@ it('keeps a successful RecordRef outcome and diagnostics when retiring a slab op
       throw cause;
     });
     const opening = unwrap(
-      model.addSlabOpening({ slabLocalId: id, sizeX: 1, sizeY: 1, offsetX: 1, offsetY: 1 })
+      authoring(model).addSlabOpening({ slabLocalId: id, sizeX: 1, sizeY: 1, offsetX: 1, offsetY: 1 })
     );
     expect(model.getElement(opening)?.category).toBe('OPENING');
     expect(callbackRelationships).toEqual(model.getAllRelationships());
@@ -223,7 +224,7 @@ it('keeps a successful RecordRef outcome and diagnostics when retiring a slab op
     if (after?.category !== 'SLAB') throw new Error('Expected Slab');
     expect(after.geometry.solids[0] === before.geometry.solids[0]).toBe(false);
     expect(
-      model.addProxy({ name: 'Borrowed slab', solid: after.geometry.solids[0] })
+      authoring(model).addProxy({ name: 'Borrowed slab', solid: after.geometry.solids[0] })
     ).toMatchObject({
       ok: false,
       error: { code: 'BODY_OWNERSHIP_CONFLICT' },

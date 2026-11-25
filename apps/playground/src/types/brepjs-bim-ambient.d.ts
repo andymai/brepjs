@@ -7,11 +7,12 @@
 
 import type { Bounds3D, BrepError, OrientedFace, PlanarFace, Result, ValidSolid, csg } from 'brepjs';
 
-interface BodyCommitReceipt {
-    readonly kind: 'COMMITTED';
-    readonly localId: LocalId;
-    readonly guid: IfcGuid;
-    readonly cleanup: CleanupReport;
+type FrameSpace = 'WORLD' | 'LOCAL' | RecordRef;
+
+interface DocumentFrame {
+    readonly source: RecordRef;
+    readonly target: RecordRef | 'WORLD';
+    readonly frame: RigidFrame;
 }
 
 /** Optional identity override for created elements: a stable key (e.g. a
@@ -20,143 +21,153 @@ interface ElementIdentityOptions {
     readonly stableKey?: string | undefined;
 }
 
-declare class BimModel {
+interface AuthoredBodyInput {
+    readonly category: BodyClassification;
+    readonly placement: PlacementDefinition;
+    readonly solids: Extract<Body, {
+        kind: 'AUTHORITATIVE';
+    }>['solids'];
+    readonly stableKey?: string;
+    readonly metadata?: Readonly<{
+        name?: string;
+        description?: string;
+    }>;
+    readonly openingLocalId?: RecordRef;
+}
+
+interface BodyCommitReceipt {
+    readonly kind: 'COMMITTED';
+    readonly localId: RecordRef;
+    readonly guid: IfcGuid;
+    readonly cleanup: CleanupReport;
+}
+
+/** Prepared writes for one synchronous command, discarded on rejection. */
+interface ModelCommand {
+    readonly counter: ReturnType<typeof recordCounter>;
+    modelScope: string;
+    projectId: RecordRef | null;
+    readonly elements: AnyBimElement[];
+    readonly relationships: BimRelationship[];
+    readonly removedEdges: Set<RecordRef>;
+    readonly removedRecords: Set<RecordRef>;
+    readonly stableKeys: Map<string, RecordRef>;
+    readonly adoptions: Map<ValidSolid, Extract<GeometryOwner, {
+        state: 'RETAINED';
+    }>>;
+    readonly generated: Map<ValidSolid, object | undefined>;
+    readonly retired: OwnedGeometry[];
+    readonly recipeEligibility: Map<RecordRef, boolean>;
+}
+
+type GeometryOwner = {
+    readonly resource: object | undefined;
+} & ({
+    readonly state: 'RETIRING';
+    readonly localId?: RecordRef;
+    readonly itemIndex: number;
+} | {
+    readonly state: 'RETAINED';
+    readonly localId: RecordRef;
+    readonly itemIndex: number;
+} | {
+    readonly state: 'UNCERTAIN';
+    readonly localId?: RecordRef;
+    readonly itemIndex: number;
+});
+
+interface OwnedGeometry {
+    readonly solid: Disposable;
+    readonly resource: object | undefined;
+    readonly localId?: RecordRef;
+    readonly itemIndex: number;
+}
+
+type RelationshipFields = {
+    [K in BimRelationship['kind']]: Omit<Extract<BimRelationship, {
+        readonly kind: K;
+    }>, 'guid' | 'localId'>;
+}[BimRelationship['kind']];
+
+declare class BimDocument {
     #private;
+    frame(ref: RecordRef, target: FrameSpace): Result<import('./documentFrames.js').DocumentFrame, BimError>;
+    placedSolids(ref: RecordRef, target: FrameSpace): Result<readonly ValidSolid[], BimError>;
+    bounds(ref: RecordRef, target: FrameSpace): import('brepjs').Err<BimError> | import('brepjs').Ok<Readonly<{
+        source: RecordRef;
+        target: RecordRef | "WORLD";
+        bounds: Readonly<import('brepjs').Bounds3D>;
+    }>>;
+    materialVolume(ref: RecordRef): import('brepjs').Err<BimError> | import('brepjs').Ok<number>;
+    lookupKey(key: string): Result<RecordRef, BimError>;
+    record(ref: RecordRef): Result<AnyBimElement, BimError>;
     getGeometryCleanupDiagnostics(): readonly GeometryCleanupDiagnostic[];
-    init(spec: ProjectSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+    init(spec: ProjectSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
     [Symbol.dispose](): void;
-    addSite(spec: SiteSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addBridge(spec: BridgeSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addBridgePart(spec: BridgePartSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    /** Adds a typed IfcEarthworksFill body. Ownership of `spec.solid` transfers
-     * to the model only when this call succeeds. */
-    addEarthworksFill(spec: EarthworksFillSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addBuilding(spec: BuildingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addStorey(spec: StoreySpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addWall(spec: WallSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addSlab(spec: SlabSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addBeam(spec: BeamSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addColumn(spec: ColumnSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addSpace(spec: SpaceSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addRoof(spec: RoofSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addCurtainWall(spec: CurtainWallSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addFooting(spec: FootingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addPile(spec: PileSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    /** Realize each stair flight once in assembly coordinates. */
-    addStair(spec: StairSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    /** Realize each ramp flight once in assembly coordinates. */
-    addRamp(spec: RampSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addRailing(spec: RailingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addAuthoredBody(input: {
-        readonly category: BodyClassification;
-        readonly placement: PlacementDefinition;
-        readonly solids: Extract<Body, {
-            kind: 'AUTHORITATIVE';
-        }>['solids'];
-        readonly stableKey?: string;
-        readonly metadata?: Readonly<{
-            name?: string;
-            description?: string;
-        }>;
-        readonly openingLocalId?: LocalId;
-    }): Result<LocalId, BimError>;
+    addAuthoredBody(input: AuthoredBodyInput): Result<RecordRef, BimError>;
     /** Ownership transfers only on COMMITTED, including when retirement reports failure. */
     replaceBody(input: {
-        readonly localId: LocalId;
+        readonly localId: RecordRef;
         readonly body: Body;
     }): Result<BodyCommitReceipt, BimError>;
-    /**
-     * Adds an IfcCovering. When `hostLocalId` is supplied, an
-     * IfcRelCoversBldgElements linking the covering to its host (e.g. a slab it
-     * finishes) is recorded for export.
-     */
-    addCovering(spec: CoveringSpec, hostLocalId?: LocalId, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    /**
-     * Adds an IfcElementAssembly grouping container. The assembly has no geometry;
-     * attach parts with {@link aggregate} (IfcRelAggregates) or {@link nest}
-     * (IfcRelNests, order-preserving). Returns the assembly's localId.
-     */
-    addElementAssembly(spec: ElementAssemblySpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    /**
-     * Adds an IfcZone grouping object (a thermal/fire/occupancy zone). The zone
-     * carries no geometry; attach members (spaces or other elements) with
-     * {@link assignToGroup}. Returns the zone's localId as a Result.
-     */
-    addZone(spec: ZoneSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    /**
-     * Adds an IfcSystem grouping object (an HVAC/electrical/plumbing system). The
-     * system carries no geometry; attach members with {@link assignToGroup}.
-     * Returns the system's localId as a Result.
-     */
-    addSystem(spec: SystemSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
     /**
      * Assigns members to a zone or system via IfcRelAssignsToGroup. Repeated calls
      * for the same group extend the single relationship in call order. Returns the
      * relationship's localId.
      */
-    assignToGroup(groupId: LocalId, memberIds: readonly LocalId[]): LocalId;
+    assignToGroup(groupId: RecordRef, memberIds: readonly RecordRef[]): Result<RecordRef, BimError>;
     /**
      * Records an order-preserving IfcRelNests decomposing `parentId` into
      * `childId`. Unlike {@link aggregate}, repeated calls extend the same nesting
      * relationship in call order.
      */
-    nest(parentId: LocalId, childId: LocalId): void;
+    nest(parentId: RecordRef, childId: RecordRef): Result<void, BimError>;
     /**
      * Records an IfcRelConnectsElements logical connection between two elements.
      * Returns the relationship's localId.
      */
-    connectElements(relatingElementLocalId: LocalId, relatedElementLocalId: LocalId, description?: string): LocalId;
+    connectElements(relatingElementLocalId: RecordRef, relatedElementLocalId: RecordRef, description?: string): Result<RecordRef, BimError>;
     /**
      * Records an IfcRelConnectsPathElements connection between two path-based
      * elements at the given path ends. Returns the relationship's localId.
      */
-    connectPathElements(relatingElementLocalId: LocalId, relatedElementLocalId: LocalId, relatingConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED', relatedConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED', description?: string): LocalId;
+    connectPathElements(relatingElementLocalId: RecordRef, relatedElementLocalId: RecordRef, relatingConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED', relatedConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED', description?: string): Result<RecordRef, BimError>;
     /**
      * Assigns a surface style (colour + transparency) to an element. On export the
      * style is emitted as IfcSurfaceStyle and linked to the element's body geometry
      * via IfcStyledItem (currently honoured for railings and coverings, whose body
      * representation item is surfaced by their geometry writers).
      */
-    setSurfaceStyle(elementLocalId: LocalId, style: SurfaceStyleSpec): void;
-    getSurfaceStyle(elementLocalId: LocalId): SurfaceStyleSpec | null;
+    setSurfaceStyle(elementLocalId: RecordRef, style: SurfaceStyleSpec): Result<void, BimError>;
+    detachContainment(child: RecordRef): Result<void, BimError>;
+    assignContainer(child: RecordRef, container: RecordRef | null): Result<void, BimError>;
+    removeRelationship(ref: RecordRef): Result<void, BimError>;
+    detachDecomposition(child: RecordRef): Result<void, BimError>;
+    move(ref: RecordRef, frame: FrameInput): Result<void, BimError>;
+    reparent(ref: RecordRef, parent: RecordRef | 'WORLD', policy: 'KEEP_LOCAL' | 'KEEP_WORLD'): Result<void, BimError>;
+    delete(ref: RecordRef): Result<BodyCommitReceipt, BimError>;
+    replacePlacement(ref: RecordRef, input: PlacementDefinition): Result<void, BimError>;
+    getSurfaceStyle(elementLocalId: RecordRef): SurfaceStyleSpec | null;
     /**
      * Records an IfcRelSpaceBoundary between a space and one of its bounding
      * building elements. Returns the relationship's localId.
      */
-    addSpaceBoundary(spaceLocalId: LocalId, elementLocalId: LocalId, connectionType?: 'PHYSICAL' | 'VIRTUAL' | 'NOTDEFINED'): LocalId;
+    addSpaceBoundary(spaceLocalId: RecordRef, elementLocalId: RecordRef, connectionType?: 'PHYSICAL' | 'VIRTUAL' | 'NOTDEFINED'): Result<RecordRef, BimError>;
     /**
      * Associates a classification reference with one or more elements, creating an
      * IfcRelAssociatesClassification on export. Returns the relationship's localId.
      */
-    addClassification(ref: ClassificationRef, elementLocalIds: readonly LocalId[]): LocalId;
-    /**
-     * Adds an IfcBuildingElementProxy. The model TAKES OWNERSHIP of `spec.solid`
-     * and disposes it on model disposal; the caller must not dispose it (see
-     * {@link ProxySpec.solid}).
-     */
-    addProxy(spec: ProxySpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addFillerPanel(input: {
-        category: 'DOOR' | 'WINDOW';
-        width: number;
-        height: number;
-        materialName: string;
-        placement: PlacementDefinition;
-        stableKey?: string;
-        openingLocalId?: LocalId;
-    }): Result<LocalId, BimError>;
-    addDoorAndCutWall(spec: DoorSpec, options?: OpeningIdentityOptions): Result<LocalId, BimError>;
-    addWindowAndCutWall(spec: WindowSpec, options?: OpeningIdentityOptions): Result<LocalId, BimError>;
-    addSlabOpening(input: SlabOpeningInput, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+    addClassification(ref: ClassificationRef, elementLocalIds: readonly RecordRef[]): Result<RecordRef, BimError>;
     getDoors(): BimElement<'DOOR'>[];
     getWindows(): BimElement<'WINDOW'>[];
-    aggregate(parentId: LocalId, childId: LocalId): void;
-    placeIn(elementId: LocalId, containerId: LocalId): void;
+    aggregate(parentId: RecordRef, childId: RecordRef): Result<void, BimError>;
+    placeIn(elementId: RecordRef, containerId: RecordRef): Result<void, BimError>;
     getProject(): BimElement<'PROJECT'> | null;
-    getElement(id: LocalId): AnyBimElement | null;
+    getElement(id: RecordRef): AnyBimElement | null;
     /** Follow explicit decomposition only. Placement parenting is a separate relation. */
-    getChildren(id: LocalId): readonly AnyBimElement[];
+    getChildren(id: RecordRef): readonly AnyBimElement[];
     /** Whether recipe commands still justify this element's recipe-derived quantities. */
-    isRecipeQuantityEligible(id: LocalId): boolean;
+    isRecipeQuantityEligible(id: RecordRef): boolean;
     /**
      * A serializable summary of the model's structure, rooted at the project and
      * walking the IFC spatial hierarchy (AGGREGATES: project → site → building →
@@ -186,15 +197,133 @@ declare class BimModel {
     getSystems(): BimElement<'SYSTEM'>[];
     getAllElements(): AnyBimElement[];
     getAllRelationships(): BimRelationship[];
+    [prepareRecords](): {
+        create: (operation: string, action: (command: ModelCommand) => Result<RecordRef, BimError>) => Result<RecordRef, BimError>;
+        edit: <T>(operation: string, action: (command: ModelCommand) => Result<T, BimError>) => Result<T, BimError>;
+        adopt: (command: ModelCommand, input: AuthoredBodyInput) => Result<RecordRef, BimError>;
+        checkStableKey: (options: ElementIdentityOptions | undefined) => Result<void, BimError>;
+        makeElement: (command: ModelCommand, fields: ElementFields, stableKey?: string) => RecordRef;
+        ownGenerated: (command: ModelCommand, solids: readonly ValidSolid[]) => void;
+        makeRel: (fields: RelationshipFields, command: ModelCommand) => RecordRef;
+        checkFillTarget: (category: BodyClassification, opening: RecordRef) => Result<void, BimError>;
+        replaceGeneratedBody: (command: ModelCommand, host: Extract<AnyBimElement, {
+            representation: "BODY";
+        }>, geometry: Body) => void;
+    };
 }
 
+declare const roofOpening: z.ZodObject<{
+    kind: z.ZodLiteral<"ROOF_OPENING">;
+    sizeX: z.ZodNumber;
+    sizeY: z.ZodNumber;
+    depth: z.ZodNumber;
+}, z.core.$strict>;
+
+declare class BimAuthoring {
+    #private;
+    private readonly document;
+    /** The supplied solids already contain the void. Its definition records intent only. */
+    addRoofWithOpening(input: Pick<AuthoredBodyInput, 'solids' | 'placement' | 'metadata'> & {
+        readonly stableKey: string;
+        readonly opening: {
+            readonly slot: string;
+            readonly frame: FrameInput;
+            readonly definition: z.infer<typeof roofOpening>;
+        };
+    }): Result<{
+        readonly roof: RecordRef;
+        readonly opening: RecordRef;
+    }, BimError>;
+    private readonly access;
+    constructor(document: BimDocument);
+    addSite(spec: SiteSpec, options?: ElementIdentityOptions & {
+        readonly placementParent?: RecordRef;
+    }): Result<RecordRef, BimError>;
+    addBridge(spec: BridgeSpec, options?: ElementIdentityOptions & {
+        readonly placementParent?: RecordRef;
+    }): Result<RecordRef, BimError>;
+    addBridgePart(spec: BridgePartSpec, options?: ElementIdentityOptions & {
+        readonly placementParent?: RecordRef;
+    }): Result<RecordRef, BimError>;
+    /** Adds a typed IfcEarthworksFill body. Ownership of `spec.solid` transfers
+     * to the model only when this call succeeds. */
+    addEarthworksFill(spec: EarthworksFillSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addBuilding(spec: BuildingSpec, options?: ElementIdentityOptions & {
+        readonly placementParent?: RecordRef;
+    }): Result<RecordRef, BimError>;
+    addStorey(spec: StoreySpec, options?: ElementIdentityOptions & {
+        readonly placementParent?: RecordRef;
+    }): Result<RecordRef, BimError>;
+    addWall(spec: WallSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addSlab(spec: SlabSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addBeam(spec: BeamSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addColumn(spec: ColumnSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addSpace(spec: SpaceSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addRoof(spec: RoofSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addCurtainWall(spec: CurtainWallSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addFooting(spec: FootingSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addPile(spec: PileSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    /** Realize each stair flight once in assembly coordinates. */
+    addStair(spec: StairSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    /** Realize each ramp flight once in assembly coordinates. */
+    addRamp(spec: RampSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addRailing(spec: RailingSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    /**
+     * Adds an IfcCovering. When `hostLocalId` is supplied, an
+     * IfcRelCoversBldgElements linking the covering to its host (e.g. a slab it
+     * finishes) is recorded for export.
+     */
+    addCovering(spec: CoveringSpec, hostLocalId?: RecordRef, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    /**
+     * Adds an IfcElementAssembly grouping container. The assembly has no geometry;
+     * attach parts with {@link aggregate} (IfcRelAggregates) or {@link nest}
+     * (IfcRelNests, order-preserving). Returns the assembly's localId.
+     */
+    addElementAssembly(spec: ElementAssemblySpec, options?: ElementIdentityOptions & {
+        readonly placementParent?: RecordRef;
+    }): Result<RecordRef, BimError>;
+    /**
+     * Adds an IfcZone grouping object (a thermal/fire/occupancy zone). The zone
+     * carries no geometry; attach members (spaces or other elements) with
+     * {@link assignToGroup}. Returns the zone's localId as a Result.
+     */
+    addZone(spec: ZoneSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    /**
+     * Adds an IfcSystem grouping object (an HVAC/electrical/plumbing system). The
+     * system carries no geometry; attach members with {@link assignToGroup}.
+     * Returns the system's localId as a Result.
+     */
+    addSystem(spec: SystemSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    /**
+     * Adds an IfcBuildingElementProxy. The model TAKES OWNERSHIP of `spec.solid`
+     * and disposes it on model disposal; the caller must not dispose it (see
+     * {@link ProxySpec.solid}).
+     */
+    addProxy(spec: ProxySpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addFillerPanel(input: {
+        category: 'DOOR' | 'WINDOW';
+        width: number;
+        height: number;
+        materialName: string;
+        placement: PlacementDefinition;
+        stableKey?: string;
+        openingLocalId?: RecordRef;
+    }): Result<RecordRef, BimError>;
+    addDoorAndCutWall(spec: DoorSpec, options?: OpeningIdentityOptions): Result<RecordRef, BimError>;
+    addWindowAndCutWall(spec: WindowSpec, options?: OpeningIdentityOptions): Result<RecordRef, BimError>;
+    addSlabOpening(input: SlabOpeningInput, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+}
+
+/** Recipe commands operate on the supplied document's transaction. */
+declare function authoring(document: BimDocument): BimAuthoring;
+
 /**
- * A node in a {@link BimModel}'s spatial/decomposition tree. Fully serializable
+ * A node in a {@link BimDocument}'s spatial/decomposition tree. Fully serializable
  * (plain numbers/strings) so it can be posted across a worker boundary.
  */
 interface BimTreeNode {
-    /** The element's local id. */
-    readonly id: number;
+    /** The element's GlobalId. */
+    readonly id: string;
     /** Display label — the element's name, or its category when unnamed. */
     readonly label: string;
     /** The element's IFC category. */
@@ -230,7 +359,7 @@ interface GeometryCleanupDiagnostic {
     readonly operation: string;
     readonly itemIndex: number;
     readonly resourceKind: 'SHAPE' | 'TRANSFORM';
-    readonly localId?: number;
+    readonly localId?: RecordRef;
     readonly cause: unknown;
 }
 
@@ -298,13 +427,23 @@ declare function measureBodyMaterial(solids: NonEmpty<ValidSolid>): Result<numbe
 /** All-item tight bounds. A resolved tag belongs to the caller, not a document identity. */
 declare function bodyBounds(body: Body | NonEmpty<ValidSolid>, space?: BodySpace): Result<BodyBounds, BodyError>;
 
+type PlacementTarget = Readonly<z.infer<typeof referenceTarget>>;
+
+declare const referenceTarget: z.ZodDiscriminatedUnion<[z.ZodObject<{
+    kind: z.ZodLiteral<"DOCUMENT">;
+    record: z.ZodInstanceOf<RecordRef>;
+}, z.core.$strict>, z.ZodObject<{
+    kind: z.ZodLiteral<"EXTERNAL">;
+    identifier: z.ZodString;
+}, z.core.$strict>], "kind">;
+
 type PlacementDefinition = {
     readonly kind: 'LOCAL_FRAME';
     readonly frame: FrameInput;
-    readonly relativeTo?: LocalId;
+    readonly relativeTo?: RecordRef;
 } | {
     readonly kind: 'GRID_REFERENCE' | 'LINEAR_REFERENCE';
-    readonly references: readonly string[];
+    readonly references: readonly PlacementTarget[];
     readonly parameters: Readonly<Record<string, number>>;
 };
 
@@ -360,7 +499,7 @@ declare function frameMul(a: RigidFrame, b: RigidFrame): Result<RigidFrame, BimE
 
 declare function frameInverse(frame: RigidFrame): Result<RigidFrame, BimError>;
 
-declare function toIfc(model: BimModel, meta: BimModelMeta): Promise<Result<Uint8Array, BimError>>;
+declare function toIfc(model: BimDocument, meta: BimModelMeta): Promise<Result<Uint8Array, BimError>>;
 
 interface ValidatedIfcResult {
     readonly bytes: Uint8Array;
@@ -372,10 +511,10 @@ interface ValidatedIfcResult {
  * pre-serialization referential-integrity gate, then the post-save EXPRESS/STEP
  * schema gate and the write→read→re-write round-trip check. Returns both the
  * bytes and a combined report. A model that fails the integrity gate returns an
- * INTEGRITY_FAILURE BimError without serializing (unlike plain {@link toIfc},
- * which serializes unconditionally).
+ * INTEGRITY_FAILURE before serialization. Both paths preserve the authored
+ * containment and placement edges.
  */
-declare function toIfcValidated(model: BimModel, meta: BimModelMeta): Promise<Result<ValidatedIfcResult, BimError>>;
+declare function toIfcValidated(model: BimDocument, meta: BimModelMeta): Promise<Result<ValidatedIfcResult, BimError>>;
 
 /**
  * Override how web-ifc finds its `.wasm` file. Applied by every web-ifc entry
@@ -1130,8 +1269,8 @@ type AssemblyPlace = 'SITE' | 'FACTORY' | 'NOTDEFINED';
 
 /**
  * A grouping container (IfcElementAssembly). Carries no geometry of its own;
- * parts are attached via {@link BimModel.aggregate} (IfcRelAggregates) or
- * {@link BimModel.nest} (IfcRelNests, order-preserving).
+ * parts are attached via {@link BimDocument.aggregate} (IfcRelAggregates) or
+ * {@link BimDocument.nest} (IfcRelNests, order-preserving).
  */
 interface ElementAssemblySpec {
     readonly name?: string | undefined;
@@ -1190,7 +1329,7 @@ interface DoorSpec {
     readonly height: number;
     readonly offsetAlongWall: number;
     readonly offsetFromFloor: number;
-    readonly wallLocalId: LocalId;
+    readonly wallLocalId: RecordRef;
     readonly materialName: string;
     readonly isExternal?: boolean | undefined;
     readonly fireRating?: string | undefined;
@@ -1203,7 +1342,7 @@ interface WindowSpec {
     readonly height: number;
     readonly offsetAlongWall: number;
     readonly offsetFromFloor: number;
-    readonly wallLocalId: LocalId;
+    readonly wallLocalId: RecordRef;
     readonly materialName: string;
     readonly isExternal?: boolean | undefined;
     readonly fireRating?: string | undefined;
@@ -1216,7 +1355,7 @@ declare function parseDoorSpec(input: unknown): Result<DoorSpec, BimError>;
 declare function parseWindowSpec(input: unknown): Result<WindowSpec, BimError>;
 
 /**
- * Input for BimModel.addSlabOpening — a vertical through-hole in a slab.
+ * Input for BimDocument.addSlabOpening — a vertical through-hole in a slab.
  * All dimensions in mm, offsets in the slab's local XY frame.
  */
 interface SlabOpeningInput {
@@ -1224,7 +1363,7 @@ interface SlabOpeningInput {
     readonly sizeY: number;
     readonly offsetX: number;
     readonly offsetY: number;
-    readonly slabLocalId: LocalId;
+    readonly slabLocalId: RecordRef;
 }
 
 declare function parseSlabOpeningInput(input: unknown): Result<SlabOpeningInput, BimError>;
@@ -1282,17 +1421,6 @@ declare function deriveIfcGuidSync(stableKey: string): IfcGuid;
  * surface. The derivation itself is synchronous and deterministic.
  */
 declare function deriveIfcGuid(stableKey: string): Promise<IfcGuid>;
-
-type LocalId = number & {
-    readonly [__localIdBrand]: true;
-};
-
-interface LocalIdCounter {
-    next(): LocalId;
-    current(): LocalId;
-}
-
-declare function makeLocalIdCounter(start?: number): LocalIdCounter;
 
 interface ModelAccessor {
     getAllElements(): readonly AnyBimElement[];
@@ -1389,7 +1517,7 @@ interface ValidationIssue {
     readonly code: string;
     readonly severity: ValidationSeverity;
     readonly message: string;
-    readonly entity?: string | number;
+    readonly entity?: string | number | RecordRef;
     readonly context?: Readonly<Record<string, unknown>>;
 }
 
@@ -1397,7 +1525,7 @@ interface ValidationReport {
     readonly issues: readonly ValidationIssue[];
 }
 
-declare function issue(severity: ValidationSeverity, code: string, message: string, entity?: string | number, context?: Readonly<Record<string, unknown>>): ValidationIssue;
+declare function issue(severity: ValidationSeverity, code: string, message: string, entity?: string | number | RecordRef, context?: Readonly<Record<string, unknown>>): ValidationIssue;
 
 declare function emptyReport(): ValidationReport;
 
@@ -1755,7 +1883,7 @@ interface ProxySpec {
     /**
      * The proxy body. Its coordinates are written as supplied under an identity
      * placement relative to its containing spatial structure. OWNERSHIP TRANSFERS
-     * to the BimModel on addProxy(): the model disposes this handle when it is
+     * to the BimDocument on addProxy(): the model disposes this handle when it is
      * disposed, so the caller MUST NOT dispose it itself (no `using`) — doing so
      * double-frees the underlying WASM shape.
      */
@@ -1816,19 +1944,16 @@ interface SpatialPlacementSpec {
     readonly axisZ?: [number, number, number] | undefined;
 }
 
-interface BuildingSpec {
-    readonly name: string;
-    readonly description?: string;
-}
-
-interface StoreySpec {
-    readonly name: string;
-    readonly elevation: number;
-}
-
 type BodyClassification = (typeof bodyClassifications)[number];
 
 declare const bodyClassifications: readonly ["WALL", "RAILING", "MEMBER", "PLATE", "SIGN", "DOOR", "WINDOW", "STAIR", "RAMP", "SLAB", "ROOF", "SPACE", "COVERING", "BEAM", "COLUMN", "FOOTING", "PILE", "PROXY", "EARTHWORKS_FILL"];
+
+interface RoofOpeningSpec {
+    readonly kind: 'ROOF_OPENING';
+    readonly sizeX: number;
+    readonly sizeY: number;
+    readonly depth: number;
+}
 
 interface ClassificationSpecs {
     WALL: WallSpec;
@@ -1886,7 +2011,7 @@ type SlabOpeningSpec = {
     readonly offsetY: number;
 };
 
-type OpeningSpec = WallOpeningSpec | SlabOpeningSpec;
+type OpeningSpec = WallOpeningSpec | SlabOpeningSpec | RoofOpeningSpec;
 
 declare function isWallOpening(spec: OpeningSpec): spec is WallOpeningSpec;
 
@@ -1899,25 +2024,25 @@ type AnyBimElement = {
 interface AggregatesRel {
     readonly kind: 'AGGREGATES';
     readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly relatingObject: LocalId;
-    readonly relatedObjects: readonly LocalId[];
+    readonly localId: RecordRef;
+    readonly relatingObject: RecordRef;
+    readonly relatedObjects: readonly RecordRef[];
 }
 
 interface ContainedInRel {
     readonly kind: 'CONTAINED_IN';
     readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly relatingStructure: LocalId;
-    readonly relatedElements: readonly LocalId[];
+    readonly localId: RecordRef;
+    readonly relatingStructure: RecordRef;
+    readonly relatedElements: readonly RecordRef[];
 }
 
 interface AssociatesMaterialRel {
     readonly kind: 'ASSOCIATES_MATERIAL';
     readonly guid: IfcGuid;
-    readonly localId: LocalId;
+    readonly localId: RecordRef;
     readonly materialName: string;
-    readonly relatedObjects: readonly LocalId[];
+    readonly relatedObjects: readonly RecordRef[];
     /**
      * When present, the element is associated via an IfcMaterialLayerSet built from
      * these layers instead of the bare `materialName` IfcMaterial.
@@ -1929,41 +2054,34 @@ interface AssociatesMaterialRel {
 interface AssociatesClassificationRel {
     readonly kind: 'ASSOCIATES_CLASSIFICATION';
     readonly guid: IfcGuid;
-    readonly localId: LocalId;
+    readonly localId: RecordRef;
     readonly ref: ClassificationRef;
-    readonly relatedObjects: readonly LocalId[];
+    readonly relatedObjects: readonly RecordRef[];
 }
 
-interface VoidsWallRel {
-    readonly kind: 'VOIDS_WALL';
+interface VoidsRel {
+    readonly kind: 'VOIDS';
     readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly wallLocalId: LocalId;
-    readonly openingLocalId: LocalId;
-}
-
-interface VoidsSlabRel {
-    readonly kind: 'VOIDS_SLAB';
-    readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly slabLocalId: LocalId;
-    readonly openingLocalId: LocalId;
+    readonly localId: RecordRef;
+    readonly hostLocalId: RecordRef;
+    readonly hostCategory: 'WALL' | 'SLAB' | 'ROOF';
+    readonly openingLocalId: RecordRef;
 }
 
 interface FillsOpeningRel {
     readonly kind: 'FILLS_OPENING';
     readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly openingLocalId: LocalId;
-    readonly fillerLocalId: LocalId;
+    readonly localId: RecordRef;
+    readonly openingLocalId: RecordRef;
+    readonly fillerLocalId: RecordRef;
 }
 
 interface SpaceBoundaryRel {
     readonly kind: 'SPACE_BOUNDARY';
     readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly spaceLocalId: LocalId;
-    readonly elementLocalId: LocalId;
+    readonly localId: RecordRef;
+    readonly spaceLocalId: RecordRef;
+    readonly elementLocalId: RecordRef;
     readonly connectionType: 'PHYSICAL' | 'VIRTUAL' | 'NOTDEFINED';
 }
 
@@ -1971,18 +2089,18 @@ interface SpaceBoundaryRel {
 interface NestsRel {
     readonly kind: 'NESTS';
     readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly relatingObject: LocalId;
-    readonly relatedObjects: readonly LocalId[];
+    readonly localId: RecordRef;
+    readonly relatingObject: RecordRef;
+    readonly relatedObjects: readonly RecordRef[];
 }
 
 /** Logical connection between two elements (IfcRelConnectsElements). */
 interface ConnectsElementsRel {
     readonly kind: 'CONNECTS_ELEMENTS';
     readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly relatingElementLocalId: LocalId;
-    readonly relatedElementLocalId: LocalId;
+    readonly localId: RecordRef;
+    readonly relatingElementLocalId: RecordRef;
+    readonly relatedElementLocalId: RecordRef;
     readonly description?: string | undefined;
 }
 
@@ -1990,9 +2108,9 @@ interface ConnectsElementsRel {
 interface ConnectsPathElementsRel {
     readonly kind: 'CONNECTS_PATH_ELEMENTS';
     readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly relatingElementLocalId: LocalId;
-    readonly relatedElementLocalId: LocalId;
+    readonly localId: RecordRef;
+    readonly relatingElementLocalId: RecordRef;
+    readonly relatedElementLocalId: RecordRef;
     readonly relatingConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED';
     readonly relatedConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED';
     readonly description?: string | undefined;
@@ -2002,9 +2120,9 @@ interface ConnectsPathElementsRel {
 interface CoversElementRel {
     readonly kind: 'COVERS_ELEMENT';
     readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly hostLocalId: LocalId;
-    readonly coveringLocalId: LocalId;
+    readonly localId: RecordRef;
+    readonly hostLocalId: RecordRef;
+    readonly coveringLocalId: RecordRef;
 }
 
 /**
@@ -2015,12 +2133,12 @@ interface CoversElementRel {
 interface AssignsToGroupRel {
     readonly kind: 'ASSIGNS_TO_GROUP';
     readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly groupLocalId: LocalId;
-    readonly memberLocalIds: readonly LocalId[];
+    readonly localId: RecordRef;
+    readonly groupLocalId: RecordRef;
+    readonly memberLocalIds: readonly RecordRef[];
 }
 
-type BimRelationship = AggregatesRel | ContainedInRel | AssociatesMaterialRel | AssociatesClassificationRel | VoidsWallRel | VoidsSlabRel | FillsOpeningRel | SpaceBoundaryRel | NestsRel | ConnectsElementsRel | ConnectsPathElementsRel | CoversElementRel | AssignsToGroupRel;
+type BimRelationship = AggregatesRel | ContainedInRel | AssociatesMaterialRel | AssociatesClassificationRel | VoidsRel | FillsOpeningRel | SpaceBoundaryRel | NestsRel | ConnectsElementsRel | ConnectsPathElementsRel | CoversElementRel | AssignsToGroupRel;
 
 /**
  * Shared material-association value types. Pure data, no imports, so they are
@@ -2052,6 +2170,12 @@ interface ClassificationRef {
     readonly code: string;
     /** Human-readable label for the referenced code. */
     readonly description?: string | undefined;
+}
+
+declare class RecordRef {
+    readonly [sequence]: number;
+    constructor(ordinal: number);
+    toString(): string;
 }
 
 interface BimModelMeta {
@@ -2096,7 +2220,7 @@ interface OwnerHistoryMeta {
 }
 
 /**
- * Derives a {@link CobieModel} from an in-memory {@link BimModel}, reading only
+ * Derives a {@link CobieModel} from an in-memory {@link BimDocument}, reading only
  * its public getters. The derivation is a single O(N) pass that mirrors the
  * spatial-tree and type-layer conventions of {@link toIfc} so that COBie
  * Component/Type names line up with the exported IFC.
@@ -2104,7 +2228,7 @@ interface OwnerHistoryMeta {
  * Optional element categories from later phases (ZONE, SYSTEM) are picked up
  * generically when present; their absence is not an error.
  */
-declare function deriveCobieModel(model: BimModel, meta?: CobieExportMeta): CobieModel;
+declare function deriveCobieModel(model: BimDocument, meta?: CobieExportMeta): CobieModel;
 
 /**
  * Serializes a {@link CobieModel} to CSV — one sheet per COBie table, keyed by
@@ -2120,14 +2244,14 @@ declare function serializeCobieToJson(model: CobieModel): CobieJson;
  * COBie (Construction-Operations Building information exchange) table row types.
  *
  * Each interface models one COBie sheet. Column names follow the COBie 2.4
- * spreadsheet schema (camelCased). Rows are derived from a {@link BimModel} by
+ * spreadsheet schema (camelCased). Rows are derived from a {@link BimDocument} by
  * {@link deriveCobieModel}; the resulting {@link CobieModel} is a pure value
  * object that can be serialized to CSV or JSON.
  *
  * Several required-but-not-yet-modelled COBie columns (CreatedBy, CreatedOn,
  * Category) are emitted as empty strings rather than omitted, because COBie
  * validators expect the columns to be present. The fields that brepjs-bim can
- * populate from a {@link BimModel} carry real data.
+ * populate from a {@link BimDocument} carry real data.
  */
 /** Minimal contact metadata used to populate the COBie Contact sheet. */
 interface CobieContactMeta {
@@ -2560,9 +2684,9 @@ interface ProxiedElement {
 }
 
 interface FamiliesBimResult {
-    readonly model: BimModel;
-    /** LocalId per geometry-bearing families key path. */
-    readonly idByKeyPath: ReadonlyMap<string, LocalId>;
+    readonly model: BimDocument;
+    /** RecordRef per geometry-bearing families key path. */
+    readonly idByKeyPath: ReadonlyMap<string, RecordRef>;
     /**
      * Elements exported as IfcBuildingElementProxy because no spec route
      * matched, in walk order. Only ever non-empty when `proxyEvaluator` is set:
@@ -2574,7 +2698,7 @@ interface FamiliesBimResult {
 }
 
 /**
- * Project a resolved families tree into an eager BimModel. The caller owns
+ * Project a resolved families tree into an eager BimDocument. The caller owns
  * the returned model (`using`); families stays domain-neutral — this adapter
  * is where families types meet the IFC vocabulary.
  */
@@ -2585,6 +2709,45 @@ declare function familiesToBim(root: ResolvedElement, options: FamiliesToBimOpti
 interface OpeningIdentityOptions extends ElementIdentityOptions {
     readonly openingStableKey?: string | undefined;
     readonly solids?: NonEmpty<ValidSolid>;
+}
+
+declare class BimModel extends BimDocument {
+    private readonly commands;
+    addSite(spec: SiteSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addBridge(spec: BridgeSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addBridgePart(spec: BridgePartSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addEarthworksFill(spec: EarthworksFillSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addBuilding(spec: BuildingSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addStorey(spec: StoreySpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addWall(spec: WallSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addSlab(spec: SlabSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addBeam(spec: BeamSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addColumn(spec: ColumnSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addSpace(spec: SpaceSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addRoof(spec: RoofSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addCurtainWall(spec: CurtainWallSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addFooting(spec: FootingSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addPile(spec: PileSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addStair(spec: StairSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addRamp(spec: RampSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addRailing(spec: RailingSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addCovering(spec: CoveringSpec, hostLocalId?: RecordRef, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addElementAssembly(spec: ElementAssemblySpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addZone(spec: ZoneSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addSystem(spec: SystemSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addProxy(spec: ProxySpec, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
+    addFillerPanel(input: {
+        category: 'DOOR' | 'WINDOW';
+        width: number;
+        height: number;
+        materialName: string;
+        placement: PlacementDefinition;
+        stableKey?: string;
+        openingLocalId?: RecordRef;
+    }): Result<RecordRef, BimError>;
+    addDoorAndCutWall(spec: DoorSpec, options?: OpeningIdentityOptions): Result<RecordRef, BimError>;
+    addWindowAndCutWall(spec: WindowSpec, options?: OpeningIdentityOptions): Result<RecordRef, BimError>;
+    addSlabOpening(input: SlabOpeningInput, options?: ElementIdentityOptions): Result<RecordRef, BimError>;
 }
 
 interface RoundTripReport extends ValidationReport {
@@ -2610,6 +2773,16 @@ interface SiteSpec extends SpatialPlacementSpec {
     readonly compositionType?: IfcElementCompositionType | undefined;
 }
 
+interface BuildingSpec extends SpatialPlacementSpec {
+    readonly name: string;
+    readonly description?: string;
+}
+
+interface StoreySpec extends SpatialPlacementSpec {
+    readonly name: string;
+    readonly elevation: number;
+}
+
 type RecordGeometry<C extends BimCategory> = BimGeometryFor<C> extends Body ? {
     readonly representation: 'BODY';
     readonly placement: PlacementDefinition;
@@ -2633,7 +2806,7 @@ type BimElement<C extends BimCategory> = RecordGeometry<C> & {
         description?: string;
     }>;
     readonly guid: IfcGuid;
-    readonly localId: LocalId;
+    readonly localId: RecordRef;
     readonly category: C;
     readonly spec: BodySpec<C>;
 };

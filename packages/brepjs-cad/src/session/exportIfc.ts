@@ -28,12 +28,10 @@ function isIssue(v: unknown): v is BimIssueLike {
   );
 }
 
-/** Validation issues name a BimModel local id; agents work in key paths. */
-function issueDiagnostic(issue: BimIssueLike, keyOf: ReadonlyMap<number, string>): BuildDiagnostic {
+/** Validation issues name a BimDocument local id; agents work in key paths. */
+function issueDiagnostic(issue: BimIssueLike, keyOf: ReadonlyMap<object, string>): BuildDiagnostic {
   const id =
-    typeof issue.entity === 'number'
-      ? (keyOf.get(issue.entity) ?? `#${issue.entity}`)
-      : issue.entity;
+    typeof issue.entity === 'object' ? keyOf.get(issue.entity) : typeof issue.entity === 'number' ? `#${issue.entity}` : issue.entity;
   return {
     severity: issue.severity,
     code: issue.code,
@@ -42,7 +40,7 @@ function issueDiagnostic(issue: BimIssueLike, keyOf: ReadonlyMap<number, string>
   };
 }
 
-function errorDiagnostics(error: unknown, keyOf: ReadonlyMap<number, string>): BuildDiagnostic[] {
+function errorDiagnostics(error: unknown, keyOf: ReadonlyMap<object, string>): BuildDiagnostic[] {
   const e = error as { code?: unknown; cause?: unknown; metadata?: Record<string, unknown> };
   const where = e.metadata?.['keyPath'] ?? e.metadata?.['path'];
   const head: BuildDiagnostic = {

@@ -449,7 +449,7 @@ export class BimDocument {
         return err(
           specError(
             'DUPLICATE_PROJECT',
-            'BimModel.init() called twice — only one project per model'
+            'BimDocument.init() called twice — only one project per model'
           )
         );
       }
@@ -507,7 +507,7 @@ export class BimDocument {
   #checkStableKey(options: ElementIdentityOptions | undefined): Result<void, BimError> {
     const key = options?.stableKey;
     if (key !== undefined && this.#usedStableKeys.has(key)) {
-      return err(specError('DUPLICATE_STABLE_KEY', `BimModel: duplicate stableKey '${key}'`));
+      return err(specError('DUPLICATE_STABLE_KEY', `BimDocument: duplicate stableKey '${key}'`));
     }
     return ok(undefined);
   }
@@ -1319,7 +1319,7 @@ export class BimDocument {
       (this.#usedStableKeys.has(stableKey) || command.stableKeys.has(stableKey))
     ) {
       throw new RejectedModelCommand(
-        specError('DUPLICATE_STABLE_KEY', `BimModel: duplicate stableKey '${stableKey}'`)
+        specError('DUPLICATE_STABLE_KEY', `BimDocument: duplicate stableKey '${stableKey}'`)
       );
     }
     const localId = command.counter.next();

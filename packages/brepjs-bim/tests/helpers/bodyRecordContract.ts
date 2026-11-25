@@ -1,12 +1,7 @@
 import { box, getBounds, translate, unwrap, type ValidSolid } from 'brepjs';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { currentKernel, initKernel } from '../../../../tests/setup.js';
-import {
-  placedSolids,
-  elementBounds,
-  elementMaterialVolume,
-} from '../../src/elementFns/placedGeometry.js';
-import { BimModel } from '../../src/model/bimModel.js';
+import { BimDocument } from '../../src/model/bimDocument.js';
 import { setBodyTestHooksForTesting } from '../../src/bodyTestHooks.js';
 import type { BodyClassification } from '../../src/types/bimTypes.js';
 import { measureBodyMaterial, type NonEmpty } from '../../src/types/body.js';
@@ -55,7 +50,7 @@ export function bodyRecordContract(category: BodyClassification) {
     it.each(['GRID_REFERENCE', 'LINEAR_REFERENCE'] as const)(
       'preserves %s identities and parameters through adoption and replacement',
       (kind) => {
-        using model = new BimModel();
+        using model = new BimDocument();
         const references = [{ kind: 'EXTERNAL' as const, identifier: ' datum ' }];
         const parameters = { offset: 1.5 };
         const id = unwrap(
@@ -80,8 +75,8 @@ export function bodyRecordContract(category: BodyClassification) {
           references: [{ kind: 'EXTERNAL' as const, identifier: ' datum ' }],
           parameters: { offset: 1.5 },
         });
-        expect(unwrap(elementMaterialVolume(record))).toBeCloseTo(8);
-        expect(placedSolids(record, { parentFrame: frame })).toMatchObject({
+        expect(unwrap(model.materialVolume(record.localId))).toBeCloseTo(8);
+        expect(model.placedSolids(record.localId, 'WORLD')).toMatchObject({
           ok: false,
           error: { code: 'PLACEMENT_REFERENCE_UNRESOLVED' },
         });
@@ -89,7 +84,7 @@ export function bodyRecordContract(category: BodyClassification) {
     );
 
     it('places an independently owned copy at identity and rejects duplicate items before transfer', () => {
-      using model = new BimModel();
+      using model = new BimDocument();
       const placement = {
         kind: 'LOCAL_FRAME',
         frame: { origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1] },
@@ -100,7 +95,7 @@ export function bodyRecordContract(category: BodyClassification) {
       const id = unwrap(model.addAuthoredBody({ category, placement, solids: [solid] }));
       const record = model.getElement(id);
       if (record?.representation !== 'BODY') throw new Error('Missing Body');
-      const output = unwrap(placedSolids(record));
+      const output = unwrap(model.placedSolids(record.localId, 'WORLD'));
       try {
         model[Symbol.dispose]();
         const [copy] = output;
@@ -114,7 +109,7 @@ export function bodyRecordContract(category: BodyClassification) {
       'owns, places and replaces a $name Body',
       ({ offset, volume, local, placed }) => {
         const baseline = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
-        using model = new BimModel();
+        using model = new BimDocument();
         const solids = items(offset);
         const releases = solids.map((solid) => vi.spyOn(solid, Symbol.dispose));
         const id = unwrap(
@@ -130,8 +125,8 @@ export function bodyRecordContract(category: BodyClassification) {
         expect(record.geometry.kind).toBe('AUTHORITATIVE');
         expect(record.geometry.solids).toHaveLength(solids.length);
         solids.forEach((solid, index) => expect(record.geometry.solids[index]).toBe(solid));
-        const bounds = unwrap(elementBounds(record, { kind: 'LOCAL' })).bounds;
-        const world = unwrap(elementBounds(record, { kind: 'PLACED', tag: 'fixture' })).bounds;
+        const bounds = unwrap(model.bounds(record.localId, 'LOCAL')).bounds;
+        const world = unwrap(model.bounds(record.localId, 'WORLD')).bounds;
         [world.xMin, world.xMax, world.yMin, world.yMax, world.zMin, world.zMax].forEach((n, i) =>
           expect(n).toBeCloseTo(Number(placed[i]), 5)
         );
@@ -144,7 +139,7 @@ export function bodyRecordContract(category: BodyClassification) {
           bounds.zMax,
         ];
         local.forEach((expected, i) => expect(observedLocal[i]).toBeCloseTo(expected, 5));
-        expect(unwrap(elementMaterialVolume(record))).toBeCloseTo(volume, 3);
+        expect(unwrap(model.materialVolume(record.localId))).toBeCloseTo(volume, 3);
         expect(
           model.addAuthoredBody({ category, placement: record.placement, solids })
         ).toMatchObject({ ok: false, error: { code: 'BODY_OWNERSHIP_CONFLICT' } });
@@ -156,13 +151,13 @@ export function bodyRecordContract(category: BodyClassification) {
             },
           });
           try {
-            expect(placedSolids(record).ok).toBe(false);
-            expect(elementMaterialVolume(record).ok).toBe(false);
+            expect(model.placedSolids(record.localId, 'WORLD').ok).toBe(false);
+            expect(model.materialVolume(record.localId).ok).toBe(false);
           } finally {
             setBodyTestHooksForTesting(null);
           }
         }
-        const output = unwrap(placedSolids(record));
+        const output = unwrap(model.placedSolids(record.localId, 'WORLD'));
         try {
           using fresh = box(1, 1, 1);
           const replacement = translate(fresh, [2, 0, 0]);

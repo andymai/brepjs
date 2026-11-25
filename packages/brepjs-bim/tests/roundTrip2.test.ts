@@ -1,7 +1,8 @@
+import { authoring } from '../src/model/authoring.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
 import { unwrap } from 'brepjs';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { checkRoundTrip, compareCounts, KEY_ENTITY_NAMES } from '../src/validation/roundTrip.js';
 import { hasErrors } from '../src/validation/severity.js';
@@ -10,20 +11,20 @@ beforeAll(async () => {
   await initKernel();
 }, 30000);
 
-function buildModel(): BimModel {
-  const model = new BimModel();
+function buildModel(): BimDocument {
+  const model = new BimDocument();
   unwrap(model.init({ name: 'Round-trip Project' }));
   const project = model.getProject();
   if (!project) throw new Error('expected project');
-  const siteId = unwrap(model.addSite({ name: 'Site' }));
-  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
-  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
+  const siteId = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(project.localId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
 
   const wall = unwrap(
-    model.addWall({
+    authoring(model).addWall({
       length: 5000,
       height: 3000,
       thickness: 250,
@@ -37,7 +38,7 @@ function buildModel(): BimModel {
   model.placeIn(wall, storeyId);
 
   const slab = unwrap(
-    model.addSlab({
+    authoring(model).addSlab({
       length: 6000,
       width: 4000,
       thickness: 250,
@@ -51,7 +52,7 @@ function buildModel(): BimModel {
   model.placeIn(slab, storeyId);
 
   const beam = unwrap(
-    model.addBeam({
+    authoring(model).addBeam({
       length: 5000,
       profile: { kind: 'RECTANGULAR', width: 200, height: 400 },
       origin: [0, 0, 3000],
@@ -64,7 +65,7 @@ function buildModel(): BimModel {
   model.placeIn(beam, storeyId);
 
   const column = unwrap(
-    model.addColumn({
+    authoring(model).addColumn({
       height: 3000,
       profile: { kind: 'RECTANGULAR', width: 200, height: 400 },
       origin: [1000, 1000, 0],

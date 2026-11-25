@@ -1,6 +1,7 @@
+import { authoring } from '../../src/model/authoring.js';
 import { unwrap } from 'brepjs';
 import { expect } from 'vitest';
-import { BimModel } from '../../src/model/bimModel.js';
+import { BimDocument } from '../../src/model/bimDocument.js';
 import type { WallSpec } from '../../src/specs/wallSpec.js';
 import type { ImportedPset } from '../../src/import/dataRead.js';
 
@@ -17,12 +18,12 @@ export function expectWallQuantities(
 
 /** A fully contained recipe Wall: 0.1 m³ before the optional 0.006 m³ door cut. */
 export function recipeWallFixture() {
-  const model = new BimModel();
+  const model = new BimDocument();
   try {
     const project = unwrap(model.init({ name: 'Wall quantities', projectId: 'wall-quantities' }));
-    const site = unwrap(model.addSite({ name: 'Site' }));
-    const building = unwrap(model.addBuilding({ name: 'Building' }));
-    const storey = unwrap(model.addStorey({ name: 'Level', elevation: 0 }));
+    const site = unwrap(authoring(model).addSite({ name: 'Site' }));
+    const building = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+    const storey = unwrap(authoring(model).addStorey({ name: 'Level', elevation: 0 }));
     model.aggregate(project, site);
     model.aggregate(site, building);
     model.aggregate(building, storey);
@@ -35,14 +36,14 @@ export function recipeWallFixture() {
       axisZ: [0, 0, 1],
       materialName: 'Concrete',
     };
-    const localId = unwrap(model.addWall(spec, { stableKey: 'wall' }));
+    const localId = unwrap(authoring(model).addWall(spec, { stableKey: 'wall' }));
     model.placeIn(localId, storey);
     return {
       model,
       localId,
       addDoorAndCutWall() {
         const door = unwrap(
-          model.addDoorAndCutWall({
+          authoring(model).addDoorAndCutWall({
             wallLocalId: localId,
             width: 200,
             height: 300,

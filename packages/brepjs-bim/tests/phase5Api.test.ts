@@ -1,9 +1,10 @@
+import { authoring } from '../src/model/authoring.js';
 import type { RecordRef } from '../src/identity/recordRef.js';
 import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
 import {
-  BimModel,
+  BimDocument,
   toIfc,
   exportCobie,
   serializeCobieToCsv,
@@ -45,19 +46,19 @@ const SPACE_IS_EXTERNAL_IDS = `<?xml version="1.0" encoding="UTF-8"?>
  * Builds a small but complete model: project/site/building/storey spatial tree,
  * one wall, two spaces grouped into a zone, and the wall grouped into a system.
  */
-function buildModel(): { model: BimModel; spaceAId: RecordRef } {
-  const model = new BimModel();
+function buildModel(): { model: BimDocument; spaceAId: RecordRef } {
+  const model = new BimDocument();
   const initResult = model.init({ name: 'Phase5 API Project', description: 'End-to-end fixture' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = unwrap(model.addSite({ name: 'Main Site' }));
-  const buildingId = unwrap(model.addBuilding({ name: 'HQ' }));
-  const storeyId = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
+  const siteId = unwrap(authoring(model).addSite({ name: 'Main Site' }));
+  const buildingId = unwrap(authoring(model).addBuilding({ name: 'HQ' }));
+  const storeyId = unwrap(authoring(model).addStorey({ name: 'Level 1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
 
-  const wall = model.addWall({
+  const wall = authoring(model).addWall({
     length: 5000,
     height: 3000,
     thickness: 200,
@@ -69,7 +70,7 @@ function buildModel(): { model: BimModel; spaceAId: RecordRef } {
   if (!wall.ok) throw new Error(wall.error.message);
   model.placeIn(wall.value, storeyId);
 
-  const spaceA = model.addSpace({
+  const spaceA = authoring(model).addSpace({
     name: 'Office 101',
     longName: 'Open-plan office',
     length: 4000,
@@ -84,7 +85,7 @@ function buildModel(): { model: BimModel; spaceAId: RecordRef } {
   if (!spaceA.ok) throw new Error(spaceA.error.message);
   model.placeIn(spaceA.value, storeyId);
 
-  const spaceB = model.addSpace({
+  const spaceB = authoring(model).addSpace({
     name: 'Office 102',
     longName: 'Private office',
     length: 4000,
@@ -100,11 +101,11 @@ function buildModel(): { model: BimModel; spaceAId: RecordRef } {
   model.placeIn(spaceB.value, storeyId);
 
   const zoneId = unwrap(
-    model.addZone({ name: 'Thermal Zone 1', longName: 'Ground-floor thermal zone' })
+    authoring(model).addZone({ name: 'Thermal Zone 1', longName: 'Ground-floor thermal zone' })
   );
   model.assignToGroup(zoneId, [spaceA.value, spaceB.value]);
 
-  const systemId = unwrap(model.addSystem({ name: 'HVAC Supply', longName: 'Air supply network' }));
+  const systemId = unwrap(authoring(model).addSystem({ name: 'HVAC Supply', longName: 'Air supply network' }));
   model.assignToGroup(systemId, [wall.value]);
 
   return { model, spaceAId: spaceA.value };

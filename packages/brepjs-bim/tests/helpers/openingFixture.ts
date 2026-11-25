@@ -1,5 +1,6 @@
+import { authoring } from '../../src/model/authoring.js';
 import { unwrap } from 'brepjs';
-import type { BimModel } from '../../src/model/bimModel.js';
+import type { BimDocument } from '../../src/model/bimDocument.js';
 import type { WallSpec } from '../../src/specs/wallSpec.js';
 import type { RecordRef } from '../../src/identity/recordRef.js';
 
@@ -31,11 +32,11 @@ export const WINDOW = {
 
 export type OpeningCommand = 'Door' | 'Window' | 'Slab';
 
-export function openingHost(model: BimModel, kind: OpeningCommand) {
+export function openingHost(model: BimDocument, kind: OpeningCommand) {
   const hostId = unwrap(
     kind === 'Slab'
-      ? model.addSlab({ ...OPENING_WALL, width: 10, predefinedType: 'FLOOR' })
-      : model.addWall(OPENING_WALL)
+      ? authoring(model).addSlab({ ...OPENING_WALL, width: 10, predefinedType: 'FLOOR' })
+      : authoring(model).addWall(OPENING_WALL)
   );
   return {
     hostId,
@@ -50,11 +51,11 @@ export function openingHost(model: BimModel, kind: OpeningCommand) {
     },
     open() {
       if (kind === 'Slab')
-        return model.addSlabOpening(
+        return authoring(model).addSlabOpening(
           { slabLocalId: hostId, sizeX: 2, sizeY: 3, offsetX: 1, offsetY: 1 },
           { stableKey: 'opening' }
         );
-      return model[kind === 'Door' ? 'addDoorAndCutWall' : 'addWindowAndCutWall'](
+      return authoring(model)[kind === 'Door' ? 'addDoorAndCutWall' : 'addWindowAndCutWall'](
         { ...(kind === 'Door' ? DOOR : WINDOW), wallLocalId: hostId },
         { stableKey: 'filler', openingStableKey: 'opening' }
       );
@@ -62,7 +63,7 @@ export function openingHost(model: BimModel, kind: OpeningCommand) {
   };
 }
 
-export function singletonWallSolid(model: BimModel, id: RecordRef) {
+export function singletonWallSolid(model: BimDocument, id: RecordRef) {
   const wall = model.getElement(id);
   if (wall?.category !== 'WALL' || wall.geometry.solids.length !== 1) {
     throw new Error('Expected a singleton Wall Body');
@@ -71,10 +72,10 @@ export function singletonWallSolid(model: BimModel, id: RecordRef) {
 }
 
 /** The caller owns the model and all geometry created by this fixture. */
-export function addWallWithDoor(model: BimModel) {
-  const wallId = unwrap(model.addWall(OPENING_WALL, { stableKey: 'wall' }));
+export function addWallWithDoor(model: BimDocument) {
+  const wallId = unwrap(authoring(model).addWall(OPENING_WALL, { stableKey: 'wall' }));
   const doorId = unwrap(
-    model.addDoorAndCutWall(
+    authoring(model).addDoorAndCutWall(
       { ...DOOR, wallLocalId: wallId },
       { stableKey: 'door', openingStableKey: 'door-opening' }
     )

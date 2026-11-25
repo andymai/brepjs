@@ -1,6 +1,7 @@
+import { authoring, type BimAuthoring } from '../src/model/authoring.js';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import * as brepjs from 'brepjs';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { geometryError } from '../src/errors/bimError.js';
 import { reportedGeometryCleanup } from '../src/geometryCleanupDiagnostics.js';
 import { cleanupOwnedResources, cleanupReport } from '../src/bodyCleanup.js';
@@ -24,7 +25,7 @@ const axes = {
   axisZ: [0, 0, 1],
   materialName: 'Steel',
 } satisfies Pick<
-  Parameters<BimModel['addRailing']>[0],
+  Parameters<BimAuthoring['addRailing']>[0],
   'origin' | 'axisX' | 'axisZ' | 'materialName'
 >;
 
@@ -32,7 +33,7 @@ it.each(['POSTED', 'CURTAIN'] as const)(
   'preserves separate %s temporary and cancelled-output cleanup failures with one cause',
   (kind) => {
     const baseline = arena();
-    const model = new BimModel();
+    const model = new BimDocument();
     const cause = new Error('Shared failed-release cause');
     let attempts = 0;
     const wrap = (resource: Disposable): void => {
@@ -82,14 +83,14 @@ it.each(['POSTED', 'CURTAIN'] as const)(
     try {
       const result =
         kind === 'POSTED'
-          ? model.addRailing({
+          ? authoring(model).addRailing({
               ...axes,
               length: 2000,
               height: 1000,
               thickness: 50,
               infill: 'POSTED',
             })
-          : model.addCurtainWall({
+          : authoring(model).addCurtainWall({
               ...axes,
               width: 10,
               height: 10,
@@ -131,7 +132,7 @@ it('preserves separate native cleanup attempts in nested aggregates while dedupl
   const baseline = arena();
   const first = brepjs.box(1, 1, 1);
   const second = brepjs.box(2, 1, 1);
-  const model = new BimModel();
+  const model = new BimDocument();
   const cause = new Error('Shared native cleanup cause');
   const firstFailure = new brepjs.GeometryCleanupError({
     message: 'First release',
@@ -156,7 +157,7 @@ it('preserves separate native cleanup attempts in nested aggregates while dedupl
     throw primary;
   });
   try {
-    expect(model.addWall({ ...axes, length: 10, height: 10, thickness: 1 })).toMatchObject({
+    expect(authoring(model).addWall({ ...axes, length: 10, height: 10, thickness: 1 })).toMatchObject({
       ok: false,
       error: { cause: primary },
     });

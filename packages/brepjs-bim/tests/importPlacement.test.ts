@@ -1,9 +1,10 @@
+import { authoring } from '../src/model/authoring.js';
 import { frameFromMatrix, decomposeFrame, IDENTITY_FRAME } from '../src/placementFrame.js';
 import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
 import { initKernel } from '../../../tests/setup.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { SpfReader } from '../src/import/spfReader.js';
 import {
@@ -20,7 +21,7 @@ beforeAll(async () => {
 const META = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };
 
 interface PlacedModel {
-  readonly model: BimModel;
+  readonly model: BimDocument;
   readonly wallGuid: string;
   readonly origin: readonly [number, number, number];
   readonly storeyElevation: number;
@@ -31,20 +32,20 @@ interface PlacedModel {
 // at a non-zero elevation so the composed world placement must account for the
 // full IfcLocalPlacement chain, not just the wall's relative placement.
 function buildPlacedModel(): PlacedModel {
-  const model = new BimModel();
+  const model = new BimDocument();
   const initResult = model.init({ name: 'Placement Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = unwrap(model.addSite({ name: 'Site' }));
-  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
+  const siteId = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building' }));
   const storeyElevation = 3500;
-  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: storeyElevation }));
+  const storeyId = unwrap(authoring(model).addStorey({ name: 'L1', elevation: storeyElevation }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
 
   const origin: [number, number, number] = [1200, -800, 250];
-  const wall = model.addWall({
+  const wall = authoring(model).addWall({
     length: 5000,
     height: 3000,
     thickness: 200,
@@ -64,7 +65,7 @@ function buildPlacedModel(): PlacedModel {
   return { model, wallGuid, origin, storeyElevation };
 }
 
-async function bytesFor(model: BimModel): Promise<Uint8Array> {
+async function bytesFor(model: BimDocument): Promise<Uint8Array> {
   const result = await toIfc(model, META);
   if (!result.ok) throw new Error(result.error.message);
   return result.value;
@@ -175,17 +176,17 @@ describe('placement round-trip', () => {
   });
 
   it('returns the identity-equivalent placement for an unrotated element at storey origin', async () => {
-    const model = new BimModel();
+    const model = new BimDocument();
     const initResult = model.init({ name: 'Origin Project' });
     if (!initResult.ok) throw new Error(initResult.error.message);
     const projectId = initResult.value;
-    const siteId = unwrap(model.addSite({ name: 'Site' }));
-    const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
-    const storeyId = unwrap(model.addStorey({ name: 'L0', elevation: 0 }));
+    const siteId = unwrap(authoring(model).addSite({ name: 'Site' }));
+    const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+    const storeyId = unwrap(authoring(model).addStorey({ name: 'L0', elevation: 0 }));
     model.aggregate(projectId, siteId);
     model.aggregate(siteId, buildingId);
     model.aggregate(buildingId, storeyId);
-    const wall = model.addWall({
+    const wall = authoring(model).addWall({
       length: 5000,
       height: 3000,
       thickness: 200,

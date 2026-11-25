@@ -1,4 +1,4 @@
-import type { BimModel } from '../model/bimModel.js';
+import type { BimDocument } from '../model/bimDocument.js';
 import type { AnyBimElement, BimCategory } from '../types/bimTypes.js';
 import type { BimRelationship } from '../types/relationships.js';
 import type { RecordRef } from '../identity/recordRef.js';
@@ -83,7 +83,7 @@ function typeNameFor(category: BimCategory, predefinedType: string): string {
 }
 
 /**
- * Derives a {@link CobieModel} from an in-memory {@link BimModel}, reading only
+ * Derives a {@link CobieModel} from an in-memory {@link BimDocument}, reading only
  * its public getters. The derivation is a single O(N) pass that mirrors the
  * spatial-tree and type-layer conventions of {@link toIfc} so that COBie
  * Component/Type names line up with the exported IFC.
@@ -91,7 +91,7 @@ function typeNameFor(category: BimCategory, predefinedType: string): string {
  * Optional element categories from later phases (ZONE, SYSTEM) are picked up
  * generically when present; their absence is not an error.
  */
-export function deriveCobieModel(model: BimModel, meta?: CobieExportMeta): CobieModel {
+export function deriveCobieModel(model: BimDocument, meta?: CobieExportMeta): CobieModel {
   const elements = model.getAllElements();
   const relationships = model.getAllRelationships();
 
@@ -133,7 +133,7 @@ function deriveContact(meta?: CobieExportMeta): CobieContactRow[] {
   ];
 }
 
-function deriveFacility(model: BimModel, elements: readonly AnyBimElement[]): CobieFacilityRow[] {
+function deriveFacility(model: BimDocument, elements: readonly AnyBimElement[]): CobieFacilityRow[] {
   const project = model.getProject();
   if (project === null) return [];
   const site = elements.find((e) => e.category === 'SITE');
@@ -167,7 +167,7 @@ function deriveFloors(elements: readonly AnyBimElement[]): CobieFloorRow[] {
 }
 
 function deriveSpaces(
-  model: BimModel,
+  model: BimDocument,
   elementById: ReadonlyMap<RecordRef, AnyBimElement>,
   containerOf: ReadonlyMap<RecordRef, RecordRef>
 ): CobieSpaceRow[] {
@@ -195,7 +195,7 @@ function deriveSpaces(
  * Type rows by (category, predefinedType).
  */
 function deriveComponentsAndTypes(
-  model: BimModel,
+  model: BimDocument,
   elementById: ReadonlyMap<RecordRef, AnyBimElement>,
   containerOf: ReadonlyMap<RecordRef, RecordRef>
 ): { component: CobieComponentRow[]; type: CobieTypeRow[] } {
@@ -346,7 +346,7 @@ function groupMemberNames(
  * row per property. The owning row is keyed by the element's display name.
  */
 function deriveAttributes(
-  model: BimModel,
+  model: BimDocument,
   elements: readonly AnyBimElement[]
 ): CobieAttributeRow[] {
   const attributes: CobieAttributeRow[] = [];

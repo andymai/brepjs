@@ -1,7 +1,7 @@
 import type { BimCategory } from '../types/bimTypes.js';
 
 /**
- * A node in a {@link BimModel}'s spatial/decomposition tree. Fully serializable
+ * A node in a {@link BimDocument}'s spatial/decomposition tree. Fully serializable
  * (plain numbers/strings) so it can be posted across a worker boundary.
  */
 export interface BimTreeNode {

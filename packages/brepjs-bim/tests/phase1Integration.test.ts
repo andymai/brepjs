@@ -1,8 +1,9 @@
+import { authoring } from '../src/model/authoring.js';
 import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
 import * as WebIFC from 'web-ifc';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc, toIfcValidated } from '../src/serialize/toIfc.js';
 import { hasErrors } from '../src/validation/severity.js';
 import { DEFAULT_MVD_VIEW_DEFINITION } from '../src/ifc-writer/ifcWriter.js';
@@ -13,19 +14,19 @@ beforeAll(async () => {
 
 const META = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };
 
-function buildModel(): BimModel {
-  const model = new BimModel();
+function buildModel(): BimDocument {
+  const model = new BimDocument();
   const initResult = model.init({ name: 'Phase1 Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = unwrap(model.addSite({ name: 'Site' }));
-  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
-  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
+  const siteId = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
 
-  const wall = model.addWall({
+  const wall = authoring(model).addWall({
     length: 5000,
     height: 3000,
     thickness: 250,
@@ -37,7 +38,7 @@ function buildModel(): BimModel {
   if (!wall.ok) throw new Error(wall.error.message);
   model.placeIn(wall.value, storeyId);
 
-  const slab = model.addSlab({
+  const slab = authoring(model).addSlab({
     length: 6000,
     width: 4000,
     thickness: 250,
@@ -66,7 +67,7 @@ describe('Phase 1 integration', () => {
     expect(guidsB).toEqual(guidsA);
   });
 
-  it('element GlobalId still equals the BimModel element GUID', async () => {
+  it('element GlobalId still equals the BimDocument element GUID', async () => {
     const model = buildModel();
     const result = await toIfc(model, META);
     if (!result.ok) throw new Error(result.error.message);
@@ -132,11 +133,11 @@ describe('Phase 1 integration', () => {
   });
 
   it('toIfcValidated rejects a model that fails referential integrity', async () => {
-    const model = new BimModel();
+    const model = new BimDocument();
     const initResult = model.init({ name: 'Broken' });
     if (!initResult.ok) throw new Error(initResult.error.message);
     // Wall added but never placed in a spatial structure → ELEMENT_NOT_CONTAINED.
-    const wall = model.addWall({
+    const wall = authoring(model).addWall({
       length: 3000,
       height: 2700,
       thickness: 200,

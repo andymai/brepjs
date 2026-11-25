@@ -1,5 +1,6 @@
+import { authoring } from './model/authoring.js';
 /**
- * brepjs-families -> BimModel adapter. Consumes a resolved element tree and
+ * brepjs-families -> BimDocument adapter. Consumes a resolved element tree and
  * feeds each element's PRE-DESUGARED props into parametric specs. Civil wall
  * and railing Products retain the evaluated authored Body as AUTHORITATIVE
  * after generating the candidate and applying openings. GlobalIds derive
@@ -29,7 +30,7 @@ import {
   type ValidSolid,
   type csg,
 } from 'brepjs';
-import type { ResolvedElement } from 'brepjs-families';
+import type { ResolvedElement, TransformOp } from 'brepjs-families';
 import { frameFromOps, requireFrame, FrameProjectionError } from './familiesFrame.js';
 import {
   IDENTITY_FRAME,
@@ -44,7 +45,7 @@ import {
   translationFrame,
   type RigidFrame,
 } from './placementFrame.js';
-import { BimModel, type OpeningIdentityOptions } from './model/bimModel.js';
+import { BimDocument, type OpeningIdentityOptions } from './model/bimDocument.js';
 import type { RecordRef } from './identity/recordRef.js';
 import { parseWallSpec } from './specs/wallSpec.js';
 import { parseSlabSpec } from './specs/slabSpec.js';
@@ -118,7 +119,7 @@ export interface ProxiedElement {
 }
 
 export interface FamiliesBimResult {
-  readonly model: BimModel;
+  readonly model: BimDocument;
   /** RecordRef per geometry-bearing families key path. */
   readonly idByKeyPath: ReadonlyMap<string, RecordRef>;
   /**
@@ -133,7 +134,7 @@ export interface FamiliesBimResult {
 
 export interface FamiliesAdapterTestHooks {
   readonly afterCivilBody?:
-    ((model: BimModel, localId: RecordRef, element: ResolvedElement) => void) | undefined;
+    ((model: BimDocument, localId: RecordRef, element: ResolvedElement) => void) | undefined;
 }
 
 let testHooks: FamiliesAdapterTestHooks | null = null;
@@ -157,62 +158,62 @@ const GEOMETRY_PROPS = new Set(['voids', 'fuse', 'transform', 'psets']);
 const SPEC_ROUTES = {
   wall: {
     parse: parseWallSpec,
-    add: (m: BimModel, spec: unknown, key: string) => m.addWall(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) => authoring(m).addWall(spec as never, { stableKey: key }),
   },
   slab: {
     parse: parseSlabSpec,
-    add: (m: BimModel, spec: unknown, key: string) => m.addSlab(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) => authoring(m).addSlab(spec as never, { stableKey: key }),
   },
   column: {
     parse: parseColumnSpec,
-    add: (m: BimModel, spec: unknown, key: string) =>
-      m.addColumn(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) =>
+      authoring(m).addColumn(spec as never, { stableKey: key }),
   },
   beam: {
     parse: parseBeamSpec,
-    add: (m: BimModel, spec: unknown, key: string) => m.addBeam(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) => authoring(m).addBeam(spec as never, { stableKey: key }),
   },
   roof: {
     parse: parseRoofSpec,
-    add: (m: BimModel, spec: unknown, key: string) => m.addRoof(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) => authoring(m).addRoof(spec as never, { stableKey: key }),
   },
   stair: {
     parse: parseStairSpec,
-    add: (m: BimModel, spec: unknown, key: string) => m.addStair(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) => authoring(m).addStair(spec as never, { stableKey: key }),
     input: flightsSpecInput,
   },
   footing: {
     parse: parseFootingSpec,
-    add: (m: BimModel, spec: unknown, key: string) =>
-      m.addFooting(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) =>
+      authoring(m).addFooting(spec as never, { stableKey: key }),
   },
   pile: {
     parse: parsePileSpec,
-    add: (m: BimModel, spec: unknown, key: string) => m.addPile(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) => authoring(m).addPile(spec as never, { stableKey: key }),
   },
   railing: {
     parse: parseRailingSpec,
-    add: (m: BimModel, spec: unknown, key: string) =>
-      m.addRailing(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) =>
+      authoring(m).addRailing(spec as never, { stableKey: key }),
   },
   ramp: {
     parse: parseRampSpec,
-    add: (m: BimModel, spec: unknown, key: string) => m.addRamp(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) => authoring(m).addRamp(spec as never, { stableKey: key }),
     input: flightsSpecInput,
   },
   covering: {
     parse: parseCoveringSpec,
-    add: (m: BimModel, spec: unknown, key: string) =>
-      m.addCovering(spec as never, undefined, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) =>
+      authoring(m).addCovering(spec as never, undefined, { stableKey: key }),
   },
   curtainWall: {
     parse: parseCurtainWallSpec,
-    add: (m: BimModel, spec: unknown, key: string) =>
-      m.addCurtainWall(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) =>
+      authoring(m).addCurtainWall(spec as never, { stableKey: key }),
   },
   space: {
     parse: parseSpaceSpec,
-    add: (m: BimModel, spec: unknown, key: string) => m.addSpace(spec as never, { stableKey: key }),
+    add: (m: BimDocument, spec: unknown, key: string) => authoring(m).addSpace(spec as never, { stableKey: key }),
   },
 } as const;
 
@@ -567,7 +568,7 @@ function collectSpecProps(el: ResolvedElement): Record<string, unknown> {
 }
 
 function addFill(
-  model: BimModel,
+  model: BimDocument,
   fill: ResolvedElement,
   input: Record<string, unknown>,
   identity: OpeningIdentityOptions
@@ -576,12 +577,12 @@ function addFill(
   if (archetype === 'door') {
     const parsed = parseDoorSpec(input);
     if (!parsed.ok) return parsed;
-    return model.addDoorAndCutWall(parsed.value, identity);
+    return authoring(model).addDoorAndCutWall(parsed.value, identity);
   }
   if (archetype === 'window') {
     const parsed = parseWindowSpec(input);
     if (!parsed.ok) return parsed;
-    return model.addWindowAndCutWall(parsed.value, identity);
+    return authoring(model).addWindowAndCutWall(parsed.value, identity);
   }
   return err(
     specError(
@@ -658,7 +659,7 @@ function materializeOwnedSolid(
  *  authoritative for a proxy (no parametric spec to diverge from), so baked
  *  transforms — rotations included — are fine here. */
 function addProxyElement(
-  model: BimModel,
+  model: BimDocument,
   el: ResolvedElement,
   evaluator: csg.Evaluator,
   spatialFrame: RigidFrame
@@ -683,7 +684,7 @@ function addProxyElement(
   const nameAttr = el.attributes['name'];
   const materialProp = el.props['materialName'];
   const specProps = collectSpecProps(el);
-  const added = model.addProxy(
+  const added = authoring(model).addProxy(
     {
       name: typeof nameAttr === 'string' ? nameAttr : el.type,
       solid: localized.value,
@@ -703,7 +704,7 @@ function addProxyElement(
  *  wall-relative offsets come from the void geometry's frame minus the host's:
  *  exact because both carry the same outer host transform. */
 function addOpenings(
-  model: BimModel,
+  model: BimDocument,
   host: ResolvedElement,
   wallId: RecordRef,
   containerId: RecordRef,
@@ -746,7 +747,8 @@ function addOpenings(
     if (!added.ok) return added;
     // Fillers are spatially contained like any element (openings are not:
     // they relate to the wall through IfcRelVoidsElement alone).
-    model.placeIn(added.value, containerId);
+    const contained = model.placeIn(added.value, containerId);
+    if (!contained.ok) return contained;
     idByKeyPath.set(fill.keyPath, added.value);
     const fillsRel = model
       .getAllRelationships()
@@ -1196,7 +1198,7 @@ function civilParentAccepts(kind: CivilSpatialKind, parent: CivilParentKind): bo
 }
 
 function addCivilSpatialOccurrence(
-  model: BimModel,
+  model: BimDocument,
   el: ResolvedElement,
   kind: CivilSpatialKind,
   input: Record<string, unknown>
@@ -1204,13 +1206,13 @@ function addCivilSpatialOccurrence(
   if (kind === 'site') {
     if (el.semantics?.role !== 'transport-site') return unsupportedCivilRole(el, 'Site');
     const parsed = parseSiteSpec(input);
-    return parsed.ok ? model.addSite(parsed.value, { stableKey: el.keyPath }) : parsed;
+    return parsed.ok ? authoring(model).addSite(parsed.value, { stableKey: el.keyPath }) : parsed;
   }
   if (kind === 'bridge') {
     const predefinedType = lookup(BRIDGE_ROLE, el.semantics?.role ?? '');
     if (predefinedType === undefined) return unsupportedCivilRole(el, 'Bridge');
     const parsed = parseBridgeSpec({ ...input, predefinedType });
-    return parsed.ok ? model.addBridge(parsed.value, { stableKey: el.keyPath }) : parsed;
+    return parsed.ok ? authoring(model).addBridge(parsed.value, { stableKey: el.keyPath }) : parsed;
   }
   const subdivision = el.semantics?.kind === 'spatial-part' ? el.semantics.subdivision : undefined;
   const predefinedType = lookup(BRIDGE_PART_ROLE, el.semantics?.role ?? '');
@@ -1220,7 +1222,7 @@ function addCivilSpatialOccurrence(
     predefinedType,
     usageType: subdivision !== undefined ? CIVIL_USAGE[subdivision] : 'NOTDEFINED',
   });
-  return parsed.ok ? model.addBridgePart(parsed.value, { stableKey: el.keyPath }) : parsed;
+  return parsed.ok ? authoring(model).addBridgePart(parsed.value, { stableKey: el.keyPath }) : parsed;
 }
 
 function relativeSpecInput(
@@ -1251,7 +1253,7 @@ function relativeSpecInput(
 }
 
 function addEarthworksFillElement(
-  model: BimModel,
+  model: BimDocument,
   el: ResolvedElement,
   evaluator: csg.Evaluator,
   spatialFrame: RigidFrame
@@ -1287,7 +1289,7 @@ function addEarthworksFillElement(
 
   const specProps = collectSpecProps(el);
   const authoredMaterial = el.props['materialName'];
-  const added = model.addEarthworksFill(
+  const added = authoring(model).addEarthworksFill(
     {
       name: semanticName(el),
       solid: localized.value,
@@ -1305,7 +1307,7 @@ function addEarthworksFillElement(
 }
 
 function installCivilBody(
-  model: BimModel,
+  model: BimDocument,
   el: ResolvedElement,
   localId: RecordRef,
   category: 'WALL' | 'RAILING',
@@ -1366,7 +1368,7 @@ interface ProjectionWalkState {
 }
 
 /**
- * Project a resolved families tree into an eager BimModel. The caller owns
+ * Project a resolved families tree into an eager BimDocument. The caller owns
  * the returned model (`using`); families stays domain-neutral — this adapter
  * is where families types meet the IFC vocabulary.
  */
@@ -1374,10 +1376,10 @@ export function familiesToBim(
   root: ResolvedElement,
   options: FamiliesToBimOptions
 ): Result<FamiliesBimResult, BimError> {
-  const model = new BimModel();
+  const model = new BimDocument();
   let projected: Result<FamiliesBimResult, BimError>;
   try {
-    preflightFamilyFrames(root, IDENTITY_FRAME, IDENTITY_FRAME, 0);
+    preflightFamilyFrames(root, IDENTITY_FRAME, IDENTITY_FRAME, []);
     projected = projectFamiliesToBim(root, options, model);
   } catch (cause) {
     projected = err(
@@ -1412,21 +1414,37 @@ export function familiesToBim(
 }
 
 /** Validate the existing Families placement tree before any eager recipe or evaluator work. */
+function checkOccurrenceWrappers(el: ResolvedElement, operations: readonly TransformOp[]): void {
+  let node = el.geometry;
+  function sameVector(expr: csg.Expr | undefined, vector: Vec3 | undefined) {
+    return vector === undefined ? expr === undefined :
+      expr?.kind === 'Vec3Lit' && vector.every((value, i) => value === expr.value[i]);
+  }
+  for (const op of operations) {
+    if (op.op === 'translate' && node.kind === 'Translate' && sameVector(node.vector, op.v)) node = node.target;
+    else if (op.op === 'rotate' && node.kind === 'Rotate' && node.angle.kind === 'NumLit'
+      && node.angle.value === op.angleDeg && sameVector(node.axis, op.axis) && sameVector(node.at, op.at)) node = node.target;
+    else throw new FrameProjectionError(specError('FAMILIES_INVALID_PLACEMENT', `Unexpected occurrence wrapper at '${el.keyPath}' (${op.op})`));
+  }
+}
+
 function preflightFamilyFrames(
   el: ResolvedElement,
   parent: RigidFrame,
   spatial: RigidFrame,
-  depth: number
+  inherited: readonly TransformOp[]
 ): void {
   authoredPlacement(el);
   const cumulative = requireFrame(frameMul(parent, requireFrame(frameFromOps(el.localTransforms))));
-  const occurrenceDepth = depth + el.localTransforms.length;
+  const wrappers = [...inherited, ...[...el.localTransforms].reverse()];
+  const occurrenceDepth = wrappers.length;
   const node = civilSpatialKind(el) === undefined ? cumulative : civilNodeFrame(el, cumulative);
   const nextSpatial = civilSpatialKind(el) === undefined ? spatial : node;
   requireFrame(frameInverse(node));
   const archetype = el.semantics?.kind === 'product' ? civilProductArchetype(el) : archetypeFor(el);
   const route = specRoute(archetype);
   if (route !== undefined) {
+    checkOccurrenceWrappers(el, wrappers);
     const body = elementBodyFrame(el, cumulative, occurrenceDepth);
     requireFrame(frameInverse(body));
     const relative = requireFrame(frameMul(requireFrame(frameInverse(spatial)), body));
@@ -1437,13 +1455,13 @@ function preflightFamilyFrames(
         requireFrame(frameMul(relative, local));
       }
   }
-  for (const child of el.children) preflightFamilyFrames(child, node, nextSpatial, occurrenceDepth);
+  for (const child of el.children) preflightFamilyFrames(child, node, nextSpatial, wrappers);
 }
 
 function projectFamiliesToBim(
   root: ResolvedElement,
   options: FamiliesToBimOptions,
-  model: BimModel
+  model: BimDocument
 ): Result<FamiliesBimResult, BimError> {
   const usesAuthoredCivilHierarchy = hasCivilSpatialIntent(root);
   if (usesAuthoredCivilHierarchy) {
@@ -1465,13 +1483,15 @@ function projectFamiliesToBim(
   const projectId = initResult.value;
   let buildingId: RecordRef | null = null;
   if (!usesAuthoredCivilHierarchy) {
-    const siteResult = model.addSite({ name: options.siteName ?? 'Site' });
+    const siteResult = authoring(model).addSite({ name: options.siteName ?? 'Site' });
     if (!siteResult.ok) return siteResult;
-    const buildingResult = model.addBuilding({ name: options.buildingName ?? 'Building' });
+    const buildingResult = authoring(model).addBuilding({ name: options.buildingName ?? 'Building' }, { placementParent: siteResult.value });
     if (!buildingResult.ok) return buildingResult;
     buildingId = buildingResult.value;
-    model.aggregate(projectId, siteResult.value);
-    model.aggregate(siteResult.value, buildingId);
+    const siteEdge = model.aggregate(projectId, siteResult.value);
+    if (!siteEdge.ok) return siteEdge;
+    const buildingEdge = model.aggregate(siteResult.value, buildingId);
+    if (!buildingEdge.ok) return buildingEdge;
   }
 
   const idByKeyPath = new Map<string, RecordRef>(
@@ -1545,7 +1565,12 @@ function projectFamiliesToBim(
         ...decomposeFrame(requireFrame(frameFromPlacement({ ...authoredPlacement(el), ...input }))),
       });
       if (!added.ok) return added;
-      model.aggregate(state.spatialStructureId, added.value);
+      const edge = model.aggregate(state.spatialStructureId, added.value);
+      if (!edge.ok) return edge;
+      if (state.spatialStructureId !== projectId) {
+        const placed = model.reparent(added.value, state.spatialStructureId, 'KEEP_LOCAL');
+        if (!placed.ok) return placed;
+      }
       idByKeyPath.set(el.keyPath, added.value);
       nextSpatialStructureId = added.value;
       nextCivilParent = civilKind;
@@ -1580,15 +1605,21 @@ function projectFamiliesToBim(
       }
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
-      const storeyResult = model.addStorey(
+      const elevation = (el.props['elevation'] as number | undefined) ?? 0;
+      const storeyPose = requireFrame(frameMul(cumulativeFrameHere, requireFrame(translationFrame([0, 0, elevation]))));
+      const {origin,axisX,axisZ} = decomposeFrame(storeyPose);
+      const storeyResult = authoring(model).addStorey(
         {
           name: (el.attributes['name'] as string | undefined) ?? el.keyPath,
-          elevation: (el.props['elevation'] as number | undefined) ?? 0,
+          elevation, origin:[...origin], axisX:[...axisX], axisZ:[...axisZ],
         },
-        { stableKey: el.keyPath }
+        { stableKey: el.keyPath, placementParent: buildingId }
       );
       if (!storeyResult.ok) return storeyResult;
-      model.aggregate(buildingId, storeyResult.value);
+      const edge = model.aggregate(buildingId, storeyResult.value);
+      if (!edge.ok) return edge;
+      nextSpatialFrame = cumulativeFrameHere;
+      nextProjectedSpatialTranslation = cumulativeTranslationHere;
       idByKeyPath.set(el.keyPath, storeyResult.value);
       nextSpatialStructureId = storeyResult.value;
     } else if (isEarthworksFillOccurrence(el)) {
@@ -1617,7 +1648,10 @@ function projectFamiliesToBim(
       if (!keyed.ok) return keyed;
       const added = addEarthworksFillElement(model, el, bodyEvaluator, state.spatialFrame);
       if (!added.ok) return added;
-      model.placeIn(added.value, nextSpatialStructureId);
+      const contained = model.placeIn(added.value, nextSpatialStructureId);
+      if (!contained.ok) return contained;
+      const placed = model.reparent(added.value, nextSpatialStructureId, 'KEEP_LOCAL');
+      if (!placed.ok) return placed;
       idByKeyPath.set(el.keyPath, added.value);
     } else if (route !== undefined) {
       const keyed = requireKeyed(el);
@@ -1667,9 +1701,7 @@ function projectFamiliesToBim(
             occurrenceTransformDepthHere,
             state.spatialFrame
           )
-        : usesAuthoredCivilHierarchy
-          ? relativeSpecInput(routedInput, state.projectedSpatialTranslation)
-          : routedInput;
+        : relativeSpecInput(routedInput, state.projectedSpatialTranslation);
       const productFrame = elementBodyFrame(el, cumulativeFrameHere, occurrenceTransformDepthHere);
       requireFrame(frameInverse(productFrame));
       const parsed = route.parse(canonicalPlacementInput(placedInput));
@@ -1690,7 +1722,10 @@ function projectFamiliesToBim(
           )
         );
       }
-      model.placeIn(added.value, nextSpatialStructureId);
+      const contained = model.placeIn(added.value, nextSpatialStructureId);
+      if (!contained.ok) return contained;
+      const placed = model.reparent(added.value, nextSpatialStructureId, 'KEEP_LOCAL');
+      if (!placed.ok) return placed;
       if (effectiveArchetype === 'wall') {
         const opened = addOpenings(model, el, added.value, nextSpatialStructureId, idByKeyPath);
         if (!opened.ok) return opened;
@@ -1740,7 +1775,10 @@ function projectFamiliesToBim(
       }
       const added = addProxyElement(model, el, options.proxyEvaluator, state.spatialFrame);
       if (!added.ok) return added;
-      model.placeIn(added.value, nextSpatialStructureId);
+      const contained = model.placeIn(added.value, nextSpatialStructureId);
+      if (!contained.ok) return contained;
+      const placed = model.reparent(added.value, nextSpatialStructureId, 'KEEP_LOCAL');
+      if (!placed.ok) return placed;
       idByKeyPath.set(el.keyPath, added.value);
       proxied.push({ keyPath: el.keyPath, type: el.type, archetype: el.archetype });
       proxiedHere = true;

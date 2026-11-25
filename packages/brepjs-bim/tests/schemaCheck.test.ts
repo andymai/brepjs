@@ -1,7 +1,8 @@
+import { authoring } from '../src/model/authoring.js';
 import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { checkSchema } from '../src/validation/schemaCheck.js';
 import { hasErrors } from '../src/validation/severity.js';
@@ -10,18 +11,18 @@ beforeAll(async () => {
   await initKernel();
 }, 30000);
 
-function buildModel(): BimModel {
-  const model = new BimModel();
+function buildModel(): BimDocument {
+  const model = new BimDocument();
   const initResult = model.init({ name: 'Schema Test Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectLocalId = initResult.value;
-  const siteLocalId = unwrap(model.addSite({ name: 'Test Site' }));
-  const buildingLocalId = unwrap(model.addBuilding({ name: 'Test Building' }));
-  const storeyLocalId = unwrap(model.addStorey({ name: 'Ground Floor', elevation: 0 }));
+  const siteLocalId = unwrap(authoring(model).addSite({ name: 'Test Site' }));
+  const buildingLocalId = unwrap(authoring(model).addBuilding({ name: 'Test Building' }));
+  const storeyLocalId = unwrap(authoring(model).addStorey({ name: 'Ground Floor', elevation: 0 }));
   model.aggregate(projectLocalId, siteLocalId);
   model.aggregate(siteLocalId, buildingLocalId);
   model.aggregate(buildingLocalId, storeyLocalId);
-  const wallResult = model.addWall({
+  const wallResult = authoring(model).addWall({
     length: 5000,
     height: 3000,
     thickness: 250,
@@ -45,7 +46,7 @@ async function buildBytes(): Promise<Uint8Array> {
 }
 
 describe('schemaCheck self-validation gate', () => {
-  it('passes a real IFC produced by BimModel + toIfc', async () => {
+  it('passes a real IFC produced by BimDocument + toIfc', async () => {
     const bytes = await buildBytes();
     const report = await checkSchema(bytes);
     expect(hasErrors(report)).toBe(false);

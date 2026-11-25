@@ -1,3 +1,4 @@
+import { authoring } from '../src/model/authoring.js';
 import {ordinalOf} from '../src/identity/recordRef.js';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import * as brepjs from 'brepjs';
@@ -12,7 +13,7 @@ import {
   type ValidSolid,
 } from 'brepjs';
 import { validateBody } from '../src/types/body.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import type { WallSpec } from '../src/specs/wallSpec.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
@@ -92,8 +93,8 @@ it.each(['Proxy', 'EarthworksFill'] as const)(
   (category) => {
     const baseline = arena();
     {
-      using model = new BimModel();
-      const wallId = unwrap(model.addWall(WALL));
+      using model = new BimDocument();
+      const wallId = unwrap(authoring(model).addWall(WALL));
       const wall = model.getElement(wallId);
       if (wall?.category !== 'WALL') throw new Error('Expected Wall');
       const source = wall.geometry.solids[0];
@@ -103,7 +104,7 @@ it.each(['Proxy', 'EarthworksFill'] as const)(
       const relationships = model.getAllRelationships();
       const live = arena();
       const adopt =
-        category === 'Proxy' ? model.addProxy.bind(model) : model.addEarthworksFill.bind(model);
+        category === 'Proxy' ? authoring(model).addProxy.bind(authoring(model)) : authoring(model).addEarthworksFill.bind(authoring(model));
       expect(
         adopt({ name: 'Alias', solid: fixture.alias, materialName: 'Test' }, { stableKey: 'retry' })
       ).toMatchObject({
@@ -146,8 +147,8 @@ it.each(['before', 'after'] as const)(
   (failurePoint) => {
     const baseline = arena();
     {
-      using model = new BimModel();
-      const id = unwrap(model.addWall(WALL));
+      using model = new BimDocument();
+      const id = unwrap(authoring(model).addWall(WALL));
       const wall = model.getElement(id);
       if (wall?.category !== 'WALL') throw new Error('Expected Wall');
       const source = wall.geometry.solids[0];
@@ -194,11 +195,11 @@ it.each(['before', 'after'] as const)(
             body: { kind: 'AUTHORITATIVE', solids: [fixture.alias] },
           })
         ).toMatchObject(conflict);
-        expect(model.addProxy({ name: 'Uncertain alias', solid: fixture.alias })).toMatchObject(
+        expect(authoring(model).addProxy({ name: 'Uncertain alias', solid: fixture.alias })).toMatchObject(
           conflict
         );
         expect(
-          model.addEarthworksFill({
+          authoring(model).addEarthworksFill({
             name: 'Uncertain alias',
             solid: fixture.alias,
             materialName: 'Test',
@@ -229,8 +230,8 @@ it.each(['before', 'after'] as const)(
 it('reports a later item resource-access failure without committing or releasing caller inputs', () => {
   const baseline = arena();
   {
-    using model = new BimModel();
-    const id = unwrap(model.addWall(WALL));
+    using model = new BimDocument();
+    const id = unwrap(authoring(model).addWall(WALL));
     const original = model.getElement(id);
     const relationships = model.getAllRelationships();
     using first = box(1, 1, 1);
@@ -264,8 +265,8 @@ it.each(['target Body', 'Proxy', 'EarthworksFill'] as const)(
   (ownerKind) => {
     const baseline = arena();
     {
-      using model = new BimModel();
-      const id = unwrap(model.addWall(WALL));
+      using model = new BimDocument();
+      const id = unwrap(authoring(model).addWall(WALL));
       const source = box(2, 2, 2);
       let ownerId = id;
       let ownerItemIndex = 0;
@@ -279,10 +280,10 @@ it.each(['target Body', 'Proxy', 'EarthworksFill'] as const)(
         );
         ownerItemIndex = 1;
       } else if (ownerKind === 'Proxy') {
-        ownerId = unwrap(model.addProxy({ name: 'Source', solid: source }));
+        ownerId = unwrap(authoring(model).addProxy({ name: 'Source', solid: source }));
       } else {
         ownerId = unwrap(
-          model.addEarthworksFill({ name: 'Source', solid: source, materialName: 'Test' })
+          authoring(model).addEarthworksFill({ name: 'Source', solid: source, materialName: 'Test' })
         );
       }
       using fixture = aliasFixture(source);
@@ -318,8 +319,8 @@ it.each(['target Body', 'Proxy', 'EarthworksFill'] as const)(
 it('accepts independent clone and placement owners that remain natively usable after source retirement', () => {
   const baseline = arena();
   {
-    using model = new BimModel();
-    const id = unwrap(model.addWall(WALL));
+    using model = new BimDocument();
+    const id = unwrap(authoring(model).addWall(WALL));
     const wall = model.getElement(id);
     if (wall?.category !== 'WALL') throw new Error('Expected Wall');
     const source = wall.geometry.solids[0];
@@ -333,8 +334,8 @@ it('accepts independent clone and placement owners that remain natively usable a
     expect(validateBody({ kind: 'AUTHORITATIVE', solids: [source, independent, placed] }).ok).toBe(
       true
     );
-    unwrap(model.addProxy({ name: 'Clone', solid: independent }));
-    unwrap(model.addEarthworksFill({ name: 'Placement', solid: placed, materialName: 'Test' }));
+    unwrap(authoring(model).addProxy({ name: 'Clone', solid: independent }));
+    unwrap(authoring(model).addEarthworksFill({ name: 'Placement', solid: placed, materialName: 'Test' }));
     const replacement = box(3, 3, 3);
     expect(
       unwrap(
@@ -356,8 +357,8 @@ it('accepts independent clone and placement owners that remain natively usable a
 it('captures resource identity before publishing the replacement and rejects retirement reentry', () => {
   const baseline = arena();
   {
-    using model = new BimModel();
-    const id = unwrap(model.addWall(WALL));
+    using model = new BimDocument();
+    const id = unwrap(authoring(model).addWall(WALL));
     const original = model.getElement(id);
     if (original?.category !== 'WALL') throw new Error('Expected Wall');
     const source = original.geometry.solids[0];
@@ -375,7 +376,7 @@ it('captures resource identity before publishing the replacement and rejects ret
     let reentrant: unknown;
     source.onDispose(() => {
       callbackBody = model.getElement(id)?.geometry;
-      reentrant = model.addProxy({ name: 'Retiring alias', solid: fixture.alias });
+      reentrant = authoring(model).addProxy({ name: 'Retiring alias', solid: fixture.alias });
     });
     const receipt = unwrap(
       model.replaceBody({
@@ -396,8 +397,8 @@ it('captures resource identity before publishing the replacement and rejects ret
 it('rejects a generated resource alias already pending adoption without publishing partial records', () => {
   const baseline = arena();
   {
-    using model = new BimModel();
-    const site = unwrap(model.addSite({ name: 'Existing site' }));
+    using model = new BimDocument();
+    const site = unwrap(authoring(model).addSite({ name: 'Existing site' }));
     const records = model.getAllElements();
     const extrude = brepjs.extrude;
     let first: ValidSolid | undefined;
@@ -416,7 +417,7 @@ it('rejects a generated resource alias already pending adoption without publishi
     });
     try {
       expect(
-        model.addCurtainWall(
+        authoring(model).addCurtainWall(
           {
             ...WALL,
             width: 10,
@@ -447,7 +448,7 @@ it('rejects a generated resource alias already pending adoption without publishi
       expect(model.getGeometryCleanupDiagnostics()).toEqual([]);
       expectArena(baseline);
       injection.mockRestore();
-      expect(ordinalOf(unwrap(model.addSite({ name: 'Retry' }, { stableKey: 'retry-pending' })))).toBe(
+      expect(ordinalOf(unwrap(authoring(model).addSite({ name: 'Retry' }, { stableKey: 'retry-pending' })))).toBe(
         ordinalOf(site) + 1
       );
     } finally {
@@ -460,7 +461,7 @@ it('rejects a generated resource alias already pending adoption without publishi
 
 it('releases every generated candidate when a later resource accessor throws during adoption', () => {
   const baseline = arena();
-  using model = new BimModel();
+  using model = new BimDocument();
   const extrude = brepjs.extrude;
   const outputs: brepjs.Solid[] = [];
   const attempts: ReturnType<typeof vi.fn>[] = [];
@@ -486,7 +487,7 @@ it('releases every generated candidate when a later resource accessor throws dur
   });
   try {
     expect(
-      model.addCurtainWall(
+      authoring(model).addCurtainWall(
         {
           ...WALL,
           width: 10,
@@ -508,7 +509,7 @@ it('releases every generated candidate when a later resource accessor throws dur
     expect(model.getGeometryCleanupDiagnostics()).toEqual([]);
     expectArena(baseline);
     injection.mockRestore();
-    expect(ordinalOf(unwrap(model.addSite({ name: 'Retry' }, { stableKey: 'retry-accessor' })))).toBe(1);
+    expect(ordinalOf(unwrap(authoring(model).addSite({ name: 'Retry' }, { stableKey: 'retry-accessor' })))).toBe(1);
   } finally {
     injection.mockRestore();
     // Red-phase fixture repair after observing any missed generated releases.
@@ -522,7 +523,7 @@ it.each(['before', 'after'] as const)(
   (failurePoint) => {
     const baseline = arena();
     {
-      using model = new BimModel();
+      using model = new BimDocument();
       const extrude = brepjs.extrude;
       const outputs: brepjs.Solid[] = [];
       const primary = new Error('Second output resource accessor');
@@ -557,7 +558,7 @@ it.each(['before', 'after'] as const)(
       });
       try {
         expect(
-          model.addCurtainWall(
+          authoring(model).addCurtainWall(
             {
               ...WALL,
               width: 10,
@@ -584,7 +585,7 @@ it.each(['before', 'after'] as const)(
         });
         if (fixture === undefined) throw new Error('Expected third output alias fixture');
         expect(
-          model.addProxy({ name: 'Uncertain generated alias', solid: fixture.alias })
+          authoring(model).addProxy({ name: 'Uncertain generated alias', solid: fixture.alias })
         ).toMatchObject({
           ok: false,
           error: {
@@ -594,7 +595,7 @@ it.each(['before', 'after'] as const)(
         });
         expect(model.getAllElements()).toEqual([]);
         expect(model.getAllRelationships()).toEqual([]);
-        expect(ordinalOf(unwrap(model.addSite({ name: 'Retry' }, { stableKey: 'retry-two-faults' })))).toBe(1);
+        expect(ordinalOf(unwrap(authoring(model).addSite({ name: 'Retry' }, { stableKey: 'retry-two-faults' })))).toBe(1);
         model[Symbol.dispose]();
         model[Symbol.dispose]();
         expect(attempts).toBe(1);

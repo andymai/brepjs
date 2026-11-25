@@ -326,7 +326,7 @@ export class BimAuthoring {
       return err(
         specError(
           'DUPLICATE_STABLE_KEY',
-          `BimModel: stableKey and openingStableKey are both '${options.stableKey}'`
+          `BimDocument: stableKey and openingStableKey are both '${options.stableKey}'`
         )
       );
     }

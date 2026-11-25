@@ -1,8 +1,9 @@
+import { authoring } from '../src/model/authoring.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
 import { measureVolume, unwrap } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { SpfReader } from '../src/import/spfReader.js';
 import { readBodyGeometry } from '../src/import/geometryRead.js';
@@ -21,19 +22,19 @@ const SCALE_METRE = 1.0;
 
 const WALL = { length: 5000, height: 3000, thickness: 200 } as const;
 
-function buildWallModel(): BimModel {
-  const model = new BimModel();
+function buildWallModel(): BimDocument {
+  const model = new BimDocument();
   const initResult = model.init({ name: 'Geometry RoundTrip' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = unwrap(model.addSite({ name: 'Site' }));
-  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
-  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
+  const siteId = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
 
-  const wall = model.addWall({
+  const wall = authoring(model).addWall({
     length: WALL.length,
     height: WALL.height,
     thickness: WALL.thickness,
@@ -56,18 +57,18 @@ const IBEAM = {
   length: 6000,
 } as const;
 
-function buildCircularColumnModel(): BimModel {
-  const model = new BimModel();
+function buildCircularColumnModel(): BimDocument {
+  const model = new BimDocument();
   const ir = model.init({ name: 'Column RoundTrip' });
   if (!ir.ok) throw new Error(ir.error.message);
   const pid = ir.value;
-  const sid = unwrap(model.addSite({ name: 'Site' }));
-  const bid = unwrap(model.addBuilding({ name: 'Building' }));
-  const stid = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
+  const sid = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const bid = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+  const stid = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(pid, sid);
   model.aggregate(sid, bid);
   model.aggregate(bid, stid);
-  const col = model.addColumn({
+  const col = authoring(model).addColumn({
     height: CIRC_COLUMN.height,
     profile: { kind: 'CIRCULAR', radius: CIRC_COLUMN.radius },
     origin: [0, 0, 0],
@@ -80,18 +81,18 @@ function buildCircularColumnModel(): BimModel {
   return model;
 }
 
-function buildIBeamModel(): BimModel {
-  const model = new BimModel();
+function buildIBeamModel(): BimDocument {
+  const model = new BimDocument();
   const ir = model.init({ name: 'IBeam RoundTrip' });
   if (!ir.ok) throw new Error(ir.error.message);
   const pid = ir.value;
-  const sid = unwrap(model.addSite({ name: 'Site' }));
-  const bid = unwrap(model.addBuilding({ name: 'Building' }));
-  const stid = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
+  const sid = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const bid = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+  const stid = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(pid, sid);
   model.aggregate(sid, bid);
   model.aggregate(bid, stid);
-  const beam = model.addBeam({
+  const beam = authoring(model).addBeam({
     length: IBEAM.length,
     profile: {
       kind: 'I_BEAM',
@@ -110,7 +111,7 @@ function buildIBeamModel(): BimModel {
   return model;
 }
 
-async function readerFor(model: BimModel): Promise<SpfReader> {
+async function readerFor(model: BimDocument): Promise<SpfReader> {
   const bytesResult = await toIfc(model, META);
   if (!bytesResult.ok) throw new Error(bytesResult.error.message);
   const readerResult = await SpfReader.create(bytesResult.value);
