@@ -15,6 +15,18 @@ import { makeNode } from './opGraph.js';
 import { replay } from './replay.js';
 import { extractFaces } from './nativeFaces.js';
 import { extractEdges, extractVertices } from './nativeEdges.js';
+import { translate } from './transformOps.js';
+
+// Profiles carry construction data in a mesh handle before extrusion.
+const PROFILE_TYPES: Readonly<Record<string, ShapeType>> = {
+  profileFace: 'face',
+  profileWire: 'wire',
+  profileEdge: 'edge',
+};
+
+function isProfileOp(op: string): boolean {
+  return op in PROFILE_TYPES;
+}
 
 function brepOf(shape: KernelShape, method: string): { occt: KernelAdapter; brep: KernelShape } {
   const ms = asManifoldShape(shape);
@@ -43,19 +55,7 @@ function shapeType(shape: KernelShape): ShapeType {
   // point of a fast mesh-CSG preview kernel (and require an occt kernel to
   // even classify a shape). Non-manifold handles still classify via OCCT.
   const native = asManifoldShape(shape);
-  if (native) {
-    // Profiles carry construction data in a mesh handle before extrusion.
-    switch (native.node.op) {
-      case 'profileFace':
-        return 'face';
-      case 'profileWire':
-        return 'wire';
-      case 'profileEdge':
-        return 'edge';
-      default:
-        return 'solid';
-    }
-  }
+  if (native) return PROFILE_TYPES[native.node.op] ?? 'solid';
   if (shape && typeof shape === 'object' && '__manifoldSub' in shape && 'subType' in shape) {
     const type = shape.subType;
     if (type === 'edge' || type === 'face' || type === 'vertex') return type;
@@ -195,6 +195,9 @@ export function makeTopologyOps(_module: ManifoldModule): KernelTopologyOps {
     copyShape: (shape) => {
       const s = asManifoldShape(shape);
       if (!s) return shape;
+      // A profile has no Manifold value. translate() copies its node and keeps
+      // the profile op, so the copy still classifies as a face, wire or edge.
+      if (isProfileOp(s.node.op)) return translate(shape, 0, 0, 0);
       return wrap(
         cloneSolid(unwrap(s)),
         makeNode('translateShape', { x: 0, y: 0, z: 0 }, [s.node])

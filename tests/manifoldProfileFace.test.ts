@@ -84,6 +84,19 @@ it('classifies construction profiles, a solid and its native subshapes', () => {
         expect(k.shapeType(wire)).toBe('wire');
         expect(k.shapeType(face.wrapped)).toBe('face');
         expect(k.shapeType(solid.wrapped)).toBe('solid');
+        const copies = [edge, wire, face.wrapped, solid.wrapped].map((shape) => k.copyShape(shape));
+        try {
+          expect(copies.map((copy) => k.shapeType(copy))).toEqual([
+            'edge',
+            'wire',
+            'face',
+            'solid',
+          ]);
+        } finally {
+          copies.forEach((copy) => {
+            k.dispose(copy);
+          });
+        }
         for (const kind of ['face', 'edge', 'vertex'] as const) {
           const items = k.iterShapes(solid.wrapped, kind);
           expect(items.length).toBeGreaterThan(0);
