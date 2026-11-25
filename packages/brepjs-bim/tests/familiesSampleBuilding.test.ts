@@ -28,17 +28,23 @@ beforeAll(async () => {
   await initKernel();
 }, 30000);
 
+// FILE_NAME holds a timestamp, and the header comment holds the web-ifc version.
+const VOLATILE_HEADER = /^(FILE_NAME|\* STEP Physical File produced by:|\* Version:)/;
+
+function stripVolatileHeader(ifcText: string): string {
+  return ifcText
+    .split('\n')
+    .filter((line) => !VOLATILE_HEADER.test(line))
+    .join('\n');
+}
+
 async function projectToIfc(): Promise<string> {
   const projected = familiesToBim(resolve(buildSampleBuilding()), SAMPLE_OPTIONS);
   expect(isOk(projected)).toBe(true);
   using model = unwrap(projected).model;
   const ifc = unwrap(await toIfcValidated(model, SAMPLE_META));
   expect(ifc.report.issues.filter((i) => i.severity === 'error')).toEqual([]);
-  return new TextDecoder()
-    .decode(ifc.bytes)
-    .split('\n')
-    .filter((line) => !line.startsWith('FILE_NAME'))
-    .join('\n');
+  return stripVolatileHeader(new TextDecoder().decode(ifc.bytes));
 }
 
 describe('families sample building (Phase 6 gate)', () => {
@@ -127,11 +133,6 @@ describe('families sample building (Phase 6 gate)', () => {
       join(dirname(fileURLToPath(import.meta.url)), '../examples/sample-building-families.ifc'),
       'utf8'
     );
-    const stripHeader = (s: string): string =>
-      s
-        .split('\n')
-        .filter((line) => !line.startsWith('FILE_NAME'))
-        .join('\n');
-    expect(stripHeader(fixture)).toBe(await projectToIfc());
+    expect(stripVolatileHeader(fixture)).toBe(await projectToIfc());
   });
 });
