@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.2](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.27.1...brepjs-bim-v0.27.2) (2026-11-25)
+
+
+### Bug Fixes
+
+* **bim:** preserve cross-section orientation for extended beam profiles ([#2736](https://github.com/andymai/brepjs/issues/2736)) ([42327e8](https://github.com/andymai/brepjs/commit/42327e8b4cb94358dbddf7eab4e06f8f420c4f2b))
+
 ## [0.27.1](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.27.0...brepjs-bim-v0.27.1) (2026-10-28)
 
 
