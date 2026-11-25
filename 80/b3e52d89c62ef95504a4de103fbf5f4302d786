@@ -1,0 +1,38 @@
+packages/brepjs-bim/src/ifc-writer/profileDefWriter.ts
+  s_d6a660b14b15ca::t_101c24ab122ca7 116,119-120,124-127
+packages/brepjs-bim/src/specs/profile.ts
+  s_d6a660b14b15ca::t_400eefbb8dc81d 7,283
+packages/brepjs-bim/src/specs/profilesExtended.ts
+  s_d6a660b14b15ca::t_400eefbb8dc81d 7,18-21,30,39,53,64,89,144-145,150,158-160,169-172,189-192,207-220,233-234,244-255,262-275,297,299-300,302-309,319,333-338,367-370,381-390,408-417,440-485,488,491-502,506-509
+  s_d6a660b14b15ca::t_101c24ab122ca7 486-487,489-490
+packages/brepjs-bim/src/elementFns/profileFns.ts
+  s_d6a660b14b15ca::t_6645b803367d03 8,107-108
+packages/brepjs-bim/tests/profileExchange.test.ts
+  s_d6a660b14b15ca::t_cb24ff414e1e3c 236,238-242
+  s_d6a660b14b15ca::t_21fd781e48829e 1-235,237,243-313,315-465,467-510
+  s_d6a660b14b15ca::t_3a29c3ebe97bb7 314,466
+packages/brepjs-bim/src/import/geometryRead.ts
+  s_d6a660b14b15ca::t_eaf7129a919db4 894,903,909-910,914-923,1148-1202,1283-1286
+  s_d6a660b14b15ca::t_101c24ab122ca7 735-740,752,758,763,768,773,779,804,810,813-814,821-822,843,848-849
+packages/brepjs-bim/src/specs/cornerFillet.ts
+  s_d6a660b14b15ca::t_6645b803367d03 1-2,6-61
+  s_d6a660b14b15ca::t_cb24ff414e1e3c 3-5
+packages/brepjs-bim/tests/profilesExtended.test.ts
+  s_d6a660b14b15ca::t_6d657e6f9c91e3 7,248-313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "80b3e52d89c62ef95504a4de103fbf5f4302d786",
+  "prompts": {},
+  "sessions": {
+    "s_d6a660b14b15ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a218cb2b-b826-4b28-85aa-d0b260cc9317",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
