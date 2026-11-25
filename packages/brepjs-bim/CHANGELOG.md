@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.27.3...brepjs-bim-v0.28.0) (2026-11-25)
+
+
+### Features
+
+* **bim:** unify Body ownership and verify IfcMember and IfcSign extensions ([#2735](https://github.com/andymai/brepjs/issues/2735)) ([3610209](https://github.com/andymai/brepjs/commit/361020945cba637fe9c971804c6f0fb0f9d82b34))
+
 ## [0.27.3](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.27.2...brepjs-bim-v0.27.3) (2026-11-25)
 
 
