@@ -1,0 +1,19 @@
+packages/brepjs-bim/tests/familiesSampleBuilding.test.ts
+  s_d6a660b14b15ca::t_c1794592192440 31-40,47,136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "39b8205d81dbc5bef85ded6ec1dd1c51dc3e9201",
+  "prompts": {},
+  "sessions": {
+    "s_d6a660b14b15ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a218cb2b-b826-4b28-85aa-d0b260cc9317",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
