@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.3](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.27.2...brepjs-bim-v0.27.3) (2026-11-25)
+
+
+### Bug Fixes
+
+* **bim:** keep profile geometry the same in authoring, IFC export, and import ([#2739](https://github.com/andymai/brepjs/issues/2739)) ([bda7eba](https://github.com/andymai/brepjs/commit/bda7ebaae20bd5066495b6ae939434ab44c588b6))
+
 ## [0.27.2](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.27.1...brepjs-bim-v0.27.2) (2026-11-25)
 
 
