@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.28.4](https://github.com/andymai/brepjs/compare/brepjs-v20.28.3...brepjs-v20.28.4) (2026-11-25)
+
+
+### Bug Fixes
+
+* **manifold:** identify profiles and subshapes at the solid boundary ([#2740](https://github.com/andymai/brepjs/issues/2740)) ([a94b778](https://github.com/andymai/brepjs/commit/a94b778fb1f79dcd130e27d872a8c74e784b1577))
+
 ## [20.28.3](https://github.com/andymai/brepjs/compare/brepjs-v20.28.2...brepjs-v20.28.3) (2026-11-17)
 
 
