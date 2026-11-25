@@ -2,7 +2,7 @@ import { flightItems } from '../model/flightBody.js';
 import { frameInverse } from '../placementFrame.js';
 import { disposeBody, transformBody, type Body } from '../types/body.js';
 import { preflightBody } from '../serialize/bodyPreflight.js';
-import type { LocalId } from '../identity/localId.js';
+import type { RecordRef } from '../identity/recordRef.js';
 import { ok, err } from 'brepjs';
 import * as WebIFC from 'web-ifc';
 import type { IfcWriter } from './ifcWriter.js';
@@ -16,7 +16,7 @@ import type { RampSpec } from '../specs/rampSpec.js';
 import type { BimError } from '../errors/bimError.js';
 import { specError } from '../errors/bimError.js';
 
-function prepareFlight(body: Body, localId: LocalId, index: number, properties: object) {
+function prepareFlight(body: Body, localId: RecordRef, index: number, properties: object) {
   const bindings = flightItems(body);
   if (!bindings.ok) return bindings;
   const binding = bindings.value[index];
@@ -320,7 +320,7 @@ export function writeStairAssembly(
   spec: StairSpec,
   stairKey: string,
   body: Body,
-  localId: LocalId,
+  localId: RecordRef,
   assemblyGuid: string,
   ownerHistoryId: number,
   geomSubContextId: number,
@@ -425,7 +425,7 @@ export function writeRampAssembly(
   spec: RampSpec,
   rampKey: string,
   body: Body,
-  localId: LocalId,
+  localId: RecordRef,
   assemblyGuid: string,
   ownerHistoryId: number,
   geomSubContextId: number,

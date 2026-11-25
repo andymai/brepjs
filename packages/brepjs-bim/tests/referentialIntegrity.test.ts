@@ -8,12 +8,17 @@ import type {
   VoidsSlabRel,
   FillsOpeningRel,
 } from '../src/types/relationships.js';
-import type { LocalId } from '../src/identity/localId.js';
+import { RecordRef } from '../src/identity/recordRef.js';
 import type { IfcGuid } from '../src/identity/ifcGuid.js';
 import { checkReferentialIntegrity } from '../src/validation/referentialIntegrity.js';
 import { hasErrors, countBySeverity } from '../src/validation/severity.js';
 
-const id = (n: number): LocalId => n as LocalId;
+const ids = new Map<number, RecordRef>();
+function id(n: number) {
+  const ref = ids.get(n) ?? new RecordRef(n);
+  ids.set(n, ref);
+  return ref;
+}
 const guid = (s: string): IfcGuid => s as unknown as IfcGuid;
 
 // Minimal element stub — the integrity checker only reads category + localId,

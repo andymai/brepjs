@@ -1,3 +1,4 @@
+import type { RecordRef } from '../src/identity/recordRef.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
 import { box, scale, unwrap } from 'brepjs';
@@ -16,7 +17,7 @@ const META = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };
 // Builds a spatially-complete model (project→site→building→storey) with a wall
 // that hosts a door and a window. Returns the model and the storey id so callers
 // can place additional elements.
-function buildModelWithOpenings(): { model: BimModel; storeyId: number } {
+function buildModelWithOpenings(): { model: BimModel; storeyId: RecordRef } {
   const model = new BimModel();
   const initResult = model.init({ name: 'Phase2 Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);

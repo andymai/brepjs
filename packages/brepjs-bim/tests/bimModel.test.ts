@@ -119,7 +119,7 @@ describe('BimModel', () => {
     expect(project?.spec.name).toBe('Test Project');
   });
 
-  it('addWall returns a LocalId on success', () => {
+  it('addWall returns a RecordRef on success', () => {
     const model = new BimModel();
     unwrap(model.init({ name: 'P' }));
     const siteId = unwrap(model.addSite({ name: 'S' }));
@@ -470,7 +470,7 @@ describe('BimModel.addSlab', () => {
     materialName: 'Concrete',
   };
 
-  it('adds a slab and returns a LocalId', () => {
+  it('adds a slab and returns a RecordRef', () => {
     const model = new BimModel();
     const result = model.addSlab(SLAB_SPEC);
     expect(result.ok).toBe(true);
@@ -711,7 +711,7 @@ describe('BimModel.addBeam (M7)', () => {
     materialName: 'Steel',
   };
 
-  it('adds a beam and returns a LocalId', () => {
+  it('adds a beam and returns a RecordRef', () => {
     const model = new BimModel();
     const result = model.addBeam(BEAM_SPEC);
     expect(result.ok).toBe(true);
@@ -766,7 +766,7 @@ describe('BimModel.addColumn (M7)', () => {
     materialName: 'Concrete',
   };
 
-  it('adds a column and returns a LocalId', () => {
+  it('adds a column and returns a RecordRef', () => {
     const model = new BimModel();
     const result = model.addColumn(COLUMN_SPEC);
     expect(result.ok).toBe(true);

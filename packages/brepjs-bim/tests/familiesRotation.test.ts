@@ -1,3 +1,4 @@
+import type { RecordRef } from '../src/identity/recordRef.js';
 /**
  * familiesToBim rotation fold: a tRotate on a typed Product or a civil spatial
  * node lands in its IfcLocalPlacement (origin + axisX + axisZ), so the exported
@@ -102,7 +103,7 @@ async function worldPlacement(
   }
 }
 
-function guidOf(model: BimModel, localId: number): string {
+function guidOf(model: BimModel, localId: RecordRef): string {
   const guid = model.getElement(localId as never)?.guid;
   if (guid === undefined) throw new Error('element guid missing');
   return guid;

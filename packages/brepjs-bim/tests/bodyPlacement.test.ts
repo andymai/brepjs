@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { DisposalScope, getBounds, getKernel, measureVolume, unwrap } from 'brepjs';
-import { makeLocalIdCounter } from '../src/identity/localId.js';
+import { recordCounter } from '../src/identity/recordRef.js';
 import { newIfcGuid } from '../src/identity/ifcGuid.js';
 import { placedSolids } from '../src/elementFns/placedGeometry.js';
 import { validateBody } from '../src/types/body.js';
@@ -16,7 +16,7 @@ beforeAll(async () => {
 }, 30000);
 
 const parentFrame = { origin: [0, 20, 0], axisX: [0, 1, 0], axisZ: [0, 0, 1] } satisfies FrameInput;
-const ids = makeLocalIdCounter();
+const ids = recordCounter();
 afterEach(() => {
   setBodyTestHooksForTesting(null);
   vi.restoreAllMocks();

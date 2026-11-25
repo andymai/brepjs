@@ -1,10 +1,11 @@
+import type { RecordRef } from '../identity/recordRef.js';
 export type ValidationSeverity = 'error' | 'warning' | 'info';
 
 export interface ValidationIssue {
   readonly code: string;
   readonly severity: ValidationSeverity;
   readonly message: string;
-  readonly entity?: string | number;
+  readonly entity?: string | number | RecordRef;
   readonly context?: Readonly<Record<string, unknown>>;
 }
 
@@ -16,7 +17,7 @@ export function issue(
   severity: ValidationSeverity,
   code: string,
   message: string,
-  entity?: string | number,
+  entity?: string | number | RecordRef,
   context?: Readonly<Record<string, unknown>>
 ): ValidationIssue {
   // entity/context are exactOptionalPropertyTypes-sensitive: omit when undefined.

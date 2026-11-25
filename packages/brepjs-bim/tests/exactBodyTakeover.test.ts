@@ -16,7 +16,7 @@ import { placedSolids } from '../src/elementFns/placedGeometry.js';
 import { bodySolids } from '../src/types/body.js';
 import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
 import type { BimElement } from '../src/types/bimTypes.js';
-import type { LocalId } from '../src/identity/localId.js';
+import { RecordRef } from '../src/identity/recordRef.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import {
   setBodyItemPreparerForTesting,
@@ -491,7 +491,7 @@ function errorCode(result: {
 
 function requiredElement(
   model: BimModel,
-  localId: LocalId,
+  localId: RecordRef,
   category: 'WALL' | 'RAILING'
 ): BimElement<'WALL'> | BimElement<'RAILING'> {
   const element = model.getElement(localId);
@@ -501,6 +501,6 @@ function requiredElement(
   return element;
 }
 
-function localIdBeyondModel(): LocalId {
-  return 1_000_000 as LocalId;
+function localIdBeyondModel(): RecordRef {
+  return new RecordRef(1_000_000);
 }

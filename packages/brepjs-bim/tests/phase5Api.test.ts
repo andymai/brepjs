@@ -1,3 +1,4 @@
+import type { RecordRef } from '../src/identity/recordRef.js';
 import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
@@ -44,7 +45,7 @@ const SPACE_IS_EXTERNAL_IDS = `<?xml version="1.0" encoding="UTF-8"?>
  * Builds a small but complete model: project/site/building/storey spatial tree,
  * one wall, two spaces grouped into a zone, and the wall grouped into a system.
  */
-function buildModel(): { model: BimModel; spaceAId: number } {
+function buildModel(): { model: BimModel; spaceAId: RecordRef } {
   const model = new BimModel();
   const initResult = model.init({ name: 'Phase5 API Project', description: 'End-to-end fixture' });
   if (!initResult.ok) throw new Error(initResult.error.message);

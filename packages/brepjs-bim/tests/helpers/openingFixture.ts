@@ -1,7 +1,7 @@
 import { unwrap } from 'brepjs';
 import type { BimModel } from '../../src/model/bimModel.js';
 import type { WallSpec } from '../../src/specs/wallSpec.js';
-import type { LocalId } from '../../src/identity/localId.js';
+import type { RecordRef } from '../../src/identity/recordRef.js';
 
 export const OPENING_WALL: WallSpec = {
   length: 10,
@@ -62,7 +62,7 @@ export function openingHost(model: BimModel, kind: OpeningCommand) {
   };
 }
 
-export function singletonWallSolid(model: BimModel, id: LocalId) {
+export function singletonWallSolid(model: BimModel, id: RecordRef) {
   const wall = model.getElement(id);
   if (wall?.category !== 'WALL' || wall.geometry.solids.length !== 1) {
     throw new Error('Expected a singleton Wall Body');

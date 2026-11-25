@@ -4,7 +4,7 @@ import { BimModel } from '../src/model/bimModel.js';
 import type { CurtainWallSpec } from '../src/specs/curtainWallSpec.js';
 import type { RailingSpec } from '../src/specs/railingSpec.js';
 import type { BimError } from '../src/errors/bimError.js';
-import type { LocalId } from '../src/identity/localId.js';
+import type { RecordRef } from '../src/identity/recordRef.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 
@@ -40,7 +40,7 @@ const RAILING = {
   materialName: 'Steel',
 } satisfies RailingSpec;
 
-type Creator = (model: BimModel) => brepjs.Result<LocalId, BimError>;
+type Creator = (model: BimModel) => brepjs.Result<RecordRef, BimError>;
 const profile = { kind: 'RECTANGULAR', width: 1, height: 1 } as const;
 const validationCreators: ReadonlyArray<readonly [string, Creator]> = [
   ['Wall', (model) => model.addWall(RAILING)],

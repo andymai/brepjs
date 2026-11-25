@@ -1,3 +1,4 @@
+import { RecordRef } from './identity/recordRef.js';
 import { GeometryCleanupError } from 'brepjs';
 import { z } from 'zod';
 import type { BimError } from './errors/bimError.js';
@@ -8,7 +9,7 @@ const diagnosticSchema = z.object({
   operation: z.string(),
   itemIndex: z.number().int().nonnegative(),
   resourceKind: z.enum(['SHAPE', 'TRANSFORM']),
-  localId: z.number().optional(),
+  localId: z.instanceof(RecordRef).optional(),
   cause: z.unknown(),
 });
 const failedCleanup = z.object({

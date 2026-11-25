@@ -1,7 +1,7 @@
 import type { BimModel } from '../model/bimModel.js';
 import type { AnyBimElement, BimCategory } from '../types/bimTypes.js';
 import type { BimRelationship } from '../types/relationships.js';
-import type { LocalId } from '../identity/localId.js';
+import type { RecordRef } from '../identity/recordRef.js';
 import type {
   CobieModel,
   CobieExportMeta,
@@ -95,12 +95,12 @@ export function deriveCobieModel(model: BimModel, meta?: CobieExportMeta): Cobie
   const elements = model.getAllElements();
   const relationships = model.getAllRelationships();
 
-  const elementById = new Map<LocalId, AnyBimElement>();
+  const elementById = new Map<RecordRef, AnyBimElement>();
   for (const el of elements) elementById.set(el.localId, el);
 
   // Map every element to the spatial container (storey/space) it is placed in,
   // via IfcRelContainedInSpatialStructure.
-  const containerOf = new Map<LocalId, LocalId>();
+  const containerOf = new Map<RecordRef, RecordRef>();
   for (const rel of relationships) {
     if (rel.kind !== 'CONTAINED_IN') continue;
     for (const member of rel.relatedElements) containerOf.set(member, rel.relatingStructure);
@@ -168,8 +168,8 @@ function deriveFloors(elements: readonly AnyBimElement[]): CobieFloorRow[] {
 
 function deriveSpaces(
   model: BimModel,
-  elementById: ReadonlyMap<LocalId, AnyBimElement>,
-  containerOf: ReadonlyMap<LocalId, LocalId>
+  elementById: ReadonlyMap<RecordRef, AnyBimElement>,
+  containerOf: ReadonlyMap<RecordRef, RecordRef>
 ): CobieSpaceRow[] {
   const spaces: CobieSpaceRow[] = [];
   for (const space of model.getSpaces()) {
@@ -196,8 +196,8 @@ function deriveSpaces(
  */
 function deriveComponentsAndTypes(
   model: BimModel,
-  elementById: ReadonlyMap<LocalId, AnyBimElement>,
-  containerOf: ReadonlyMap<LocalId, LocalId>
+  elementById: ReadonlyMap<RecordRef, AnyBimElement>,
+  containerOf: ReadonlyMap<RecordRef, RecordRef>
 ): { component: CobieComponentRow[]; type: CobieTypeRow[] } {
   const component: CobieComponentRow[] = [];
   const typeByName = new Map<string, CobieTypeRow>();
@@ -258,7 +258,7 @@ function componentName(el: AnyBimElement, category: BimCategory, index: number):
 function deriveZones(
   elements: readonly AnyBimElement[],
   relationships: readonly BimRelationship[],
-  elementById: ReadonlyMap<LocalId, AnyBimElement>
+  elementById: ReadonlyMap<RecordRef, AnyBimElement>
 ): CobieZoneRow[] {
   const zones: CobieZoneRow[] = [];
   for (const el of elements) {
@@ -282,7 +282,7 @@ function deriveZones(
 function deriveSystems(
   elements: readonly AnyBimElement[],
   relationships: readonly BimRelationship[],
-  elementById: ReadonlyMap<LocalId, AnyBimElement>
+  elementById: ReadonlyMap<RecordRef, AnyBimElement>
 ): CobieSystemRow[] {
   const systems: CobieSystemRow[] = [];
   for (const el of elements) {
@@ -305,9 +305,9 @@ function groupName(el: AnyBimElement): string {
 }
 
 function firstGroupMemberName(
-  groupId: LocalId,
+  groupId: RecordRef,
   relationships: readonly BimRelationship[],
-  elementById: ReadonlyMap<LocalId, AnyBimElement>,
+  elementById: ReadonlyMap<RecordRef, AnyBimElement>,
   ofCategory: BimCategory
 ): string {
   for (const rel of relationships) {
@@ -324,9 +324,9 @@ function firstGroupMemberName(
 }
 
 function groupMemberNames(
-  groupId: LocalId,
+  groupId: RecordRef,
   relationships: readonly BimRelationship[],
-  elementById: ReadonlyMap<LocalId, AnyBimElement>
+  elementById: ReadonlyMap<RecordRef, AnyBimElement>
 ): string[] {
   const names: string[] = [];
   for (const rel of relationships) {
@@ -352,7 +352,7 @@ function deriveAttributes(
   const attributes: CobieAttributeRow[] = [];
 
   // Reproduce per-category numbering so attribute row names line up with components.
-  const indexByElement = new Map<LocalId, number>();
+  const indexByElement = new Map<RecordRef, number>();
   const countByCategory = new Map<BimCategory, number>();
   for (const el of model.getAllElements()) {
     if (!COMPONENT_CATEGORIES.has(el.category) && el.category !== 'SPACE') continue;

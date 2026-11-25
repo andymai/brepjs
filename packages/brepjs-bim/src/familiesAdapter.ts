@@ -45,7 +45,7 @@ import {
   type RigidFrame,
 } from './placementFrame.js';
 import { BimModel, type OpeningIdentityOptions } from './model/bimModel.js';
-import type { LocalId } from './identity/localId.js';
+import type { RecordRef } from './identity/recordRef.js';
 import { parseWallSpec } from './specs/wallSpec.js';
 import { parseSlabSpec } from './specs/slabSpec.js';
 import { parseColumnSpec } from './specs/columnSpec.js';
@@ -119,8 +119,8 @@ export interface ProxiedElement {
 
 export interface FamiliesBimResult {
   readonly model: BimModel;
-  /** LocalId per geometry-bearing families key path. */
-  readonly idByKeyPath: ReadonlyMap<string, LocalId>;
+  /** RecordRef per geometry-bearing families key path. */
+  readonly idByKeyPath: ReadonlyMap<string, RecordRef>;
   /**
    * Elements exported as IfcBuildingElementProxy because no spec route
    * matched, in walk order. Only ever non-empty when `proxyEvaluator` is set:
@@ -133,7 +133,7 @@ export interface FamiliesBimResult {
 
 export interface FamiliesAdapterTestHooks {
   readonly afterCivilBody?:
-    ((model: BimModel, localId: LocalId, element: ResolvedElement) => void) | undefined;
+    ((model: BimModel, localId: RecordRef, element: ResolvedElement) => void) | undefined;
 }
 
 let testHooks: FamiliesAdapterTestHooks | null = null;
@@ -571,7 +571,7 @@ function addFill(
   fill: ResolvedElement,
   input: Record<string, unknown>,
   identity: OpeningIdentityOptions
-): Result<LocalId, BimError> {
+): Result<RecordRef, BimError> {
   const archetype = archetypeFor(fill);
   if (archetype === 'door') {
     const parsed = parseDoorSpec(input);
@@ -662,7 +662,7 @@ function addProxyElement(
   el: ResolvedElement,
   evaluator: csg.Evaluator,
   spatialFrame: RigidFrame
-): Result<LocalId, BimError> {
+): Result<RecordRef, BimError> {
   const inverseCheck = frameInverse(spatialFrame);
   if (!inverseCheck.ok) return inverseCheck;
   const body = materializeOwnedSolid(el, evaluator, {
@@ -705,9 +705,9 @@ function addProxyElement(
 function addOpenings(
   model: BimModel,
   host: ResolvedElement,
-  wallId: LocalId,
-  containerId: LocalId,
-  idByKeyPath: Map<string, LocalId>
+  wallId: RecordRef,
+  containerId: RecordRef,
+  idByKeyPath: Map<string, RecordRef>
 ): Result<void, BimError> {
   const hostT = peelTranslates(host.geometry).total;
   for (const opening of host.children) {
@@ -1200,7 +1200,7 @@ function addCivilSpatialOccurrence(
   el: ResolvedElement,
   kind: CivilSpatialKind,
   input: Record<string, unknown>
-): Result<LocalId, BimError> {
+): Result<RecordRef, BimError> {
   if (kind === 'site') {
     if (el.semantics?.role !== 'transport-site') return unsupportedCivilRole(el, 'Site');
     const parsed = parseSiteSpec(input);
@@ -1255,7 +1255,7 @@ function addEarthworksFillElement(
   el: ResolvedElement,
   evaluator: csg.Evaluator,
   spatialFrame: RigidFrame
-): Result<LocalId, BimError> {
+): Result<RecordRef, BimError> {
   if (el.semantics?.kind !== 'product') {
     return err(
       specError(
@@ -1307,7 +1307,7 @@ function addEarthworksFillElement(
 function installCivilBody(
   model: BimModel,
   el: ResolvedElement,
-  localId: LocalId,
+  localId: RecordRef,
   category: 'WALL' | 'RAILING',
   evaluator: csg.Evaluator,
   productWorldFrame: RigidFrame
@@ -1348,7 +1348,7 @@ function installCivilBody(
 }
 
 interface ProjectionWalkState {
-  readonly spatialStructureId: LocalId | null;
+  readonly spatialStructureId: RecordRef | null;
   readonly civilParent: CivilParentKind;
   readonly rotated: boolean;
   readonly cumulativeTranslation: Translation;
@@ -1463,7 +1463,7 @@ function projectFamiliesToBim(
   );
   if (!initResult.ok) return initResult;
   const projectId = initResult.value;
-  let buildingId: LocalId | null = null;
+  let buildingId: RecordRef | null = null;
   if (!usesAuthoredCivilHierarchy) {
     const siteResult = model.addSite({ name: options.siteName ?? 'Site' });
     if (!siteResult.ok) return siteResult;
@@ -1474,7 +1474,7 @@ function projectFamiliesToBim(
     model.aggregate(siteResult.value, buildingId);
   }
 
-  const idByKeyPath = new Map<string, LocalId>(
+  const idByKeyPath = new Map<string, RecordRef>(
     usesAuthoredCivilHierarchy ? [[root.keyPath, projectId]] : []
   );
   const proxied: ProxiedElement[] = [];

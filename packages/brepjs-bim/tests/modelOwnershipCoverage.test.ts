@@ -11,13 +11,13 @@ import {
 } from 'brepjs';
 import { BimModel } from '../src/model/bimModel.js';
 import type { WallSpec } from '../src/specs/wallSpec.js';
-import type { LocalId } from '../src/identity/localId.js';
+import type { RecordRef } from '../src/identity/recordRef.js';
 import type { BimError } from '../src/errors/bimError.js';
 import type { Body } from '../src/types/body.js';
 import { measureBodyMaterial, bodyBounds } from '../src/types/body.js';
 import { placedSolids } from '../src/elementFns/placedGeometry.js';
 import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
-import { makeLocalIdCounter } from '../src/identity/localId.js';
+import { ordinalOf, recordCounter } from '../src/identity/recordRef.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 
@@ -82,7 +82,7 @@ it.each(['Proxy', 'Fill'] as const)(
       const retry = unwrap(
         command({ name: 'Valid', materialName: 'Test', solid: valid }, { stableKey: 'retry-solid' })
       );
-      expect(retry).toBe(existing + 1);
+      expect(ordinalOf(retry)).toBe(ordinalOf(existing) + 1);
       const adopted = model.getElement(retry);
       if (adopted?.representation !== 'BODY') throw new Error('Expected a retained Body');
       expect(adopted.geometry.solids[0]).toBe(valid);
@@ -122,7 +122,7 @@ it('rejects missing or unsupported targets before reading the incoming Body', ()
   let reads = 0;
   const body = { kind: 'AUTHORITATIVE', solids: [input] } satisfies Body;
   for (const [id, code] of [
-    [makeLocalIdCounter(1000).next(), 'BODY_TARGET_NOT_FOUND'],
+    [recordCounter(1000).next(), 'BODY_TARGET_NOT_FOUND'],
     [site, 'BODY_UNSUPPORTED_CATEGORY'],
   ] as const) {
     expect(
@@ -179,7 +179,7 @@ it('leaves earlier live inputs unregistered when a later item has an ownership c
   expectArena(baseline);
 });
 
-type Creator = (model: BimModel) => Result<LocalId, BimError>;
+type Creator = (model: BimModel) => Result<RecordRef, BimError>;
 const creators: ReadonlyArray<readonly [string, Creator]> = [
   ['Wall', (m) => m.addWall(WALL)],
   ['Railing', (m) => m.addRailing(WALL)],
@@ -355,7 +355,7 @@ it('rolls back generated adoption failures and later relationship failures witho
   expect(model.getAllElements()).toEqual(records);
   expect(model.getAllRelationships()).toEqual(relationships);
   const retry = unwrap(model.addWall(WALL, { stableKey: 'retry' }));
-  expect(retry).toBe(original + 2);
+  expect(ordinalOf(retry)).toBe(ordinalOf(original) + 2);
 });
 
 it('rejects malformed runtime Bodies and later native validation throws without transfer', () => {

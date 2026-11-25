@@ -1,6 +1,6 @@
 import type { AnyBimElement, BimCategory } from '../types/bimTypes.js';
 import type { BimRelationship } from '../types/relationships.js';
-import type { LocalId } from '../identity/localId.js';
+import type { RecordRef } from '../identity/recordRef.js';
 import type { ValidationIssue, ValidationReport } from './severity.js';
 import { issue, emptyReport, appendIssues } from './severity.js';
 
@@ -63,13 +63,13 @@ function toGraph(input: IntegrityInput): ModelGraph {
 export function checkReferentialIntegrity(input: IntegrityInput): ValidationReport {
   const { elements, relationships } = toGraph(input);
 
-  const elementsById = new Map<LocalId, AnyBimElement>();
+  const elementsById = new Map<RecordRef, AnyBimElement>();
   for (const el of elements) elementsById.set(el.localId, el);
 
   // Count how many CONTAINED_IN rels reference each element.
-  const containmentCount = new Map<LocalId, number>();
+  const containmentCount = new Map<RecordRef, number>();
   // Track which openings are referenced by at least one VOIDS rel.
-  const voidedOpenings = new Set<LocalId>();
+  const voidedOpenings = new Set<RecordRef>();
 
   for (const rel of relationships) {
     if (rel.kind === 'CONTAINED_IN') {
@@ -153,8 +153,8 @@ export function checkReferentialIntegrity(input: IntegrityInput): ValidationRepo
 
 function checkVoidHost(
   issues: ValidationIssue[],
-  elementsById: ReadonlyMap<LocalId, AnyBimElement>,
-  hostId: LocalId,
+  elementsById: ReadonlyMap<RecordRef, AnyBimElement>,
+  hostId: RecordRef,
   expected: BimCategory
 ): void {
   const host = elementsById.get(hostId);
@@ -184,8 +184,8 @@ function checkVoidHost(
 
 function checkOpeningExists(
   issues: ValidationIssue[],
-  elementsById: ReadonlyMap<LocalId, AnyBimElement>,
-  openingId: LocalId,
+  elementsById: ReadonlyMap<RecordRef, AnyBimElement>,
+  openingId: RecordRef,
   code: 'VOID_OPENING_MISSING' | 'FILL_OPENING_MISSING'
 ): void {
   const opening = elementsById.get(openingId);

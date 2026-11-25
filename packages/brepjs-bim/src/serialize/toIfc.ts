@@ -119,7 +119,7 @@ import type { BimError } from '../errors/bimError.js';
 import { ifcError } from '../errors/bimError.js';
 import type { Result } from 'brepjs';
 import { err, ok } from 'brepjs';
-import type { LocalId } from '../identity/localId.js';
+import type { RecordRef } from '../identity/recordRef.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import { deriveIfcGuidSync } from '../identity/guidDerivation.js';
 import { localPlacementFrame } from '../types/placementDefinition.js';
@@ -357,8 +357,8 @@ async function serializeIfc(
 
   const densityByElement = buildDensityMap(relationships);
 
-  const idMap = new Map<LocalId, number>();
-  const placementMap = new Map<LocalId, number>();
+  const idMap = new Map<RecordRef, number>();
+  const placementMap = new Map<RecordRef, number>();
 
   const projectExpressId = writeProject(
     w,
@@ -456,7 +456,7 @@ async function serializeIfc(
     placementMap.set(el.localId, placementId);
   }
 
-  const openingsByWall = new Map<LocalId, WallOpeningSpec[]>();
+  const openingsByWall = new Map<RecordRef, WallOpeningSpec[]>();
   for (const rel of relationships) {
     if (rel.kind !== 'VOIDS_WALL') continue;
     const opening = elements.find((el) => el.localId === rel.openingLocalId);
@@ -471,7 +471,7 @@ async function serializeIfc(
     openingsByWall.set(rel.wallLocalId, list);
   }
 
-  const openingsBySlab = new Map<LocalId, SlabOpeningSpec[]>();
+  const openingsBySlab = new Map<RecordRef, SlabOpeningSpec[]>();
   for (const rel of relationships) {
     if (rel.kind !== 'VOIDS_SLAB') continue;
     const opening = elements.find((el) => el.localId === rel.openingLocalId);
@@ -1346,7 +1346,7 @@ async function serializeIfc(
     readonly direction: 'AXIS2' | 'AXIS3';
   }
   const layeredAssociations: LayeredAssociation[] = [];
-  const categoryById = new Map<LocalId, string>(elements.map((e) => [e.localId, e.category]));
+  const categoryById = new Map<RecordRef, string>(elements.map((e) => [e.localId, e.category]));
 
   for (const rel of relationships) {
     if (rel.kind !== 'ASSOCIATES_MATERIAL') continue;
@@ -1429,7 +1429,7 @@ async function serializeIfc(
 }
 
 interface TypeOccurrence {
-  readonly localId: LocalId;
+  readonly localId: RecordRef;
   readonly predefinedType: string;
 }
 
@@ -1443,7 +1443,7 @@ function writeTypeLayer(
   w: IfcWriter,
   ownerHistoryId: number,
   model: BimModel,
-  idMap: ReadonlyMap<LocalId, number>
+  idMap: ReadonlyMap<RecordRef, number>
 ): void {
   const groups: ReadonlyArray<readonly [IfcTypeName, string, readonly TypeOccurrence[]]> = [
     ['IFCWALLTYPE', 'WALL', toOccurrences(model.getWalls(), () => 'NOTDEFINED')],
@@ -1501,7 +1501,7 @@ function writeTypeLayer(
 }
 
 function toOccurrences<S>(
-  elements: ReadonlyArray<{ localId: LocalId; spec: S }>,
+  elements: ReadonlyArray<{ localId: RecordRef; spec: S }>,
   predefined: (spec: S) => string | undefined
 ): TypeOccurrence[] {
   return elements.map((el) => {
@@ -1609,8 +1609,8 @@ function collectGeometryIssues(model: BimModel): ValidationReport {
  * whose material has no resolvable density are absent from the map and emit no
  * weight quantity.
  */
-function buildDensityMap(relationships: readonly BimRelationship[]): ReadonlyMap<LocalId, number> {
-  const map = new Map<LocalId, number>();
+function buildDensityMap(relationships: readonly BimRelationship[]): ReadonlyMap<RecordRef, number> {
+  const map = new Map<RecordRef, number>();
   for (const rel of relationships) {
     if (rel.kind !== 'ASSOCIATES_MATERIAL') continue;
     let density: number | undefined;
@@ -1630,7 +1630,7 @@ function buildDensityMap(relationships: readonly BimRelationship[]): ReadonlyMap
   return map;
 }
 
-function findParentOf(childId: LocalId, relationships: readonly BimRelationship[]): LocalId | null {
+function findParentOf(childId: RecordRef, relationships: readonly BimRelationship[]): RecordRef | null {
   for (const rel of relationships) {
     if (rel.kind === 'AGGREGATES' && rel.relatedObjects.includes(childId)) {
       return rel.relatingObject;
@@ -1647,7 +1647,7 @@ function findParentOf(childId: LocalId, relationships: readonly BimRelationship[
 function applySurfaceStyle(
   w: IfcWriter,
   model: BimModel,
-  elementLocalId: LocalId,
+  elementLocalId: RecordRef,
   bodyItemId: number
 ): void {
   const style = model.getSurfaceStyle(elementLocalId);
@@ -1657,9 +1657,9 @@ function applySurfaceStyle(
 }
 
 function findContainerOf(
-  elementId: LocalId,
+  elementId: RecordRef,
   relationships: readonly BimRelationship[]
-): LocalId | null {
+): RecordRef | null {
   for (const rel of relationships) {
     if (rel.kind === 'CONTAINED_IN' && rel.relatedElements.includes(elementId)) {
       return rel.relatingStructure;

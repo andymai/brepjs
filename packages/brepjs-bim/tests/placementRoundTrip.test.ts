@@ -18,7 +18,7 @@ import {
   toIfc,
   type GeometryFidelity,
   type ImportedModel,
-  type LocalId,
+  type RecordRef,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -34,7 +34,7 @@ const Z: [number, number, number] = [0, 0, 1];
 interface Case {
   readonly name: string;
   readonly fidelity: GeometryFidelity;
-  readonly add: (model: BimModel) => LocalId;
+  readonly add: (model: BimModel) => RecordRef;
 }
 
 const CASES: readonly Case[] = [
@@ -254,7 +254,7 @@ function totalVolume(shapes: readonly Shape3D[]): number {
   return shapes.reduce((sum, s) => sum + unwrap(measureVolume(s)), 0);
 }
 
-function newModel(): { readonly model: BimModel; readonly storeyId: LocalId } {
+function newModel(): { readonly model: BimModel; readonly storeyId: RecordRef } {
   const model = new BimModel();
   const projectId = unwrap(model.init({ name: 'Placement RoundTrip' }));
   const siteId = unwrap(model.addSite({ name: 'Site' }));
@@ -272,7 +272,7 @@ interface EagerBody {
   readonly volume: number;
 }
 
-function eagerBody(model: BimModel, id: LocalId): EagerBody {
+function eagerBody(model: BimModel, id: RecordRef): EagerBody {
   const element = model.getElement(id);
   if (element === null) throw new Error(`element ${id} missing`);
   const solids = unwrap(placedSolids(element));

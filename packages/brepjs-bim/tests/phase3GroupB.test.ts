@@ -1,3 +1,4 @@
+import type { RecordRef } from '../src/identity/recordRef.js';
 import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
@@ -16,9 +17,9 @@ const XAXIS: [number, number, number] = [1, 0, 0];
 
 interface GroupBModel {
   readonly model: BimModel;
-  readonly stairId: number;
-  readonly railingId: number;
-  readonly coveringId: number;
+  readonly stairId: RecordRef;
+  readonly railingId: RecordRef;
+  readonly coveringId: RecordRef;
 }
 
 // Builds a model with a stair (2 flights), a styled railing, a covering on a slab

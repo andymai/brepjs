@@ -4,7 +4,7 @@ import { BimModel } from '../src/model/bimModel.js';
 import { extendedProfileToFace, type ExtendedProfile } from '../src/specs/profilesExtended.js';
 import type { RailingSpec } from '../src/specs/railingSpec.js';
 import type { BimError } from '../src/errors/bimError.js';
-import type { LocalId } from '../src/identity/localId.js';
+import type { RecordRef } from '../src/identity/recordRef.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 
@@ -107,7 +107,7 @@ const withVoids: ExtendedProfile = {
     ],
   ],
 };
-type Creator = (model: BimModel) => brepjs.Result<LocalId, BimError>;
+type Creator = (model: BimModel) => brepjs.Result<RecordRef, BimError>;
 const options = { stableKey: 'retry' };
 const recipes: ReadonlyArray<readonly [string, Creator]> = [
   ['Wall', (m) => m.addWall(RECIPE, options)],

@@ -2,7 +2,7 @@ import { err, ok, type Result, type ValidSolid } from 'brepjs';
 import { specError, type BimError } from '../errors/bimError.js';
 import { frameFromPlacement, type FrameInput, type RigidFrame } from '../placementFrame.js';
 import { transformBody, type Body, type NonEmpty } from '../types/body.js';
-import type { LocalId } from '../identity/localId.js';
+import type { RecordRef } from '../identity/recordRef.js';
 
 interface FlightItem {
   readonly index: number;
@@ -46,7 +46,7 @@ export function realizeFlights<T extends FrameInput>(
   return ok({ solids: [first, ...rest], items });
 }
 
-export function bindFlightItems(body: Body, localId: LocalId, items: readonly FlightItem[]): void {
+export function bindFlightItems(body: Body, localId: RecordRef, items: readonly FlightItem[]): void {
   bindings.set(
     body,
     Object.freeze(items.map((item) => Object.freeze({ key: `${localId}:${item.index}`, item })))

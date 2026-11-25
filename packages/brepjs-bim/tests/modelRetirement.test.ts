@@ -196,7 +196,7 @@ it('attempts all model-owned releases before throwing an aggregate, and disposal
   }
 });
 
-it('keeps a successful LocalId outcome and diagnostics when retiring a slab opening host fails', () => {
+it('keeps a successful RecordRef outcome and diagnostics when retiring a slab opening host fails', () => {
   const baseline = arena();
   const model = new BimModel();
   try {

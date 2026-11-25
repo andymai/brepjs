@@ -1,3 +1,4 @@
+import type { RecordRef } from './identity/recordRef.js';
 import { GeometryCleanupError } from 'brepjs';
 import type { NonEmpty } from './types/body.js';
 
@@ -5,7 +6,7 @@ export interface GeometryCleanupDiagnostic {
   readonly operation: string;
   readonly itemIndex: number;
   readonly resourceKind: 'SHAPE' | 'TRANSFORM';
-  readonly localId?: number;
+  readonly localId?: RecordRef;
   readonly cause: unknown;
 }
 
@@ -64,7 +65,7 @@ export function nestedCleanupDiagnostics(
 /** Owner-only, attempt-all cleanup. Never retry a release with an uncertain outcome. */
 export function cleanupOwnedResources(
   items: readonly OwnedBodyResource[],
-  context: { readonly operation: string; readonly localId?: number }
+  context: { readonly operation: string; readonly localId?: RecordRef }
 ): CleanupReport {
   const attempted = new Set<Disposable>();
   const diagnostics: GeometryCleanupDiagnostic[] = [];
