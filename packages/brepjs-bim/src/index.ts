@@ -1,6 +1,6 @@
 export type {FrameSpace, DocumentFrame} from './model/documentFrames.js';
 export { BimDocument } from './model/bimDocument.js';
-export { BimAuthoring } from './model/authoring.js';
+export { BimAuthoring, authoring } from './model/authoring.js';
 export {
   BimModel,
   type BodyCommitReceipt,

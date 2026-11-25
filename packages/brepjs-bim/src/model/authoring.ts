@@ -1,3 +1,4 @@
+import { snapshotData as captureRecipe } from './documentGraph.js';
 import { wallOpeningFrame, slabOpeningFrame } from '../elementFns/openingFrames.js';
 import { realizeFlights, bindFlightItems } from './flightBody.js';
 import { stairFlightToSolid } from '../elementFns/stairFns.js';
@@ -1008,8 +1009,8 @@ export class BimAuthoring {
           snapshot.offsetFromFloor < 0
         )
           return err(specError('INVALID_OPENING', 'Invalid opening dimensions or offsets'));
-        const wall = this.access.elements.get(snapshot.wallLocalId);
-        if (wall === undefined || wall.category !== 'WALL') {
+        const wall = this.document.getElement(snapshot.wallLocalId);
+        if (wall === null || wall.category !== 'WALL') {
           return err(
             specError(
               `${category}_WALL_NOT_FOUND`,
@@ -1056,7 +1057,7 @@ export class BimAuthoring {
           hostKind: 'WALL',
         });
         if (!cutResult.ok) return err(cutResult.error);
-        this.access.replaceCutBody(command, wall, cutResult.value);
+        this.access.replaceGeneratedBody(command, wall, {kind:'PARAMETRIC', solids:[cutResult.value]});
 
         const openingId = this.access.makeElement(
           command,
@@ -1141,8 +1142,8 @@ export class BimAuthoring {
         return err(
           specError('INVALID_SLAB_OPENING_INPUT', 'Invalid slab opening dimensions or offsets')
         );
-      const slab = this.access.elements.get(snapshot.slabLocalId);
-      if (slab === undefined || slab.category !== 'SLAB') {
+      const slab = this.document.getElement(snapshot.slabLocalId);
+      if (slab === null || slab.category !== 'SLAB') {
         return err(
           specError(
             'SLAB_OPENING_SLAB_NOT_FOUND',
@@ -1182,10 +1183,10 @@ export class BimAuthoring {
       const ax1 = snapshot.offsetX + snapshot.sizeX;
       const ay0 = snapshot.offsetY;
       const ay1 = snapshot.offsetY + snapshot.sizeY;
-      for (const rel of this.access.relationships.values()) {
+      for (const rel of this.document.getAllRelationships()) {
         if (rel.kind !== 'VOIDS_SLAB' || rel.slabLocalId !== snapshot.slabLocalId) continue;
-        const other = this.access.elements.get(rel.openingLocalId);
-        if (other === undefined || other.category !== 'OPENING') continue;
+        const other = this.document.getElement(rel.openingLocalId);
+        if (other === null || other.category !== 'OPENING') continue;
         if (other.spec.kind !== 'SLAB_OPENING') continue;
         const bx0 = other.spec.offsetX;
         const bx1 = other.spec.offsetX + other.spec.sizeX;
@@ -1221,7 +1222,7 @@ export class BimAuthoring {
         hostKind: 'SLAB',
       });
       if (!cutResult.ok) return err(cutResult.error);
-      this.access.replaceCutBody(command, slab, cutResult.value);
+      this.access.replaceGeneratedBody(command, slab, {kind:'PARAMETRIC', solids:[cutResult.value]});
 
       const openingId = this.access.makeElement(
         command,
@@ -1268,16 +1269,6 @@ function wallOpeningSolid(body: Body): Result<ValidSolid, BimError> {
   return ok(body.solids[0]);
 }
 
-/** Geometry encoders may reuse these recipe parameters while the original Body is retained. */
-function captureRecipe<T extends object>(spec: T): T {
-  const copy = structuredClone(spec);
-  function freeze(value: object): void {
-    const children: unknown[] = Object.values(value);
-    Object.freeze(value);
-    for (const child of children) {
-      if (child !== null && typeof child === 'object' && !Object.isFrozen(child)) freeze(child);
-    }
-  }
-  freeze(copy);
-  return copy;
-}
+
+/** Recipe commands operate on the supplied document's transaction. */
+export function authoring(document:BimDocument) { return new BimAuthoring(document); }

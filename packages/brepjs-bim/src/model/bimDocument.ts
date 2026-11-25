@@ -963,15 +963,15 @@ export class BimDocument {
     return ok(undefined);
   }
 
-  #replaceCutBody(
+  #replaceGeneratedBody(
     command: ModelCommand,
-    host: BimElement<'WALL'> | BimElement<'SLAB'>,
-    newGeometry: ValidSolid
+    host: Extract<AnyBimElement,{representation:'BODY'}>,
+    geometry: Body
   ): void {
-    this.#ownGenerated(command, [newGeometry]);
+    this.#ownGenerated(command, geometry.solids);
     const prepared = protectElement({
       ...host,
-      geometry: { kind: 'PARAMETRIC', solids: [newGeometry] } satisfies Body,
+      geometry,
     });
     if (!prepared.ok) throw new RejectedModelCommand(prepared.error);
     this.#stageElement(command, prepared.value);
@@ -1340,15 +1340,13 @@ export class BimDocument {
     return localId;
   }
 
-  #makeRel(fields: RelationshipFields, command?: ModelCommand): RecordRef {
-    if (command === undefined) this.#assertMutable();
-    const localId = (command?.counter ?? this.#counter).next();
+  #makeRel(fields: RelationshipFields, command: ModelCommand): RecordRef {
+    const localId = command.counter.next();
     const guid = deriveIfcGuidSync(
-      makeRelKey(command?.modelScope ?? this.#modelScope, fields.kind, ordinalOf(localId))
+      makeRelKey(command.modelScope, fields.kind, ordinalOf(localId))
     );
     const rel = snapshotData({ ...fields, guid, localId });
-    if (command === undefined) this.#relationships.set(localId, rel);
-    else command.relationships.push(rel);
+    command.relationships.push(rel);
     return localId;
   }
   [prepareRecords]() {
@@ -1359,9 +1357,7 @@ export class BimDocument {
       ownGenerated: this.#ownGenerated.bind(this),
       makeRel: this.#makeRel.bind(this),
       checkFillTarget: this.#checkFillTarget.bind(this),
-      replaceCutBody: this.#replaceCutBody.bind(this),
-      relationships: this.#relationships as ReadonlyMap<RecordRef, BimRelationship>,
-      elements: this.#elements as ReadonlyMap<RecordRef, AnyBimElement>,
+      replaceGeneratedBody: this.#replaceGeneratedBody.bind(this),
     };
   }
 }

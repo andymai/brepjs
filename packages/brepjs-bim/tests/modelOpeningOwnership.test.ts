@@ -1,3 +1,4 @@
+import { ordinalOf } from '../src/identity/recordRef.js';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import * as brepjs from 'brepjs';
 import { BimModel } from '../src/model/bimModel.js';
@@ -65,7 +66,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
       });
       try {
         const opening = brepjs.unwrap(host.open());
-        expect(opening).toBe(kind === 'Slab' ? 3 : 5);
+        expect(ordinalOf(opening)).toBe(kind === 'Slab' ? 3 : 5);
         expect(model.getElement(opening)?.category).toBe(
           kind === 'Slab' ? 'OPENING' : kind.toUpperCase()
         );
@@ -302,10 +303,7 @@ for (const method of ['addDoorAndCutWall', 'addWindowAndCutWall'] as const) {
           });
           expect(brepjs.getKernel().volume(solid.wrapped)).toBeCloseTo(solid === first ? 60 : 1, 7);
         }
-        expect(model[method]({ ...DOOR, wallLocalId: supportedId }, options)).toEqual({
-          ok: true,
-          value: 7,
-        });
+        expect(ordinalOf(brepjs.unwrap(model[method]({ ...DOOR, wallLocalId: supportedId }, options)))).toBe(7);
         expect(
           brepjs.getKernel().volume(singletonWallSolid(model, supportedId).wrapped)
         ).toBeCloseTo(54, 7);
