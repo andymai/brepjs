@@ -56,7 +56,7 @@ export function bodyRecordContract(category: BodyClassification) {
       'preserves %s identities and parameters through adoption and replacement',
       (kind) => {
         using model = new BimModel();
-        const references = [' datum '];
+        const references = [{ kind: 'EXTERNAL' as const, identifier: ' datum ' }];
         const parameters = { offset: 1.5 };
         const id = unwrap(
           model.addAuthoredBody({
@@ -65,7 +65,7 @@ export function bodyRecordContract(category: BodyClassification) {
             placement: { kind, references, parameters },
           })
         );
-        references[0] = 'changed';
+        references[0] = { kind: 'EXTERNAL', identifier: 'changed' };
         parameters.offset = 0;
         unwrap(
           model.replaceBody({
@@ -77,7 +77,7 @@ export function bodyRecordContract(category: BodyClassification) {
         if (record?.representation !== 'BODY') throw new Error('Missing Body');
         expect(record.placement).toEqual({
           kind,
-          references: [' datum '],
+          references: [{ kind: 'EXTERNAL' as const, identifier: ' datum ' }],
           parameters: { offset: 1.5 },
         });
         expect(unwrap(elementMaterialVolume(record))).toBeCloseTo(8);

@@ -9,9 +9,17 @@ import {
   type FrameInput,
 } from '../placementFrame.js';
 
+const referenceTarget = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('DOCUMENT'), record: z.instanceof(RecordRef) }),
+  z.strictObject({
+    kind: z.literal('EXTERNAL'),
+    identifier: z.string().refine((value) => value.trim().length > 0),
+  }),
+]);
+export type PlacementTarget = Readonly<z.infer<typeof referenceTarget>>;
 const referenceDefinition = z.strictObject({
   kind: z.enum(['GRID_REFERENCE', 'LINEAR_REFERENCE']),
-  references: z.array(z.string().refine((value) => value.trim().length > 0)).min(1),
+  references: z.array(referenceTarget).min(1),
   parameters: z.record(z.string(), z.number().finite()),
 });
 
@@ -19,7 +27,7 @@ export type PlacementDefinition =
   | { readonly kind: 'LOCAL_FRAME'; readonly frame: FrameInput; readonly relativeTo?: RecordRef }
   | {
       readonly kind: 'GRID_REFERENCE' | 'LINEAR_REFERENCE';
-      readonly references: readonly string[];
+      readonly references: readonly PlacementTarget[];
       readonly parameters: Readonly<Record<string, number>>;
     };
 
@@ -58,7 +66,7 @@ export function capturePlacement(
   return ok(
     Object.freeze({
       kind,
-      references: Object.freeze(references),
+      references: Object.freeze(references.map((target) => Object.freeze(target))),
       parameters: Object.freeze(parameters),
     })
   );

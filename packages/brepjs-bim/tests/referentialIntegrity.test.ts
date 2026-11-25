@@ -132,7 +132,7 @@ describe('checkReferentialIntegrity', () => {
       const orphan = report.issues.find((i) => i.code === 'ELEMENT_NOT_CONTAINED');
       expect(orphan).toBeDefined();
       expect(orphan?.severity).toBe('error');
-      expect(orphan?.entity).toBe(5);
+      expect(orphan?.entity).toBe(id(5));
     });
 
     it('does not flag spatial structure elements as orphans', () => {
@@ -163,7 +163,7 @@ describe('checkReferentialIntegrity', () => {
       const dup = report.issues.find((i) => i.code === 'ELEMENT_DOUBLE_CONTAINED');
       expect(dup).toBeDefined();
       expect(dup?.severity).toBe('error');
-      expect(dup?.entity).toBe(5);
+      expect(dup?.entity).toBe(id(5));
     });
   });
 
@@ -178,7 +178,7 @@ describe('checkReferentialIntegrity', () => {
       const issue = report.issues.find((i) => i.code === 'VOID_HOST_MISSING');
       expect(issue).toBeDefined();
       expect(issue?.severity).toBe('error');
-      expect(issue?.entity).toBe(99);
+      expect(issue?.entity).toBe(id(99));
     });
 
     it('flags a VOIDS_SLAB referencing a missing host slab', () => {
@@ -187,7 +187,7 @@ describe('checkReferentialIntegrity', () => {
       const report = checkReferentialIntegrity({ elements, relationships });
       const issue = report.issues.find((i) => i.code === 'VOID_HOST_MISSING');
       expect(issue).toBeDefined();
-      expect(issue?.entity).toBe(42);
+      expect(issue?.entity).toBe(id(42));
     });
 
     it('flags a VOIDS rel referencing a missing opening', () => {
@@ -197,7 +197,7 @@ describe('checkReferentialIntegrity', () => {
       const report = checkReferentialIntegrity({ elements, relationships });
       const issue = report.issues.find((i) => i.code === 'VOID_OPENING_MISSING');
       expect(issue).toBeDefined();
-      expect(issue?.entity).toBe(88);
+      expect(issue?.entity).toBe(id(88));
     });
 
     it('flags a FILLS_OPENING referencing a missing opening', () => {
@@ -206,7 +206,7 @@ describe('checkReferentialIntegrity', () => {
       const report = checkReferentialIntegrity({ elements, relationships });
       const issue = report.issues.find((i) => i.code === 'FILL_OPENING_MISSING');
       expect(issue).toBeDefined();
-      expect(issue?.entity).toBe(77);
+      expect(issue?.entity).toBe(id(77));
     });
 
     it('flags a FILLS_OPENING referencing a missing filler', () => {
@@ -215,7 +215,7 @@ describe('checkReferentialIntegrity', () => {
       const report = checkReferentialIntegrity({ elements, relationships });
       const issue = report.issues.find((i) => i.code === 'FILL_FILLER_MISSING');
       expect(issue).toBeDefined();
-      expect(issue?.entity).toBe(66);
+      expect(issue?.entity).toBe(id(66));
     });
   });
 
@@ -230,7 +230,7 @@ describe('checkReferentialIntegrity', () => {
       const warn = report.issues.find((i) => i.code === 'ORPHANED_OPENING');
       expect(warn).toBeDefined();
       expect(warn?.severity).toBe('warning');
-      expect(warn?.entity).toBe(7);
+      expect(warn?.entity).toBe(id(7));
     });
   });
 

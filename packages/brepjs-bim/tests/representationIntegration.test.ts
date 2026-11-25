@@ -14,7 +14,7 @@ it.each(['GRID_REFERENCE', 'LINEAR_REFERENCE'] as const)(
   async (kind) => {
     using model = new BimModel();
     unwrap(model.init({ name: 'Reference placement' }));
-    const references = ['datum-1'];
+    const references = [{ kind: 'EXTERNAL' as const, identifier: 'datum-1' }];
     const parameters = { offset: 21 };
     const id = unwrap(
       model.addAuthoredBody({
@@ -23,7 +23,7 @@ it.each(['GRID_REFERENCE', 'LINEAR_REFERENCE'] as const)(
         solids: [box(2, 2, 2)],
       })
     );
-    references[0] = 'unrelated';
+    references[0] = { kind: 'EXTERNAL', identifier: 'unrelated' };
     parameters.offset = 64;
     unwrap(
       model.replaceBody({
@@ -33,7 +33,11 @@ it.each(['GRID_REFERENCE', 'LINEAR_REFERENCE'] as const)(
     );
     const record = model.getElement(id);
     if (record?.representation !== 'BODY') throw new Error('Missing Body');
-    expect(record.placement).toEqual({ kind, references: ['datum-1'], parameters: { offset: 21 } });
+    expect(record.placement).toEqual({
+      kind,
+      references: [{ kind: 'EXTERNAL' as const, identifier: 'datum-1' }],
+      parameters: { offset: 21 },
+    });
     expect(unwrap(measureBodyMaterial(record.geometry.solids))).toBeCloseTo(27, 6);
     const failure = { ok: false, error: { code: 'PLACEMENT_REFERENCE_UNRESOLVED' } };
     expect(placedSolids(record)).toMatchObject(failure);
