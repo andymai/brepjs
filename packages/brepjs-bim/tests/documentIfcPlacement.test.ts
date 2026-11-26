@@ -9,10 +9,12 @@ import {
   toIfcValidated,
   fromIfc,
   disposeImportedModel,
+  deriveCobieModel,
 } from '../src/index.js';
 import { SpfReader } from '../src/import/spfReader.js';
 import { identityPlacement } from '../src/types/placementDefinition.js';
-import { OPENING_WALL } from './helpers/openingFixture.js';
+import { readPsets } from '../src/import/dataRead.js';
+import { openingHost, OPENING_WALL } from './helpers/openingFixture.js';
 const meta = { applicationName: 'Placement test', applicationVersion: '1' };
 
 it('emits W-01 relative to its Opening and contained in Level 2', async () => {
@@ -48,6 +50,9 @@ it('emits W-01 relative to its Opening and contained in Level 2', async () => {
   unwrap(doc.placeIn(wall, storey));
   unwrap(doc.placeIn(window, storey));
   const opening = unwrap(doc.lookupKey('O-01'));
+  const wallFrame = unwrap(doc.frame(wall, 'WORLD')).frame;
+  unwrap(doc.move(wall, { ...identityPlacement.frame, origin: [2000, 0, 0] }));
+  expect(wallFrame.matrix[12]).toBe(0);
   for (const bytes of [
     unwrap(await toIfc(doc, meta)),
     unwrap(await toIfcValidated(doc, meta)).bytes,
@@ -81,6 +86,7 @@ it('emits W-01 relative to its Opening and contained in Level 2', async () => {
     expect(homes.map((r) => r?.RelatingStructure.value)).toEqual([entity(storey)]);
     // World origin from the independent reader, in millimetres.
     const positionMm = composeWorldMatrix(reader, position(window), readLengthScale(reader));
+    expect(positionMm?.[12]).toBeCloseTo(2700, 4);
     expect(positionMm?.[14]).toBeCloseTo(4200, 4);
   }
 });
@@ -189,4 +195,126 @@ it('rejects a concurrent edit while the IFC writer initializes', async () => {
     ok: false,
     error: { code: 'DOCUMENT_CHANGED_DURING_EXPORT' },
   });
+});
+
+it.each(['Window', 'Slab'] as const)(
+  'keeps the retained %s cut when the Opening record is deleted',
+  async (kind) => {
+    using doc = new BimDocument();
+    unwrap(doc.init({ name: 'Cuts' }));
+    const level = unwrap(authoring(doc).addStorey({ name: 'Ground', elevation: 0 }));
+    const host = openingHost(doc, kind);
+    unwrap(doc.placeIn(host.hostId, level));
+    const product = unwrap(host.open());
+    // A second Slab opening must still be emitted as a reference to the retained cut.
+    const second =
+      kind === 'Slab'
+        ? unwrap(
+            authoring(doc).addSlabOpening({
+              slabLocalId: host.hostId,
+              sizeX: 1,
+              sizeY: 1,
+              offsetX: 7,
+              offsetY: 7,
+            })
+          )
+        : undefined;
+    const cutVolume = host.cutVolume - (second === undefined ? 0 : 1);
+    const opening = unwrap(doc.lookupKey('opening'));
+    const record = unwrap(doc.record(opening));
+    const cut = host.solid();
+    const edges = doc.getAllRelationships();
+    const revision = doc.revision;
+    for (const edit of [
+      doc.move(opening, { ...identityPlacement.frame, origin: [2000, 0, 0] }),
+      doc.reparent(opening, level, 'KEEP_LOCAL'),
+      doc.reparent(opening, 'WORLD', 'KEEP_WORLD'),
+      doc.replacePlacement(opening, identityPlacement),
+    ])
+      expect(edit).toMatchObject({ ok: false, error: { code: 'OPENING_PLACEMENT_BOUND_TO_HOST' } });
+    if (kind === 'Window') {
+      expect(doc.delete(opening)).toMatchObject({
+        ok: false,
+        error: { code: 'RECORD_HAS_DEPENDANTS' },
+      });
+    }
+    expect(doc.revision).toBe(revision);
+    expect(doc.getAllRelationships()).toEqual(edges);
+    expect(unwrap(doc.record(opening))).toBe(record);
+    expect(doc.isRecipeQuantityEligible(host.hostId)).toBe(true);
+    if (kind === 'Window') unwrap(doc.delete(product));
+    unwrap(doc.delete(opening));
+    expect(doc.isRecipeQuantityEligible(host.hostId)).toBe(false);
+    expect(host.solid()).toBe(cut);
+    expect(unwrap(doc.materialVolume(host.hostId))).toBeCloseTo(cutVolume, 6);
+    const guid = unwrap(doc.record(host.hostId)).guid;
+    for (const bytes of [
+      unwrap(await toIfc(doc, meta)),
+      unwrap(await toIfcValidated(doc, meta)).bytes,
+    ]) {
+      using reader = unwrap(await SpfReader.create(bytes));
+      expect(reader.expressIdFromGuid(record.guid)).toBeUndefined();
+      if (second !== undefined)
+        expect(reader.expressIdFromGuid(unwrap(doc.record(second)).guid)).toBeDefined();
+      const id = reader.expressIdFromGuid(guid);
+      if (id === undefined) throw Error('Missing cut host');
+      const quantities = readPsets(reader, id).find((p) => p.name.startsWith('Qto_'))?.properties;
+      expect(quantities?.['NetVolume']).toBeCloseTo(cutVolume / 1e9, 12);
+      expect(quantities).not.toHaveProperty('NetSideArea');
+      expect(quantities).not.toHaveProperty('GrossVolume');
+      const imported = unwrap(await fromIfc(bytes));
+      try {
+        const geometry = imported.elements.find((e) => e.guid === guid)?.geometry;
+        expect(geometry?.volumeMm3).toBeCloseTo(cutVolume, 3);
+      } finally {
+        disposeImportedModel(imported);
+      }
+    }
+    if (second !== undefined) unwrap(doc.delete(second));
+    unwrap(doc.delete(host.hostId));
+  }
+);
+
+it('uses the enclosing Building datum for a moved Storey and omits a conflicting IFC elevation', async () => {
+  using doc = new BimDocument();
+  const make = authoring(doc);
+  const project = unwrap(doc.init({ name: 'Datum' }));
+  const site = unwrap(make.addSite({ name: 'Site', origin: [0, 0, 1000] }));
+  const building = unwrap(
+    make.addBuilding({ name: 'Building', origin: [0, 0, 7000] }, { placementParent: site })
+  );
+  const level = unwrap(
+    make.addStorey({ name: 'Level 2', elevation: 3000 }, { placementParent: building })
+  );
+  unwrap(doc.aggregate(project, site));
+  unwrap(doc.aggregate(site, building));
+  unwrap(doc.aggregate(building, level));
+  unwrap(doc.move(level, { ...identityPlacement.frame, origin: [0, 0, 5000] }));
+  const guid = unwrap(doc.record(level)).guid;
+  for (const parent of [building, 'WORLD'] as const) {
+    if (parent === 'WORLD') unwrap(doc.reparent(level, parent, 'KEEP_WORLD'));
+    expect(unwrap(doc.frame(level, 'WORLD')).frame.matrix[14]).toBe(13000);
+    expect(doc.toTreeSummary().root?.children[0]?.children[0]?.children[0]?.label).toBe(
+      'Level 2 (+5000 mm)'
+    );
+    expect(deriveCobieModel(doc).floor[0]?.elevation).toBe(5000);
+    using reader = unwrap(await SpfReader.create(unwrap(await toIfc(doc, meta))));
+    const id = reader.expressIdFromGuid(guid);
+    if (id === undefined) throw Error('Missing storey');
+    const storey = reader.getLine<{
+      Elevation: { value: number } | null;
+      ObjectPlacement: { value: number };
+    }>(id);
+    expect(storey?.Elevation?.value).toBe(parent === building ? 5 : undefined);
+    if (!storey) throw Error('Unreadable storey');
+    expect(
+      composeWorldMatrix(reader, storey.ObjectPlacement.value, readLengthScale(reader))?.[14]
+    ).toBeCloseTo(13000);
+  }
+  unwrap(doc.detachDecomposition(level));
+  expect(deriveCobieModel(doc).floor[0]?.elevation).toBeNull();
+  using unassigned = unwrap(await SpfReader.create(unwrap(await toIfc(doc, meta))));
+  const unassignedId = unassigned.expressIdFromGuid(guid);
+  if (unassignedId === undefined) throw Error('Missing unassigned storey');
+  expect(unassigned.getLine<{ Elevation: unknown }>(unassignedId)?.Elevation).toBeNull();
 });

@@ -14,22 +14,58 @@ Checks performed:
   5. Every product with a shape representation generates geometry via the
      IfcOpenShell geometry iterator (catches malformed BREP/extrusion data).
 
-Usage: validateIfc.py [path/to/model.ifc]   (defaults to the sample fixture)
+Usage: validateIfc.py [--sample-columns] [path/to/model.ifc]   (defaults to the sample fixture)
 Exit code 0 = all gates pass; 1 = at least one error.
 """
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
 import ifcopenshell
 import ifcopenshell.validate
 import ifcopenshell.geom
+import ifcopenshell.util.placement
+import ifcopenshell.util.unit
+
+
+def check_sample_columns(model: ifcopenshell.file) -> list[str]:
+    grounds = [s for s in model.by_type("IfcBuildingStorey") if s.Name == "Ground Floor"]
+    columns = model.by_type("IfcColumn")
+    if len(grounds) != 1 or len(columns) != 2:
+        return ["sample must contain one Ground Floor and two columns"]
+    ground = grounds[0]
+    for column in columns:
+        if column.ObjectPlacement.PlacementRelTo != ground.ObjectPlacement:
+            return [f"column #{column.id()} placement parent must be Ground Floor"]
+        if [r.RelatingStructure for r in column.ContainedInStructure] != [ground]:
+            return [f"column #{column.id()} must be contained in Ground Floor"]
+
+    # Move the storey in the independently parsed sample. Distances below are in file units.
+    def heights():
+        return [ifcopenshell.util.placement.get_local_placement(c.ObjectPlacement)[2, 3] for c in columns]
+
+    original = heights()
+    origin = ground.ObjectPlacement.RelativePlacement.Location
+    x, y, z = origin.Coordinates
+    delta = 2.5 / ifcopenshell.util.unit.calculate_unit_scale(model)
+    try:
+        origin.Coordinates = (x, y, z + delta)
+        if any(abs(after - before - delta) > 1e-8 for before, after in zip(original, heights())):
+            return ["both sample columns must move 2.5 m with the Ground Floor"]
+    finally:
+        origin.Coordinates = (x, y, z)
+    return []
 
 
 def main(argv: list[str]) -> int:
     default = Path(__file__).resolve().parent.parent / "examples" / "sample-building.ifc"
-    path = Path(argv[1]) if len(argv) > 1 else default
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("path", nargs="?", type=Path, default=default)
+    parser.add_argument("--sample-columns", action="store_true", help="check the sample building's two ground-floor columns")
+    args = parser.parse_args(argv[1:])
+    path = args.path
     if not path.exists():
         print(f"ERROR: file not found: {path}")
         return 1
@@ -106,6 +142,11 @@ def main(argv: list[str]) -> int:
         except Exception as e:  # noqa: BLE001 — report any geometry failure
             errors.append(f"geometry failed for {p.is_a()} #{p.id()}: {e}")
     print(f"[5] Geometry: {ok_geom}/{len(products)} products generated a shape")
+
+    if args.sample_columns:
+        column_errors = check_sample_columns(model)
+        errors.extend(column_errors)
+        print("[6] Sample columns:", ", ".join(column_errors) if column_errors else "both follow Ground Floor")
 
     print()
     if errors:

@@ -176,7 +176,8 @@ for (const [cx, cy] of columnPositions) {
     }),
     'addColumn'
   );
-  model.placeIn(col, groundId);
+  unwrap(model.placeIn(col, groundId));
+  unwrap(model.reparent(col, groundId, 'KEEP_LOCAL'));
 }
 
 // Uniclass classification on the external walls.

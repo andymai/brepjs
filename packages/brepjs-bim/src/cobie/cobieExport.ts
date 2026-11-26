@@ -1,3 +1,4 @@
+import { storeyElevations } from '../model/storeyElevations.js';
 import type { BimDocument } from '../model/bimDocument.js';
 import type { AnyBimElement, BimCategory } from '../types/bimTypes.js';
 import type { BimRelationship } from '../types/relationships.js';
@@ -108,7 +109,7 @@ export function deriveCobieModel(model: BimDocument, meta?: CobieExportMeta): Co
 
   const contact = deriveContact(meta);
   const facility = deriveFacility(model, elements);
-  const floor = deriveFloors(elements);
+  const floor = deriveFloors(elements, storeyElevations(model));
   const space = deriveSpaces(model, elementById, containerOf);
   const { component, type } = deriveComponentsAndTypes(model, elementById, containerOf);
   const zone = deriveZones(elements, relationships, elementById);
@@ -153,7 +154,10 @@ function deriveFacility(
   ];
 }
 
-function deriveFloors(elements: readonly AnyBimElement[]): CobieFloorRow[] {
+function deriveFloors(
+  elements: readonly AnyBimElement[],
+  elevations: ReadonlyMap<RecordRef, number>
+): CobieFloorRow[] {
   const floors: CobieFloorRow[] = [];
   for (const el of elements) {
     if (el.category !== 'STOREY') continue;
@@ -162,7 +166,7 @@ function deriveFloors(elements: readonly AnyBimElement[]): CobieFloorRow[] {
       createdBy: '',
       category: '',
       description: '',
-      elevation: el.spec.elevation,
+      elevation: elevations.get(el.localId) ?? null,
       externalIdentifier: el.guid,
     });
   }
@@ -467,7 +471,7 @@ export function serializeCobieToCsv(model: CobieModel): Map<string, string> {
     const rows = SHEET_ROWS[sheetName](model);
     const lines = [SHEET_HEADERS[sheetName]];
     for (const row of rows) {
-      const record = row as Record<string, string | number>;
+      const record = row as Record<string, string | number | null>;
       lines.push(columns.map((col) => csvField(String(record[col] ?? ''))).join(','));
     }
     sheets.set(sheetName, lines.join('\r\n'));

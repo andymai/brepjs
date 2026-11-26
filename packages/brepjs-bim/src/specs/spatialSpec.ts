@@ -103,7 +103,7 @@ export interface BuildingSpec extends SpatialPlacementSpec {
 
 export interface StoreySpec extends SpatialPlacementSpec {
   readonly name: string;
-  readonly elevation: number; // mm above site datum
+  readonly elevation: number; // initial local Z in mm when origin is omitted
 }
 import { err, ok, type Result } from 'brepjs';
 import { z, type RefinementCtx } from 'zod';

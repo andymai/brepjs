@@ -89,11 +89,10 @@ export function writeStorey(
   w: IfcWriter,
   guid: IfcGuid,
   name: string,
-  elevationMm: number,
+  elevationMm: number | undefined,
   ownerHistoryId: number,
   localPlacementId: number
 ): { entityId: number; placementId: number } {
-  const elevM = toIfcLengthM(elevationMm);
   const entityId = w.nextId();
   w.writeLine({
     expressID: entityId,
@@ -107,7 +106,10 @@ export function writeStorey(
     Representation: null,
     LongName: null,
     CompositionType: { type: 3, value: 'ELEMENT' },
-    Elevation: w.mkType(WebIFC.IFCLENGTHMEASURE, elevM),
+    Elevation:
+      elevationMm === undefined
+        ? null
+        : w.mkType(WebIFC.IFCLENGTHMEASURE, toIfcLengthM(elevationMm)),
   });
   return { entityId, placementId: localPlacementId };
 }

@@ -224,6 +224,16 @@ to obtain a live reference. A move changes the local pose and carries placement 
 Deletion reports every placement, containment, decomposition or in-document placement-reference
 dependant. Detach or reparent those records before retrying.
 
+An Opening stays fixed to the cut in its host Body. Move the host to carry the Opening and any
+placement children. To retire the Opening, resolve its dependants first. Deleting the Opening
+keeps the cut geometry and retires the host's recipe binding. Subsequent IFC delivery uses the
+retained Body and its measurable quantities.
+
+Storey labels and COBie Floor elevations use the current height above the enclosing Building's
+datum. An unresolved datum leaves the label without a height and the COBie elevation null.
+IFC4 emits the optional elevation when it also agrees with the Storey's local placement Z.
+[IfcBuildingStorey](https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcproductextension/lexical/ifcbuildingstorey.htm)
+
 `authoring(document).addRoofWithOpening(...)` accepts a finished local Roof solid with an existing
 cut, a host-relative rectangular opening definition and a stable void slot. The command returns
 the Roof and Opening references together. The Opening follows the Roof when it moves. IFC delivery

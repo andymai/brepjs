@@ -1,3 +1,4 @@
+import { storeyElevations } from '../model/storeyElevations.js';
 import { placementSchedule, writeDocumentPlacements } from './documentPlacements.js';
 import type { BimDocument } from '../model/bimDocument.js';
 import type { BimModelMeta } from '../ifc-writer/headerWriter.js';
@@ -405,14 +406,25 @@ async function serializeIfc(
     idMap.set(el.localId, entityId);
   }
 
+  const elevations = storeyElevations(model);
   for (const el of elements) {
     if (el.category !== 'STOREY') continue;
+    const height = elevations.get(el.localId);
+    const localZ = el.placement?.kind === 'LOCAL_FRAME' ? el.placement.frame.origin[2] : undefined;
+    // IFC4 requires the optional building-relative height to agree with local placement Z.
+    const elevation =
+      meta.ifcSchema !== 'IFC4X3' &&
+      height !== undefined &&
+      localZ !== undefined &&
+      Math.abs(height - localZ) <= 1e-6
+        ? localZ
+        : undefined;
     const placementId = placementOf(el.localId);
     const { entityId } = writeStorey(
       w,
       el.guid,
       el.spec.name,
-      el.spec.elevation,
+      elevation,
       ownerHistoryId,
       placementId
     );

@@ -52,7 +52,8 @@ export interface CobieFloorRow {
   readonly createdBy: string;
   readonly category: string;
   readonly description: string;
-  readonly elevation: number;
+  /** Millimetres above the enclosing Building datum, or null when unresolved. */
+  readonly elevation: number | null;
   /** IfcBuildingStorey GlobalId. */
   readonly externalIdentifier: string;
 }

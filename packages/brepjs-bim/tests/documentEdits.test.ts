@@ -36,6 +36,11 @@ describe('document edits', () => {
     expect(unwrap(doc.frame(child, 'WORLD')).frame.matrix.slice(12, 15)).toEqual([100, 0, 0]);
     expect(before.frame.matrix.slice(12, 15)).toEqual([0, 0, 10]);
     expect(unwrap(doc.frame(independent, 'WORLD')).frame.matrix.slice(12, 15)).toEqual([0, 0, 0]);
+    unwrap(doc.placeIn(child, level));
+    const containment = doc
+      .getAllRelationships()
+      .find((edge) => edge.kind === 'CONTAINED_IN' && edge.relatedElements.includes(child));
+    expect(containment).toBeDefined();
     unwrap(doc.move(group, pose(7)));
     const old = unwrap(doc.frame(child, 'WORLD')).frame.matrix;
     expect(old.slice(12, 15)).toEqual([100, 7, 0]);
@@ -44,6 +49,7 @@ describe('document edits', () => {
     unwrap(doc.reparent(group, level, 'KEEP_LOCAL'));
     expect(unwrap(doc.frame(child, 'WORLD')).frame.matrix.slice(12, 15)).toEqual([93, 100, 0]);
     unwrap(doc.reparent(child, 'WORLD', 'KEEP_WORLD'));
+    expect(doc.getAllRelationships()).toContain(containment);
     expect(doc.reparent(level, group, 'KEEP_LOCAL').ok).toBe(false);
     expect(doc.move(group, { ...pose(0), axisX: [0, 0, 0] }).ok).toBe(false);
     // @ts-expect-error -- Exercise a JavaScript caller omitting the required policy.
@@ -97,8 +103,22 @@ describe('document edits', () => {
     unwrap(doc.detachDecomposition(child));
     unwrap(doc.reparent(child, 'WORLD', 'KEEP_LOCAL'));
     expect(reject()).toEqual([{ kind: 'PLACEMENT_REFERENCE', record: grid }]);
-    expect(doc.reparent(grid, 'WORLD', 'KEEP_LOCAL').ok).toBe(false);
-    expect(doc.move(grid, pose(1)).ok).toBe(false);
+    const reference = unwrap(doc.record(grid));
+    const revision = doc.revision;
+    const graph = doc.getAllRelationships();
+    for (const attempt of [doc.reparent(grid, 'WORLD', 'KEEP_LOCAL'), doc.move(grid, pose(1))]) {
+      expect(attempt).toMatchObject({
+        ok: false,
+        error: { code: 'PLACEMENT_REFERENCE_UNRESOLVED' },
+      });
+    }
+    expect(doc.revision).toBe(revision);
+    expect(unwrap(doc.record(grid))).toBe(reference);
+    expect(unwrap(doc.record(grid)).placement).toMatchObject({
+      kind: 'GRID_REFERENCE',
+      references: [external, { kind: 'DOCUMENT', record: parent }],
+    });
+    expect(doc.getAllRelationships()).toEqual(graph);
     unwrap(doc.reparent(child, grid, 'KEEP_LOCAL'));
     expect(doc.reparent(child, 'WORLD', 'KEEP_WORLD').ok).toBe(false);
     expect(unwrap(doc.record(child)).placement).toMatchObject({ relativeTo: grid });
@@ -179,8 +199,10 @@ it.each(['physical', 'spatial', 'assembly'] as const)(
     unwrap(doc.move(target, { ...identityPlacement.frame, origin: [3, 0, 0] }));
     const old = unwrap(doc.frame(target, 'WORLD'));
     expect(old.frame.matrix.slice(12, 15)).toEqual([10, 23, 0]);
+    const retired = unwrap(make.addSite({ name: 'Retired' }));
+    unwrap(doc.delete(retired));
     const snapshot = doc.getElement(target);
-    for (const parent of [invalid, root, target]) {
+    for (const parent of [invalid, retired, root, target]) {
       expect(doc.reparent(target, parent, 'KEEP_LOCAL').ok).toBe(false);
       expect(doc.getElement(target)).toBe(snapshot);
     }

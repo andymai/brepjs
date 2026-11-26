@@ -67,10 +67,22 @@ it('adopts a notched Roof and existing hole at the authored locations exactly on
       1
     );
   }
+  const revision = document.revision;
+  for (const result of [
+    document.move(hole, frame),
+    document.reparent(hole, 'WORLD', 'KEEP_WORLD'),
+    document.replacePlacement(hole, identityPlacement),
+  ])
+    expect(result).toMatchObject({ ok: false, error: { code: 'OPENING_PLACEMENT_BOUND_TO_HOST' } });
+  expect(document.revision).toBe(revision);
   brep.unwrap(document.move(roof, { ...identityPlacement.frame, origin: [1000, 0, 0] }));
   expect(brep.unwrap(document.frame(hole, 'WORLD')).frame.matrix.slice(12, 15)).toEqual([
     3000, 1000, 0,
   ]);
+  brep.unwrap(document.delete(hole));
+  expect(document.getAllRelationships()).toHaveLength(0);
+  expect(brep.unwrap(document.materialVolume(roof))).toBeCloseTo(3_800_000_000, 1);
+  brep.unwrap(document.delete(roof));
 });
 
 it('reports an unsupported Roof void on both IFC delivery paths', async () => {

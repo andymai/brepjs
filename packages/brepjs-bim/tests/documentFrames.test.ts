@@ -96,3 +96,82 @@ it('rejects unsupported frame resolution, including own-local, while allowing lo
   expect(doc.bounds(ref, 'LOCAL').ok).toBe(true);
   expect(unwrap(doc.materialVolume(ref))).toBeCloseTo(24);
 });
+
+it('resolves a pitched Body in a different rotated branch and validates both frame endpoints', () => {
+  using doc = new BimDocument(),
+    other = new BimDocument();
+  const make = new BimAuthoring(doc);
+  const project = unwrap(doc.init({ name: 'Project' }));
+  const source = unwrap(make.addSite({ name: 'Site', origin: [10, 20, 30], axisX: [0, 1, 0] }));
+  const assembly = unwrap(make.addElementAssembly({}, { placementParent: source }));
+  const radians = Math.PI / 180;
+  const cos30 = Math.cos(30 * radians),
+    sin30 = Math.sin(30 * radians);
+  const pitchCos = Math.cos(25 * radians),
+    pitchSin = Math.sin(25 * radians);
+  const target = unwrap(
+    make.addSite({ name: 'Other', origin: [4, 17, 11], axisX: [cos30, sin30, 0] })
+  );
+  const sign = unwrap(
+    doc.addAuthoredBody({
+      category: 'SIGN',
+      solids: [box(2, 3, 4)],
+      placement: {
+        kind: 'LOCAL_FRAME',
+        relativeTo: assembly,
+        frame: { origin: [2, 3, 4], axisX: [1, 0, 0], axisZ: [0, -pitchSin, pitchCos] },
+      },
+    })
+  );
+  const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+  for (const ref of [source, assembly, sign]) {
+    for (const space of ['LOCAL', ref] as const) {
+      const result = unwrap(doc.frame(ref, space));
+      expect(result.source).toBe(ref);
+      expect(result.target).toBe(ref);
+      expect(result.frame.matrix).toEqual(identity);
+    }
+  }
+  // Source yaw 90° minus target yaw 30°. The source origin in World is (7,22,34).
+  const c = Math.cos(60 * radians),
+    s = Math.sin(60 * radians);
+  const expected = [
+    c,
+    s,
+    0,
+    0,
+    -s * pitchCos,
+    c * pitchCos,
+    pitchSin,
+    0,
+    s * pitchSin,
+    -c * pitchSin,
+    pitchCos,
+    0,
+    3 * cos30 + 5 * sin30,
+    5 * cos30 - 3 * sin30,
+    23,
+    1,
+  ];
+  const result = unwrap(doc.frame(sign, target));
+  expected.forEach((value, i) => expect(result.frame.matrix[i]).toBeCloseTo(value, 10));
+  expect(result.target).toBe(target);
+  for (const snapshot of [result, result.frame, result.frame.matrix])
+    expect(Object.isFrozen(snapshot)).toBe(true);
+  const foreign = unwrap(new BimAuthoring(other).addSite({ name: 'Foreign' }));
+  const retired = unwrap(make.addSite({ name: 'Retired' }));
+  unwrap(doc.delete(retired));
+  for (const missing of [foreign, retired]) {
+    expect(doc.frame(sign, missing)).toMatchObject({
+      ok: false,
+      error: { code: 'RECORD_NOT_FOUND' },
+    });
+    expect(doc.frame(missing, sign)).toMatchObject({
+      ok: false,
+      error: { code: 'RECORD_NOT_FOUND' },
+    });
+  }
+  for (const attempt of [doc.frame(sign, project), doc.frame(project, sign)]) {
+    expect(attempt).toMatchObject({ ok: false, error: { code: 'RECORD_NOT_PLACEABLE' } });
+  }
+});

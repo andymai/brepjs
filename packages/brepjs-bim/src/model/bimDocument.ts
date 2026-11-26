@@ -1,3 +1,4 @@
+import { storeyElevations } from './storeyElevations.js';
 import { relationshipEnds, withoutRecord } from './documentGraph.js';
 import { resolveDocumentFrame, type FrameSpace } from './documentFrames.js';
 import { transformBody, bodyBounds, measureBodyMaterial } from '../types/body.js';
@@ -789,12 +790,27 @@ export class BimDocument {
     });
   }
 
+  #editablePlacement(ref: RecordRef) {
+    const record = this.#elements.get(ref);
+    if (!record?.placement)
+      return err(graphError('INVALID_PLACEMENT_RECORD', 'Expected a live placeable record', ref));
+    if (record.category === 'OPENING')
+      return err(
+        graphError(
+          'OPENING_PLACEMENT_BOUND_TO_HOST',
+          'The Opening describes a retained cut. Move its host to move the cut and Opening together.',
+          ref
+        )
+      );
+    return ok({ record, placement: record.placement });
+  }
+
   move(ref: RecordRef, frame: FrameInput): Result<void, BimError> {
     return this.#edit('move', (command) => {
-      const record = this.#elements.get(ref);
-      if (!record?.placement)
-        return err(graphError('INVALID_PLACEMENT_RECORD', 'Expected a live placeable record', ref));
-      if (record.placement.kind !== 'LOCAL_FRAME')
+      const editable = this.#editablePlacement(ref);
+      if (!editable.ok) return editable;
+      const { record, placement: previous } = editable.value;
+      if (previous.kind !== 'LOCAL_FRAME')
         return err(
           graphError(
             'PLACEMENT_REFERENCE_UNRESOLVED',
@@ -802,10 +818,7 @@ export class BimDocument {
             ref
           )
         );
-      const placement = capturePlacement(
-        { kind: 'LOCAL_FRAME', frame },
-        record.placement.relativeTo
-      );
+      const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame }, previous.relativeTo);
       if (!placement.ok) return placement;
       command.elements.push(Object.freeze({ ...record, placement: placement.value }));
       return ok(undefined);
@@ -820,10 +833,10 @@ export class BimDocument {
     return this.#edit('reparent', (command) => {
       if (policy !== 'KEEP_LOCAL' && policy !== 'KEEP_WORLD')
         return err(graphError('REPARENT_POLICY_REQUIRED', 'Choose KEEP_LOCAL or KEEP_WORLD', ref));
-      const record = this.#elements.get(ref);
-      if (!record?.placement)
-        return err(graphError('INVALID_PLACEMENT_RECORD', 'Expected a live placeable record', ref));
-      if (record.placement.kind !== 'LOCAL_FRAME')
+      const editable = this.#editablePlacement(ref);
+      if (!editable.ok) return editable;
+      const { record, placement: previous } = editable.value;
+      if (previous.kind !== 'LOCAL_FRAME')
         return err(
           graphError(
             'PLACEMENT_REFERENCE_UNRESOLVED',
@@ -831,7 +844,7 @@ export class BimDocument {
             ref
           )
         );
-      let frame = record.placement.frame;
+      let frame = previous.frame;
       if (policy === 'KEEP_WORLD') {
         const relative = this.frame(ref, parent);
         if (!relative.ok) return relative;
@@ -877,6 +890,10 @@ export class BimDocument {
         });
       for (const edge of this.#relationships.values()) {
         if (!relationshipEnds(edge).includes(ref)) continue;
+        // The host still owns the cut solid. Its recipe loses the void that justified
+        // analytical dimensions and, for a Slab, reconstruction of the cut in IFC.
+        if (edge.kind === 'VOIDS' && edge.openingLocalId === ref)
+          command.recipeEligibility.set(edge.hostLocalId, false);
         const remaining = withoutRecord(edge, ref);
         if (remaining) command.relationships.push(remaining);
         else command.removedEdges.add(edge.localId);
@@ -895,15 +912,15 @@ export class BimDocument {
 
   replacePlacement(ref: RecordRef, input: PlacementDefinition): Result<void, BimError> {
     return this.#edit('replacePlacement', (command) => {
-      const record = this.#elements.get(ref);
-      if (!record?.placement)
-        return err(graphError('INVALID_PLACEMENT_RECORD', 'Expected a live placeable record', ref));
+      const editable = this.#editablePlacement(ref);
+      if (!editable.ok) return editable;
+      const { record, placement: previous } = editable.value;
       const placement = capturePlacement(input);
       if (!placement.ok) return placement;
       if (
-        record.placement.kind === 'LOCAL_FRAME' &&
+        previous.kind === 'LOCAL_FRAME' &&
         placement.value.kind === 'LOCAL_FRAME' &&
-        record.placement.relativeTo !== placement.value.relativeTo
+        previous.relativeTo !== placement.value.relativeTo
       )
         return err(
           graphError(
@@ -1126,12 +1143,14 @@ export class BimDocument {
       }
     }
 
+    const elevations = storeyElevations(this);
     const labelFor = (el: AnyBimElement): string => {
       const name = el.spec !== null && 'name' in el.spec ? el.spec.name : el.metadata?.name;
       const base = typeof name === 'string' && name.length > 0 ? name : el.category;
-      return el.category === 'STOREY' && typeof el.spec.elevation === 'number'
-        ? `${base} (+${el.spec.elevation} mm)`
-        : base;
+      const elevation = elevations.get(el.localId);
+      return elevation === undefined
+        ? base
+        : `${base} (${elevation >= 0 ? '+' : ''}${elevation} mm)`;
     };
 
     // `seen` guards against a malformed relationship cycle re-entering a node.
