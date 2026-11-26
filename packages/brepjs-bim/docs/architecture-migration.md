@@ -86,6 +86,10 @@ Before implementation, identify the current upstream source commit and preserve 
 
 Geometry and cleanup checks run against supported native backends. For occt-wasm, read native arena counts through the raw kernel before and after completed ownership scopes, following [the upstream arena disposal tests](https://github.com/andymai/brepjs/blob/4602096ebc3c9ea0263d5b2a1b7d3b6dee24c466/tests/wasmArenaDisposal.test.ts#L1). JavaScript live-handle statistics alone cannot detect orphaned arena slots. Dispose probe-owned intermediates with `using` and test release calls separately. Step 0 runs documentation checks only and establishes no native geometry, exchange, or performance result.
 
+## Decisions deferred by step 3
+
+[ADR-0009](adr/0009-document-edit-cost.md) records the measured cost of repeated document edits and the evidence required before changing graph validation. [ADR-0010](adr/0010-changing-a-retained-aperture.md) covers explicit host recutting and geometric verification of caller-supplied voids. Both remain Deferred. Step 4 exchange qualification follows [ADR-0006](adr/0006-ifc-exchange-adapter.md), step 5 Families projection follows [ADR-0005](adr/0005-families-projection-into-bim.md), and step 6 qualifies the packed entrypoints described in ADR-0006.
+
 ## Non-goals and separate follow-up
 
 - This documentation change does not implement the migration, update issue states, or authorize a release.

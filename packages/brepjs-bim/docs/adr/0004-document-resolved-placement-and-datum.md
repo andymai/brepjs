@@ -67,6 +67,8 @@ Public-interface acceptance also resolves frames for a physical element, a spati
 - Reference-based Placement remains unsupported for some operations initially.
 - Local tessellation still needs native and exchange precision qualification.
 
+The measured cost of repeated containment and placement edits and the qualification of alternative validators are recorded in Deferred [ADR-0009](0009-document-edit-cost.md).
+
 ## Alternatives considered
 
 ### Require callers to compose parent frames
