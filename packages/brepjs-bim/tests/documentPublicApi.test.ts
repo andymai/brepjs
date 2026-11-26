@@ -1,6 +1,9 @@
+import { initKernel } from '../../../tests/setup.js';
 import * as bim from '../src/index.js';
 import { box, unwrap } from 'brepjs';
-import { expect, it } from 'vitest';
+import { beforeAll, expect, it } from 'vitest';
+
+beforeAll(() => initKernel(), 30000);
 
 it('exposes document references and requires an explicit query space and reparent policy', () => {
   using doc = new bim.BimDocument();

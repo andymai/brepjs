@@ -1,6 +1,7 @@
+import { initKernel } from '../../../tests/setup.js';
 import { composeWorldMatrix, readLengthScale } from '../src/import/placement.js';
 import { box, unwrap } from 'brepjs';
-import { expect, it } from 'vitest';
+import { beforeAll, expect, it } from 'vitest';
 import { IFCRELCONTAINEDINSPATIALSTRUCTURE } from 'web-ifc';
 import {
   BimDocument,
@@ -15,6 +16,8 @@ import { SpfReader } from '../src/import/spfReader.js';
 import { identityPlacement } from '../src/types/placementDefinition.js';
 import { readPsets } from '../src/import/dataRead.js';
 import { openingHost, OPENING_WALL } from './helpers/openingFixture.js';
+
+beforeAll(() => initKernel(), 30000);
 const meta = { applicationName: 'Placement test', applicationVersion: '1' };
 
 it('emits W-01 relative to its Opening and contained in Level 2', async () => {

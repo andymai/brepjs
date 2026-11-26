@@ -1,7 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { initKernel } from '../../../tests/setup.js';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { box, unwrap } from 'brepjs';
 import { BimDocument } from '../src/index.js';
 import { identityPlacement } from '../src/types/placementDefinition.js';
+
+beforeAll(() => initKernel(), 30000);
 
 describe('document-issued references', () => {
   it('resolves a key in its own document even when another document used the same key', () => {

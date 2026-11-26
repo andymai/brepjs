@@ -1,7 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import { initKernel } from '../../../tests/setup.js';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { box, unwrap } from 'brepjs';
 import { authoring, BimDocument, BimAuthoring, type FrameInput } from '../src/index.js';
 import { identityPlacement } from '../src/types/placementDefinition.js';
+
+beforeAll(() => initKernel(), 30000);
 
 const pose = (x: number, y = 0): FrameInput => ({
   origin: [x, y, 0],

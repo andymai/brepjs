@@ -1,7 +1,10 @@
+import { initKernel } from '../../../tests/setup.js';
 import { box, unwrap } from 'brepjs';
-import { expect, it } from 'vitest';
+import { beforeAll, expect, it } from 'vitest';
 import { authoring, BimDocument } from '../src/index.js';
 import { identityPlacement } from '../src/types/placementDefinition.js';
+
+beforeAll(() => initKernel(), 30000);
 
 it('adopts caller items in the same document as generated curtain children', () => {
   using document = new BimDocument();

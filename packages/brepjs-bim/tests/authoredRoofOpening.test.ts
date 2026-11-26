@@ -1,8 +1,11 @@
+import { initKernel } from '../../../tests/setup.js';
 import * as brep from 'brepjs';
-import { expect, it, vi } from 'vitest';
+import { beforeAll, expect, it, vi } from 'vitest';
 import { BimDocument, authoring, toIfc, toIfcValidated } from '../src/index.js';
 import { identityPlacement } from '../src/types/placementDefinition.js';
 import { cutOpeningSolid } from '../src/elementFns/cutOpeningSolid.js';
+
+beforeAll(() => initKernel(), 30000);
 
 const frame = { ...identityPlacement.frame, origin: [2000, 1000, 0] as const };
 const opening = {

@@ -1,8 +1,10 @@
 import { box, rotate, translate, unwrap, measureVolume } from 'brepjs';
-import { expect, it } from 'vitest';
+import { beforeAll, expect, it } from 'vitest';
 import { BimDocument, BimAuthoring } from '../src/index.js';
-import { currentKernel } from '../../../tests/setup.js';
+import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
+
+beforeAll(() => initKernel(), 30000);
 
 it('resolves rotated spatial and NONE records without allocating solids and applies the local Datum once', () => {
   using doc = new BimDocument();

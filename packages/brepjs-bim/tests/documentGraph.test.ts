@@ -1,7 +1,10 @@
+import { initKernel } from '../../../tests/setup.js';
 import { box, unwrap } from 'brepjs';
-import { expect, it } from 'vitest';
+import { beforeAll, expect, it } from 'vitest';
 import { BimDocument, BimAuthoring } from '../src/index.js';
 import { identityPlacement } from '../src/types/placementDefinition.js';
+
+beforeAll(() => initKernel(), 30000);
 
 it('transfers containment without changing placement and validates staged endpoints', () => {
   using doc = new BimDocument();
