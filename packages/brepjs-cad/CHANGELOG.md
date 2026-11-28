@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.195.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.194.1...brepjs-cad-v0.195.0) (2026-11-28)
+
+
+### Features
+
+* **bim:** resolve placement in BimDocument (migration step 3) ([#2746](https://github.com/andymai/brepjs/issues/2746)) ([6d3e5ca](https://github.com/andymai/brepjs/commit/6d3e5ca16b45b2fb162ce65e6666b53cd98e9325))
+
 ## [0.194.1](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.194.0...brepjs-cad-v0.194.1) (2026-11-17)
 
 
