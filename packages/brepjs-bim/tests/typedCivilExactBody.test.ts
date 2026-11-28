@@ -22,7 +22,6 @@ import {
   type TransformOp,
 } from 'brepjs-families';
 import { initKernel } from '../../../tests/setup.js';
-import { placedSolids } from '../src/elementFns/placedGeometry.js';
 import { familiesToBim } from '../src/familiesAdapter.js';
 import { fromIfc } from '../src/import/fromIfc.js';
 import { disposeImportedModel } from '../src/import/importedModel.js';
@@ -169,7 +168,7 @@ describe('authoritative exact Bodies on typed civil Products', () => {
       expect(element.geometry.kind).toBe('AUTHORITATIVE');
       expect(bodySolids(element.geometry)).toHaveLength(bodyCase.authoredSolidCount);
 
-      const placed = unwrap(placedSolids(element));
+      const placed = unwrap(model.placedSolids(element.localId, 'WORLD'));
       try {
         expect(placed).toHaveLength(bodyCase.authoredSolidCount);
         expectBodyClose(placed, authored, 3, 'eager projection');

@@ -1,8 +1,9 @@
+import { authoring } from '../src/model/authoring.js';
 import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
 import { initKernel } from '../../../tests/setup.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { SpfReader } from '../src/import/spfReader.js';
 
@@ -12,19 +13,19 @@ beforeAll(async () => {
 
 const META = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };
 
-function buildModel(): BimModel {
-  const model = new BimModel();
+function buildModel(): BimDocument {
+  const model = new BimDocument();
   const initResult = model.init({ name: 'SpfReader Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = unwrap(model.addSite({ name: 'Site' }));
-  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
-  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
+  const siteId = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
 
-  const wall = model.addWall({
+  const wall = authoring(model).addWall({
     length: 5000,
     height: 3000,
     thickness: 200,
@@ -39,7 +40,7 @@ function buildModel(): BimModel {
   return model;
 }
 
-async function bytesFor(model: BimModel): Promise<Uint8Array> {
+async function bytesFor(model: BimDocument): Promise<Uint8Array> {
   const result = await toIfc(model, META);
   if (!result.ok) throw new Error(result.error.message);
   return result.value;

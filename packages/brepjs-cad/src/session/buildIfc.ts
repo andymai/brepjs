@@ -69,7 +69,7 @@ export interface ImportedModelLike {
       readonly code: string;
       readonly severity: DiagnosticSeverity;
       readonly message: string;
-      readonly entity?: string | number | undefined;
+      readonly entity?: object | string | number | undefined;
     }[];
   };
   readonly applicationName?: string | undefined;
@@ -402,7 +402,12 @@ export function ifcRecords(
   }
 
   for (const issue of model.diagnostics.issues) {
-    const target = typeof issue.entity === 'number' ? id(issue.entity) : issue.entity;
+    const target =
+      typeof issue.entity === 'number'
+        ? id(issue.entity)
+        : typeof issue.entity === 'string'
+          ? issue.entity
+          : undefined;
     diagnostics.push({
       severity: issue.severity,
       code: issue.code,

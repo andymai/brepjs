@@ -1,9 +1,5 @@
-import {
-  elementBounds,
-  elementMaterialVolume,
-  placedSolids,
-} from '../src/elementFns/placedGeometry.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { authoring } from '../src/model/authoring.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
@@ -135,9 +131,9 @@ describe('curtainWallToGrid', () => {
 
 describe('writeCurtainWall serialization', () => {
   async function serialize(): Promise<{ api: WebIFC.IfcAPI; mid: number }> {
-    using model = new BimModel();
+    using model = new BimDocument();
     unwrap(model.init({ name: 'Curtain wall' }));
-    unwrap(model.addCurtainWall(SPEC, { stableKey: 'curtainwall:1' }));
+    unwrap(authoring(model).addCurtainWall(SPEC, { stableKey: 'curtainwall:1' }));
     const bytes = unwrap(await toIfc(model, { applicationName: 'test', applicationVersion: '0' }));
     const api = new WebIFC.IfcAPI();
     await api.Init();
@@ -224,28 +220,26 @@ describe('writeCurtainWall serialization', () => {
 });
 
 it('composes the parent once and replaces one child without changing its siblings', async () => {
-  using model = new BimModel();
+  using model = new BimDocument();
   unwrap(model.init({ name: 'Assembly' }));
   const parentId = unwrap(
-    model.addCurtainWall({ ...SPEC, origin: [500, 700, 100], axisX: [0, 1, 0] })
+    authoring(model).addCurtainWall({ ...SPEC, origin: [500, 700, 100], axisX: [0, 1, 0] })
   );
   const parent = model.getElement(parentId);
   if (parent?.category !== 'CURTAIN_WALL' || parent.placement?.kind !== 'LOCAL_FRAME')
     throw new Error('Missing curtain wall');
   for (const result of [
-    elementMaterialVolume(parent),
-    elementBounds(parent, { kind: 'LOCAL' }),
-    placedSolids(parent),
+    model.materialVolume(parent.localId),
+    model.bounds(parent.localId, 'LOCAL'),
+    model.placedSolids(parent.localId, 'WORLD'),
   ])
     expect(result).toMatchObject({ ok: false, error: { code: 'ELEMENT_HAS_NO_BODY' } });
   const [child, ...siblings] = model.getChildren(parentId);
   if (child?.category !== 'PLATE' || child.placement.kind !== 'LOCAL_FRAME')
     throw new Error('Missing plate');
   expect(child.placement.relativeTo).toBe(parentId);
-  const local = unwrap(elementBounds(child, { kind: 'PLACED', tag: 'assembly' })).bounds;
-  const world = unwrap(
-    elementBounds(child, { kind: 'PLACED', tag: 'world', parentFrame: parent.placement.frame })
-  ).bounds;
+  const local = unwrap(model.bounds(child.localId, parentId)).bounds;
+  const world = unwrap(model.bounds(child.localId, 'WORLD')).bounds;
   expect(world.xMin).toBeCloseTo(500 - local.yMax);
   expect(world.yMax).toBeCloseTo(700 + local.xMax);
   expect(world.zMin).toBeCloseTo(100 + local.zMin);
@@ -266,8 +260,8 @@ it('composes the parent once and replaces one child without changing its sibling
 });
 
 it('keeps decomposition independent of the authored local frame', () => {
-  using model = new BimModel();
-  const parent = unwrap(model.addCurtainWall({ ...SPEC, origin: [1000, 0, 0] }));
+  using model = new BimDocument();
+  const parent = unwrap(authoring(model).addCurtainWall({ ...SPEC, origin: [1000, 0, 0] }));
   const id = unwrap(
     model.addAuthoredBody({
       category: 'PLATE',
@@ -277,15 +271,15 @@ it('keeps decomposition independent of the authored local frame', () => {
   );
   const record = model.getElement(id);
   if (!record) throw new Error('Missing plate');
-  const before = unwrap(elementBounds(record, { kind: 'PLACED', tag: 'parent' }));
+  const before = unwrap(model.bounds(record.localId, 'WORLD'));
   model.aggregate(parent, id);
   expect(model.getChildren(parent)).toContain(record);
   expect(model.getElement(id)).toBe(record);
-  expect(unwrap(elementBounds(record, { kind: 'PLACED', tag: 'parent' }))).toEqual(before);
+  expect(unwrap(model.bounds(record.localId, 'WORLD'))).toEqual(before);
 });
 
 it('rolls back all generated children on a late stable-key collision', () => {
-  using model = new BimModel();
+  using model = new BimDocument();
   const existing = unwrap(
     model.addAuthoredBody({
       category: 'PLATE',
@@ -296,12 +290,12 @@ it('rolls back all generated children on a late stable-key collision', () => {
   );
   const record = model.getElement(existing);
   const baseline = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
-  expect(model.addCurtainWall(SPEC, { stableKey: 'grid' })).toMatchObject({
+  expect(authoring(model).addCurtainWall(SPEC, { stableKey: 'grid' })).toMatchObject({
     ok: false,
     error: { code: 'DUPLICATE_STABLE_KEY' },
   });
   expect(model.getAllElements()).toEqual([record]);
   expect(model.getAllRelationships()).toHaveLength(0);
   if (baseline !== null) expect(nativeShapeCount()).toBe(baseline);
-  expect(model.addCurtainWall(SPEC, { stableKey: 'another' }).ok).toBe(true);
+  expect(authoring(model).addCurtainWall(SPEC, { stableKey: 'another' }).ok).toBe(true);
 });

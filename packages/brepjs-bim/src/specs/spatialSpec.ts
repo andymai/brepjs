@@ -96,14 +96,14 @@ export function parseSiteSpec(input: unknown): Result<SiteSpec, BimError> {
     : err(specError('INVALID_SITE_SPEC', result.error.message, result.error));
 }
 
-export interface BuildingSpec {
+export interface BuildingSpec extends SpatialPlacementSpec {
   readonly name: string;
   readonly description?: string;
 }
 
-export interface StoreySpec {
+export interface StoreySpec extends SpatialPlacementSpec {
   readonly name: string;
-  readonly elevation: number; // mm above site datum
+  readonly elevation: number; // initial local Z in mm when origin is omitted
 }
 import { err, ok, type Result } from 'brepjs';
 import { z, type RefinementCtx } from 'zod';

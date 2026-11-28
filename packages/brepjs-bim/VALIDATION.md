@@ -19,7 +19,7 @@ node examples/sampleBuilding.mjs            # writes examples/sample-building.if
 
 # 2. Validate it with IfcOpenShell (independent of web-ifc):
 pip install ifcopenshell pytest              # Python 3.9–3.12; express-rule checks import pytest
-python scripts/validateIfc.py                # exit 0 = all gates pass
+python scripts/validateIfc.py --sample-columns   # includes moving the ground floor and checking both columns
 ```
 
 `scripts/validateIfc.py` runs five gates: parse + schema, `ifcopenshell.validate`

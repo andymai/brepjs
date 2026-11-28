@@ -1,3 +1,4 @@
+import { authoring } from '../src/model/authoring.js';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { box, getKernel, unwrap } from 'brepjs';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
@@ -140,7 +141,7 @@ describe('Wall quantity eligibility', () => {
         const relations = model.getAllRelationships();
         using filler = box(100, 100, 100);
         expect(
-          model.addDoorAndCutWall(
+          authoring(model).addDoorAndCutWall(
             {
               wallLocalId: fixture.localId,
               width: 200,

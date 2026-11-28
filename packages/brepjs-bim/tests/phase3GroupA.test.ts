@@ -1,8 +1,9 @@
+import { authoring } from '../src/model/authoring.js';
 import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
 import * as WebIFC from 'web-ifc';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { parseProfile } from '../src/specs/profile.js';
 import type { ExtendedProfile } from '../src/specs/profilesExtended.js';
@@ -18,19 +19,19 @@ const XAXIS: [number, number, number] = [1, 0, 0];
 
 // Builds a model with one of each Group A element, all contained in one storey,
 // plus a space boundary tying the space to a wall.
-function buildGroupAModel(): BimModel {
-  const model = new BimModel();
+function buildGroupAModel(): BimDocument {
+  const model = new BimDocument();
   const initResult = model.init({ name: 'Phase3 GroupA Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = unwrap(model.addSite({ name: 'Site' }));
-  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
-  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
+  const siteId = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
 
-  const wall = model.addWall({
+  const wall = authoring(model).addWall({
     length: 5000,
     height: 3000,
     thickness: 250,
@@ -42,7 +43,7 @@ function buildGroupAModel(): BimModel {
   if (!wall.ok) throw new Error(wall.error.message);
   model.placeIn(wall.value, storeyId);
 
-  const space = model.addSpace({
+  const space = authoring(model).addSpace({
     name: 'Office 101',
     length: 4000,
     width: 3000,
@@ -58,7 +59,7 @@ function buildGroupAModel(): BimModel {
   model.placeIn(space.value, storeyId);
   model.addSpaceBoundary(space.value, wall.value, 'PHYSICAL');
 
-  const roof = model.addRoof({
+  const roof = authoring(model).addRoof({
     length: 6000,
     width: 4000,
     thickness: 200,
@@ -72,7 +73,7 @@ function buildGroupAModel(): BimModel {
   if (!roof.ok) throw new Error(roof.error.message);
   model.placeIn(roof.value, storeyId);
 
-  const curtainWall = model.addCurtainWall({
+  const curtainWall = authoring(model).addCurtainWall({
     width: 3000,
     height: 2400,
     columns: 2,
@@ -89,7 +90,7 @@ function buildGroupAModel(): BimModel {
   if (!curtainWall.ok) throw new Error(curtainWall.error.message);
   model.placeIn(curtainWall.value, storeyId);
 
-  const footing = model.addFooting({
+  const footing = authoring(model).addFooting({
     length: 1200,
     width: 1200,
     thickness: 400,
@@ -103,7 +104,7 @@ function buildGroupAModel(): BimModel {
   if (!footing.ok) throw new Error(footing.error.message);
   model.placeIn(footing.value, storeyId);
 
-  const pile = model.addPile({
+  const pile = authoring(model).addPile({
     length: 8000,
     profile: { kind: 'CIRCULAR', radius: 300 },
     origin: [0, 0, -8400],
@@ -120,7 +121,7 @@ function buildGroupAModel(): BimModel {
   return model;
 }
 
-async function serialize(model: BimModel): Promise<Uint8Array> {
+async function serialize(model: BimDocument): Promise<Uint8Array> {
   const result = await toIfc(model, META);
   if (!result.ok) throw new Error(result.error.message);
   return result.value;
@@ -215,7 +216,7 @@ describe('Phase 3 Group A integration', () => {
     api.CloseModel(mid);
   });
 
-  it('space GlobalId equals the BimModel element GUID', async () => {
+  it('space GlobalId equals the BimDocument element GUID', async () => {
     const model = buildGroupAModel();
     const bytes = await serialize(model);
     const api = new WebIFC.IfcAPI();
@@ -251,12 +252,12 @@ describe('Phase 3 Group A integration', () => {
     const parsed = parseProfile(lShape);
     expect(parsed.ok).toBe(true);
 
-    const model = new BimModel();
+    const model = new BimDocument();
     const initResult = model.init({ name: 'Extended Profile Project' });
     if (!initResult.ok) throw new Error(initResult.error.message);
-    const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
+    const storeyId = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 0 }));
 
-    const pile = model.addPile({
+    const pile = authoring(model).addPile({
       length: 5000,
       profile: { kind: 'RECTANGULAR', width: 400, height: 400 },
       origin: [0, 0, 0],

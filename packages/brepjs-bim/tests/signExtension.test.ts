@@ -1,13 +1,13 @@
 import { box, unwrap } from 'brepjs';
 import { expect, it } from 'vitest';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { bodyRecordContract } from './helpers/bodyRecordContract.js';
 
 bodyRecordContract('SIGN');
 
 it('reports unsupported standalone Sign exchange before producing an artifact', async () => {
-  using model = new BimModel();
+  using model = new BimDocument();
   unwrap(model.init({ name: 'Standalone Sign' }));
   const id = unwrap(
     model.addAuthoredBody({

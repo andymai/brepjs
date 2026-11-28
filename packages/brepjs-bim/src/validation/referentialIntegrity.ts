@@ -1,6 +1,6 @@
 import type { AnyBimElement, BimCategory } from '../types/bimTypes.js';
 import type { BimRelationship } from '../types/relationships.js';
-import type { LocalId } from '../identity/localId.js';
+import type { RecordRef } from '../identity/recordRef.js';
 import type { ValidationIssue, ValidationReport } from './severity.js';
 import { issue, emptyReport, appendIssues } from './severity.js';
 
@@ -63,20 +63,20 @@ function toGraph(input: IntegrityInput): ModelGraph {
 export function checkReferentialIntegrity(input: IntegrityInput): ValidationReport {
   const { elements, relationships } = toGraph(input);
 
-  const elementsById = new Map<LocalId, AnyBimElement>();
+  const elementsById = new Map<RecordRef, AnyBimElement>();
   for (const el of elements) elementsById.set(el.localId, el);
 
   // Count how many CONTAINED_IN rels reference each element.
-  const containmentCount = new Map<LocalId, number>();
+  const containmentCount = new Map<RecordRef, number>();
   // Track which openings are referenced by at least one VOIDS rel.
-  const voidedOpenings = new Set<LocalId>();
+  const voidedOpenings = new Set<RecordRef>();
 
   for (const rel of relationships) {
     if (rel.kind === 'CONTAINED_IN') {
       for (const elementId of rel.relatedElements) {
         containmentCount.set(elementId, (containmentCount.get(elementId) ?? 0) + 1);
       }
-    } else if (rel.kind === 'VOIDS_WALL' || rel.kind === 'VOIDS_SLAB') {
+    } else if (rel.kind === 'VOIDS') {
       voidedOpenings.add(rel.openingLocalId);
     }
   }
@@ -92,7 +92,7 @@ export function checkReferentialIntegrity(input: IntegrityInput): ValidationRepo
         issue(
           'error',
           'ELEMENT_NOT_CONTAINED',
-          `${el.category} (localId ${el.localId}) is not contained in any spatial structure`,
+          `${el.category} (${el.guid}) is not contained in any spatial structure`,
           el.localId
         )
       );
@@ -101,7 +101,7 @@ export function checkReferentialIntegrity(input: IntegrityInput): ValidationRepo
         issue(
           'error',
           'ELEMENT_DOUBLE_CONTAINED',
-          `${el.category} (localId ${el.localId}) is contained in ${count} spatial structures (expected 1)`,
+          `${el.category} (${el.guid}) is contained in ${count} spatial structures (expected 1)`,
           el.localId,
           { count }
         )
@@ -111,11 +111,8 @@ export function checkReferentialIntegrity(input: IntegrityInput): ValidationRepo
 
   // Rule 2 — voids/fills referential consistency.
   for (const rel of relationships) {
-    if (rel.kind === 'VOIDS_WALL') {
-      checkVoidHost(issues, elementsById, rel.wallLocalId, 'WALL');
-      checkOpeningExists(issues, elementsById, rel.openingLocalId, 'VOID_OPENING_MISSING');
-    } else if (rel.kind === 'VOIDS_SLAB') {
-      checkVoidHost(issues, elementsById, rel.slabLocalId, 'SLAB');
+    if (rel.kind === 'VOIDS') {
+      checkVoidHost(issues, elementsById, rel.hostLocalId, rel.hostCategory);
       checkOpeningExists(issues, elementsById, rel.openingLocalId, 'VOID_OPENING_MISSING');
     } else if (rel.kind === 'FILLS_OPENING') {
       checkOpeningExists(issues, elementsById, rel.openingLocalId, 'FILL_OPENING_MISSING');
@@ -125,7 +122,7 @@ export function checkReferentialIntegrity(input: IntegrityInput): ValidationRepo
           issue(
             'error',
             'FILL_FILLER_MISSING',
-            `FILLS_OPENING references filler localId ${rel.fillerLocalId}, which does not exist`,
+            'Fill relationship references a missing filler',
             rel.fillerLocalId
           )
         );
@@ -141,7 +138,7 @@ export function checkReferentialIntegrity(input: IntegrityInput): ValidationRepo
         issue(
           'warning',
           'ORPHANED_OPENING',
-          `OPENING (localId ${el.localId}) is not referenced by any void relationship`,
+          `OPENING (${el.guid}) is not referenced by any void relationship`,
           el.localId
         )
       );
@@ -153,20 +150,13 @@ export function checkReferentialIntegrity(input: IntegrityInput): ValidationRepo
 
 function checkVoidHost(
   issues: ValidationIssue[],
-  elementsById: ReadonlyMap<LocalId, AnyBimElement>,
-  hostId: LocalId,
+  elementsById: ReadonlyMap<RecordRef, AnyBimElement>,
+  hostId: RecordRef,
   expected: BimCategory
 ): void {
   const host = elementsById.get(hostId);
   if (host === undefined) {
-    issues.push(
-      issue(
-        'error',
-        'VOID_HOST_MISSING',
-        `Void references host localId ${hostId}, which does not exist`,
-        hostId
-      )
-    );
+    issues.push(issue('error', 'VOID_HOST_MISSING', 'Void references a missing host', hostId));
     return;
   }
   if (host.category !== expected) {
@@ -174,7 +164,7 @@ function checkVoidHost(
       issue(
         'error',
         'VOID_HOST_WRONG_CATEGORY',
-        `Void references host localId ${hostId}, expected ${expected} but found ${host.category}`,
+        `Invalid void host, expected ${expected} but found ${host.category}`,
         hostId,
         { expected, actual: host.category }
       )
@@ -184,20 +174,13 @@ function checkVoidHost(
 
 function checkOpeningExists(
   issues: ValidationIssue[],
-  elementsById: ReadonlyMap<LocalId, AnyBimElement>,
-  openingId: LocalId,
+  elementsById: ReadonlyMap<RecordRef, AnyBimElement>,
+  openingId: RecordRef,
   code: 'VOID_OPENING_MISSING' | 'FILL_OPENING_MISSING'
 ): void {
   const opening = elementsById.get(openingId);
   if (opening === undefined) {
-    issues.push(
-      issue(
-        'error',
-        code,
-        `References opening localId ${openingId}, which does not exist`,
-        openingId
-      )
-    );
+    issues.push(issue('error', code, 'Relationship references a missing Opening', openingId));
     return;
   }
   if (opening.category !== 'OPENING') {
@@ -207,7 +190,7 @@ function checkOpeningExists(
         code === 'VOID_OPENING_MISSING'
           ? 'VOID_OPENING_WRONG_CATEGORY'
           : 'FILL_OPENING_WRONG_CATEGORY',
-        `References opening localId ${openingId}, expected OPENING but found ${opening.category}`,
+        `Invalid Opening reference, expected OPENING but found ${opening.category}`,
         openingId,
         { actual: opening.category }
       )

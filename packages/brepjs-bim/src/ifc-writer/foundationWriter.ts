@@ -26,23 +26,8 @@ export function writeFootingGeometry(
   w: IfcWriter,
   spec: FootingSpec,
   geomSubContextId: number,
-  parentPlacementId: number | null
+  localPlacementId: number
 ): FoundationRepresentationIds {
-  const placement3DId = writeAxis2Placement3D(
-    w,
-    spec.origin.map(toIfcLengthM) as [number, number, number],
-    spec.axisZ,
-    spec.axisX
-  );
-
-  const localPlacementId = w.nextId();
-  w.writeLine({
-    expressID: localPlacementId,
-    type: WebIFC.IFCLOCALPLACEMENT,
-    PlacementRelTo: parentPlacementId !== null ? w.ref(parentPlacementId) : null,
-    RelativePlacement: w.ref(placement3DId),
-  });
-
   const lengthM = toIfcLengthM(spec.length);
   const widthM = toIfcLengthM(spec.width);
   const thicknessM = toIfcLengthM(spec.thickness);
@@ -97,23 +82,8 @@ export function writePileGeometry(
   w: IfcWriter,
   spec: PileSpec,
   geomSubContextId: number,
-  parentPlacementId: number | null
+  localPlacementId: number
 ): FoundationRepresentationIds {
-  const placement3DId = writeAxis2Placement3D(
-    w,
-    spec.origin.map(toIfcLengthM) as [number, number, number],
-    spec.axisZ,
-    spec.axisX
-  );
-
-  const localPlacementId = w.nextId();
-  w.writeLine({
-    expressID: localPlacementId,
-    type: WebIFC.IFCLOCALPLACEMENT,
-    PlacementRelTo: parentPlacementId !== null ? w.ref(parentPlacementId) : null,
-    RelativePlacement: w.ref(placement3DId),
-  });
-
   const profileId = writeProfile(w, spec.profile);
   const extrusionPosId = writeAxis2Placement3D(w, [0, 0, 0]);
   const extrusionDirId = writeDirection(w, [0, 0, 1]);

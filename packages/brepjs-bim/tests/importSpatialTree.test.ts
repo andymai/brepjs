@@ -1,7 +1,8 @@
+import { authoring } from '../src/model/authoring.js';
 import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { SpfReader } from '../src/import/spfReader.js';
 import { buildSpatialTree, buildElementContainmentMap } from '../src/import/spatialTree.js';
@@ -29,22 +30,22 @@ interface RoundTrip {
  * Level 1 contains a wall + slab; Level 2 contains a wall. Returns the model
  * plus the GUIDs/metadata so the round-trip can assert against known values.
  */
-function buildMultiStoreyModel(): { model: BimModel; meta: RoundTrip } {
-  const model = new BimModel();
+function buildMultiStoreyModel(): { model: BimDocument; meta: RoundTrip } {
+  const model = new BimDocument();
   const initResult = model.init({ name: 'Tree Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = unwrap(model.addSite({ name: 'Site A' }));
-  const buildingId = unwrap(model.addBuilding({ name: 'Building A' }));
-  const level1Id = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
-  const level2Id = unwrap(model.addStorey({ name: 'Level 2', elevation: 3000 }));
+  const siteId = unwrap(authoring(model).addSite({ name: 'Site A' }));
+  const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building A' }));
+  const level1Id = unwrap(authoring(model).addStorey({ name: 'Level 1', elevation: 0 }));
+  const level2Id = unwrap(authoring(model).addStorey({ name: 'Level 2', elevation: 3000 }));
 
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, level1Id);
   model.aggregate(buildingId, level2Id);
 
-  const wallL1 = model.addWall({
+  const wallL1 = authoring(model).addWall({
     length: 5000,
     height: 3000,
     thickness: 200,
@@ -56,7 +57,7 @@ function buildMultiStoreyModel(): { model: BimModel; meta: RoundTrip } {
   if (!wallL1.ok) throw new Error(wallL1.error.message);
   model.placeIn(wallL1.value, level1Id);
 
-  const slabL1 = model.addSlab({
+  const slabL1 = authoring(model).addSlab({
     length: 6000,
     width: 4000,
     thickness: 250,
@@ -69,7 +70,7 @@ function buildMultiStoreyModel(): { model: BimModel; meta: RoundTrip } {
   if (!slabL1.ok) throw new Error(slabL1.error.message);
   model.placeIn(slabL1.value, level1Id);
 
-  const wallL2 = model.addWall({
+  const wallL2 = authoring(model).addWall({
     length: 5000,
     height: 3000,
     thickness: 200,
@@ -106,7 +107,7 @@ function buildMultiStoreyModel(): { model: BimModel; meta: RoundTrip } {
   };
 }
 
-async function readTree(model: BimModel): Promise<{
+async function readTree(model: BimDocument): Promise<{
   reader: SpfReader;
   tree: SpatialNode | null;
   containment: Map<number, number>;
@@ -250,7 +251,7 @@ describe('buildSpatialTree — multi-storey round-trip', () => {
   });
 
   it('handles a project-only model: root present, empty containment', async () => {
-    const model = new BimModel();
+    const model = new BimDocument();
     const initResult = model.init({ name: 'Lonely' });
     if (!initResult.ok) throw new Error(initResult.error.message);
     const { reader, tree, containment } = await readTree(model);

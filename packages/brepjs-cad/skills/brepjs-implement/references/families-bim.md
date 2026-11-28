@@ -75,7 +75,7 @@ const bytes = unwrap(await toIfc(bim, { applicationName: 'agent', applicationVer
   family's **archetype** routes it (`family('Wall', …, { archetype: 'wall' })`), so a renamed family
   keeps its mapping; declare none and it falls back to matching the family name. Anything else with
   geometry → `FAMILIES_UNSUPPORTED_TYPE` (or an `IfcBuildingElementProxy` when a proxy evaluator is
-  passed); drop to the imperative `BimModel` adders (`addZone`, `addSystem`,
+  passed); drop to the imperative `BimDocument` adders (`addZone`, `addSystem`,
   `addElementAssembly`, …) for pure grouping objects. The `covering` route is host-less —
   an `IfcRelCoversBldgElements` link needs the imperative `addCovering(spec, hostLocalId)`.
 - **Placement frame:** an element's thickness extrudes along `axisZ × axisX`, so a wall running +Y

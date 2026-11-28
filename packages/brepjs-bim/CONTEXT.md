@@ -38,7 +38,7 @@ A **Datum** is the reference convention expressed in Body-local coordinates, suc
 
 The initial scope resolves `LOCAL_FRAME`. Unsupported grid or linear resolution retains reference intent and returns an explicit error. Reparenting requires `KEEP_LOCAL` or `KEEP_WORLD`, with no default. Deletion fails while dependants exist, without cascading. Invalid changes leave the document unchanged.
 
-Containment, assembly decomposition, and Placement parenting are separate relationships. A curtain-wall assembly has `NONE` and Plate/Member children with their own Bodies and Placements. An own-geometry query on NONE reports absence. Query descendants explicitly and supply their resolved parent frame when a common coordinate space is needed. Decomposition alone does not move children. Stair and ramp flights can instead form one multi-item Body. Neither case needs another representation variant.
+Containment, assembly decomposition, and Placement parenting are separate relationships. A curtain-wall assembly has `NONE` and Plate/Member children with their own Bodies and Placements. An own-geometry query on NONE reports absence. Query descendants explicitly and name World or a common record as the target frame. Decomposition alone does not move children. Stair and ramp flights can instead form one multi-item Body. Neither case needs another representation variant.
 
 ## Package boundaries
 

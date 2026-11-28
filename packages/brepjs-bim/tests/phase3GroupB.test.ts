@@ -1,8 +1,10 @@
+import { authoring } from '../src/model/authoring.js';
+import type { RecordRef } from '../src/identity/recordRef.js';
 import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
 import * as WebIFC from 'web-ifc';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 
 beforeAll(async () => {
@@ -15,27 +17,27 @@ const UP: [number, number, number] = [0, 0, 1];
 const XAXIS: [number, number, number] = [1, 0, 0];
 
 interface GroupBModel {
-  readonly model: BimModel;
-  readonly stairId: number;
-  readonly railingId: number;
-  readonly coveringId: number;
+  readonly model: BimDocument;
+  readonly stairId: RecordRef;
+  readonly railingId: RecordRef;
+  readonly coveringId: RecordRef;
 }
 
 // Builds a model with a stair (2 flights), a styled railing, a covering on a slab
 // host, an element assembly nesting the railing, and a connectivity rel.
 function buildGroupBModel(): GroupBModel {
-  const model = new BimModel();
+  const model = new BimDocument();
   const initResult = model.init({ name: 'Phase3 GroupB Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = unwrap(model.addSite({ name: 'Site' }));
-  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
-  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
+  const siteId = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
 
-  const stair = model.addStair({
+  const stair = authoring(model).addStair({
     name: 'Main Stair',
     predefinedType: 'STRAIGHT_RUN_STAIR',
     materialName: 'Concrete',
@@ -65,7 +67,7 @@ function buildGroupBModel(): GroupBModel {
   if (!stair.ok) throw new Error(stair.error.message);
   model.placeIn(stair.value, storeyId);
 
-  const ramp = model.addRamp({
+  const ramp = authoring(model).addRamp({
     name: 'Service Ramp',
     predefinedType: 'STRAIGHT_RUN_RAMP',
     materialName: 'Concrete',
@@ -85,7 +87,7 @@ function buildGroupBModel(): GroupBModel {
   if (!ramp.ok) throw new Error(ramp.error.message);
   model.placeIn(ramp.value, storeyId);
 
-  const slab = model.addSlab({
+  const slab = authoring(model).addSlab({
     predefinedType: 'FLOOR',
     length: 5000,
     width: 4000,
@@ -98,7 +100,7 @@ function buildGroupBModel(): GroupBModel {
   if (!slab.ok) throw new Error(slab.error.message);
   model.placeIn(slab.value, storeyId);
 
-  const railing = model.addRailing({
+  const railing = authoring(model).addRailing({
     length: 3000,
     height: 1100,
     thickness: 50,
@@ -112,7 +114,7 @@ function buildGroupBModel(): GroupBModel {
   model.placeIn(railing.value, storeyId);
   model.setSurfaceStyle(railing.value, { name: 'Steel Grey', r: 0.5, g: 0.5, b: 0.55 });
 
-  const covering = model.addCovering(
+  const covering = authoring(model).addCovering(
     {
       length: 5000,
       width: 4000,
@@ -130,7 +132,10 @@ function buildGroupBModel(): GroupBModel {
 
   // Element assembly nesting the railing (ordered nesting via IfcRelNests).
   const assemblyId = unwrap(
-    model.addElementAssembly({ name: 'Guard Assembly', predefinedType: 'ACCESSORY_ASSEMBLY' })
+    authoring(model).addElementAssembly({
+      name: 'Guard Assembly',
+      predefinedType: 'ACCESSORY_ASSEMBLY',
+    })
   );
   model.placeIn(assemblyId, storeyId);
   model.nest(assemblyId, railing.value);
@@ -146,7 +151,7 @@ function buildGroupBModel(): GroupBModel {
   };
 }
 
-async function serialize(model: BimModel): Promise<Uint8Array> {
+async function serialize(model: BimDocument): Promise<Uint8Array> {
   const result = await toIfc(model, META);
   if (!result.ok) throw new Error(result.error.message);
   return result.value;

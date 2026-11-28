@@ -1,3 +1,4 @@
+import { authoring } from '../src/model/authoring.js';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { getBounds, getKernel, unwrap } from 'brepjs';
 import * as brepjs from 'brepjs';
@@ -5,7 +6,7 @@ import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { fromIfc } from '../src/import/fromIfc.js';
 import { disposeImportedModel } from '../src/import/importedModel.js';
 import { SpfReader } from '../src/import/spfReader.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import {
   IFC_BODY_META,
@@ -145,18 +146,19 @@ describe('IFC opening representation semantics', () => {
   it('keeps recipe-exported gross Slab geometry and its Body opening subtractive', async () => {
     const before = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
     {
-      using model = new BimModel();
+      using model = new BimDocument();
       const project = unwrap(
         model.init({ name: 'Gross slab control', projectId: 'gross-slab-control' })
       );
-      const site = unwrap(model.addSite({ name: 'Site' }));
-      const building = unwrap(model.addBuilding({ name: 'Building' }));
-      const storey = unwrap(model.addStorey({ name: 'Level', elevation: 7000 }));
+      const site = unwrap(authoring(model).addSite({ name: 'Site' }));
+      const building = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+      const storey = unwrap(authoring(model).addStorey({ name: 'Level', elevation: 7000 }));
       model.aggregate(project, site);
       model.aggregate(site, building);
       model.aggregate(building, storey);
       const host = openingHost(model, 'Slab');
       model.placeIn(host.hostId, storey);
+      unwrap(model.reparent(host.hostId, storey, 'KEEP_LOCAL'));
       unwrap(host.open());
       const slab = model.getElement(host.hostId);
       const opening = model.getAllElements().find(({ category }) => category === 'OPENING');

@@ -1,11 +1,13 @@
+export type { FrameSpace, DocumentFrame } from './model/documentFrames.js';
+export { BimDocument } from './model/bimDocument.js';
+export { BimAuthoring, authoring } from './model/authoring.js';
 export {
-  BimModel,
+  type AuthoredBodyInput,
   type BodyCommitReceipt,
   type ElementIdentityOptions,
   type OpeningIdentityOptions,
-} from './model/bimModel.js';
+} from './model/bimDocument.js';
 export type { BimTreeNode, BimTreeSummary } from './model/treeSummary.js';
-export { placedSolids, elementBounds, elementMaterialVolume } from './elementFns/placedGeometry.js';
 export {
   bodySolids,
   validateBody,
@@ -26,7 +28,6 @@ export type {
   GeometryCleanupDiagnostic,
 } from './types/body.js';
 export type { PlacementDefinition } from './types/placementDefinition.js';
-export type { PlacedSolidsOptions } from './elementFns/placedGeometry.js';
 export type { FrameInput, RigidFrame, Mat4x4 } from './placementFrame.js';
 export {
   frameFromPlacement,
@@ -67,7 +68,6 @@ export { parseDoorSpec, parseWindowSpec, parseSlabOpeningInput } from './specs/o
 export { parseBridgeSpec, parseBridgePartSpec } from './specs/infrastructureSpec.js';
 export { newIfcGuid, isValidIfcGuid } from './identity/ifcGuid.js';
 export { deriveIfcGuid, deriveIfcGuidSync } from './identity/guidDerivation.js';
-export { makeLocalIdCounter } from './identity/localId.js';
 export { checkReferentialIntegrity } from './validation/referentialIntegrity.js';
 export { checkSchema } from './validation/schemaCheck.js';
 export { checkRoundTrip } from './validation/roundTrip.js';
@@ -208,8 +208,7 @@ export type {
   BimRelationship,
   AssociatesMaterialRel,
   AssociatesClassificationRel,
-  VoidsWallRel,
-  VoidsSlabRel,
+  VoidsRel,
   FillsOpeningRel,
   SpaceBoundaryRel,
   NestsRel,
@@ -247,7 +246,7 @@ export type {
   ImportedSpatialNode,
 } from './import/importedModel.js';
 export type { IfcGuid } from './identity/ifcGuid.js';
-export type { LocalId, LocalIdCounter } from './identity/localId.js';
+export type { RecordRef } from './identity/recordRef.js';
 export type { UnitSystem, LengthUnit } from './units/units.js';
 export type { BimModelMeta } from './ifc-writer/headerWriter.js';
 export type {

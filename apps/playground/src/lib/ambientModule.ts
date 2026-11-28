@@ -89,7 +89,7 @@ const PLAYGROUND_MODULE_DTS = `declare module 'brepjs/playground' {
       | (() =>
           | readonly { name: string; data: string | Uint8Array; mime?: string }[]
           | Promise<readonly { name: string; data: string | Uint8Array; mime?: string }[]>);
-    /** A serializable BIM tree summary (BimModel.toTreeSummary()) for the domain panel. */
+    /** A serializable BIM tree summary (BimDocument.toTreeSummary()) for the domain panel. */
     bimTree?: unknown;
     /** Serializable flat-pattern polylines (flatPatternToPolylines()) for the 2D overlay. */
     overlay2d?: unknown;

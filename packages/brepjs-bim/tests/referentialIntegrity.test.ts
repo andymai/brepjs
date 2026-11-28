@@ -4,16 +4,20 @@ import type {
   BimRelationship,
   ContainedInRel,
   AggregatesRel,
-  VoidsWallRel,
-  VoidsSlabRel,
+  VoidsRel,
   FillsOpeningRel,
 } from '../src/types/relationships.js';
-import type { LocalId } from '../src/identity/localId.js';
+import { RecordRef } from '../src/identity/recordRef.js';
 import type { IfcGuid } from '../src/identity/ifcGuid.js';
 import { checkReferentialIntegrity } from '../src/validation/referentialIntegrity.js';
 import { hasErrors, countBySeverity } from '../src/validation/severity.js';
 
-const id = (n: number): LocalId => n as LocalId;
+const ids = new Map<number, RecordRef>();
+function id(n: number) {
+  const ref = ids.get(n) ?? new RecordRef(n);
+  ids.set(n, ref);
+  return ref;
+}
 const guid = (s: string): IfcGuid => s as unknown as IfcGuid;
 
 // Minimal element stub — the integrity checker only reads category + localId,
@@ -48,22 +52,24 @@ function aggregates(localId: number, parent: number, children: number[]): Aggreg
   };
 }
 
-function voidsWall(localId: number, wall: number, opening: number): VoidsWallRel {
+function voidsWall(localId: number, wall: number, opening: number): VoidsRel {
   return {
-    kind: 'VOIDS_WALL',
+    kind: 'VOIDS',
+    hostCategory: 'WALL',
     guid: guid(`rel-${localId}`),
     localId: id(localId),
-    wallLocalId: id(wall),
+    hostLocalId: id(wall),
     openingLocalId: id(opening),
   };
 }
 
-function voidsSlab(localId: number, slab: number, opening: number): VoidsSlabRel {
+function voidsSlab(localId: number, slab: number, opening: number): VoidsRel {
   return {
-    kind: 'VOIDS_SLAB',
+    kind: 'VOIDS',
+    hostCategory: 'SLAB',
     guid: guid(`rel-${localId}`),
     localId: id(localId),
-    slabLocalId: id(slab),
+    hostLocalId: id(slab),
     openingLocalId: id(opening),
   };
 }
@@ -127,7 +133,7 @@ describe('checkReferentialIntegrity', () => {
       const orphan = report.issues.find((i) => i.code === 'ELEMENT_NOT_CONTAINED');
       expect(orphan).toBeDefined();
       expect(orphan?.severity).toBe('error');
-      expect(orphan?.entity).toBe(5);
+      expect(orphan?.entity).toBe(id(5));
     });
 
     it('does not flag spatial structure elements as orphans', () => {
@@ -158,7 +164,7 @@ describe('checkReferentialIntegrity', () => {
       const dup = report.issues.find((i) => i.code === 'ELEMENT_DOUBLE_CONTAINED');
       expect(dup).toBeDefined();
       expect(dup?.severity).toBe('error');
-      expect(dup?.entity).toBe(5);
+      expect(dup?.entity).toBe(id(5));
     });
   });
 
@@ -166,14 +172,12 @@ describe('checkReferentialIntegrity', () => {
     it('flags a VOIDS_WALL referencing a missing host wall', () => {
       const { elements, relationships } = cleanModel();
       // Opening 7 voids a nonexistent wall (99).
-      const broken = relationships.map((r) =>
-        r.kind === 'VOIDS_WALL' ? voidsWall(104, 99, 7) : r
-      );
+      const broken = relationships.map((r) => (r.kind === 'VOIDS' ? voidsWall(104, 99, 7) : r));
       const report = checkReferentialIntegrity({ elements, relationships: broken });
       const issue = report.issues.find((i) => i.code === 'VOID_HOST_MISSING');
       expect(issue).toBeDefined();
       expect(issue?.severity).toBe('error');
-      expect(issue?.entity).toBe(99);
+      expect(issue?.entity).toBe(id(99));
     });
 
     it('flags a VOIDS_SLAB referencing a missing host slab', () => {
@@ -182,7 +186,7 @@ describe('checkReferentialIntegrity', () => {
       const report = checkReferentialIntegrity({ elements, relationships });
       const issue = report.issues.find((i) => i.code === 'VOID_HOST_MISSING');
       expect(issue).toBeDefined();
-      expect(issue?.entity).toBe(42);
+      expect(issue?.entity).toBe(id(42));
     });
 
     it('flags a VOIDS rel referencing a missing opening', () => {
@@ -192,7 +196,7 @@ describe('checkReferentialIntegrity', () => {
       const report = checkReferentialIntegrity({ elements, relationships });
       const issue = report.issues.find((i) => i.code === 'VOID_OPENING_MISSING');
       expect(issue).toBeDefined();
-      expect(issue?.entity).toBe(88);
+      expect(issue?.entity).toBe(id(88));
     });
 
     it('flags a FILLS_OPENING referencing a missing opening', () => {
@@ -201,7 +205,7 @@ describe('checkReferentialIntegrity', () => {
       const report = checkReferentialIntegrity({ elements, relationships });
       const issue = report.issues.find((i) => i.code === 'FILL_OPENING_MISSING');
       expect(issue).toBeDefined();
-      expect(issue?.entity).toBe(77);
+      expect(issue?.entity).toBe(id(77));
     });
 
     it('flags a FILLS_OPENING referencing a missing filler', () => {
@@ -210,7 +214,7 @@ describe('checkReferentialIntegrity', () => {
       const report = checkReferentialIntegrity({ elements, relationships });
       const issue = report.issues.find((i) => i.code === 'FILL_FILLER_MISSING');
       expect(issue).toBeDefined();
-      expect(issue?.entity).toBe(66);
+      expect(issue?.entity).toBe(id(66));
     });
   });
 
@@ -220,16 +224,16 @@ describe('checkReferentialIntegrity', () => {
       // Drop the VOIDS_WALL rel so opening 7 is orphaned. Keep the fill so the
       // opening is still referenced by FILLS (must NOT be treated as void-orphan
       // suppression — orphan is specifically "no VOIDS rel").
-      const broken = relationships.filter((r) => r.kind !== 'VOIDS_WALL');
+      const broken = relationships.filter((r) => r.kind !== 'VOIDS');
       const report = checkReferentialIntegrity({ elements, relationships: broken });
       const warn = report.issues.find((i) => i.code === 'ORPHANED_OPENING');
       expect(warn).toBeDefined();
       expect(warn?.severity).toBe('warning');
-      expect(warn?.entity).toBe(7);
+      expect(warn?.entity).toBe(id(7));
     });
   });
 
-  describe('accepts a BimModel-like accessor object', () => {
+  describe('accepts a BimDocument-like accessor object', () => {
     it('reads via getAllElements / getAllRelationships', () => {
       const { elements, relationships } = cleanModel();
       const modelLike = {

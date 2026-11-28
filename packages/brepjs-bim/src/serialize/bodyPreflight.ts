@@ -1,6 +1,6 @@
 import { err, ok, type Result, type ValidSolid } from 'brepjs';
 import { ifcError, type BimError } from '../errors/bimError.js';
-import type { LocalId } from '../identity/localId.js';
+import type { RecordRef } from '../identity/recordRef.js';
 import type { NonEmpty } from '../types/body.js';
 import {
   prepareTessellation,
@@ -18,7 +18,7 @@ export function setBodyItemPreparerForTesting(prepareItem: BodyItemPreparer | nu
 }
 
 export interface BodyPreflightInput {
-  readonly localId: LocalId;
+  readonly localId: RecordRef;
   readonly solids: NonEmpty<ValidSolid>;
   readonly prepareItem?: BodyItemPreparer | undefined;
 }
@@ -32,7 +32,7 @@ export function preflightBody(
     err(
       ifcError(
         'BODY_TESSELLATION_FAILED',
-        `Body item ${itemIndex} for ${input.localId} could not be tessellated: ${reason}`,
+        `Body item ${itemIndex} could not be tessellated: ${reason}`,
         cause,
         { localId: input.localId, itemIndex }
       )

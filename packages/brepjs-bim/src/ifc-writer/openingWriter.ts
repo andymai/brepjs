@@ -1,5 +1,3 @@
-import type { FrameInput } from '../placementFrame.js';
-import { writeBodyPlacement } from './tessellationWriter.js';
 import * as WebIFC from 'web-ifc';
 import type { IfcWriter } from './ifcWriter.js';
 import { writeAxis2Placement3D, writeDirection } from './headerWriter.js';
@@ -45,9 +43,8 @@ export function writeOpeningGeometry(
   w: IfcWriter,
   guid: IfcGuid,
   openingSpec: WallOpeningSpec,
-  frame: FrameInput,
   wallSpec: WallSpec,
-  wallPlacementId: number,
+  openingPlacementId: number,
   geomSubContextId: number,
   ownerHistoryId: number,
   representationIdentifier: 'Body' | 'Reference'
@@ -58,7 +55,6 @@ export function writeOpeningGeometry(
 
   // Centred on the opening at the wall's outer face (y = thickness); the
   // extrusion runs along -Y through the full wall depth.
-  const openingPlacementId = writeBodyPlacement(w, frame, wallPlacementId);
 
   const profileId = w.nextId();
   w.writeLine({
@@ -130,9 +126,8 @@ export function writeSlabOpeningGeometry(
   w: IfcWriter,
   guid: IfcGuid,
   openingSpec: SlabOpeningSpec,
-  frame: FrameInput,
   slabSpec: SlabSpec,
-  slabPlacementId: number,
+  openingPlacementId: number,
   geomSubContextId: number,
   ownerHistoryId: number,
   identifier: 'Body' | 'Reference'
@@ -140,8 +135,6 @@ export function writeSlabOpeningGeometry(
   const sizeXM = toIfcLengthM(openingSpec.sizeX);
   const sizeYM = toIfcLengthM(openingSpec.sizeY);
   const thicknessM = toIfcLengthM(slabSpec.thickness);
-
-  const openingPlacementId = writeBodyPlacement(w, frame, slabPlacementId);
 
   const profileId = w.nextId();
   w.writeLine({

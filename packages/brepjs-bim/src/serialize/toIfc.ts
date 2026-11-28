@@ -1,4 +1,6 @@
-import type { BimModel } from '../model/bimModel.js';
+import { storeyElevations } from '../model/storeyElevations.js';
+import { placementSchedule, writeDocumentPlacements } from './documentPlacements.js';
+import type { BimDocument } from '../model/bimDocument.js';
 import type { BimModelMeta } from '../ifc-writer/headerWriter.js';
 import { IfcWriter } from '../ifc-writer/ifcWriter.js';
 import {
@@ -119,11 +121,9 @@ import type { BimError } from '../errors/bimError.js';
 import { ifcError } from '../errors/bimError.js';
 import type { Result } from 'brepjs';
 import { err, ok } from 'brepjs';
-import type { LocalId } from '../identity/localId.js';
+import { ordinalOf, type RecordRef } from '../identity/recordRef.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import { deriveIfcGuidSync } from '../identity/guidDerivation.js';
-import { localPlacementFrame } from '../types/placementDefinition.js';
-import type { FrameInput } from '../placementFrame.js';
 import type {
   AnyBimElement,
   BimElement,
@@ -146,17 +146,12 @@ import { bodySolids, measureBodyMaterial } from '../types/body.js';
 import type { NonEmpty } from '../types/body.js';
 import { preflightBody } from './bodyPreflight.js';
 import { deriveWallQuantities } from './wallQuantities.js';
-import {
-  writeBodyGeometry,
-  writeBodyPlacement,
-  type PreparedTessellation,
-} from '../ifc-writer/tessellationWriter.js';
+import { writeBodyGeometry, type PreparedTessellation } from '../ifc-writer/tessellationWriter.js';
 
 type BodyElement = Extract<AnyBimElement, { representation: 'BODY' }>;
 
 interface PreflightedProductElement<E extends BodyElement> {
   readonly element: E;
-  readonly frame: FrameInput;
   readonly items: NonEmpty<PreparedTessellation>;
 }
 
@@ -165,8 +160,6 @@ function preflightBodies<E extends BodyElement>(
 ): Result<readonly PreflightedProductElement<E>[], BimError> {
   const preflighted: PreflightedProductElement<E>[] = [];
   for (const element of elements) {
-    const frame = localPlacementFrame(element.placement);
-    if (!frame.ok) return frame;
     const prepared = preflightBody({
       localId: element.localId,
       solids: bodySolids(element.geometry),
@@ -174,7 +167,6 @@ function preflightBodies<E extends BodyElement>(
     if (!prepared.ok) return err(prepared.error);
     preflighted.push({
       element,
-      frame: frame.value,
       items: prepared.value,
     });
   }
@@ -186,16 +178,14 @@ function writeRetainedBody(
   writer: IfcWriter,
   element: BodyElement,
   contextId: number,
-  parentId: number | null
+  placementId: number
 ) {
-  const frame = localPlacementFrame(element.placement);
-  if (!frame.ok) return frame;
   const prepared = preflightBody({
     localId: element.localId,
     solids: element.geometry.solids,
   });
   if (!prepared.ok) return prepared;
-  return ok(writeBodyGeometry(writer, frame.value, prepared.value, contextId, parentId));
+  return ok(writeBodyGeometry(writer, prepared.value, contextId, placementId));
 }
 
 function writeMaterialQuantities(
@@ -218,7 +208,7 @@ function writeMaterialQuantities(
 }
 
 export async function toIfc(
-  model: BimModel,
+  model: BimDocument,
   meta: BimModelMeta
 ): Promise<Result<Uint8Array, BimError>> {
   const serialized = await serializeIfc(model, meta);
@@ -231,70 +221,72 @@ interface SerializedIfc {
 }
 
 async function serializeIfc(
-  model: BimModel,
+  model: BimDocument,
   meta: BimModelMeta
 ): Promise<Result<SerializedIfc, BimError>> {
+  const revision = model.revision;
   const issues: ValidationIssue[] = [];
   const project = model.getProject();
   if (!project) {
-    return err(ifcError('NO_PROJECT', 'BimModel has no project — call model.init() first'));
+    return err(ifcError('NO_PROJECT', 'BimDocument has no project — call model.init() first'));
   }
-  if (
-    (model.getBridges().length > 0 ||
-      model.getBridgeParts().length > 0 ||
-      model.getEarthworksFills().length > 0) &&
-    (meta.ifcSchema ?? 'IFC4') !== 'IFC4X3'
-  ) {
-    return err(
-      ifcError(
-        'IFC4X3_REQUIRED',
-        'Bridge, Bridge Part, and Earthworks Fill entities require IFC4X3 serialization'
-      )
-    );
-  }
-
+  const live = model.record(project.localId);
+  if (!live.ok) return live;
   const elements = model.getAllElements();
   const relationships = model.getAllRelationships();
-  for (const element of elements) {
-    if (element.representation !== 'BODY') continue;
-    const placement = element.placement;
-    if (placement.kind !== 'LOCAL_FRAME')
-      return err(
-        ifcError(
-          'PLACEMENT_REFERENCE_UNRESOLVED',
-          `Cannot resolve ${placement.kind} for IFC export`,
-          undefined,
-          { localId: element.localId }
-        )
-      );
-    const parent = placement.relativeTo;
-    if (parent === undefined) continue;
-    const isChild =
-      element.spec !== null &&
-      model.getElement(parent)?.category === 'CURTAIN_WALL' &&
-      model.getChildren(parent).some((child) => child.localId === element.localId);
-    const isFiller = relationships.some(
-      (r) =>
-        r.kind === 'FILLS_OPENING' &&
-        r.fillerLocalId === element.localId &&
-        r.openingLocalId === parent
+  if ((meta.ifcSchema ?? 'IFC4') !== 'IFC4X3') {
+    const civil = elements.find(
+      (el) =>
+        el.category === 'BRIDGE' ||
+        el.category === 'BRIDGE_PART' ||
+        el.category === 'EARTHWORKS_FILL'
     );
-    if (!isChild && !isFiller && findContainerOf(element.localId, relationships) !== parent)
+    if (civil) {
+      const edge = relationships.find(
+        (edge) => edge.kind === 'CONTAINED_IN' && edge.relatingStructure === civil.localId
+      );
       return err(
         ifcError(
-          'PLACEMENT_REFERENCE_UNRESOLVED',
-          'No supported IFC placement context for parent',
+          'IFC4X3_REQUIRED',
+          'Bridge, Bridge Part, and Earthworks Fill entities require IFC4X3 serialization',
           undefined,
-          { localId: element.localId, parent }
+          {
+            record: civil.localId,
+            ...(edge?.kind === 'CONTAINED_IN'
+              ? { container: edge.relatingStructure, children: edge.relatedElements }
+              : {}),
+          }
         )
       );
+    }
   }
+  const schedule = placementSchedule(elements);
+  if (!schedule.ok) return schedule;
+  if (relationships.some((edge) => edge.kind === 'VOIDS' && edge.hostCategory === 'ROOF'))
+    return err(
+      ifcError(
+        'IFC_ROOF_OPENING_UNSUPPORTED',
+        'Cannot encode the already-cut Roof void relationship'
+      )
+    );
   const unsupportedStandalone = elements.find(
     (element) =>
       element.category === 'SIGN' ||
       ((element.category === 'MEMBER' || element.category === 'PLATE') && element.spec === null)
   );
   if (unsupportedStandalone) {
+    const dependent = schedule.value.find(
+      (entry) => entry.parent === unsupportedStandalone.localId
+    );
+    if (dependent)
+      return err(
+        ifcError(
+          'IFC_UNREPRESENTABLE_PLACEMENT_PARENT',
+          'Authored placement parent has no supported IFC encoding',
+          undefined,
+          { record: dependent.record, parent: dependent.parent }
+        )
+      );
     return err(
       ifcError(
         'IFC_UNSUPPORTED_CLASSIFICATION',
@@ -305,6 +297,17 @@ async function serializeIfc(
     );
   }
 
+  const containment = checkReferentialIntegrity({ elements, relationships }).issues.filter(
+    (issue) => issue.code === 'ELEMENT_NOT_CONTAINED' || issue.code === 'ELEMENT_DOUBLE_CONTAINED'
+  );
+  if (containment.length)
+    return err(
+      ifcError(
+        'INTEGRITY_FAILURE',
+        'IFC delivery requires exactly one spatial container for these elements',
+        containment
+      )
+    );
   const authorName = [meta.author?.givenName, meta.author?.familyName]
     .filter((p): p is string => Boolean(p))
     .join(' ');
@@ -314,6 +317,13 @@ async function serializeIfc(
   });
   if (!writerResult.ok) return writerResult;
   using w = writerResult.value;
+  if (model.revision !== revision)
+    return err(
+      ifcError(
+        'DOCUMENT_CHANGED_DURING_EXPORT',
+        'Document changed during IFC writer initialization'
+      )
+    );
   // Scope writer-minted GUIDs (psets/quantities/rels) to this model.
   w.setModelScope(project.guid);
 
@@ -357,8 +367,8 @@ async function serializeIfc(
 
   const densityByElement = buildDensityMap(relationships);
 
-  const idMap = new Map<LocalId, number>();
-  const placementMap = new Map<LocalId, number>();
+  const idMap = new Map<RecordRef, number>();
+  const placementOf = writeDocumentPlacements(w, schedule.value);
 
   const projectExpressId = writeProject(
     w,
@@ -372,93 +382,58 @@ async function serializeIfc(
 
   for (const el of elements) {
     if (el.category !== 'SITE') continue;
-    const parentId = findParentOf(el.localId, relationships);
-    const parentPlacementId = parentId !== null ? (placementMap.get(parentId) ?? null) : null;
-    const { entityId, placementId } = writeSite(
-      w,
-      el.guid,
-      el.spec,
-      ownerHistoryId,
-      parentPlacementId
-    );
+    const placementId = placementOf(el.localId);
+    const { entityId } = writeSite(w, el.guid, el.spec, ownerHistoryId, placementId);
     idMap.set(el.localId, entityId);
-    placementMap.set(el.localId, placementId);
   }
 
   for (const bridge of bridges) {
-    const parentId = findParentOf(bridge.localId, relationships);
-    const parentPlacementId = parentId !== null ? (placementMap.get(parentId) ?? null) : null;
-    const { entityId, placementId } = writeBridge(
-      w,
-      bridge.guid,
-      bridge.spec,
-      ownerHistoryId,
-      parentPlacementId
-    );
+    const placementId = placementOf(bridge.localId);
+    const { entityId } = writeBridge(w, bridge.guid, bridge.spec, ownerHistoryId, placementId);
     idMap.set(bridge.localId, entityId);
-    placementMap.set(bridge.localId, placementId);
   }
 
-  // Bridge Parts nest recursively and getBridgeParts() yields insertion order,
-  // so write a part only once its parent's placement exists — a child written
-  // first would silently anchor at the project origin.
-  const pendingParts = [...bridgeParts];
-  while (pendingParts.length > 0) {
-    const readyIndex = pendingParts.findIndex((candidate) => {
-      const candidateParentId = findParentOf(candidate.localId, relationships);
-      return candidateParentId === null || placementMap.has(candidateParentId);
-    });
-    const [part] = pendingParts.splice(readyIndex === -1 ? 0 : readyIndex, 1);
-    if (part === undefined) break;
-    const parentId = findParentOf(part.localId, relationships);
-    const parentPlacementId = parentId !== null ? (placementMap.get(parentId) ?? null) : null;
-    const { entityId, placementId } = writeBridgePart(
-      w,
-      part.guid,
-      part.spec,
-      ownerHistoryId,
-      parentPlacementId
-    );
+  for (const part of bridgeParts) {
+    const placementId = placementOf(part.localId);
+    const { entityId } = writeBridgePart(w, part.guid, part.spec, ownerHistoryId, placementId);
     idMap.set(part.localId, entityId);
-    placementMap.set(part.localId, placementId);
   }
 
   for (const el of elements) {
     if (el.category !== 'BUILDING') continue;
-    const parentSiteId = findParentOf(el.localId, relationships);
-    const parentPlacementId =
-      parentSiteId !== null ? (placementMap.get(parentSiteId) ?? null) : null;
-    const { entityId, placementId } = writeBuilding(
-      w,
-      el.guid,
-      el.spec.name,
-      ownerHistoryId,
-      parentPlacementId
-    );
+    const placementId = placementOf(el.localId);
+    const { entityId } = writeBuilding(w, el.guid, el.spec.name, ownerHistoryId, placementId);
     idMap.set(el.localId, entityId);
-    placementMap.set(el.localId, placementId);
   }
 
+  const elevations = storeyElevations(model);
   for (const el of elements) {
     if (el.category !== 'STOREY') continue;
-    const parentBuildingId = findParentOf(el.localId, relationships);
-    const parentPlacementId =
-      parentBuildingId !== null ? (placementMap.get(parentBuildingId) ?? null) : null;
-    const { entityId, placementId } = writeStorey(
+    const height = elevations.get(el.localId);
+    const localZ = el.placement?.kind === 'LOCAL_FRAME' ? el.placement.frame.origin[2] : undefined;
+    // IFC4 requires the optional building-relative height to agree with local placement Z.
+    const elevation =
+      meta.ifcSchema !== 'IFC4X3' &&
+      height !== undefined &&
+      localZ !== undefined &&
+      Math.abs(height - localZ) <= 1e-6
+        ? localZ
+        : undefined;
+    const placementId = placementOf(el.localId);
+    const { entityId } = writeStorey(
       w,
       el.guid,
       el.spec.name,
-      el.spec.elevation,
+      elevation,
       ownerHistoryId,
-      parentPlacementId
+      placementId
     );
     idMap.set(el.localId, entityId);
-    placementMap.set(el.localId, placementId);
   }
 
-  const openingsByWall = new Map<LocalId, WallOpeningSpec[]>();
+  const openingsByWall = new Map<RecordRef, WallOpeningSpec[]>();
   for (const rel of relationships) {
-    if (rel.kind !== 'VOIDS_WALL') continue;
+    if (rel.kind !== 'VOIDS' || rel.hostCategory !== 'WALL') continue;
     const opening = elements.find((el) => el.localId === rel.openingLocalId);
     if (opening === undefined || opening.category !== 'OPENING')
       return err(
@@ -466,14 +441,14 @@ async function serializeIfc(
       );
     if (!isWallOpening(opening.spec))
       return err(ifcError('UNSUPPORTED_OPENING_DEFINITION', 'Unsupported wall Opening'));
-    const list = openingsByWall.get(rel.wallLocalId) ?? [];
+    const list = openingsByWall.get(rel.hostLocalId) ?? [];
     list.push(opening.spec);
-    openingsByWall.set(rel.wallLocalId, list);
+    openingsByWall.set(rel.hostLocalId, list);
   }
 
-  const openingsBySlab = new Map<LocalId, SlabOpeningSpec[]>();
+  const openingsBySlab = new Map<RecordRef, SlabOpeningSpec[]>();
   for (const rel of relationships) {
-    if (rel.kind !== 'VOIDS_SLAB') continue;
+    if (rel.kind !== 'VOIDS' || rel.hostCategory !== 'SLAB') continue;
     const opening = elements.find((el) => el.localId === rel.openingLocalId);
     if (opening === undefined || opening.category !== 'OPENING')
       return err(
@@ -481,16 +456,14 @@ async function serializeIfc(
       );
     if (!isSlabOpening(opening.spec))
       return err(ifcError('UNSUPPORTED_OPENING_DEFINITION', 'Unsupported slab Opening'));
-    const list = openingsBySlab.get(rel.slabLocalId) ?? [];
+    const list = openingsBySlab.get(rel.hostLocalId) ?? [];
     list.push(opening.spec);
-    openingsBySlab.set(rel.slabLocalId, list);
+    openingsBySlab.set(rel.hostLocalId, list);
   }
 
   for (const [i, preflighted] of preflightedWalls.entries()) {
     const wall = preflighted.element;
-    const containingId = findContainerOf(wall.localId, relationships);
-    const storeyPlacementId =
-      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const productPlacement = placementOf(wall.localId);
     const bodyQuantities = deriveWallQuantities({
       spec: wall.spec,
       solids: bodySolids(wall.geometry),
@@ -498,10 +471,9 @@ async function serializeIfc(
 
     const { localPlacementId, productDefinitionShapeId, bodyItemIds } = writeBodyGeometry(
       w,
-      preflighted.frame,
       preflighted.items,
       geomSubContextId,
-      storeyPlacementId
+      productPlacement
     );
     const wallExpressId = writeWallEntity(
       w,
@@ -512,7 +484,6 @@ async function serializeIfc(
       productDefinitionShapeId
     );
     idMap.set(wall.localId, wallExpressId);
-    placementMap.set(wall.localId, localPlacementId);
     if (wall.spec !== null) writeWallCommonPset(w, ownerHistoryId, wallExpressId, wall.spec);
     if (wall.spec !== null) writeManufacturerPset(w, ownerHistoryId, wallExpressId, wall.spec);
     if (wall.spec?.customProperties !== undefined) {
@@ -545,13 +516,11 @@ async function serializeIfc(
   }
 
   for (const [i, slab] of slabs.entries()) {
-    const containingId = findContainerOf(slab.localId, relationships);
-    const storeyPlacementId =
-      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const productPlacement = placementOf(slab.localId);
     const geometry =
       slab.spec !== null && model.isRecipeQuantityEligible(slab.localId)
-        ? ok(writeSlabGeometry(w, slab.spec, geomSubContextId, storeyPlacementId))
-        : writeRetainedBody(w, slab, geomSubContextId, storeyPlacementId);
+        ? ok(writeSlabGeometry(w, slab.spec, geomSubContextId, productPlacement))
+        : writeRetainedBody(w, slab, geomSubContextId, productPlacement);
     if (!geometry.ok) return geometry;
     const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const slabExpressId = writeSlabEntity(
@@ -564,7 +533,6 @@ async function serializeIfc(
       productDefinitionShapeId
     );
     idMap.set(slab.localId, slabExpressId);
-    placementMap.set(slab.localId, localPlacementId);
     if (slab.spec !== null) writeSlabCommonPset(w, ownerHistoryId, slabExpressId, slab.spec);
     if (slab.spec !== null) writeManufacturerPset(w, ownerHistoryId, slabExpressId, slab.spec);
     if (slab.spec?.customProperties !== undefined) {
@@ -584,13 +552,11 @@ async function serializeIfc(
   }
 
   for (const [i, beam] of beams.entries()) {
-    const containingId = findContainerOf(beam.localId, relationships);
-    const storeyPlacementId =
-      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const productPlacement = placementOf(beam.localId);
     const geometry =
       beam.spec !== null && model.isRecipeQuantityEligible(beam.localId)
-        ? ok(writeBeamGeometry(w, beam.spec, geomSubContextId, storeyPlacementId))
-        : writeRetainedBody(w, beam, geomSubContextId, storeyPlacementId);
+        ? ok(writeBeamGeometry(w, beam.spec, geomSubContextId, productPlacement))
+        : writeRetainedBody(w, beam, geomSubContextId, productPlacement);
     if (!geometry.ok) return geometry;
     const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const beamExpressId = writeBeamEntity(
@@ -603,7 +569,6 @@ async function serializeIfc(
       productDefinitionShapeId
     );
     idMap.set(beam.localId, beamExpressId);
-    placementMap.set(beam.localId, localPlacementId);
     if (beam.spec !== null) writeBeamCommonPset(w, ownerHistoryId, beamExpressId, beam.spec);
     if (beam.spec !== null) writeManufacturerPset(w, ownerHistoryId, beamExpressId, beam.spec);
     if (beam.spec?.customProperties !== undefined) {
@@ -621,13 +586,11 @@ async function serializeIfc(
   }
 
   for (const [i, column] of columns.entries()) {
-    const containingId = findContainerOf(column.localId, relationships);
-    const storeyPlacementId =
-      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const productPlacement = placementOf(column.localId);
     const geometry =
       column.spec !== null && model.isRecipeQuantityEligible(column.localId)
-        ? ok(writeColumnGeometry(w, column.spec, geomSubContextId, storeyPlacementId))
-        : writeRetainedBody(w, column, geomSubContextId, storeyPlacementId);
+        ? ok(writeColumnGeometry(w, column.spec, geomSubContextId, productPlacement))
+        : writeRetainedBody(w, column, geomSubContextId, productPlacement);
     if (!geometry.ok) return geometry;
     const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const columnExpressId = writeColumnEntity(
@@ -640,7 +603,6 @@ async function serializeIfc(
       productDefinitionShapeId
     );
     idMap.set(column.localId, columnExpressId);
-    placementMap.set(column.localId, localPlacementId);
     if (column.spec !== null)
       writeColumnCommonPset(w, ownerHistoryId, columnExpressId, column.spec);
     if (column.spec !== null)
@@ -660,10 +622,8 @@ async function serializeIfc(
   }
 
   for (const [i, proxy] of proxies.entries()) {
-    const containingId = findContainerOf(proxy.localId, relationships);
-    const storeyPlacementId =
-      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const geometry = writeRetainedBody(w, proxy, geomSubContextId, storeyPlacementId);
+    const productPlacement = placementOf(proxy.localId);
+    const geometry = writeRetainedBody(w, proxy, geomSubContextId, productPlacement);
     if (!geometry.ok) return geometry;
     const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const proxyExpressId = writeProxyEntity(
@@ -676,17 +636,14 @@ async function serializeIfc(
       productDefinitionShapeId
     );
     idMap.set(proxy.localId, proxyExpressId);
-    placementMap.set(proxy.localId, localPlacementId);
     if (proxy.spec?.customProperties !== undefined) {
       writeCustomPsets(w, ownerHistoryId, proxyExpressId, proxy.spec?.customProperties);
     }
   }
 
   for (const fill of earthworksFills) {
-    const containingId = findContainerOf(fill.localId, relationships);
-    const parentPlacementId =
-      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const geometry = writeRetainedBody(w, fill, geomSubContextId, parentPlacementId);
+    const productPlacement = placementOf(fill.localId);
+    const geometry = writeRetainedBody(w, fill, geomSubContextId, productPlacement);
     if (!geometry.ok) return geometry;
     const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const expressId = writeEarthworksFillEntity(
@@ -698,20 +655,17 @@ async function serializeIfc(
       productDefinitionShapeId
     );
     idMap.set(fill.localId, expressId);
-    placementMap.set(fill.localId, localPlacementId);
     if (fill.spec?.customProperties !== undefined) {
       writeCustomPsets(w, ownerHistoryId, expressId, fill.spec?.customProperties);
     }
   }
 
   for (const [i, space] of spaces.entries()) {
-    const containingId = findContainerOf(space.localId, relationships);
-    const storeyPlacementId =
-      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const productPlacement = placementOf(space.localId);
     const geometry =
       space.spec !== null && model.isRecipeQuantityEligible(space.localId)
-        ? ok(writeSpaceGeometry(w, space.spec, geomSubContextId, storeyPlacementId))
-        : writeRetainedBody(w, space, geomSubContextId, storeyPlacementId);
+        ? ok(writeSpaceGeometry(w, space.spec, geomSubContextId, productPlacement))
+        : writeRetainedBody(w, space, geomSubContextId, productPlacement);
     if (!geometry.ok) return geometry;
     const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const spaceExpressId = writeSpaceEntity(
@@ -725,7 +679,6 @@ async function serializeIfc(
       productDefinitionShapeId
     );
     idMap.set(space.localId, spaceExpressId);
-    placementMap.set(space.localId, localPlacementId);
     if (space.spec !== null) writeSpaceCommonPset(w, ownerHistoryId, spaceExpressId, space.spec);
     if (space.spec?.customProperties !== undefined) {
       writeCustomPsets(w, ownerHistoryId, spaceExpressId, space.spec?.customProperties);
@@ -742,9 +695,7 @@ async function serializeIfc(
   }
 
   for (const [i, roof] of roofs.entries()) {
-    const containingId = findContainerOf(roof.localId, relationships);
-    const storeyPlacementId =
-      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const productPlacement = placementOf(roof.localId);
     const geometry =
       roof.spec !== null &&
       model.isRecipeQuantityEligible(roof.localId) &&
@@ -755,10 +706,10 @@ async function serializeIfc(
               roof.spec,
               roof.geometry.solids[0],
               geomSubContextId,
-              storeyPlacementId
+              productPlacement
             )
           )
-        : writeRetainedBody(w, roof, geomSubContextId, storeyPlacementId);
+        : writeRetainedBody(w, roof, geomSubContextId, productPlacement);
     if (!geometry.ok) return geometry;
     const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const roofExpressId = writeRoofEntity(
@@ -771,7 +722,6 @@ async function serializeIfc(
       productDefinitionShapeId
     );
     idMap.set(roof.localId, roofExpressId);
-    placementMap.set(roof.localId, localPlacementId);
     if (roof.spec !== null) writeRoofCommonPset(w, ownerHistoryId, roofExpressId, roof.spec);
     if (roof.spec !== null) writeManufacturerPset(w, ownerHistoryId, roofExpressId, roof.spec);
     if (roof.spec?.customProperties !== undefined) {
@@ -782,14 +732,10 @@ async function serializeIfc(
   }
 
   for (const [i, curtainWall] of curtainWalls.entries()) {
-    const containingId = findContainerOf(curtainWall.localId, relationships);
-    const storeyPlacementId =
-      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const productPlacement = placementOf(curtainWall.localId);
     if (!curtainWall.placement)
       return err(ifcError('MISSING_PLACEMENT', 'Curtain Wall requires placement'));
-    const pose = localPlacementFrame(curtainWall.placement);
-    if (!pose.ok) return pose;
-    const wallPlacement = writeBodyPlacement(w, pose.value, storeyPlacementId);
+    const wallPlacement = productPlacement;
     const curtainWallId = writeCurtainWall(
       w,
       curtainWall.spec,
@@ -798,7 +744,6 @@ async function serializeIfc(
       ownerHistoryId,
       wallPlacement
     );
-    placementMap.set(curtainWall.localId, wallPlacement);
     idMap.set(curtainWall.localId, curtainWallId);
     writeCurtainWallCommonPset(w, ownerHistoryId, curtainWallId, curtainWall.spec);
     if (curtainWall.spec.customProperties !== undefined) {
@@ -808,29 +753,14 @@ async function serializeIfc(
 
   for (const child of elements) {
     if (child.category !== 'MEMBER' && child.category !== 'PLATE') continue;
-    if (
-      !child.spec ||
-      child.placement.kind !== 'LOCAL_FRAME' ||
-      child.placement.relativeTo === undefined
-    )
+    if (!child.spec)
       return err(
         ifcError('IFC_UNSUPPORTED_CLASSIFICATION', 'Unsupported standalone curtain component')
       );
-    const parent = placementMap.get(child.placement.relativeTo);
-    if (parent === undefined)
-      return err(
-        ifcError('UNRESOLVED_PLACEMENT_PARENT', 'Curtain component placement parent is unavailable')
-      );
+    const childPlacement = placementOf(child.localId);
     const geometry = model.isRecipeQuantityEligible(child.localId)
-      ? ok(
-          writeComponentGeometry(
-            w,
-            child.spec.size,
-            geomSubContextId,
-            writeBodyPlacement(w, child.placement.frame, parent)
-          )
-        )
-      : writeRetainedBody(w, child, geomSubContextId, parent);
+      ? ok(writeComponentGeometry(w, child.spec.size, geomSubContextId, childPlacement))
+      : writeRetainedBody(w, child, geomSubContextId, childPlacement);
     if (!geometry.ok) return geometry;
     const write = child.category === 'PLATE' ? writePlate : writeMember;
     const id = write(
@@ -842,17 +772,14 @@ async function serializeIfc(
       geometry.value.productDefinitionShapeId
     );
     idMap.set(child.localId, id);
-    placementMap.set(child.localId, geometry.value.localPlacementId);
   }
 
   for (const [i, footing] of footings.entries()) {
-    const containingId = findContainerOf(footing.localId, relationships);
-    const storeyPlacementId =
-      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const productPlacement = placementOf(footing.localId);
     const geometry =
       footing.spec !== null && model.isRecipeQuantityEligible(footing.localId)
-        ? ok(writeFootingGeometry(w, footing.spec, geomSubContextId, storeyPlacementId))
-        : writeRetainedBody(w, footing, geomSubContextId, storeyPlacementId);
+        ? ok(writeFootingGeometry(w, footing.spec, geomSubContextId, productPlacement))
+        : writeRetainedBody(w, footing, geomSubContextId, productPlacement);
     if (!geometry.ok) return geometry;
     const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const footingExpressId = writeFootingEntity(
@@ -865,7 +792,6 @@ async function serializeIfc(
       productDefinitionShapeId
     );
     idMap.set(footing.localId, footingExpressId);
-    placementMap.set(footing.localId, localPlacementId);
     if (footing.spec !== null)
       writeFootingCommonPset(w, ownerHistoryId, footingExpressId, footing.spec);
     if (footing.spec?.customProperties !== undefined) {
@@ -883,13 +809,11 @@ async function serializeIfc(
   }
 
   for (const [i, pile] of piles.entries()) {
-    const containingId = findContainerOf(pile.localId, relationships);
-    const storeyPlacementId =
-      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const productPlacement = placementOf(pile.localId);
     const geometry =
       pile.spec !== null && model.isRecipeQuantityEligible(pile.localId)
-        ? ok(writePileGeometry(w, pile.spec, geomSubContextId, storeyPlacementId))
-        : writeRetainedBody(w, pile, geomSubContextId, storeyPlacementId);
+        ? ok(writePileGeometry(w, pile.spec, geomSubContextId, productPlacement))
+        : writeRetainedBody(w, pile, geomSubContextId, productPlacement);
     if (!geometry.ok) return geometry;
     const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const pileExpressId = writePileEntity(
@@ -903,7 +827,6 @@ async function serializeIfc(
       productDefinitionShapeId
     );
     idMap.set(pile.localId, pileExpressId);
-    placementMap.set(pile.localId, localPlacementId);
     if (pile.spec !== null) writePileCommonPset(w, ownerHistoryId, pileExpressId, pile.spec);
     if (pile.spec?.customProperties !== undefined) {
       writeCustomPsets(w, ownerHistoryId, pileExpressId, pile.spec?.customProperties);
@@ -920,16 +843,14 @@ async function serializeIfc(
   }
 
   for (const [i, assembly] of assemblies.entries()) {
-    const containingId = findContainerOf(assembly.localId, relationships);
-    const storeyPlacementId =
-      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const productPlacement = placementOf(assembly.localId);
     const assemblyExpressId = writeElementAssemblyEntity(
       w,
       assembly.guid,
       assembly.spec.name ?? `Assembly ${i + 1}`,
       assembly.spec.predefinedType ?? 'NOTDEFINED',
       ownerHistoryId,
-      storeyPlacementId,
+      productPlacement,
       null,
       assembly.spec.assemblyPlace ?? 'NOTDEFINED'
     );
@@ -961,11 +882,7 @@ async function serializeIfc(
   }
 
   for (const stair of stairs) {
-    const containingId = findContainerOf(stair.localId, relationships);
-    const storeyPlacementId =
-      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const pose = localPlacementFrame(stair.placement);
-    if (!pose.ok) return pose;
+    const productPlacement = placementOf(stair.localId);
     if (stair.spec === null)
       return err(
         ifcError(
@@ -976,13 +893,13 @@ async function serializeIfc(
     const result = writeStairAssembly(
       w,
       stair.spec,
-      `${stair.localId}`,
+      String(ordinalOf(stair.localId)),
       stair.geometry,
       stair.localId,
       stair.guid,
       ownerHistoryId,
       geomSubContextId,
-      storeyPlacementId
+      productPlacement
     );
     if (!result.ok) return err(result.error);
     idMap.set(stair.localId, result.value.assemblyExpressId);
@@ -990,11 +907,7 @@ async function serializeIfc(
   }
 
   for (const ramp of ramps) {
-    const containingId = findContainerOf(ramp.localId, relationships);
-    const storeyPlacementId =
-      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const pose = localPlacementFrame(ramp.placement);
-    if (!pose.ok) return pose;
+    const productPlacement = placementOf(ramp.localId);
     if (ramp.spec === null)
       return err(
         ifcError(
@@ -1005,13 +918,13 @@ async function serializeIfc(
     const result = writeRampAssembly(
       w,
       ramp.spec,
-      `${ramp.localId}`,
+      String(ordinalOf(ramp.localId)),
       ramp.geometry,
       ramp.localId,
       ramp.guid,
       ownerHistoryId,
       geomSubContextId,
-      storeyPlacementId
+      productPlacement
     );
     if (!result.ok) return err(result.error);
     idMap.set(ramp.localId, result.value.assemblyExpressId);
@@ -1020,15 +933,12 @@ async function serializeIfc(
 
   for (const [i, preflighted] of preflightedRailings.entries()) {
     const railing = preflighted.element;
-    const containingId = findContainerOf(railing.localId, relationships);
-    const storeyPlacementId =
-      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const productPlacement = placementOf(railing.localId);
     const { localPlacementId, productDefinitionShapeId, bodyItemIds } = writeBodyGeometry(
       w,
-      preflighted.frame,
       preflighted.items,
       geomSubContextId,
-      storeyPlacementId
+      productPlacement
     );
     const railingExpressId = writeRailingEntity(
       w,
@@ -1040,7 +950,6 @@ async function serializeIfc(
       productDefinitionShapeId
     );
     idMap.set(railing.localId, railingExpressId);
-    placementMap.set(railing.localId, localPlacementId);
     if (railing.spec !== null)
       writeRailingCommonPset(w, ownerHistoryId, railingExpressId, railing.spec);
     if (railing.spec !== null)
@@ -1052,13 +961,11 @@ async function serializeIfc(
   }
 
   for (const [i, covering] of coverings.entries()) {
-    const containingId = findContainerOf(covering.localId, relationships);
-    const storeyPlacementId =
-      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const productPlacement = placementOf(covering.localId);
     const geometry =
       covering.spec !== null && model.isRecipeQuantityEligible(covering.localId)
-        ? ok(writeCoveringGeometry(w, covering.spec, geomSubContextId, storeyPlacementId))
-        : writeRetainedBody(w, covering, geomSubContextId, storeyPlacementId);
+        ? ok(writeCoveringGeometry(w, covering.spec, geomSubContextId, productPlacement))
+        : writeRetainedBody(w, covering, geomSubContextId, productPlacement);
     if (!geometry.ok) return geometry;
     const { localPlacementId, productDefinitionShapeId } = geometry.value;
     const coveringExpressId = writeCoveringEntity(
@@ -1071,7 +978,6 @@ async function serializeIfc(
       productDefinitionShapeId
     );
     idMap.set(covering.localId, coveringExpressId);
-    placementMap.set(covering.localId, localPlacementId);
     if (covering.spec !== null)
       writeCoveringCommonPset(w, ownerHistoryId, coveringExpressId, covering.spec);
     if (covering.spec !== null)
@@ -1087,14 +993,14 @@ async function serializeIfc(
   let referenceContextId: number | undefined;
 
   for (const rel of relationships) {
-    if (rel.kind !== 'VOIDS_WALL') continue;
+    if (rel.kind !== 'VOIDS' || rel.hostCategory !== 'WALL') continue;
     const wallElement = elements.find(
-      (el): el is BimElement<'WALL'> => el.category === 'WALL' && el.localId === rel.wallLocalId
+      (el): el is BimElement<'WALL'> => el.category === 'WALL' && el.localId === rel.hostLocalId
     );
     if (wallElement === undefined) continue;
-    const wallExpressId = idMap.get(rel.wallLocalId);
-    const wallPlacementId = placementMap.get(rel.wallLocalId);
-    if (wallExpressId === undefined || wallPlacementId === undefined) continue;
+    const wallExpressId = idMap.get(rel.hostLocalId);
+    if (wallExpressId === undefined)
+      return err(ifcError('IFC_OPENING_HOST_UNSUPPORTED', 'Opening host was not emitted'));
 
     const openingElement = elements.find((el) => el.localId === rel.openingLocalId);
     if (openingElement === undefined || openingElement.category !== 'OPENING') continue;
@@ -1114,32 +1020,30 @@ async function serializeIfc(
     // The retained Wall Body already contains its apertures. IFC Reference
     // openings preserve the void/fill relationships without requesting a cut.
     referenceContextId ??= writeGeometricSubContext(w, geomContextId, 'Reference');
-    const { openingEntityId, openingPlacementId } = writeOpeningGeometry(
+    const { openingEntityId } = writeOpeningGeometry(
       w,
       openingElement.guid,
       openingElement.spec,
-      openingElement.placement.frame,
       wallElement.spec,
-      wallPlacementId,
+      placementOf(rel.openingLocalId),
       referenceContextId,
       ownerHistoryId,
       'Reference'
     );
     idMap.set(rel.openingLocalId, openingEntityId);
-    placementMap.set(rel.openingLocalId, openingPlacementId);
 
     writeRelVoidsElement(w, rel.guid, ownerHistoryId, wallExpressId, openingEntityId);
   }
 
   for (const rel of relationships) {
-    if (rel.kind !== 'VOIDS_SLAB') continue;
+    if (rel.kind !== 'VOIDS' || rel.hostCategory !== 'SLAB') continue;
     const slabElement = elements.find(
-      (el): el is BimElement<'SLAB'> => el.category === 'SLAB' && el.localId === rel.slabLocalId
+      (el): el is BimElement<'SLAB'> => el.category === 'SLAB' && el.localId === rel.hostLocalId
     );
     if (slabElement === undefined) continue;
-    const slabExpressId = idMap.get(rel.slabLocalId);
-    const slabPlacementId = placementMap.get(rel.slabLocalId);
-    if (slabExpressId === undefined || slabPlacementId === undefined) continue;
+    const slabExpressId = idMap.get(rel.hostLocalId);
+    if (slabExpressId === undefined)
+      return err(ifcError('IFC_OPENING_HOST_UNSUPPORTED', 'Opening host was not emitted'));
 
     const openingElement = elements.find((el) => el.localId === rel.openingLocalId);
     if (openingElement === undefined || openingElement.category !== 'OPENING') continue;
@@ -1155,20 +1059,18 @@ async function serializeIfc(
       );
     const alreadyCut = !model.isRecipeQuantityEligible(slabElement.localId);
     if (alreadyCut) referenceContextId ??= writeGeometricSubContext(w, geomContextId, 'Reference');
-    const { openingPlacementId, openingEntityId } = writeSlabOpeningGeometry(
+    const { openingEntityId } = writeSlabOpeningGeometry(
       w,
       openingElement.guid,
       openingElement.spec,
-      openingElement.placement.frame,
       slabElement.spec,
-      slabPlacementId,
+      placementOf(rel.openingLocalId),
       alreadyCut ? (referenceContextId ?? geomSubContextId) : geomSubContextId,
       ownerHistoryId,
       alreadyCut ? 'Reference' : 'Body'
     );
     idMap.set(rel.openingLocalId, openingEntityId);
 
-    placementMap.set(rel.openingLocalId, openingPlacementId);
     writeRelVoidsElement(w, rel.guid, ownerHistoryId, slabExpressId, openingEntityId);
   }
 
@@ -1178,20 +1080,17 @@ async function serializeIfc(
         (rel) => rel.kind === 'FILLS_OPENING' && rel.fillerLocalId === filler.localId
       );
       const opening = fill?.kind === 'FILLS_OPENING' ? fill.openingLocalId : undefined;
-      const owner = opening ?? findContainerOf(filler.localId, relationships);
-      const parent = owner === null ? null : (placementMap.get(owner) ?? null);
-      if (opening !== undefined && (parent === null || !idMap.has(opening)))
+      const placementId = placementOf(filler.localId);
+      if (opening !== undefined && !idMap.has(opening))
         return err(
           ifcError('UNSUPPORTED_OPENING_DEFINITION', 'Missing exported Opening for filler')
         );
-      const pose = localPlacementFrame(filler.placement);
-      if (!pose.ok) return pose;
       const width = filler.spec ? toIfcLengthM(filler.spec.width) : null;
       const height = filler.spec ? toIfcLengthM(filler.spec.height) : null;
       const geometry =
         width !== null && height !== null && model.isRecipeQuantityEligible(filler.localId)
           ? ok({
-              localPlacementId: writeBodyPlacement(w, pose.value, parent),
+              localPlacementId: placementId,
               productDefinitionShapeId: writePanelBody(
                 w,
                 width,
@@ -1200,7 +1099,7 @@ async function serializeIfc(
                 geomSubContextId
               ),
             })
-          : writeRetainedBody(w, filler, geomSubContextId, parent);
+          : writeRetainedBody(w, filler, geomSubContextId, placementId);
       if (!geometry.ok) return geometry;
       const writeEntity = filler.category === 'DOOR' ? writeDoorEntity : writeWindowEntity;
       const label = filler.category === 'DOOR' ? 'Door' : 'Window';
@@ -1215,7 +1114,6 @@ async function serializeIfc(
         height
       );
       idMap.set(filler.localId, id);
-      placementMap.set(filler.localId, geometry.value.localPlacementId);
       if (fill?.kind === 'FILLS_OPENING') {
         const openingEntityId = idMap.get(fill.openingLocalId);
         if (openingEntityId === undefined)
@@ -1248,7 +1146,15 @@ async function serializeIfc(
     const elementExpressIds = rel.relatedElements
       .map((id) => idMap.get(id))
       .filter((id): id is number => id !== undefined);
-    if (structureExpressId === undefined || elementExpressIds.length === 0) continue;
+    if (structureExpressId === undefined || elementExpressIds.length !== rel.relatedElements.length)
+      return err(
+        ifcError(
+          'IFC_UNREPRESENTABLE_CONTAINER',
+          'Cannot emit authored spatial containment',
+          undefined,
+          { relationship: rel.localId }
+        )
+      );
     writeRelContainedInSpatialStructure(
       w,
       rel.guid,
@@ -1346,7 +1252,7 @@ async function serializeIfc(
     readonly direction: 'AXIS2' | 'AXIS3';
   }
   const layeredAssociations: LayeredAssociation[] = [];
-  const categoryById = new Map<LocalId, string>(elements.map((e) => [e.localId, e.category]));
+  const categoryById = new Map<RecordRef, string>(elements.map((e) => [e.localId, e.category]));
 
   for (const rel of relationships) {
     if (rel.kind !== 'ASSOCIATES_MATERIAL') continue;
@@ -1424,12 +1330,23 @@ async function serializeIfc(
 
   writeTypeLayer(w, ownerHistoryId, model, idMap);
 
+  for (const { record, parent } of schedule.value) {
+    if (parent !== undefined && (!idMap.has(record) || !idMap.has(parent)))
+      return err(
+        ifcError(
+          'IFC_UNREPRESENTABLE_PLACEMENT_PARENT',
+          'Placement edge requires both products in the delivered IFC',
+          undefined,
+          { record, parent }
+        )
+      );
+  }
   const saved = w.save();
   return saved.ok ? ok({ bytes: saved.value, issues }) : saved;
 }
 
 interface TypeOccurrence {
-  readonly localId: LocalId;
+  readonly localId: RecordRef;
   readonly predefinedType: string;
 }
 
@@ -1442,8 +1359,8 @@ interface TypeOccurrence {
 function writeTypeLayer(
   w: IfcWriter,
   ownerHistoryId: number,
-  model: BimModel,
-  idMap: ReadonlyMap<LocalId, number>
+  model: BimDocument,
+  idMap: ReadonlyMap<RecordRef, number>
 ): void {
   const groups: ReadonlyArray<readonly [IfcTypeName, string, readonly TypeOccurrence[]]> = [
     ['IFCWALLTYPE', 'WALL', toOccurrences(model.getWalls(), () => 'NOTDEFINED')],
@@ -1501,7 +1418,7 @@ function writeTypeLayer(
 }
 
 function toOccurrences<S>(
-  elements: ReadonlyArray<{ localId: LocalId; spec: S }>,
+  elements: ReadonlyArray<{ localId: RecordRef; spec: S }>,
   predefined: (spec: S) => string | undefined
 ): TypeOccurrence[] {
   return elements.map((el) => {
@@ -1523,13 +1440,14 @@ export interface ValidatedIfcResult {
  * pre-serialization referential-integrity gate, then the post-save EXPRESS/STEP
  * schema gate and the write→read→re-write round-trip check. Returns both the
  * bytes and a combined report. A model that fails the integrity gate returns an
- * INTEGRITY_FAILURE BimError without serializing (unlike plain {@link toIfc},
- * which serializes unconditionally).
+ * INTEGRITY_FAILURE before serialization. Both paths preserve the authored
+ * containment and placement edges.
  */
 export async function toIfcValidated(
-  model: BimModel,
+  model: BimDocument,
   meta: BimModelMeta
 ): Promise<Result<ValidatedIfcResult, BimError>> {
+  const revision = model.revision;
   const integrity = checkReferentialIntegrity(model);
   if (hasErrors(integrity)) {
     return err(
@@ -1543,6 +1461,10 @@ export async function toIfcValidated(
 
   const serialized = await serializeIfc(model, meta);
   if (!serialized.ok) return serialized;
+  if (model.revision !== revision)
+    return err(
+      ifcError('DOCUMENT_CHANGED_DURING_EXPORT', 'Document changed during IFC validation')
+    );
   const { bytes } = serialized.value;
 
   const geometry = collectGeometryIssues(model);
@@ -1571,14 +1493,14 @@ export async function toIfcValidated(
  * slabs, beams, columns, proxies) and merges the per-element reports. Used by
  * {@link toIfcValidated}; plain {@link toIfc} stays permissive and never runs it.
  */
-function collectGeometryIssues(model: BimModel): ValidationReport {
+function collectGeometryIssues(model: BimDocument): ValidationReport {
   const issues: ValidationIssue[] = [];
   for (const element of model.getAllElements()) {
     if (element.representation !== 'BODY') continue;
     bodySolids(element.geometry).forEach((solid, itemIndex) => {
       const report = checkGeometryValidity(
         solid,
-        `${element.category} ${element.localId} Body item ${itemIndex + 1}`
+        `${element.category} ${element.guid} Body item ${itemIndex + 1}`
       );
       issues.push(...report.issues);
     });
@@ -1609,8 +1531,10 @@ function collectGeometryIssues(model: BimModel): ValidationReport {
  * whose material has no resolvable density are absent from the map and emit no
  * weight quantity.
  */
-function buildDensityMap(relationships: readonly BimRelationship[]): ReadonlyMap<LocalId, number> {
-  const map = new Map<LocalId, number>();
+function buildDensityMap(
+  relationships: readonly BimRelationship[]
+): ReadonlyMap<RecordRef, number> {
+  const map = new Map<RecordRef, number>();
   for (const rel of relationships) {
     if (rel.kind !== 'ASSOCIATES_MATERIAL') continue;
     let density: number | undefined;
@@ -1630,15 +1554,6 @@ function buildDensityMap(relationships: readonly BimRelationship[]): ReadonlyMap
   return map;
 }
 
-function findParentOf(childId: LocalId, relationships: readonly BimRelationship[]): LocalId | null {
-  for (const rel of relationships) {
-    if (rel.kind === 'AGGREGATES' && rel.relatedObjects.includes(childId)) {
-      return rel.relatingObject;
-    }
-  }
-  return null;
-}
-
 /**
  * Emits an IfcSurfaceStyle + IfcStyledItem for an element when the model has a
  * surface style assigned to it, linking the style to the element's body
@@ -1646,24 +1561,12 @@ function findParentOf(childId: LocalId, relationships: readonly BimRelationship[
  */
 function applySurfaceStyle(
   w: IfcWriter,
-  model: BimModel,
-  elementLocalId: LocalId,
+  model: BimDocument,
+  elementLocalId: RecordRef,
   bodyItemId: number
 ): void {
   const style = model.getSurfaceStyle(elementLocalId);
   if (style === null) return;
   const styleId = writeSurfaceStyle(w, style);
   writeStyledItem(w, bodyItemId, styleId);
-}
-
-function findContainerOf(
-  elementId: LocalId,
-  relationships: readonly BimRelationship[]
-): LocalId | null {
-  for (const rel of relationships) {
-    if (rel.kind === 'CONTAINED_IN' && rel.relatedElements.includes(elementId)) {
-      return rel.relatingStructure;
-    }
-  }
-  return null;
 }

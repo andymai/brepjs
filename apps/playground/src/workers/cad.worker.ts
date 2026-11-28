@@ -101,7 +101,7 @@ interface PresentArtifacts {
   // Downloads fire one per file, so examples attach a curated few rather than
   // every sheet a serializer produces.
   files?: readonly PresentFile[] | (() => readonly PresentFile[] | Promise<readonly PresentFile[]>);
-  // A serializable BimModel.toTreeSummary() result, rendered in the domain panel.
+  // A serializable BimDocument.toTreeSummary() result, rendered in the domain panel.
   bimTree?: unknown;
   // A serializable flatPatternToPolylines() result, rendered as a 2D overlay.
   overlay2d?: unknown;

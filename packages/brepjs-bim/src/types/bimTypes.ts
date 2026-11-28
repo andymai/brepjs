@@ -1,5 +1,5 @@
 import type { IfcGuid } from '../identity/ifcGuid.js';
-import type { LocalId } from '../identity/localId.js';
+import type { RecordRef } from '../identity/recordRef.js';
 import type { WallSpec } from '../specs/wallSpec.js';
 import type { SlabSpec } from '../specs/slabSpec.js';
 import type { BeamSpec } from '../specs/beamSpec.js';
@@ -78,7 +78,14 @@ export type SlabOpeningSpec = {
   readonly offsetY: number;
 };
 
-export type OpeningSpec = WallOpeningSpec | SlabOpeningSpec;
+export interface RoofOpeningSpec {
+  readonly kind: 'ROOF_OPENING';
+  readonly sizeX: number;
+  readonly sizeY: number;
+  readonly depth: number;
+}
+
+export type OpeningSpec = WallOpeningSpec | SlabOpeningSpec | RoofOpeningSpec;
 
 export function isWallOpening(spec: OpeningSpec): spec is WallOpeningSpec {
   return spec.kind === 'WALL_OPENING';
@@ -150,7 +157,7 @@ type RecordGeometry<C extends BimCategory> =
 export type BimElement<C extends BimCategory> = RecordGeometry<C> & {
   readonly metadata?: Readonly<{ name?: string; description?: string }>;
   readonly guid: IfcGuid;
-  readonly localId: LocalId;
+  readonly localId: RecordRef;
   readonly category: C;
   readonly spec: BodySpec<C>;
 };

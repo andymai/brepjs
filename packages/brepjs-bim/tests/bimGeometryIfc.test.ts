@@ -1,7 +1,8 @@
+import { authoring } from '../src/model/authoring.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { unwrap } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc, toIfcValidated } from '../src/serialize/toIfc.js';
 import { hasErrors } from '../src/validation/severity.js';
 
@@ -11,12 +12,12 @@ function decode(bytes: Uint8Array): string {
 
 // Builds a minimal valid model (project→site→building→storey), runs the caller's
 // element setup, serializes to IFC, and returns the SPF text.
-async function ifcText(build: (m: BimModel) => void): Promise<string> {
-  using m = new BimModel();
+async function ifcText(build: (m: BimDocument) => void): Promise<string> {
+  using m = new BimDocument();
   m.init({ name: 'T' });
-  const site = unwrap(m.addSite({ name: 'S' }));
-  const bld = unwrap(m.addBuilding({ name: 'B' }));
-  const st = unwrap(m.addStorey({ name: 'L', elevation: 0 }));
+  const site = unwrap(authoring(m).addSite({ name: 'S' }));
+  const bld = unwrap(authoring(m).addBuilding({ name: 'B' }));
+  const st = unwrap(authoring(m).addStorey({ name: 'L', elevation: 0 }));
   const p = m.getProject();
   if (p) m.aggregate(p.localId, site);
   m.aggregate(site, bld);
@@ -43,7 +44,7 @@ describe('roof IFC representation', () => {
 
   it('shaped roof serializes as a Tessellation, not a degenerate brep', async () => {
     const txt = await ifcText((m) => {
-      unwrap(m.addRoof({ ...roofBase, predefinedType: 'GABLE_ROOF', pitch: 30 }));
+      unwrap(authoring(m).addRoof({ ...roofBase, predefinedType: 'GABLE_ROOF', pitch: 30 }));
     });
     expect(txt).toContain('IFCTRIANGULATEDFACESET');
     expect(txt).not.toContain('IFCFACETEDBREP'); // the degenerate mesh-failure fallback
@@ -51,7 +52,7 @@ describe('roof IFC representation', () => {
 
   it('flat roof keeps the parametric SweptSolid (no regression)', async () => {
     const txt = await ifcText((m) => {
-      unwrap(m.addRoof({ ...roofBase, predefinedType: 'FLAT_ROOF' }));
+      unwrap(authoring(m).addRoof({ ...roofBase, predefinedType: 'FLAT_ROOF' }));
     });
     expect(txt).toContain('IFCEXTRUDEDAREASOLID');
   });
@@ -75,14 +76,14 @@ describe('railing IFC representation', () => {
 
   it('POSTED railing serializes as a Tessellation', async () => {
     const txt = await ifcText((m) => {
-      unwrap(m.addRailing({ ...railBase, infill: 'POSTED' }));
+      unwrap(authoring(m).addRailing({ ...railBase, infill: 'POSTED' }));
     });
     expect(txt).toContain('IFCTRIANGULATEDFACESET');
   });
 
   it('PANEL railing serializes its retained Body as a Tessellation', async () => {
     const txt = await ifcText((m) => {
-      unwrap(m.addRailing({ ...railBase }));
+      unwrap(authoring(m).addRailing({ ...railBase }));
     });
     expect(txt).toContain('IFCTRIANGULATEDFACESET');
   });
@@ -94,17 +95,17 @@ describe('shaped model round-trips cleanly', () => {
   }, 30000);
 
   it('shaped roof + posted railing + stair → no error-severity IFC issues', async () => {
-    using m = new BimModel();
+    using m = new BimDocument();
     m.init({ name: 'Validity' });
-    const site = unwrap(m.addSite({ name: 'S' }));
-    const bld = unwrap(m.addBuilding({ name: 'B' }));
-    const st = unwrap(m.addStorey({ name: 'L', elevation: 0 }));
+    const site = unwrap(authoring(m).addSite({ name: 'S' }));
+    const bld = unwrap(authoring(m).addBuilding({ name: 'B' }));
+    const st = unwrap(authoring(m).addStorey({ name: 'L', elevation: 0 }));
     const p = m.getProject();
     if (p) m.aggregate(p.localId, site);
     m.aggregate(site, bld);
     m.aggregate(bld, st);
     const roof = unwrap(
-      m.addRoof({
+      authoring(m).addRoof({
         length: 4000,
         width: 3000,
         thickness: 200,
@@ -118,7 +119,7 @@ describe('shaped model round-trips cleanly', () => {
     );
     m.placeIn(roof, st);
     const rail = unwrap(
-      m.addRailing({
+      authoring(m).addRailing({
         length: 2000,
         height: 1000,
         thickness: 50,
@@ -132,7 +133,7 @@ describe('shaped model round-trips cleanly', () => {
     );
     m.placeIn(rail, st);
     const stair = unwrap(
-      m.addStair({
+      authoring(m).addStair({
         flights: [
           {
             width: 1000,

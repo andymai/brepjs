@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
 import { IfcWriter } from '../src/ifc-writer/ifcWriter.js';
 import { unwrap } from 'brepjs';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 
 beforeAll(async () => {
@@ -47,7 +47,7 @@ describe('IfcWriter STEP header', () => {
 
 describe('STEP real token conformance', () => {
   it('emits no integral-mantissa scientific reals (strict Part 21 grammar)', async () => {
-    using model = new BimModel();
+    using model = new BimDocument();
     unwrap(model.init({ name: 'Reals' }));
     const bytes = unwrap(
       await toIfc(model, { applicationName: 'reals-test', applicationVersion: '1' })

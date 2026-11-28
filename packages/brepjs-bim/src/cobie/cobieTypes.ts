@@ -2,14 +2,14 @@
  * COBie (Construction-Operations Building information exchange) table row types.
  *
  * Each interface models one COBie sheet. Column names follow the COBie 2.4
- * spreadsheet schema (camelCased). Rows are derived from a {@link BimModel} by
+ * spreadsheet schema (camelCased). Rows are derived from a {@link BimDocument} by
  * {@link deriveCobieModel}; the resulting {@link CobieModel} is a pure value
  * object that can be serialized to CSV or JSON.
  *
  * Several required-but-not-yet-modelled COBie columns (CreatedBy, CreatedOn,
  * Category) are emitted as empty strings rather than omitted, because COBie
  * validators expect the columns to be present. The fields that brepjs-bim can
- * populate from a {@link BimModel} carry real data.
+ * populate from a {@link BimDocument} carry real data.
  */
 
 /** Minimal contact metadata used to populate the COBie Contact sheet. */
@@ -52,7 +52,8 @@ export interface CobieFloorRow {
   readonly createdBy: string;
   readonly category: string;
   readonly description: string;
-  readonly elevation: number;
+  /** Millimetres above the enclosing Building datum, or null when unresolved. */
+  readonly elevation: number | null;
   /** IfcBuildingStorey GlobalId. */
   readonly externalIdentifier: string;
 }

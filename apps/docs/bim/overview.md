@@ -14,24 +14,27 @@ npm install brepjs-bim brepjs web-ifc
 Two ways in:
 
 - **Through families** (recommended for new models): author a declarative element tree with [brepjs-families](/families/overview) and project it with `familiesToBim`. Identity, openings, and containment come from the tree; GlobalIds derive from key paths and survive reorders. Start at [IFC Export](/families/ifc-export).
-- **Direct `BimModel`**: imperative `add*` calls when you already know exactly what to build, or when you need elements the families projection does not cover yet.
+- **Direct authoring** with `authoring(document)` when you already know exactly what to build, or when you need elements the families projection does not cover yet.
 
 ```typescript
-import { BimModel, toIfc } from 'brepjs-bim';
+import { authoring, BimDocument, toIfc } from 'brepjs-bim';
 import { unwrap } from 'brepjs';
 
-const model = new BimModel();
+using model = new BimDocument();
+const create = authoring(model);
 model.init({ name: 'Example' });
 
-const siteId = unwrap(model.addSite({ name: 'Site' }));
-const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
-const storeyId = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
+const siteId = unwrap(create.addSite({ name: 'Site' }));
+const buildingId = unwrap(create.addBuilding({ name: 'Building' }, { placementParent: siteId }));
+const storeyId = unwrap(
+  create.addStorey({ name: 'Level 1', elevation: 0 }, { placementParent: buildingId })
+);
 const project = model.getProject();
 if (project) model.aggregate(project.localId, siteId);
 model.aggregate(siteId, buildingId);
 model.aggregate(buildingId, storeyId);
 
-const wall = model.addWall({
+const wall = create.addWall({
   length: 4000,
   height: 3000,
   thickness: 200,
@@ -40,7 +43,10 @@ const wall = model.addWall({
   axisZ: [0, 0, 1],
   materialName: 'Concrete',
 });
-if (wall.ok) model.placeIn(wall.value, storeyId);
+if (wall.ok) {
+  unwrap(model.placeIn(wall.value, storeyId));
+  unwrap(model.reparent(wall.value, storeyId, 'KEEP_LOCAL'));
+}
 
 const ifc = await toIfc(model, { applicationName: 'example-app', applicationVersion: '1' });
 // ifc.ok && ifc.value instanceof Uint8Array
@@ -49,8 +55,8 @@ const ifc = await toIfc(model, { applicationName: 'example-app', applicationVers
 Three design decisions carry the package:
 
 1. **Typed specs anchor the model.** Every `add*` call validates its spec (zod schemas; the `parse*Spec` functions are exported for standalone use) and stores a typed element. Parametric physical specs build analytical solids, with IFC encoding determined by the element type. Civil spatial elements are body-less, while explicitly arbitrary bodies such as Earthworks Fill serialize as tessellation. Families-projected civil walls and railings always retain the evaluated authored items as an `AUTHORITATIVE` Product Body and export every item as tessellation.
-2. **Geometry is unplaced template geometry.** Element solids live in local coordinates; `origin` / `axisX` / `axisZ` are applied by the IFC layer via `IfcLocalPlacement`. `placedSolids(element)` applies the element frame; when its spatial parent is placed, pass the cumulative `parentFrame` to obtain world coordinates.
-3. **Results, not exceptions.** Every operation returns `Result<T, BimError>` from brepjs. Validation issues travel inside reports; nothing throws across the API boundary.
+2. **Geometry is unplaced template geometry.** Element solids live in local coordinates; `origin` / `axisX` / `axisZ` are applied by the IFC layer via `IfcLocalPlacement`. `model.placedSolids(ref, 'WORLD')` resolves the entire placement chain.
+3. **Document queries and edits.** Use `model.record(ref)` for a fallible lookup. Direct accessors such as `getElement(ref)` require a live reference from the same document.
 
 Dimensions are millimeters everywhere; IFC export emits SI metres. Reading element geometry needs only the brepjs kernel; `toIfc` / `fromIfc` additionally load the `web-ifc` peer dependency.
 

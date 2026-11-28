@@ -13,7 +13,6 @@ import {
 } from 'brepjs-families';
 import { initKernel } from '../../../tests/setup.js';
 import { familiesToBim } from '../src/familiesAdapter.js';
-import { placedSolids } from '../src/elementFns/placedGeometry.js';
 import { toIfc, toIfcValidated } from '../src/serialize/toIfc.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 import { checkSchema } from '../src/validation/schemaCheck.js';
@@ -518,15 +517,7 @@ describe('civil Families Projection', () => {
         (bounds.xMax - bounds.xMin) * (bounds.yMax - bounds.yMin) * (bounds.zMax - bounds.zMin);
       expect(projectedVolume).toBeLessThan(boundsVolume);
 
-      const placed = unwrap(
-        placedSolids(fill, {
-          parentFrame: {
-            origin: [6_000, 0, 0],
-            axisX: [1, 0, 0],
-            axisZ: [0, 0, 1],
-          },
-        })
-      );
+      const placed = unwrap(model.placedSolids(fill.localId, 'WORLD'));
       using worldBody = required(placed[0], 'world-placed Earthworks Fill body');
       const worldBounds = getBounds(worldBody);
       expect(worldBounds.xMin).toBeCloseTo(sourceBounds.xMin, 5);
@@ -882,15 +873,7 @@ describe('civil Families Projection', () => {
     expect(proxyBounds.xMin).toBeCloseTo(sourceBounds.xMin - 6_000, 5);
     expect(proxyBounds.xMax).toBeCloseTo(sourceBounds.xMax - 6_000, 5);
 
-    const placed = unwrap(
-      placedSolids(proxy, {
-        parentFrame: {
-          origin: [6_000, 0, 0],
-          axisX: [1, 0, 0],
-          axisZ: [0, 0, 1],
-        },
-      })
-    );
+    const placed = unwrap(model.placedSolids(proxy.localId, 'WORLD'));
     using worldBody = required(placed[0], 'world-placed proxy body');
     const worldBounds = getBounds(worldBody);
     expect(worldBounds.xMin).toBeCloseTo(sourceBounds.xMin, 5);

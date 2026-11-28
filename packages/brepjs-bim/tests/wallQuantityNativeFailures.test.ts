@@ -1,3 +1,4 @@
+import { authoring } from '../src/model/authoring.js';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { getKernel, unwrap, type ValidSolid } from 'brepjs';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
@@ -126,7 +127,9 @@ for (const primaryFailure of [false, true]) {
               (rel) => rel.kind === 'CONTAINED_IN' && rel.relatedElements.includes(wall.localId)
             );
           if (container?.kind !== 'CONTAINED_IN') throw new Error('Missing containment');
-          const laterId = unwrap(model.addWall({ ...wall.spec, origin: [4000, 2000, 3000] }));
+          const laterId = unwrap(
+            authoring(model).addWall({ ...wall.spec, origin: [4000, 2000, 3000] })
+          );
           model.placeIn(laterId, container.relatingStructure);
           const copied = unwrap(copyBody(wall.geometry));
           unwrap(model.replaceBody({ localId: laterId, body: copied }));

@@ -48,6 +48,12 @@ Preservation acceptance follows authored document → IFC → imported-document 
 
 Acceptance also requires failed later-item writes that return no successful artifact. Verify resource release and live document inputs on returned errors and throws. Thin sloping panels with holes must retain qualified geometry after reload. Test explicit facility/schema support states and diagnostic-free success, with the semantic and negative cases in the [migration note](../architecture-migration.md#ifc-semantic-preservation-and-qualification).
 
+### Qualification at steps 4 and 6
+
+At step 4, inspect the typed Roof and its host-relative Opening, direct Member and Sign, and a swept Beam with asymmetric geometry. Verify each product frame separately from its representation-item frame, then compare World geometry. Check required containment and placement-parent identity independently. Include an already-cut Body and its occupied material after import. [Future edits to the aperture](0010-changing-a-retained-aperture.md) have separate authoring acceptance.
+
+At step 6, review the document, authoring, IFC, Families and standards entrypoints of the single BIM package. Qualify packed ESM, CJS and declaration consumers. A document-only import must avoid the IFC and Families runtimes. Generate and independently validate IFC from the packed consumers and identify the receiving applications actually tested. [Migration order](../architecture-migration.md#migration-order)
+
 ## Consequences
 
 ### Positive

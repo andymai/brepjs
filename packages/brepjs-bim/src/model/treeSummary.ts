@@ -1,12 +1,12 @@
 import type { BimCategory } from '../types/bimTypes.js';
 
 /**
- * A node in a {@link BimModel}'s spatial/decomposition tree. Fully serializable
+ * A node in a {@link BimDocument}'s spatial/decomposition tree. Fully serializable
  * (plain numbers/strings) so it can be posted across a worker boundary.
  */
 export interface BimTreeNode {
-  /** The element's local id. */
-  readonly id: number;
+  /** The element's GlobalId. */
+  readonly id: string;
   /** Display label — the element's name, or its category when unnamed. */
   readonly label: string;
   /** The element's IFC category. */

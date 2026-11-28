@@ -10,7 +10,7 @@ import { unwrap } from 'brepjs';
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { BimModel, toIfcValidated } from 'brepjs-bim';
+import { BimDocument, toIfcValidated, authoring } from 'brepjs-bim';
 
 const outFile =
   process.argv[2] ?? resolve(dirname(fileURLToPath(import.meta.url)), 'sample-building.ifc');
@@ -26,7 +26,7 @@ function expect(result, label) {
   return result.value;
 }
 
-const model = new BimModel();
+const model = new BimDocument();
 model.init({
   name: 'brepjs-bim Sample Office',
   crs: {
@@ -41,14 +41,18 @@ model.init({
 
 // Spatial structure: project → site → building → two storeys.
 const project = model.getProject();
-const siteId = unwrap(model.addSite({ name: 'Riverside Plot' }));
-const buildingId = unwrap(model.addBuilding({ name: 'Office Block A' }));
-const groundId = unwrap(model.addStorey({ name: 'Ground Floor', elevation: 0 }));
-const firstId = unwrap(model.addStorey({ name: 'First Floor', elevation: 3200 }));
+const create = authoring(model);
+const siteId = unwrap(create.addSite({ name: 'Riverside Plot' }));
+const buildingId = unwrap(create.addBuilding({ name: 'Office Block A' }));
+const groundId = unwrap(create.addStorey({ name: 'Ground Floor', elevation: 0 }));
+const firstId = unwrap(create.addStorey({ name: 'First Floor', elevation: 3200 }));
 if (project) model.aggregate(project.localId, siteId);
-model.aggregate(siteId, buildingId);
-model.aggregate(buildingId, groundId);
-model.aggregate(buildingId, firstId);
+unwrap(model.aggregate(siteId, buildingId));
+unwrap(model.reparent(buildingId, siteId, 'KEEP_LOCAL'));
+unwrap(model.aggregate(buildingId, groundId));
+unwrap(model.reparent(groundId, buildingId, 'KEEP_LOCAL'));
+unwrap(model.aggregate(buildingId, firstId));
+unwrap(model.reparent(firstId, buildingId, 'KEEP_LOCAL'));
 
 // A 6 m × 4 m room on the ground floor: four perimeter walls.
 const L = 6000;
@@ -64,7 +68,7 @@ const wallDefs = [
 ];
 const wallIds = wallDefs.map((d, i) =>
   expect(
-    model.addWall({
+    create.addWall({
       length: d.length,
       height: H,
       thickness: T,
@@ -79,7 +83,10 @@ const wallIds = wallDefs.map((d, i) =>
     `addWall[${i}]`
   )
 );
-for (const id of wallIds) model.placeIn(id, groundId);
+for (const id of wallIds) {
+  unwrap(model.placeIn(id, groundId));
+  unwrap(model.reparent(id, groundId, 'KEEP_LOCAL'));
+}
 
 const [frontWallId, sideWallId] = wallIds;
 if (frontWallId === undefined || sideWallId === undefined)
@@ -87,7 +94,7 @@ if (frontWallId === undefined || sideWallId === undefined)
 
 // A window in the front wall and a door in the side wall.
 const windowId = expect(
-  model.addWindowAndCutWall({
+  create.addWindowAndCutWall({
     width: 1500,
     height: 1200,
     offsetAlongWall: 2250,
@@ -100,7 +107,7 @@ const windowId = expect(
   'addWindowAndCutWall'
 );
 const doorId = expect(
-  model.addDoorAndCutWall({
+  create.addDoorAndCutWall({
     width: 1000,
     height: 2100,
     offsetAlongWall: 1500,
@@ -117,7 +124,7 @@ model.placeIn(doorId, groundId);
 
 // Floor slab + first-floor slab.
 const slabGround = expect(
-  model.addSlab({
+  create.addSlab({
     length: L,
     width: W,
     thickness: 250,
@@ -131,9 +138,10 @@ const slabGround = expect(
   }),
   'addSlab[ground]'
 );
-model.placeIn(slabGround, groundId);
+unwrap(model.placeIn(slabGround, groundId));
+unwrap(model.reparent(slabGround, groundId, 'KEEP_LOCAL'));
 const slabFirst = expect(
-  model.addSlab({
+  create.addSlab({
     length: L,
     width: W,
     thickness: 250,
@@ -146,7 +154,8 @@ const slabFirst = expect(
   }),
   'addSlab[first]'
 );
-model.placeIn(slabFirst, firstId);
+unwrap(model.placeIn(slabFirst, firstId));
+unwrap(model.reparent(slabFirst, firstId, 'KEEP_LOCAL'));
 
 // Two structural columns.
 /** @type {Array<[number, number]>} */
@@ -156,7 +165,7 @@ const columnPositions = [
 ];
 for (const [cx, cy] of columnPositions) {
   const col = expect(
-    model.addColumn({
+    create.addColumn({
       height: H,
       profile: { kind: 'RECTANGULAR', width: 300, height: 300 },
       origin: [cx, cy, 0],
@@ -167,7 +176,8 @@ for (const [cx, cy] of columnPositions) {
     }),
     'addColumn'
   );
-  model.placeIn(col, groundId);
+  unwrap(model.placeIn(col, groundId));
+  unwrap(model.reparent(col, groundId, 'KEEP_LOCAL'));
 }
 
 // Uniclass classification on the external walls.

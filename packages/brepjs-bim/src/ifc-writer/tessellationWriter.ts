@@ -178,12 +178,10 @@ export function writeBodyPlacement(
 
 export function writeBodyGeometry(
   w: IfcWriter,
-  placement: FrameInput,
   items: NonEmpty<PreparedTessellation>,
   geomSubContextId: number,
-  parentPlacementId: number | null
+  localPlacementId: number
 ): BodyRepresentationIds {
-  const localPlacementId = writeBodyPlacement(w, placement, parentPlacementId);
   const body = writePreparedTessellationBody(w, items, geomSubContextId);
   return { localPlacementId, ...body };
 }

@@ -1,17 +1,7 @@
 import * as WebIFC from 'web-ifc';
 import type { IfcWriter } from './ifcWriter.js';
 
-export interface SurfaceStyleSpec {
-  readonly name: string;
-  /** Red channel, 0–1. */
-  readonly r: number;
-  /** Green channel, 0–1. */
-  readonly g: number;
-  /** Blue channel, 0–1. */
-  readonly b: number;
-  /** 0 = opaque (default), 1 = fully transparent. */
-  readonly transparency?: number;
-}
+import type { SurfaceStyleSpec } from '../specs/styleSpec.js';
 
 function clamp01(n: number): number {
   if (n < 0) return 0;

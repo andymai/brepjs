@@ -1,6 +1,7 @@
+import { authoring } from '../src/model/authoring.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { deriveCobieModel } from '../src/cobie/cobieExport.js';
 import { serializeCobieToCsv, serializeCobieToJson } from '../src/cobie/cobieExport.js';
 
@@ -13,17 +14,17 @@ function unwrap<T>(r: { ok: true; value: T } | { ok: false; error: { message: st
   return r.value;
 }
 
-function buildModel(): BimModel {
-  const model = new BimModel();
+function buildModel(): BimDocument {
+  const model = new BimDocument();
   unwrap(model.init({ name: 'Test Project', description: 'COBie export project' }));
-  const siteId = unwrap(model.addSite({ name: 'Test Site' }));
-  const buildingId = unwrap(model.addBuilding({ name: 'Test Building' }));
-  const storeyId = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
+  const siteId = unwrap(authoring(model).addSite({ name: 'Test Site' }));
+  const buildingId = unwrap(authoring(model).addBuilding({ name: 'Test Building' }));
+  const storeyId = unwrap(authoring(model).addStorey({ name: 'Level 1', elevation: 0 }));
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
 
   const spaceId = unwrap(
-    model.addSpace({
+    authoring(model).addSpace({
       name: 'Office 101',
       longName: 'Open Plan Office',
       length: 4000,
@@ -40,7 +41,7 @@ function buildModel(): BimModel {
   model.placeIn(spaceId, storeyId);
 
   const wall1 = unwrap(
-    model.addWall({
+    authoring(model).addWall({
       length: 4000,
       height: 2700,
       thickness: 200,
@@ -51,7 +52,7 @@ function buildModel(): BimModel {
     })
   );
   const wall2 = unwrap(
-    model.addWall({
+    authoring(model).addWall({
       length: 3000,
       height: 2700,
       thickness: 200,
@@ -62,7 +63,7 @@ function buildModel(): BimModel {
     })
   );
   unwrap(
-    model.addSlab({
+    authoring(model).addSlab({
       length: 4000,
       width: 3000,
       thickness: 200,

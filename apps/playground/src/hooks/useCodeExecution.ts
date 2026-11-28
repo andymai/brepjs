@@ -86,7 +86,7 @@ export function useCodeExecution() {
           streamSlotsRef.current = null;
           store.setAvailableArtifacts(msg.artifacts ?? []);
           // The worker forwards present({ bimTree }) verbatim; it's the
-          // serializable BimModel.toTreeSummary() shape.
+          // serializable BimDocument.toTreeSummary() shape.
           store.setBimTree((msg.bimTree as BimTreeSummary | undefined) ?? null);
           store.setFlatPattern((msg.overlay2d as FlatPatternPolylines | undefined) ?? null);
           store.setConsoleOutput(msg.console);

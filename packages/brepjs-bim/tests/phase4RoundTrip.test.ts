@@ -1,7 +1,8 @@
+import { authoring } from '../src/model/authoring.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { measureVolume, unwrap } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { fromIfc } from '../src/import/fromIfc.js';
 
@@ -12,7 +13,7 @@ beforeAll(async () => {
 const META = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };
 
 interface BuiltModel {
-  readonly model: BimModel;
+  readonly model: BimDocument;
 }
 
 /**
@@ -20,18 +21,18 @@ interface BuiltModel {
  * custom Pset), a slab, a circular column, and a door cut into the wall.
  */
 function buildRoundTripModel(): BuiltModel {
-  const model = new BimModel();
+  const model = new BimDocument();
   const initResult = model.init({ name: 'RoundTrip Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = unwrap(model.addSite({ name: 'Site A' }));
-  const buildingId = unwrap(model.addBuilding({ name: 'Building A' }));
-  const storeyId = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
+  const siteId = unwrap(authoring(model).addSite({ name: 'Site A' }));
+  const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building A' }));
+  const storeyId = unwrap(authoring(model).addStorey({ name: 'Level 1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
 
-  const wall = model.addWall({
+  const wall = authoring(model).addWall({
     length: 5000,
     height: 3000,
     thickness: 200,
@@ -47,7 +48,7 @@ function buildRoundTripModel(): BuiltModel {
   if (!wall.ok) throw new Error(wall.error.message);
   model.placeIn(wall.value, storeyId);
 
-  const slab = model.addSlab({
+  const slab = authoring(model).addSlab({
     length: 6000,
     width: 4000,
     thickness: 250,
@@ -60,7 +61,7 @@ function buildRoundTripModel(): BuiltModel {
   if (!slab.ok) throw new Error(slab.error.message);
   model.placeIn(slab.value, storeyId);
 
-  const column = model.addColumn({
+  const column = authoring(model).addColumn({
     height: 3000,
     profile: { kind: 'CIRCULAR', radius: 150 },
     origin: [4500, 0, 0],
@@ -72,7 +73,7 @@ function buildRoundTripModel(): BuiltModel {
   if (!column.ok) throw new Error(column.error.message);
   model.placeIn(column.value, storeyId);
 
-  const door = model.addDoorAndCutWall({
+  const door = authoring(model).addDoorAndCutWall({
     wallLocalId: wall.value,
     width: 900,
     height: 2100,

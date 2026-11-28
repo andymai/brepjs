@@ -1,10 +1,11 @@
+import { authoring } from '../src/model/authoring.js';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as brepjs from 'brepjs';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { extendedProfileToFace, type ExtendedProfile } from '../src/specs/profilesExtended.js';
 import type { RailingSpec } from '../src/specs/railingSpec.js';
 import type { BimError } from '../src/errors/bimError.js';
-import type { LocalId } from '../src/identity/localId.js';
+import type { RecordRef } from '../src/identity/recordRef.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 
@@ -107,30 +108,41 @@ const withVoids: ExtendedProfile = {
     ],
   ],
 };
-type Creator = (model: BimModel) => brepjs.Result<LocalId, BimError>;
+type Creator = (model: BimDocument) => brepjs.Result<RecordRef, BimError>;
 const options = { stableKey: 'retry' };
 const recipes: ReadonlyArray<readonly [string, Creator]> = [
-  ['Wall', (m) => m.addWall(RECIPE, options)],
-  ['Slab', (m) => m.addSlab({ ...RECIPE, width: 10, predefinedType: 'FLOOR' }, options)],
-  ['Beam', (m) => m.addBeam({ ...RECIPE, profile: rectangular }, options)],
-  ['Column', (m) => m.addColumn({ ...RECIPE, profile: rectangular }, options)],
-  ['Space', (m) => m.addSpace({ ...RECIPE, width: 10, name: 'Room' }, options)],
-  ['Flat roof', (m) => m.addRoof({ ...RECIPE, width: 10, predefinedType: 'FLAT_ROOF' }, options)],
+  ['Wall', (m) => authoring(m).addWall(RECIPE, options)],
+  ['Slab', (m) => authoring(m).addSlab({ ...RECIPE, width: 10, predefinedType: 'FLOOR' }, options)],
+  ['Beam', (m) => authoring(m).addBeam({ ...RECIPE, profile: rectangular }, options)],
+  ['Column', (m) => authoring(m).addColumn({ ...RECIPE, profile: rectangular }, options)],
+  ['Space', (m) => authoring(m).addSpace({ ...RECIPE, width: 10, name: 'Room' }, options)],
+  [
+    'Flat roof',
+    (m) => authoring(m).addRoof({ ...RECIPE, width: 10, predefinedType: 'FLAT_ROOF' }, options),
+  ],
   [
     'Shed roof',
-    (m) => m.addRoof({ ...RECIPE, width: 10, predefinedType: 'SHED_ROOF', pitch: 15 }, options),
+    (m) =>
+      authoring(m).addRoof(
+        { ...RECIPE, width: 10, predefinedType: 'SHED_ROOF', pitch: 15 },
+        options
+      ),
   ],
   [
     'Gable roof',
-    (m) => m.addRoof({ ...RECIPE, width: 10, predefinedType: 'GABLE_ROOF', pitch: 15 }, options),
+    (m) =>
+      authoring(m).addRoof(
+        { ...RECIPE, width: 10, predefinedType: 'GABLE_ROOF', pitch: 15 },
+        options
+      ),
   ],
-  ['Footing', (m) => m.addFooting({ ...RECIPE, width: 10 }, options)],
-  ['Pile', (m) => m.addPile({ ...RECIPE, profile: rectangular }, options)],
-  ['Covering', (m) => m.addCovering({ ...RECIPE, width: 10 }, undefined, options)],
-  ['Panel railing', (m) => m.addRailing({ ...RECIPE, infill: 'PANEL' }, options)],
-  ['Extended beam', (m) => m.addBeam({ ...RECIPE, profile: extended }, options)],
-  ['Extended column', (m) => m.addColumn({ ...RECIPE, profile: extended }, options)],
-  ['Extended pile', (m) => m.addPile({ ...RECIPE, profile: extended }, options)],
+  ['Footing', (m) => authoring(m).addFooting({ ...RECIPE, width: 10 }, options)],
+  ['Pile', (m) => authoring(m).addPile({ ...RECIPE, profile: rectangular }, options)],
+  ['Covering', (m) => authoring(m).addCovering({ ...RECIPE, width: 10 }, undefined, options)],
+  ['Panel railing', (m) => authoring(m).addRailing({ ...RECIPE, infill: 'PANEL' }, options)],
+  ['Extended beam', (m) => authoring(m).addBeam({ ...RECIPE, profile: extended }, options)],
+  ['Extended column', (m) => authoring(m).addColumn({ ...RECIPE, profile: extended }, options)],
+  ['Extended pile', (m) => authoring(m).addPile({ ...RECIPE, profile: extended }, options)],
 ];
 
 describe.each(['before', 'after'] as const)(
@@ -140,7 +152,7 @@ describe.each(['before', 'after'] as const)(
       '%s rejects without orphaning its prepared output or stable key',
       (_, create) => {
         const baseline = arena();
-        const model = new BimModel();
+        const model = new BimDocument();
         const cause = new Error('Temporary profile cleanup');
         const fixture = observeGeneration((role, index) =>
           role === 'profile' && index === 0 ? { timing, cause } : undefined
@@ -175,13 +187,13 @@ describe.each(['before', 'after'] as const)(
 
     it('releases the rotated beam output and later profile after prism cleanup fails', () => {
       const baseline = arena();
-      const model = new BimModel();
+      const model = new BimDocument();
       const cause = new Error('Beam prism cleanup');
       const fixture = observeGeneration((role) =>
         role === 'prism' ? { timing, cause } : undefined
       );
       try {
-        expect(model.addBeam({ ...RECIPE, profile: extended })).toMatchObject({
+        expect(authoring(model).addBeam({ ...RECIPE, profile: extended })).toMatchObject({
           ok: false,
           error: { cleanup: { kind: 'FAILED', diagnostics: [{ cause }] } },
         });
@@ -239,15 +251,15 @@ describe.each(['before', 'after'] as const)(
 );
 
 const hollowRecipes: ReadonlyArray<readonly [string, Creator]> = [
-  ['Beam', (m) => m.addBeam({ ...RECIPE, profile: withVoids }, options)],
-  ['Column', (m) => m.addColumn({ ...RECIPE, profile: withVoids }, options)],
-  ['Pile', (m) => m.addPile({ ...RECIPE, profile: withVoids }, options)],
+  ['Beam', (m) => authoring(m).addBeam({ ...RECIPE, profile: withVoids }, options)],
+  ['Column', (m) => authoring(m).addColumn({ ...RECIPE, profile: withVoids }, options)],
+  ['Pile', (m) => authoring(m).addPile({ ...RECIPE, profile: withVoids }, options)],
 ];
 it.each(hollowRecipes)(
   '%s preserves a nested profile cleanup report and releases a successful retry',
   (_, create) => {
     const baseline = arena();
-    const model = new BimModel();
+    const model = new BimDocument();
     const cause = new Error('Hole face cleanup');
     const fixture = observeGeneration((role, index) =>
       role === 'profile' && index === 1 ? { timing: 'after', cause } : undefined
@@ -277,7 +289,7 @@ it.each(hollowRecipes)(
 
 it('preserves a primary validation error and both output/profile cleanup failures', () => {
   const baseline = arena();
-  const model = new BimModel();
+  const model = new BimDocument();
   const primary = new Error('Native validity failure');
   const cause = new Error('Cleanup failed after release');
   const fixture = observeGeneration(() => ({ timing: 'after', cause }));
@@ -285,7 +297,7 @@ it('preserves a primary validation error and both output/profile cleanup failure
     throw primary;
   });
   try {
-    const result = model.addWall(RECIPE);
+    const result = authoring(model).addWall(RECIPE);
     expect(result).toMatchObject({
       ok: false,
       error: { code: 'WALL_INVALID_SOLID', cause: primary },
@@ -302,11 +314,11 @@ it('preserves a primary validation error and both output/profile cleanup failure
 
 it('reports output cleanup failure after a temporary failure cancels a successful build', () => {
   const baseline = arena();
-  const model = new BimModel();
+  const model = new BimDocument();
   const cause = new Error('Release completed but reported failure');
   const fixture = observeGeneration(() => ({ timing: 'after', cause }));
   try {
-    expect(model.addWall(RECIPE)).toMatchObject({
+    expect(authoring(model).addWall(RECIPE)).toMatchObject({
       ok: false,
       error: {
         code: 'WALL_CLEANUP_FAILED',
@@ -349,7 +361,7 @@ it('returns a usable face with both voids after releasing every profile temporar
 
 it('preserves a nested construction error while attempting every remaining temporary release', () => {
   const baseline = arena();
-  const model = new BimModel();
+  const model = new BimDocument();
   const primary = new Error('Adding holes failed');
   const cause = new Error('Nested temporary release');
   const fixture = observeGeneration(() => ({ timing: 'after', cause }));
@@ -357,7 +369,7 @@ it('preserves a nested construction error while attempting every remaining tempo
     throw primary;
   });
   try {
-    const result = model.addColumn({ ...RECIPE, profile: withVoids });
+    const result = authoring(model).addColumn({ ...RECIPE, profile: withVoids });
     expect(result).toMatchObject({ ok: false, error: { cause: primary } });
     expect(fixture.resources).toHaveLength(5);
     expect(fixture.resources.every((entry) => entry.attempts === 1)).toBe(true);

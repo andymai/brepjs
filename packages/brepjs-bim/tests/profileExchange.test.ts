@@ -1,3 +1,4 @@
+import { authoring } from '../src/model/authoring.js';
 import { assert, beforeAll, describe, expect, it } from 'vitest';
 import {
   DisposalScope,
@@ -9,14 +10,7 @@ import {
   type Shape3D,
 } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
-import {
-  BimModel,
-  disposeImportedModel,
-  fromIfc,
-  placedSolids,
-  toIfc,
-  type Profile,
-} from '../src/index.js';
+import { BimDocument, disposeImportedModel, fromIfc, toIfc, type Profile } from '../src/index.js';
 import { readBodyItems } from '../src/import/geometryRead.js';
 import { SpfReader } from '../src/import/spfReader.js';
 import type { ValidationIssue } from '../src/validation/severity.js';
@@ -73,16 +67,16 @@ async function exchangeColumn(
     readonly inspect?: (solid: Shape3D, label: string) => void;
   } = {}
 ): Promise<Exchanged> {
-  using model = new BimModel();
+  using model = new BimDocument();
   const projectId = unwrap(model.init({ name: 'Profile exchange' }));
-  const siteId = unwrap(model.addSite({ name: 'Site' }));
-  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
-  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
+  const siteId = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
   const id = unwrap(
-    model.addColumn({
+    authoring(model).addColumn({
       height: HEIGHT,
       profile,
       origin: ORIGIN,
@@ -96,7 +90,9 @@ async function exchangeColumn(
   assert.exists(column);
 
   using scope = new DisposalScope();
-  const placed = unwrap(placedSolids(column)).map((solid) => scope.register(solid));
+  const placed = unwrap(model.placedSolids(column.localId, 'WORLD')).map((solid) =>
+    scope.register(solid)
+  );
   expect(placed).toHaveLength(1);
   const [placedSolid] = placed;
   assert.exists(placedSolid);

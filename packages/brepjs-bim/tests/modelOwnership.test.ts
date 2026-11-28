@@ -1,6 +1,7 @@
+import { authoring } from '../src/model/authoring.js';
 import { beforeAll, expect, it } from 'vitest';
 import { box, clone, getKernel, measureVolume, unwrap } from 'brepjs';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import type { WallSpec } from '../src/specs/wallSpec.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
@@ -22,8 +23,8 @@ const WALL: WallSpec = {
 it('owns a protected recipe Body and releases it when its model closes', () => {
   const baseline = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
   {
-    using model = new BimModel();
-    const id = unwrap(model.addWall(WALL));
+    using model = new BimDocument();
+    const id = unwrap(authoring(model).addWall(WALL));
     const wall = model.getElement(id);
     if (wall?.category !== 'WALL') throw new Error('Expected retained Wall');
     expect(wall.geometry.kind).toBe('PARAMETRIC');
@@ -38,8 +39,8 @@ it('owns a protected recipe Body and releases it when its model closes', () => {
 });
 
 it('commits fresh multi-item Bodies, preserves identity, and rejects authority reversal', () => {
-  using model = new BimModel();
-  const id = unwrap(model.addWall(WALL));
+  using model = new BimDocument();
+  const id = unwrap(authoring(model).addWall(WALL));
   const before = model.getElement(id);
   if (before?.category !== 'WALL') throw new Error('Expected Wall');
   const first = box(1, 1, 1);
@@ -79,20 +80,20 @@ it('commits fresh multi-item Bodies, preserves identity, and rejects authority r
 });
 
 it('rejects borrowed Body handles in either adoption direction without consuming a stable key', () => {
-  using model = new BimModel();
-  const id = unwrap(model.addWall(WALL));
+  using model = new BimDocument();
+  const id = unwrap(authoring(model).addWall(WALL));
   const wall = model.getElement(id);
   if (wall?.category !== 'WALL') throw new Error('Expected Wall');
   const borrowed = wall.geometry.solids[0];
   expect(
-    model.addProxy({ name: 'Borrowed', solid: borrowed }, { stableKey: 'retry' })
+    authoring(model).addProxy({ name: 'Borrowed', solid: borrowed }, { stableKey: 'retry' })
   ).toMatchObject({ ok: false, error: { code: 'BODY_OWNERSHIP_CONFLICT' } });
   expect(
     model.replaceBody({ localId: id, body: { kind: 'AUTHORITATIVE', solids: [borrowed] } })
   ).toMatchObject({ ok: false, error: { code: 'BODY_OWNERSHIP_CONFLICT' } });
   const independent = unwrap(clone(borrowed));
   const proxy = unwrap(
-    model.addProxy({ name: 'Independent', solid: independent }, { stableKey: 'retry' })
+    authoring(model).addProxy({ name: 'Independent', solid: independent }, { stableKey: 'retry' })
   );
   expect(
     model.replaceBody({
@@ -112,8 +113,8 @@ it.each(['PANEL', 'POSTED'] as const)(
   (infill) => {
     const baseline = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
     {
-      using model = new BimModel();
-      const created = model.addRailing({
+      using model = new BimDocument();
+      const created = authoring(model).addRailing({
         ...WALL,
         length: 2000,
         height: 1000,

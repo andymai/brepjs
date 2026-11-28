@@ -26,8 +26,8 @@ export type AssemblyPlace = 'SITE' | 'FACTORY' | 'NOTDEFINED';
 
 /**
  * A grouping container (IfcElementAssembly). Carries no geometry of its own;
- * parts are attached via {@link BimModel.aggregate} (IfcRelAggregates) or
- * {@link BimModel.nest} (IfcRelNests, order-preserving).
+ * parts are attached via {@link BimDocument.aggregate} (IfcRelAggregates) or
+ * {@link BimDocument.nest} (IfcRelNests, order-preserving).
  */
 export interface ElementAssemblySpec {
   readonly name?: string | undefined;

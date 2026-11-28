@@ -4,7 +4,7 @@ import { el, family } from 'brepjs-families';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { specError } from '../src/errors/bimError.js';
 import { familiesToBim, setFamiliesAdapterTestHooksForTesting } from '../src/familiesAdapter.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { setBodyTestHooksForTesting } from '../src/bodyTestHooks.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 import {
@@ -222,9 +222,9 @@ describe('Families Body adoption ownership', () => {
       const candidates: Release[] = [];
       const outstanding = fault === 'before-release' ? 1 : 0;
       // eslint-disable-next-line @typescript-eslint/unbound-method -- Invoked below with the explicit model receiver via .call().
-      const replace = BimModel.prototype.replaceBody;
-      vi.spyOn(BimModel.prototype, 'replaceBody').mockImplementation(function (
-        this: BimModel,
+      const replace = BimDocument.prototype.replaceBody;
+      vi.spyOn(BimDocument.prototype, 'replaceBody').mockImplementation(function (
+        this: BimDocument,
         input
       ) {
         input.body.solids.forEach((solid, index) =>
@@ -280,9 +280,9 @@ describe('Families Body adoption ownership', () => {
         const retired: Release[] = [];
         const outstanding = fault === 'before-release' ? 1 : 0;
         // eslint-disable-next-line @typescript-eslint/unbound-method -- Invoked below with the explicit model receiver via .call().
-        const replace = BimModel.prototype.replaceBody;
-        vi.spyOn(BimModel.prototype, 'replaceBody').mockImplementation(function (
-          this: BimModel,
+        const replace = BimDocument.prototype.replaceBody;
+        vi.spyOn(BimDocument.prototype, 'replaceBody').mockImplementation(function (
+          this: BimDocument,
           input
         ) {
           const target = this.getElement(input.localId);

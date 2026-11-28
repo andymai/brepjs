@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { newIfcGuid, isValidIfcGuid, encodeIfcGuid } from '../src/identity/ifcGuid.js';
-import { makeLocalIdCounter } from '../src/identity/localId.js';
+import { recordCounter, ordinalOf } from '../src/identity/recordRef.js';
 
 describe('IfcGuid', () => {
   it('produces a 22-character string', () => {
@@ -48,19 +48,19 @@ describe('IfcGuid', () => {
   });
 });
 
-describe('LocalId', () => {
+describe('RecordRef', () => {
   it('produces sequential integers starting at 1', () => {
-    const counter = makeLocalIdCounter();
-    expect(counter.next()).toBe(1);
-    expect(counter.next()).toBe(2);
-    expect(counter.next()).toBe(3);
+    const counter = recordCounter();
+    expect(ordinalOf(counter.next())).toBe(1);
+    expect(ordinalOf(counter.next())).toBe(2);
+    expect(ordinalOf(counter.next())).toBe(3);
   });
 
   it('each counter is independent', () => {
-    const a = makeLocalIdCounter();
-    const b = makeLocalIdCounter();
+    const a = recordCounter();
+    const b = recordCounter();
     a.next();
     a.next();
-    expect(b.next()).toBe(1);
+    expect(ordinalOf(b.next())).toBe(1);
   });
 });

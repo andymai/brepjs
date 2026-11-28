@@ -1,0 +1,1412 @@
+import { storeyElevations } from './storeyElevations.js';
+import { relationshipEnds, withoutRecord } from './documentGraph.js';
+import { resolveDocumentFrame, type FrameSpace } from './documentFrames.js';
+import { transformBody, bodyBounds, measureBodyMaterial } from '../types/body.js';
+import { IDENTITY_FRAME, decomposeFrame, type FrameInput } from '../placementFrame.js';
+import { validateDocumentGraph, graphError, snapshotData } from './documentGraph.js';
+import { bodyClassifications, type BodyClassification } from '../types/bimTypes.js';
+import { capturePlacement, type PlacementDefinition } from '../types/placementDefinition.js';
+import type { Result, ValidSolid } from 'brepjs';
+import { ok, err } from 'brepjs';
+import type { IfcGuid } from '../identity/ifcGuid.js';
+import { deriveIfcGuidSync, makeElementKey, makeRelKey } from '../identity/guidDerivation.js';
+import type { RecordRef } from '../identity/recordRef.js';
+import { recordCounter, ordinalOf } from '../identity/recordRef.js';
+import type { BimError } from '../errors/bimError.js';
+import { specError } from '../errors/bimError.js';
+import type { AnyBimElement, BimElement } from '../types/bimTypes.js';
+import type { BimTreeNode, BimTreeSummary } from './treeSummary.js';
+import type {
+  BimRelationship,
+  AggregatesRel,
+  ContainedInRel,
+  NestsRel,
+  AssignsToGroupRel,
+} from '../types/relationships.js';
+import type { ClassificationRef } from '../types/classificationTypes.js';
+import type { SurfaceStyleSpec } from '../specs/styleSpec.js';
+import type { ProjectSpec } from '../specs/spatialSpec.js';
+import {
+  snapshotBodyInput,
+  validateBody,
+  wrappedResourceObject,
+  type Body,
+  type NonEmpty,
+} from '../types/body.js';
+import {
+  cleanupReport,
+  type CleanupReport,
+  type GeometryCleanupDiagnostic,
+} from '../bodyCleanup.js';
+import { protectElement, retainedSolids, type ElementFields } from './modelGeometry.js';
+import { reportedGeometryCleanup } from '../geometryCleanupDiagnostics.js';
+import { uncertainGeneratedResources } from '../geometryGeneration.js';
+
+export interface BodyCommitReceipt {
+  readonly kind: 'COMMITTED';
+  readonly localId: RecordRef;
+  readonly guid: IfcGuid;
+  readonly cleanup: CleanupReport;
+}
+
+interface OwnedGeometry {
+  readonly solid: Disposable;
+  readonly resource: object | undefined;
+  readonly localId?: RecordRef;
+  readonly itemIndex: number;
+}
+
+type GeometryOwner = { readonly resource: object | undefined } & (
+  | { readonly state: 'RETIRING'; readonly localId?: RecordRef; readonly itemIndex: number }
+  | { readonly state: 'RETAINED'; readonly localId: RecordRef; readonly itemIndex: number }
+  | { readonly state: 'UNCERTAIN'; readonly localId?: RecordRef; readonly itemIndex: number }
+);
+
+/** Prepared writes for one synchronous command, discarded on rejection. */
+export interface ModelCommand {
+  readonly counter: ReturnType<typeof recordCounter>;
+  modelScope: string;
+  projectId: RecordRef | null;
+  readonly elements: AnyBimElement[];
+  readonly relationships: BimRelationship[];
+  readonly removedEdges: Set<RecordRef>;
+  readonly removedRecords: Set<RecordRef>;
+  readonly stableKeys: Map<string, RecordRef>;
+  readonly adoptions: Map<ValidSolid, Extract<GeometryOwner, { state: 'RETAINED' }>>;
+  readonly generated: Map<ValidSolid, object | undefined>;
+  readonly retired: OwnedGeometry[];
+  readonly styles: Map<RecordRef, SurfaceStyleSpec>;
+  readonly recipeEligibility: Map<RecordRef, boolean>;
+}
+
+type RelationshipFields = {
+  [K in BimRelationship['kind']]: Omit<
+    Extract<BimRelationship, { readonly kind: K }>,
+    'guid' | 'localId'
+  >;
+}[BimRelationship['kind']];
+
+class RejectedModelCommand extends Error {
+  constructor(readonly error: BimError) {
+    super(error.message, { cause: error });
+  }
+}
+
+/** Optional identity override for created elements: a stable key (e.g. a
+ *  families key path) that replaces the positional GlobalId derivation. */
+export interface ElementIdentityOptions {
+  readonly stableKey?: string | undefined;
+}
+
+/** Identity options for adders that create TWO elements: `stableKey` names
+ *  the filler (door/window), `openingStableKey` the synthesized opening. */
+export interface OpeningIdentityOptions extends ElementIdentityOptions {
+  readonly openingStableKey?: string | undefined;
+  readonly solids?: NonEmpty<ValidSolid>;
+}
+export const prepareRecords = Symbol('prepareRecords');
+export interface AuthoredBodyInput {
+  readonly category: BodyClassification;
+  readonly placement: PlacementDefinition;
+  readonly solids: Extract<Body, { kind: 'AUTHORITATIVE' }>['solids'];
+  readonly stableKey?: string;
+  readonly metadata?: Readonly<{ name?: string; description?: string }>;
+  readonly openingLocalId?: RecordRef;
+}
+
+export class BimDocument {
+  readonly #elements = new Map<RecordRef, AnyBimElement>();
+  readonly #relationships = new Map<RecordRef, BimRelationship>();
+  readonly #surfaceStyles = new Map<RecordRef, SurfaceStyleSpec>();
+  readonly #counter = recordCounter();
+  #revision = 0;
+  /** Monotonic revision for asynchronous consumers of borrowed geometry. */
+  get revision() {
+    return this.#revision;
+  }
+  #projectId: RecordRef | null = null;
+  // Per-model scope mixed into every derived GlobalId so two distinct models do
+  // not collide. Set from the project identity in init() before any element is
+  // created; empty until init() runs.
+  #modelScope = '';
+  readonly #usedStableKeys = new Set<string>();
+  readonly #keyIndex = new Map<string, RecordRef>();
+
+  frame(ref: RecordRef, target: FrameSpace) {
+    const alive = this.record(ref);
+    return alive.ok ? resolveDocumentFrame(this.#elements, ref, target) : alive;
+  }
+
+  #ownBody(ref: RecordRef) {
+    const record = this.record(ref);
+    if (!record.ok) return record;
+    return record.value.representation === 'BODY'
+      ? ok(record.value.geometry)
+      : err(specError('ELEMENT_HAS_NO_BODY', `${record.value.category} has no occupied material`));
+  }
+
+  placedSolids(ref: RecordRef, target: FrameSpace): Result<readonly ValidSolid[], BimError> {
+    const body = this.#ownBody(ref);
+    if (!body.ok) return body;
+    const pose = target === 'LOCAL' ? ok(IDENTITY_FRAME) : this.frame(ref, target);
+    if (!pose.ok) return pose;
+    const transformed = transformBody(
+      body.value,
+      'frame' in pose.value ? pose.value.frame : pose.value
+    );
+    return transformed.ok ? ok(transformed.value.solids) : transformed;
+  }
+
+  bounds(ref: RecordRef, target: FrameSpace) {
+    const body = this.#ownBody(ref);
+    if (!body.ok) return body;
+    const pose =
+      target === 'LOCAL' ? ok({ target: ref, frame: IDENTITY_FRAME }) : this.frame(ref, target);
+    if (!pose.ok) return pose;
+    const measured = bodyBounds(
+      body.value,
+      target === 'LOCAL'
+        ? { kind: 'LOCAL' }
+        : {
+            kind: 'RESOLVED',
+            tag: pose.value.target === 'WORLD' ? 'WORLD' : this.getElement(pose.value.target).guid,
+            frame: pose.value.frame,
+          }
+    );
+    return measured.ok
+      ? ok(Object.freeze({ source: ref, target: pose.value.target, bounds: measured.value.bounds }))
+      : measured;
+  }
+
+  materialVolume(ref: RecordRef) {
+    const body = this.#ownBody(ref);
+    return body.ok ? measureBodyMaterial(body.value.solids) : body;
+  }
+
+  lookupKey(key: string): Result<RecordRef, BimError> {
+    const ref = this.#keyIndex.get(key);
+    return this.#phase !== 'DISPOSED' && ref !== undefined && this.#elements.has(ref)
+      ? ok(ref)
+      : err(specError('RECORD_NOT_FOUND', `No live record for key ${key}`));
+  }
+
+  record(ref: RecordRef): Result<AnyBimElement, BimError> {
+    const record = this.#phase === 'DISPOSED' ? undefined : this.#elements.get(ref);
+    return record === undefined
+      ? err(specError('RECORD_NOT_FOUND', 'Expected a live reference issued by this document'))
+      : ok(record);
+  }
+  readonly #owners = new Map<Disposable, GeometryOwner>();
+  readonly #cleanupDiagnostics: GeometryCleanupDiagnostic[] = [];
+  readonly #recipeQuantityEligible = new Set<RecordRef>();
+  #phase: 'ACTIVE' | 'MUTATING' | 'DISPOSING' | 'DISPOSED' = 'ACTIVE';
+
+  #lifecycleError(): BimError | null {
+    if (this.#phase === 'DISPOSED')
+      return specError('MODEL_DISPOSED', 'The model has been disposed');
+    if (this.#phase !== 'ACTIVE')
+      return specError('MODEL_BUSY', 'A model geometry command is already running');
+    return null;
+  }
+
+  #assertMutable(): void {
+    const error = this.#lifecycleError();
+    if (error !== null) throw new RejectedModelCommand(error);
+  }
+
+  getGeometryCleanupDiagnostics(): readonly GeometryCleanupDiagnostic[] {
+    return Object.freeze([...this.#cleanupDiagnostics]);
+  }
+
+  #edit<T>(
+    operation: string,
+    action: (command: ModelCommand) => Result<T, BimError>
+  ): Result<T, BimError> {
+    const result = this.#mutate(operation, action);
+    return result.ok ? ok(result.value.value) : result;
+  }
+
+  #create(
+    operation: string,
+    action: (command: ModelCommand) => Result<RecordRef, BimError>
+  ): Result<RecordRef, BimError> {
+    const result = this.#mutate(operation, action);
+    return result.ok ? ok(result.value.value) : result;
+  }
+
+  #mutate<T>(
+    operation: string,
+    action: (command: ModelCommand) => Result<T, BimError>
+  ): Result<{ readonly value: T; readonly cleanup: CleanupReport }, BimError> {
+    const lifecycleError = this.#lifecycleError();
+    if (lifecycleError !== null) return err(lifecycleError);
+    const command: ModelCommand = {
+      counter: recordCounter(this.#counter.current() + 1),
+      modelScope: this.#modelScope,
+      projectId: this.#projectId,
+      elements: [],
+      relationships: [],
+      removedEdges: new Set(),
+      removedRecords: new Set(),
+      stableKeys: new Map(),
+      adoptions: new Map(),
+      generated: new Map(),
+      retired: [],
+      recipeEligibility: new Map(),
+      styles: new Map(),
+    };
+    this.#phase = 'MUTATING';
+    try {
+      let result: Result<T, BimError>;
+      try {
+        result = action(command);
+        if (result.ok) {
+          const records = new Map(this.#elements);
+          const edges = new Map(this.#relationships);
+          for (const ref of command.removedRecords) records.delete(ref);
+          for (const ref of command.removedEdges) edges.delete(ref);
+          for (const record of command.elements) records.set(record.localId, record);
+          for (const edge of command.relationships) edges.set(edge.localId, edge);
+          const error = validateDocumentGraph(records, edges.values());
+          if (error) result = err(error);
+        }
+      } catch (cause) {
+        result = err(
+          cause instanceof RejectedModelCommand
+            ? cause.error
+            : specError('MODEL_COMMAND_FAILED', `${operation} failed before commit`, cause)
+        );
+      }
+      if (!result.ok) {
+        for (const { handle, resource, itemIndex } of uncertainGeneratedResources(result.error)) {
+          this.#owners.set(handle, { state: 'UNCERTAIN', resource, itemIndex });
+        }
+        const priorCleanup = reportedGeometryCleanup(result.error, operation);
+        this.#cleanupDiagnostics.push(...priorCleanup);
+        const ownedCleanup = this.#retire(
+          [...command.generated].map(([solid, resource], itemIndex) => ({
+            solid,
+            resource,
+            itemIndex,
+          })),
+          operation
+        );
+        const cleanup = cleanupReport([
+          ...priorCleanup,
+          ...(ownedCleanup.kind === 'FAILED' ? ownedCleanup.diagnostics : []),
+        ]);
+        return err({
+          ...result.error,
+          cleanup,
+          metadata: { ...result.error.metadata, operation, cleanup },
+        });
+      }
+      // Prepared data only: no native calls, accessors or callbacks may run during commit.
+      for (const ref of command.removedEdges) this.#relationships.delete(ref);
+      for (const ref of command.removedRecords) {
+        this.#elements.delete(ref);
+        this.#recipeQuantityEligible.delete(ref);
+        this.#surfaceStyles.delete(ref);
+      }
+      for (const element of command.elements) this.#elements.set(element.localId, element);
+      for (const { solid, resource, localId, itemIndex } of command.retired) {
+        this.#owners.set(solid, {
+          state: 'RETIRING',
+          resource,
+          itemIndex,
+          ...(localId === undefined ? {} : { localId }),
+        });
+      }
+      for (const [solid, owner] of command.adoptions) this.#owners.set(solid, owner);
+      for (const relationship of command.relationships)
+        this.#relationships.set(relationship.localId, relationship);
+      for (const [key, ref] of command.stableKeys) {
+        this.#usedStableKeys.add(key);
+        this.#keyIndex.set(key, ref);
+      }
+      for (const [id, eligible] of command.recipeEligibility) {
+        if (eligible) this.#recipeQuantityEligible.add(id);
+        else this.#recipeQuantityEligible.delete(id);
+      }
+      for (const [id, style] of command.styles) this.#surfaceStyles.set(id, style);
+      this.#revision++;
+      this.#counter.advanceTo(command.counter.current());
+      this.#modelScope = command.modelScope;
+      this.#projectId = command.projectId;
+      const unused = [...command.generated]
+        .filter(([solid]) => !command.adoptions.has(solid))
+        .map(([solid, resource], itemIndex) => ({ solid, resource, itemIndex }));
+      const cleanup = this.#retire([...command.retired, ...unused], operation);
+      return ok({ value: result.value, cleanup });
+    } finally {
+      this.#phase = 'ACTIVE';
+    }
+  }
+
+  #stageElement(command: ModelCommand, element: AnyBimElement): void {
+    for (const [itemIndex, solid] of retainedSolids(element).entries()) {
+      const resource = this.#requireUnowned(command, solid, itemIndex);
+      command.adoptions.set(solid, {
+        state: 'RETAINED',
+        resource,
+        localId: element.localId,
+        itemIndex,
+      });
+    }
+    command.elements.push(element);
+  }
+
+  #captureResource(solid: unknown, itemIndex: number): Result<object | undefined, BimError> {
+    try {
+      return ok(wrappedResourceObject(solid));
+    } catch (cause) {
+      return err({
+        ...specError('BODY_VALIDATION_FAILED', 'Item resource access threw', cause),
+        metadata: { itemIndex },
+      });
+    }
+  }
+
+  #ownGenerated(command: ModelCommand, solids: readonly ValidSolid[]): void {
+    const fresh: ValidSolid[] = [];
+    // Own the entire batch before any accessor can throw, including later siblings.
+    for (const solid of solids) {
+      if (command.generated.has(solid)) continue;
+      command.generated.set(solid, undefined);
+      fresh.push(solid);
+    }
+    let failure: BimError | undefined;
+    for (const [itemIndex, solid] of fresh.entries()) {
+      const captured = this.#captureResource(solid, itemIndex);
+      if (captured.ok) command.generated.set(solid, captured.value);
+      else failure ??= captured.error;
+    }
+    if (failure !== undefined) throw new RejectedModelCommand(failure);
+  }
+
+  #prepareRetirement(element: AnyBimElement): OwnedGeometry[] {
+    return retainedSolids(element).map((solid, itemIndex) => ({
+      solid,
+      resource: this.#owners.get(solid)?.resource,
+      localId: element.localId,
+      itemIndex,
+    }));
+  }
+
+  #requireUnowned(command: ModelCommand, solid: unknown, itemIndex: number): object | undefined {
+    const owners = [...this.#owners, ...command.adoptions];
+    let owner = owners.find(([owned]) => owned === solid)?.[1];
+    // Look up the public handle first: an UNCERTAIN owner may already be disposed.
+    const captured =
+      owner === undefined ? this.#captureResource(solid, itemIndex) : ok(owner.resource);
+    if (!captured.ok) throw new RejectedModelCommand(captured.error);
+    const resource = captured.value;
+    if (owner === undefined && resource !== undefined) {
+      owner = owners.find(([, candidate]) => candidate.resource === resource)?.[1];
+    }
+    if (owner !== undefined) {
+      throw new RejectedModelCommand({
+        ...specError(
+          'BODY_OWNERSHIP_CONFLICT',
+          'The model already owns this solid handle or its wrapped resource object'
+        ),
+        metadata: {
+          itemIndex,
+          ownerLocalId: owner.localId,
+          ownerItemIndex: owner.itemIndex,
+          ownerState: owner.state,
+        },
+      });
+    }
+    return resource;
+  }
+
+  #retire(items: readonly OwnedGeometry[], operation: string): CleanupReport {
+    const attempted = new Set<Disposable>();
+    const diagnostics: GeometryCleanupDiagnostic[] = [];
+    for (const { solid, resource, itemIndex, localId } of items) {
+      const owner = this.#owners.get(solid);
+      if (attempted.has(solid) || owner?.state === 'UNCERTAIN') continue;
+      attempted.add(solid);
+      // Keep responsibility before invoking user-observable cleanup; a throw has an unknown outcome.
+      this.#owners.set(solid, {
+        state: 'UNCERTAIN',
+        resource,
+        itemIndex,
+        ...(localId === undefined ? {} : { localId }),
+      });
+      try {
+        solid[Symbol.dispose]();
+        this.#owners.delete(solid);
+      } catch (cause) {
+        diagnostics.push(
+          Object.freeze({
+            operation,
+            itemIndex,
+            resourceKind: 'SHAPE',
+            cause,
+            ...(localId === undefined ? {} : { localId }),
+          })
+        );
+      }
+    }
+    this.#cleanupDiagnostics.push(...diagnostics);
+    return cleanupReport(diagnostics);
+  }
+
+  init(spec: ProjectSpec, options?: ElementIdentityOptions): Result<RecordRef, BimError> {
+    return this.#create('init', (command) => {
+      const snapshot = snapshotData(spec);
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      if (this.#projectId !== null) {
+        return err(
+          specError(
+            'DUPLICATE_PROJECT',
+            'BimDocument.init() called twice — only one project per model'
+          )
+        );
+      }
+      // Prefer an explicit, globally-unique projectId; otherwise fall back to the
+      // project name+description (stable, but unique only per distinct name).
+      command.modelScope = snapshot.projectId ?? `${snapshot.name}::${snapshot.description ?? ''}`;
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      const id = this.#makeElement(
+        command,
+        {
+          category: 'PROJECT',
+          representation: 'NONE',
+          reason: 'SPATIAL',
+          placement: null,
+          spec: snapshot,
+          geometry: null,
+        },
+        identity?.stableKey
+      );
+      command.projectId = id;
+      return ok(id);
+    });
+  }
+
+  [Symbol.dispose](): void {
+    if (this.#phase === 'DISPOSED' || this.#phase === 'DISPOSING') return;
+    this.#assertMutable();
+    this.#phase = 'DISPOSING';
+    this.#revision++;
+    try {
+      const retained: OwnedGeometry[] = [];
+      for (const [solid, owner] of this.#owners) {
+        if (owner.state === 'RETAINED')
+          retained.push({
+            solid,
+            resource: owner.resource,
+            localId: owner.localId,
+            itemIndex: owner.itemIndex,
+          });
+      }
+      const cleanup = this.#retire(retained, 'disposeModel');
+      if (cleanup.kind === 'FAILED') {
+        throw new AggregateError(
+          cleanup.diagnostics.map(({ cause }) => cause),
+          'Model geometry cleanup failed'
+        );
+      }
+    } finally {
+      this.#phase = 'DISPOSED';
+    }
+  }
+
+  /** Reject a duplicate stableKey BEFORE any geometry is built, so the
+   *  Result-returning adders never allocate a solid they cannot store. */
+  #checkStableKey(options: ElementIdentityOptions | undefined): Result<void, BimError> {
+    const key = options?.stableKey;
+    if (key !== undefined && this.#usedStableKeys.has(key)) {
+      return err(specError('DUPLICATE_STABLE_KEY', `BimDocument: duplicate stableKey '${key}'`));
+    }
+    return ok(undefined);
+  }
+
+  addAuthoredBody(input: AuthoredBodyInput): Result<RecordRef, BimError> {
+    return this.#create('addAuthoredBody', (command) => this.#stageAuthoredBody(command, input));
+  }
+
+  #stageAuthoredBody(command: ModelCommand, input: AuthoredBodyInput): Result<RecordRef, BimError> {
+    const { category, stableKey } = input;
+    if (!bodyClassifications.includes(category)) {
+      return err(specError('BODY_UNSUPPORTED_CATEGORY', 'Unsupported Body classification'));
+    }
+    if (input.openingLocalId !== undefined) {
+      const valid = this.#checkFillTarget(category, input.openingLocalId);
+      if (!valid.ok) return valid;
+    }
+    const placement = capturePlacement(input.placement, input.openingLocalId);
+    if (!placement.ok) return placement;
+    const id = this.#makeElement(
+      command,
+      {
+        category,
+        representation: 'BODY',
+        spec: null,
+        ...(input.metadata !== undefined ? { metadata: Object.freeze({ ...input.metadata }) } : {}),
+        placement: placement.value,
+        geometry: { kind: 'AUTHORITATIVE', solids: input.solids },
+      },
+      stableKey
+    );
+    if (input.openingLocalId !== undefined)
+      this.#makeRel(
+        { kind: 'FILLS_OPENING', openingLocalId: input.openingLocalId, fillerLocalId: id },
+        command
+      );
+    command.recipeEligibility.set(id, false);
+    return ok(id);
+  }
+
+  /** Ownership transfers only on COMMITTED, including when retirement reports failure. */
+  replaceBody(input: {
+    readonly localId: RecordRef;
+    readonly body: Body;
+  }): Result<BodyCommitReceipt, BimError> {
+    const result = this.#mutate('replaceBody', (command) => {
+      const { localId } = input;
+      const target = this.#elements.get(localId);
+      if (target === undefined) {
+        return err(
+          specError('BODY_TARGET_NOT_FOUND', 'Expected a live Body target in this document')
+        );
+      }
+      if (target.representation !== 'BODY') {
+        return err(
+          specError('BODY_UNSUPPORTED_CATEGORY', `Cannot replace a ${target.category} Body`)
+        );
+      }
+      const prepared = this.#prepareBody(command, input.body);
+      if (!prepared.ok) return prepared;
+      if (target.geometry.kind === 'AUTHORITATIVE' && prepared.value.kind === 'PARAMETRIC') {
+        return err(
+          specError(
+            'BODY_AUTHORITY_TRANSITION',
+            'An authored Body cannot revert to recipe authority'
+          )
+        );
+      }
+      this.#stageElement(command, Object.freeze({ ...target, geometry: prepared.value }));
+      command.retired.push(...this.#prepareRetirement(target));
+      command.recipeEligibility.set(localId, false);
+      return ok({ localId, guid: target.guid });
+    });
+    return result.ok
+      ? ok(
+          Object.freeze({ kind: 'COMMITTED', ...result.value.value, cleanup: result.value.cleanup })
+        )
+      : result;
+  }
+
+  /**
+   * Assigns members to a zone or system via IfcRelAssignsToGroup. Repeated calls
+   * for the same group extend the single relationship in call order. Returns the
+   * relationship's localId.
+   */
+  assignToGroup(groupId: RecordRef, memberIds: readonly RecordRef[]): Result<RecordRef, BimError> {
+    return this.#edit('assignToGroup', (command) => {
+      let existingRel: AssignsToGroupRel | undefined;
+      for (const rel of this.#relationships.values()) {
+        if (rel.kind === 'ASSIGNS_TO_GROUP' && rel.groupLocalId === groupId) {
+          existingRel = rel;
+          break;
+        }
+      }
+      if (existingRel !== undefined) {
+        const updated: AssignsToGroupRel = {
+          ...existingRel,
+          memberLocalIds: [...existingRel.memberLocalIds, ...memberIds],
+        };
+        command.relationships.push(snapshotData(updated));
+        return ok(existingRel.localId);
+      }
+      return ok(
+        this.#makeRel(
+          {
+            kind: 'ASSIGNS_TO_GROUP',
+            groupLocalId: groupId,
+            memberLocalIds: [...memberIds],
+          },
+          command
+        )
+      );
+    });
+  }
+
+  /**
+   * Records an order-preserving IfcRelNests decomposing `parentId` into
+   * `childId`. Unlike {@link aggregate}, repeated calls extend the same nesting
+   * relationship in call order.
+   */
+  nest(parentId: RecordRef, childId: RecordRef): Result<void, BimError> {
+    return this.#edit('nest', (command) => {
+      let existingRel: NestsRel | undefined;
+      for (const rel of this.#relationships.values()) {
+        if (rel.kind === 'NESTS' && rel.relatingObject === parentId) {
+          existingRel = rel;
+          break;
+        }
+      }
+      if (existingRel !== undefined) {
+        const updated: NestsRel = {
+          ...existingRel,
+          relatedObjects: [...existingRel.relatedObjects, childId],
+        };
+        command.relationships.push(snapshotData(updated));
+      } else {
+        this.#makeRel(
+          {
+            kind: 'NESTS',
+            relatingObject: parentId,
+            relatedObjects: [childId],
+          },
+          command
+        );
+      }
+      return ok(undefined);
+    });
+  }
+
+  /**
+   * Records an IfcRelConnectsElements logical connection between two elements.
+   * Returns the relationship's localId.
+   */
+  connectElements(
+    relatingElementLocalId: RecordRef,
+    relatedElementLocalId: RecordRef,
+    description?: string
+  ): Result<RecordRef, BimError> {
+    return this.#edit('connectElements', (command) => {
+      return ok(
+        this.#makeRel(
+          {
+            kind: 'CONNECTS_ELEMENTS',
+            relatingElementLocalId,
+            relatedElementLocalId,
+            ...(description !== undefined ? { description } : {}),
+          },
+          command
+        )
+      );
+    });
+  }
+
+  /**
+   * Records an IfcRelConnectsPathElements connection between two path-based
+   * elements at the given path ends. Returns the relationship's localId.
+   */
+  connectPathElements(
+    relatingElementLocalId: RecordRef,
+    relatedElementLocalId: RecordRef,
+    relatingConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED',
+    relatedConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED',
+    description?: string
+  ): Result<RecordRef, BimError> {
+    return this.#edit('connectPathElements', (command) => {
+      return ok(
+        this.#makeRel(
+          {
+            kind: 'CONNECTS_PATH_ELEMENTS',
+            relatingElementLocalId,
+            relatedElementLocalId,
+            relatingConnectionType,
+            relatedConnectionType,
+            ...(description !== undefined ? { description } : {}),
+          },
+          command
+        )
+      );
+    });
+  }
+
+  /**
+   * Assigns a surface style (colour + transparency) to an element. On export the
+   * style is emitted as IfcSurfaceStyle and linked to the element's body geometry
+   * via IfcStyledItem (currently honoured for railings and coverings, whose body
+   * representation item is surfaced by their geometry writers).
+   */
+  setSurfaceStyle(elementLocalId: RecordRef, style: SurfaceStyleSpec): Result<void, BimError> {
+    return this.#edit('setSurfaceStyle', (command) => {
+      if (!this.#elements.has(elementLocalId))
+        return err(graphError('INVALID_ENDPOINT', 'Missing style target', elementLocalId));
+      command.styles.set(elementLocalId, snapshotData(style));
+      return ok(undefined);
+    });
+  }
+
+  detachContainment(child: RecordRef): Result<void, BimError> {
+    return this.assignContainer(child, null);
+  }
+
+  assignContainer(child: RecordRef, container: RecordRef | null): Result<void, BimError> {
+    return this.#edit('assignContainer', (command) => {
+      if (!this.#elements.has(child))
+        return err(graphError('INVALID_ENDPOINT', 'Missing contained record', child));
+      for (const edge of this.#relationships.values()) {
+        if (edge.kind !== 'CONTAINED_IN' || !edge.relatedElements.includes(child)) continue;
+        const rest = edge.relatedElements.filter((ref) => ref !== child);
+        if (rest.length)
+          command.relationships.push(snapshotData({ ...edge, relatedElements: rest }));
+        else command.removedEdges.add(edge.localId);
+      }
+      if (container !== null)
+        this.#makeRel(
+          { kind: 'CONTAINED_IN', relatingStructure: container, relatedElements: [child] },
+          command
+        );
+      return ok(undefined);
+    });
+  }
+
+  removeRelationship(ref: RecordRef): Result<void, BimError> {
+    return this.#edit('removeRelationship', (command) => {
+      if (!this.#relationships.has(ref))
+        return err(graphError('INVALID_ENDPOINT', 'Missing relationship', ref));
+      command.removedEdges.add(ref);
+      return ok(undefined);
+    });
+  }
+
+  detachDecomposition(child: RecordRef): Result<void, BimError> {
+    return this.#edit('detachDecomposition', (command) => {
+      if (!this.#elements.has(child))
+        return err(graphError('INVALID_ENDPOINT', 'Missing child', child));
+      for (const edge of this.#relationships.values()) {
+        if (
+          (edge.kind !== 'AGGREGATES' && edge.kind !== 'NESTS') ||
+          !edge.relatedObjects.includes(child)
+        )
+          continue;
+        const rest = edge.relatedObjects.filter((ref) => ref !== child);
+        if (rest.length)
+          command.relationships.push(snapshotData({ ...edge, relatedObjects: rest }));
+        else command.removedEdges.add(edge.localId);
+      }
+      return ok(undefined);
+    });
+  }
+
+  #editablePlacement(ref: RecordRef) {
+    const record = this.#elements.get(ref);
+    if (!record?.placement)
+      return err(graphError('INVALID_PLACEMENT_RECORD', 'Expected a live placeable record', ref));
+    if (record.category === 'OPENING')
+      return err(
+        graphError(
+          'OPENING_PLACEMENT_BOUND_TO_HOST',
+          'The Opening describes a retained cut. Move its host to move the cut and Opening together.',
+          ref
+        )
+      );
+    return ok({ record, placement: record.placement });
+  }
+
+  move(ref: RecordRef, frame: FrameInput): Result<void, BimError> {
+    return this.#edit('move', (command) => {
+      const editable = this.#editablePlacement(ref);
+      if (!editable.ok) return editable;
+      const { record, placement: previous } = editable.value;
+      if (previous.kind !== 'LOCAL_FRAME')
+        return err(
+          graphError(
+            'PLACEMENT_REFERENCE_UNRESOLVED',
+            'Moving a reference placement is unsupported',
+            ref
+          )
+        );
+      const placement = capturePlacement({ kind: 'LOCAL_FRAME', frame }, previous.relativeTo);
+      if (!placement.ok) return placement;
+      command.elements.push(Object.freeze({ ...record, placement: placement.value }));
+      return ok(undefined);
+    });
+  }
+
+  reparent(
+    ref: RecordRef,
+    parent: RecordRef | 'WORLD',
+    policy: 'KEEP_LOCAL' | 'KEEP_WORLD'
+  ): Result<void, BimError> {
+    return this.#edit('reparent', (command) => {
+      if (policy !== 'KEEP_LOCAL' && policy !== 'KEEP_WORLD')
+        return err(graphError('REPARENT_POLICY_REQUIRED', 'Choose KEEP_LOCAL or KEEP_WORLD', ref));
+      const editable = this.#editablePlacement(ref);
+      if (!editable.ok) return editable;
+      const { record, placement: previous } = editable.value;
+      if (previous.kind !== 'LOCAL_FRAME')
+        return err(
+          graphError(
+            'PLACEMENT_REFERENCE_UNRESOLVED',
+            'Reparenting a reference placement is unsupported',
+            ref
+          )
+        );
+      let frame = previous.frame;
+      if (policy === 'KEEP_WORLD') {
+        const relative = this.frame(ref, parent);
+        if (!relative.ok) return relative;
+        frame = decomposeFrame(relative.value.frame);
+      }
+      const placement = capturePlacement(
+        { kind: 'LOCAL_FRAME', frame },
+        parent === 'WORLD' ? undefined : parent
+      );
+      if (!placement.ok) return placement;
+      command.elements.push(Object.freeze({ ...record, placement: placement.value }));
+      return ok(undefined);
+    });
+  }
+
+  delete(ref: RecordRef): Result<BodyCommitReceipt, BimError> {
+    const result = this.#mutate('delete', (command) => {
+      const record = this.#elements.get(ref);
+      if (!record)
+        return err(graphError('RECORD_NOT_FOUND', 'Expected a live document reference', ref));
+      const dependants: { kind: string; record: RecordRef }[] = [];
+      for (const child of this.#elements.values()) {
+        const placement = child.placement;
+        if (placement?.kind === 'LOCAL_FRAME' && placement.relativeTo === ref)
+          dependants.push({ kind: 'PLACEMENT_PARENT', record: child.localId });
+        if (
+          placement &&
+          placement.kind !== 'LOCAL_FRAME' &&
+          placement.references.some((target) => target.kind === 'DOCUMENT' && target.record === ref)
+        )
+          dependants.push({ kind: 'PLACEMENT_REFERENCE', record: child.localId });
+      }
+      for (const edge of this.#relationships.values()) {
+        if (edge.kind === 'CONTAINED_IN' && edge.relatingStructure === ref)
+          dependants.push(...edge.relatedElements.map((record) => ({ kind: edge.kind, record })));
+        if ((edge.kind === 'AGGREGATES' || edge.kind === 'NESTS') && edge.relatingObject === ref)
+          dependants.push(...edge.relatedObjects.map((record) => ({ kind: edge.kind, record })));
+      }
+      if (dependants.length)
+        return err({
+          ...specError('RECORD_HAS_DEPENDANTS', 'Resolve dependent records before deletion'),
+          metadata: { ref, dependants },
+        });
+      for (const edge of this.#relationships.values()) {
+        if (!relationshipEnds(edge).includes(ref)) continue;
+        // The host still owns the cut solid. Its recipe loses the void that justified
+        // analytical dimensions and, for a Slab, reconstruction of the cut in IFC.
+        if (edge.kind === 'VOIDS' && edge.openingLocalId === ref)
+          command.recipeEligibility.set(edge.hostLocalId, false);
+        const remaining = withoutRecord(edge, ref);
+        if (remaining) command.relationships.push(remaining);
+        else command.removedEdges.add(edge.localId);
+      }
+      command.removedRecords.add(ref);
+      if (command.projectId === ref) command.projectId = null;
+      command.retired.push(...this.#prepareRetirement(record));
+      return ok({ localId: ref, guid: record.guid });
+    });
+    return result.ok
+      ? ok(
+          Object.freeze({ kind: 'COMMITTED', ...result.value.value, cleanup: result.value.cleanup })
+        )
+      : result;
+  }
+
+  replacePlacement(ref: RecordRef, input: PlacementDefinition): Result<void, BimError> {
+    return this.#edit('replacePlacement', (command) => {
+      const editable = this.#editablePlacement(ref);
+      if (!editable.ok) return editable;
+      const { record, placement: previous } = editable.value;
+      const placement = capturePlacement(input);
+      if (!placement.ok) return placement;
+      if (
+        previous.kind === 'LOCAL_FRAME' &&
+        placement.value.kind === 'LOCAL_FRAME' &&
+        previous.relativeTo !== placement.value.relativeTo
+      )
+        return err(
+          graphError(
+            'REPARENT_POLICY_REQUIRED',
+            'Use reparent to change a rigid placement parent',
+            ref
+          )
+        );
+      command.elements.push(Object.freeze({ ...record, placement: placement.value }));
+      return ok(undefined);
+    });
+  }
+
+  getSurfaceStyle(elementLocalId: RecordRef): SurfaceStyleSpec | null {
+    this.getElement(elementLocalId);
+    return this.#surfaceStyles.get(elementLocalId) ?? null;
+  }
+
+  /**
+   * Records an IfcRelSpaceBoundary between a space and one of its bounding
+   * building elements. Returns the relationship's localId.
+   */
+  addSpaceBoundary(
+    spaceLocalId: RecordRef,
+    elementLocalId: RecordRef,
+    connectionType: 'PHYSICAL' | 'VIRTUAL' | 'NOTDEFINED' = 'PHYSICAL'
+  ): Result<RecordRef, BimError> {
+    return this.#edit('addSpaceBoundary', (command) => {
+      return ok(
+        this.#makeRel(
+          {
+            kind: 'SPACE_BOUNDARY',
+            spaceLocalId,
+            elementLocalId,
+            connectionType,
+          },
+          command
+        )
+      );
+    });
+  }
+
+  /**
+   * Associates a classification reference with one or more elements, creating an
+   * IfcRelAssociatesClassification on export. Returns the relationship's localId.
+   */
+  addClassification(
+    ref: ClassificationRef,
+    elementLocalIds: readonly RecordRef[]
+  ): Result<RecordRef, BimError> {
+    return this.#edit('addClassification', (command) => {
+      return ok(
+        this.#makeRel(
+          {
+            kind: 'ASSOCIATES_CLASSIFICATION',
+            ref,
+            relatedObjects: [...elementLocalIds],
+          },
+          command
+        )
+      );
+    });
+  }
+
+  #checkFillTarget(category: BodyClassification, opening: RecordRef): Result<void, BimError> {
+    if (category !== 'DOOR' && category !== 'WINDOW')
+      return err(specError('INVALID_FILLER', 'Only Doors or Windows can fill an Opening'));
+    const target = this.#elements.get(opening);
+    if (target?.category !== 'OPENING')
+      return err(specError('OPENING_NOT_FOUND', 'Expected a supported Opening'));
+    if (
+      [...this.#relationships.values()].some(
+        (rel) => rel.kind === 'FILLS_OPENING' && rel.openingLocalId === opening
+      )
+    )
+      return err(specError('OPENING_ALREADY_FILLED', 'Opening already has a filler'));
+    return ok(undefined);
+  }
+
+  #replaceGeneratedBody(
+    command: ModelCommand,
+    host: Extract<AnyBimElement, { representation: 'BODY' }>,
+    geometry: Body
+  ): void {
+    this.#ownGenerated(command, geometry.solids);
+    const prepared = protectElement({
+      ...host,
+      geometry,
+    });
+    if (!prepared.ok) throw new RejectedModelCommand(prepared.error);
+    this.#stageElement(command, prepared.value);
+    command.retired.push(...this.#prepareRetirement(host));
+    // Opening edits preserve the existing recipe eligibility, never restore it.
+  }
+
+  getDoors(): BimElement<'DOOR'>[] {
+    const doors: BimElement<'DOOR'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'DOOR') doors.push(el);
+    }
+    return doors;
+  }
+
+  getWindows(): BimElement<'WINDOW'>[] {
+    const windows: BimElement<'WINDOW'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'WINDOW') windows.push(el);
+    }
+    return windows;
+  }
+
+  aggregate(parentId: RecordRef, childId: RecordRef): Result<void, BimError> {
+    return this.#edit('aggregate', (command) => {
+      let existingRel: AggregatesRel | undefined;
+      for (const rel of this.#relationships.values()) {
+        if (rel.kind === 'AGGREGATES' && rel.relatingObject === parentId) {
+          existingRel = rel;
+          break;
+        }
+      }
+      if (existingRel !== undefined) {
+        const updated: AggregatesRel = {
+          ...existingRel,
+          relatedObjects: [...existingRel.relatedObjects, childId],
+        };
+        command.relationships.push(snapshotData(updated));
+      } else {
+        this.#makeRel(
+          {
+            kind: 'AGGREGATES',
+            relatingObject: parentId,
+            relatedObjects: [childId],
+          },
+          command
+        );
+      }
+      return ok(undefined);
+    });
+  }
+
+  placeIn(elementId: RecordRef, containerId: RecordRef): Result<void, BimError> {
+    return this.#edit('placeIn', (command) => {
+      let existingRel: ContainedInRel | undefined;
+      for (const rel of this.#relationships.values()) {
+        if (rel.kind === 'CONTAINED_IN' && rel.relatingStructure === containerId) {
+          existingRel = rel;
+          break;
+        }
+      }
+      if (existingRel !== undefined) {
+        const updated: ContainedInRel = {
+          ...existingRel,
+          relatedElements: [...existingRel.relatedElements, elementId],
+        };
+        command.relationships.push(snapshotData(updated));
+      } else {
+        this.#makeRel(
+          {
+            kind: 'CONTAINED_IN',
+            relatingStructure: containerId,
+            relatedElements: [elementId],
+          },
+          command
+        );
+      }
+      return ok(undefined);
+    });
+  }
+
+  getProject(): BimElement<'PROJECT'> | null {
+    if (this.#projectId === null) return null;
+    const el = this.#elements.get(this.#projectId);
+    return el?.category === 'PROJECT' ? el : null;
+  }
+
+  getElement(id: RecordRef): AnyBimElement {
+    const result = this.record(id);
+    if (!result.ok) throw new RejectedModelCommand(result.error);
+    return result.value;
+  }
+
+  /** Follow explicit decomposition only. Placement parenting is a separate relation. */
+  getChildren(id: RecordRef): readonly AnyBimElement[] {
+    this.getElement(id);
+    const children = new Set<RecordRef>();
+    for (const rel of this.#relationships.values()) {
+      if ((rel.kind === 'AGGREGATES' || rel.kind === 'NESTS') && rel.relatingObject === id)
+        for (const child of rel.relatedObjects) children.add(child);
+    }
+    return [...children].flatMap((child) => {
+      const record = this.#elements.get(child);
+      return record === undefined ? [] : [record];
+    });
+  }
+
+  /** Whether recipe commands still justify this element's recipe-derived quantities. */
+  isRecipeQuantityEligible(id: RecordRef): boolean {
+    this.getElement(id);
+    return this.#recipeQuantityEligible.has(id);
+  }
+
+  /**
+   * A serializable summary of the model's structure, rooted at the project and
+   * walking the IFC spatial hierarchy (AGGREGATES: project → site → building →
+   * storey) plus the elements contained in each storey (placeIn). Useful for a
+   * read-only tree view of the model across a worker boundary.
+   */
+  toTreeSummary(): BimTreeSummary {
+    const aggregated = new Map<RecordRef, RecordRef[]>();
+    const contained = new Map<RecordRef, RecordRef[]>();
+    for (const rel of this.#relationships.values()) {
+      if (rel.kind === 'AGGREGATES') {
+        const list = aggregated.get(rel.relatingObject) ?? [];
+        list.push(...rel.relatedObjects);
+        aggregated.set(rel.relatingObject, list);
+      } else if (rel.kind === 'CONTAINED_IN') {
+        const list = contained.get(rel.relatingStructure) ?? [];
+        list.push(...rel.relatedElements);
+        contained.set(rel.relatingStructure, list);
+      }
+    }
+
+    const elevations = storeyElevations(this);
+    const labelFor = (el: AnyBimElement): string => {
+      const name = el.spec !== null && 'name' in el.spec ? el.spec.name : el.metadata?.name;
+      const base = typeof name === 'string' && name.length > 0 ? name : el.category;
+      const elevation = elevations.get(el.localId);
+      return elevation === undefined
+        ? base
+        : `${base} (${elevation >= 0 ? '+' : ''}${elevation} mm)`;
+    };
+
+    // `seen` guards against a malformed relationship cycle re-entering a node.
+    const seen = new Set<RecordRef>();
+    const build = (id: RecordRef): BimTreeNode | null => {
+      if (seen.has(id)) return null;
+      seen.add(id);
+      const el = this.#elements.get(id);
+      if (el === undefined) return null;
+      const childIds = [...(aggregated.get(id) ?? []), ...(contained.get(id) ?? [])];
+      const children = childIds.map(build).filter((n): n is BimTreeNode => n !== null);
+      return { id: el.guid, label: labelFor(el), category: el.category, children };
+    };
+
+    const root = this.#projectId !== null ? build(this.#projectId) : null;
+    // Count the nodes actually in the tree, not this.#elements.size — the latter
+    // includes internal OPENING elements (created by addDoorAndCutWall/addWindowAndCutWall) that have
+    // no CONTAINED_IN relationship and never appear in the tree, so the header
+    // count would not match what the panel renders.
+    const countNodes = (node: BimTreeNode): number =>
+      1 + node.children.reduce((sum, c) => sum + countNodes(c), 0);
+    return { root, elementCount: root ? countNodes(root) : 0 };
+  }
+
+  getWalls(): BimElement<'WALL'>[] {
+    const walls: BimElement<'WALL'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'WALL') walls.push(el);
+    }
+    return walls;
+  }
+
+  getSlabs(): BimElement<'SLAB'>[] {
+    const slabs: BimElement<'SLAB'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'SLAB') slabs.push(el);
+    }
+    return slabs;
+  }
+
+  getBeams(): BimElement<'BEAM'>[] {
+    const beams: BimElement<'BEAM'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'BEAM') beams.push(el);
+    }
+    return beams;
+  }
+
+  getBridges(): BimElement<'BRIDGE'>[] {
+    const bridges: BimElement<'BRIDGE'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'BRIDGE') bridges.push(el);
+    }
+    return bridges;
+  }
+
+  getBridgeParts(): BimElement<'BRIDGE_PART'>[] {
+    const parts: BimElement<'BRIDGE_PART'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'BRIDGE_PART') parts.push(el);
+    }
+    return parts;
+  }
+
+  getEarthworksFills(): BimElement<'EARTHWORKS_FILL'>[] {
+    const fills: BimElement<'EARTHWORKS_FILL'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'EARTHWORKS_FILL') fills.push(el);
+    }
+    return fills;
+  }
+
+  getColumns(): BimElement<'COLUMN'>[] {
+    const columns: BimElement<'COLUMN'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'COLUMN') columns.push(el);
+    }
+    return columns;
+  }
+
+  getProxies(): BimElement<'PROXY'>[] {
+    const proxies: BimElement<'PROXY'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'PROXY') proxies.push(el);
+    }
+    return proxies;
+  }
+
+  getSpaces(): BimElement<'SPACE'>[] {
+    const spaces: BimElement<'SPACE'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'SPACE') spaces.push(el);
+    }
+    return spaces;
+  }
+
+  getRoofs(): BimElement<'ROOF'>[] {
+    const roofs: BimElement<'ROOF'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'ROOF') roofs.push(el);
+    }
+    return roofs;
+  }
+
+  getCurtainWalls(): BimElement<'CURTAIN_WALL'>[] {
+    const curtainWalls: BimElement<'CURTAIN_WALL'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'CURTAIN_WALL') curtainWalls.push(el);
+    }
+    return curtainWalls;
+  }
+
+  getFootings(): BimElement<'FOOTING'>[] {
+    const footings: BimElement<'FOOTING'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'FOOTING') footings.push(el);
+    }
+    return footings;
+  }
+
+  getPiles(): BimElement<'PILE'>[] {
+    const piles: BimElement<'PILE'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'PILE') piles.push(el);
+    }
+    return piles;
+  }
+
+  getStairs(): BimElement<'STAIR'>[] {
+    const stairs: BimElement<'STAIR'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'STAIR') stairs.push(el);
+    }
+    return stairs;
+  }
+
+  getRamps(): BimElement<'RAMP'>[] {
+    const ramps: BimElement<'RAMP'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'RAMP') ramps.push(el);
+    }
+    return ramps;
+  }
+
+  getRailings(): BimElement<'RAILING'>[] {
+    const railings: BimElement<'RAILING'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'RAILING') railings.push(el);
+    }
+    return railings;
+  }
+
+  getCoverings(): BimElement<'COVERING'>[] {
+    const coverings: BimElement<'COVERING'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'COVERING') coverings.push(el);
+    }
+    return coverings;
+  }
+
+  getElementAssemblies(): BimElement<'ELEMENT_ASSEMBLY'>[] {
+    const assemblies: BimElement<'ELEMENT_ASSEMBLY'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'ELEMENT_ASSEMBLY') assemblies.push(el);
+    }
+    return assemblies;
+  }
+
+  getZones(): BimElement<'ZONE'>[] {
+    const zones: BimElement<'ZONE'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'ZONE') zones.push(el);
+    }
+    return zones;
+  }
+
+  getSystems(): BimElement<'SYSTEM'>[] {
+    const systems: BimElement<'SYSTEM'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'SYSTEM') systems.push(el);
+    }
+    return systems;
+  }
+
+  getAllElements(): AnyBimElement[] {
+    return [...this.#elements.values()];
+  }
+
+  getAllRelationships(): BimRelationship[] {
+    return [...this.#relationships.values()];
+  }
+
+  #prepareBody(command: ModelCommand, input: Body): Result<Body, BimError> {
+    const captured = snapshotBodyInput(input);
+    if (!captured.ok) return captured;
+    for (const [itemIndex, solid] of captured.value.solids.entries())
+      this.#requireUnowned(command, solid, itemIndex);
+    return validateBody(captured.value);
+  }
+
+  #makeElement(command: ModelCommand, fields: ElementFields, stableKey?: string): RecordRef {
+    if (
+      stableKey !== undefined &&
+      (this.#usedStableKeys.has(stableKey) || command.stableKeys.has(stableKey))
+    ) {
+      throw new RejectedModelCommand(
+        specError('DUPLICATE_STABLE_KEY', `BimDocument: duplicate stableKey '${stableKey}'`)
+      );
+    }
+    const localId = command.counter.next();
+    const guid = deriveIfcGuidSync(
+      stableKey !== undefined
+        ? `elem:${command.modelScope}:${stableKey}`
+        : makeElementKey(command.modelScope, fields.category, ordinalOf(localId))
+    );
+    if (fields.representation === 'BODY') {
+      const body = this.#prepareBody(command, fields.geometry);
+      if (!body.ok) throw new RejectedModelCommand(body.error);
+      this.#stageElement(
+        command,
+        Object.freeze({ ...fields, guid, localId, geometry: body.value })
+      );
+    } else {
+      const prepared = protectElement({ ...fields, guid, localId });
+      if (!prepared.ok) throw new RejectedModelCommand(prepared.error);
+      this.#stageElement(command, prepared.value);
+    }
+    if (stableKey !== undefined) command.stableKeys.set(stableKey, localId);
+    command.recipeEligibility.set(localId, true);
+    return localId;
+  }
+
+  #makeRel(fields: RelationshipFields, command: ModelCommand): RecordRef {
+    const localId = command.counter.next();
+    const guid = deriveIfcGuidSync(
+      makeRelKey(
+        command.modelScope,
+        fields.kind === 'VOIDS' ? 'VOIDS_' + fields.hostCategory : fields.kind,
+        ordinalOf(localId)
+      )
+    );
+    const rel = snapshotData({ ...fields, guid, localId });
+    command.relationships.push(rel);
+    return localId;
+  }
+  [prepareRecords]() {
+    return {
+      create: this.#create.bind(this),
+      edit: this.#edit.bind(this),
+      adopt: this.#stageAuthoredBody.bind(this),
+      checkStableKey: this.#checkStableKey.bind(this),
+      makeElement: this.#makeElement.bind(this),
+      ownGenerated: this.#ownGenerated.bind(this),
+      makeRel: this.#makeRel.bind(this),
+      checkFillTarget: this.#checkFillTarget.bind(this),
+      replaceGeneratedBody: this.#replaceGeneratedBody.bind(this),
+    };
+  }
+}

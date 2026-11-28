@@ -3,7 +3,17 @@ import type { BimError } from '../errors/bimError.js';
 import { specError } from '../errors/bimError.js';
 import type { Result } from 'brepjs';
 import { ok, err } from 'brepjs';
-import type { SurfaceStyleSpec } from '../ifc-writer/styleWriter.js';
+export interface SurfaceStyleSpec {
+  readonly name: string;
+  /** Red channel, 0–1. */
+  readonly r: number;
+  /** Green channel, 0–1. */
+  readonly g: number;
+  /** Blue channel, 0–1. */
+  readonly b: number;
+  /** 0 = opaque (default), 1 = fully transparent. */
+  readonly transparency?: number;
+}
 
 const SurfaceStyleSpecSchema = z.object({
   name: z.string().min(1),
@@ -20,5 +30,3 @@ export function parseSurfaceStyleSpec(input: unknown): Result<SurfaceStyleSpec, 
   }
   return ok(result.data as SurfaceStyleSpec);
 }
-
-export type { SurfaceStyleSpec } from '../ifc-writer/styleWriter.js';

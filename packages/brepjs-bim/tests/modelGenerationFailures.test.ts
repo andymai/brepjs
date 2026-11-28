@@ -1,10 +1,11 @@
+import { authoring } from '../src/model/authoring.js';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import * as brepjs from 'brepjs';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import type { CurtainWallSpec } from '../src/specs/curtainWallSpec.js';
 import type { RailingSpec } from '../src/specs/railingSpec.js';
 import type { BimError } from '../src/errors/bimError.js';
-import type { LocalId } from '../src/identity/localId.js';
+import type { RecordRef } from '../src/identity/recordRef.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 
@@ -40,19 +41,22 @@ const RAILING = {
   materialName: 'Steel',
 } satisfies RailingSpec;
 
-type Creator = (model: BimModel) => brepjs.Result<LocalId, BimError>;
+type Creator = (model: BimDocument) => brepjs.Result<RecordRef, BimError>;
 const profile = { kind: 'RECTANGULAR', width: 1, height: 1 } as const;
 const validationCreators: ReadonlyArray<readonly [string, Creator]> = [
-  ['Wall', (model) => model.addWall(RAILING)],
-  ['Slab', (model) => model.addSlab({ ...RAILING, width: 10, predefinedType: 'FLOOR' })],
-  ['Beam', (model) => model.addBeam({ ...RAILING, profile })],
-  ['Column', (model) => model.addColumn({ ...RAILING, profile })],
-  ['Space', (model) => model.addSpace({ ...RAILING, width: 10, name: 'Room' })],
-  ['Roof', (model) => model.addRoof({ ...RAILING, width: 10, predefinedType: 'FLAT_ROOF' })],
-  ['Footing', (model) => model.addFooting({ ...RAILING, width: 10 })],
-  ['Pile', (model) => model.addPile({ ...RAILING, profile })],
-  ['Covering', (model) => model.addCovering({ ...RAILING, width: 10 })],
-  ['Panel railing', (model) => model.addRailing({ ...RAILING, infill: 'PANEL' })],
+  ['Wall', (model) => authoring(model).addWall(RAILING)],
+  ['Slab', (model) => authoring(model).addSlab({ ...RAILING, width: 10, predefinedType: 'FLOOR' })],
+  ['Beam', (model) => authoring(model).addBeam({ ...RAILING, profile })],
+  ['Column', (model) => authoring(model).addColumn({ ...RAILING, profile })],
+  ['Space', (model) => authoring(model).addSpace({ ...RAILING, width: 10, name: 'Room' })],
+  [
+    'Roof',
+    (model) => authoring(model).addRoof({ ...RAILING, width: 10, predefinedType: 'FLAT_ROOF' }),
+  ],
+  ['Footing', (model) => authoring(model).addFooting({ ...RAILING, width: 10 })],
+  ['Pile', (model) => authoring(model).addPile({ ...RAILING, profile })],
+  ['Covering', (model) => authoring(model).addCovering({ ...RAILING, width: 10 })],
+  ['Panel railing', (model) => authoring(model).addRailing({ ...RAILING, infill: 'PANEL' })],
 ];
 
 function uncertainSolidFixture(
@@ -94,7 +98,7 @@ function uncertainSolidFixture(
 it.each(validationCreators)(
   'releases the generated %s output when its native validity check throws',
   (_, create) => {
-    const model = new BimModel();
+    const model = new BimDocument();
     const baseline = arena();
     const extrude = brepjs.extrude;
     const outputs: brepjs.Solid[] = [];
@@ -125,7 +129,7 @@ it.each(validationCreators)(
 );
 
 it('reclaims every partial curtain-wall solid after a later native validity throw and leaves the stable key reusable', () => {
-  const model = new BimModel();
+  const model = new BimDocument();
   const baseline = arena();
   const kernel = brepjs.getKernel();
   const isValid = kernel.isValid.bind(kernel);
@@ -143,7 +147,7 @@ it('reclaims every partial curtain-wall solid after a later native validity thro
     return isValid(raw);
   });
   try {
-    const result = model.addCurtainWall(CURTAIN, { stableKey: 'retry' });
+    const result = authoring(model).addCurtainWall(CURTAIN, { stableKey: 'retry' });
     validation.mockRestore();
     expect(result).toMatchObject({ ok: false, error: { cause } });
     expect(outputs).toHaveLength(2);
@@ -151,7 +155,9 @@ it('reclaims every partial curtain-wall solid after a later native validity thro
     expect(model.getAllElements()).toEqual([]);
     expect(model.getAllRelationships()).toEqual([]);
     expectArena(baseline);
-    expect(model.addCurtainWall(CURTAIN, { stableKey: 'retry' })).toMatchObject({ ok: true });
+    expect(authoring(model).addCurtainWall(CURTAIN, { stableKey: 'retry' })).toMatchObject({
+      ok: true,
+    });
     model[Symbol.dispose]();
     expectArena(baseline);
   } finally {
@@ -165,7 +171,7 @@ it('reclaims every partial curtain-wall solid after a later native validity thro
 it.each(['before', 'after'] as const)(
   'preserves a POSTED generator cleanup failure %s native release in the Result and model diagnostics',
   (timing) => {
-    const model = new BimModel();
+    const model = new BimDocument();
     const baseline = arena();
     const originalBox = brepjs.box;
     const cause = new Error(`Generated bar cleanup failed ${timing} native release`);
@@ -184,7 +190,7 @@ it.each(['before', 'after'] as const)(
       return solid;
     });
     try {
-      const result = model.addRailing(RAILING, { stableKey: 'retry' });
+      const result = authoring(model).addRailing(RAILING, { stableKey: 'retry' });
       expect(result).toMatchObject({
         ok: false,
         error: {
@@ -209,7 +215,7 @@ it.each(['before', 'after'] as const)(
       for (const release of releases) expect(release).toHaveBeenCalledTimes(1);
       for (const solid of [fixture.alias, fixture.source]) {
         expect(
-          model.addProxy({ name: 'Uncertain bar', solid }, { stableKey: 'retry' })
+          authoring(model).addProxy({ name: 'Uncertain bar', solid }, { stableKey: 'retry' })
         ).toMatchObject({
           ok: false,
           error: { code: 'BODY_OWNERSHIP_CONFLICT', metadata: { ownerState: 'UNCERTAIN' } },
@@ -218,7 +224,9 @@ it.each(['before', 'after'] as const)(
       expect(fixture.aliasAttempts).not.toHaveBeenCalled();
       expect(fixture.attempts).toHaveBeenCalledTimes(1);
       for (const release of releases) expect(release).toHaveBeenCalledTimes(1);
-      expect(model.addRailing(RAILING, { stableKey: 'retry' })).toMatchObject({ ok: true });
+      expect(authoring(model).addRailing(RAILING, { stableKey: 'retry' })).toMatchObject({
+        ok: true,
+      });
       expect(diagnostics).toHaveLength(1);
       model[Symbol.dispose]();
       model[Symbol.dispose]();
@@ -238,7 +246,7 @@ it.each(['before', 'after'] as const)(
 it.each(['before', 'after'] as const)(
   'rejects uncertain curtain output readoption after cleanup fails %s native release',
   (timing) => {
-    const model = new BimModel();
+    const model = new BimDocument();
     const baseline = arena();
     const kernel = brepjs.getKernel();
     const isValid = kernel.isValid.bind(kernel);
@@ -270,7 +278,7 @@ it.each(['before', 'after'] as const)(
       return isValid(raw);
     });
     try {
-      const result = model.addCurtainWall(CURTAIN, { stableKey: 'retry' });
+      const result = authoring(model).addCurtainWall(CURTAIN, { stableKey: 'retry' });
       validation.mockRestore();
       generation.mockRestore();
       expect(result).toMatchObject({
@@ -289,7 +297,10 @@ it.each(['before', 'after'] as const)(
       expect(model.getAllRelationships()).toEqual([]);
       for (const solid of [fixture.alias, fixture.source]) {
         expect(
-          model.addProxy({ name: 'Uncertain curtain item', solid }, { stableKey: 'retry' })
+          authoring(model).addProxy(
+            { name: 'Uncertain curtain item', solid },
+            { stableKey: 'retry' }
+          )
         ).toMatchObject({
           ok: false,
           error: { code: 'BODY_OWNERSHIP_CONFLICT', metadata: { ownerState: 'UNCERTAIN' } },
@@ -299,7 +310,9 @@ it.each(['before', 'after'] as const)(
       expect(model.getGeometryCleanupDiagnostics()).toMatchObject([
         { operation: 'curtainWallToGrid', itemIndex: 0, cause },
       ]);
-      expect(model.addCurtainWall(CURTAIN, { stableKey: 'retry' })).toMatchObject({ ok: true });
+      expect(authoring(model).addCurtainWall(CURTAIN, { stableKey: 'retry' })).toMatchObject({
+        ok: true,
+      });
       model[Symbol.dispose]();
       model[Symbol.dispose]();
       for (const release of releases) expect(release).toHaveBeenCalledTimes(1);
@@ -320,7 +333,7 @@ it.each(['before', 'after'] as const)(
 it.each(['before', 'after'] as const)(
   'releases curtain outputs when temporary profile cleanup fails %s native release',
   (timing) => {
-    const model = new BimModel();
+    const model = new BimDocument();
     const baseline = arena();
     const polygon = brepjs.polygon;
     const cause = new Error(`Profile cleanup ${timing} release`);
@@ -340,7 +353,7 @@ it.each(['before', 'after'] as const)(
       return result;
     });
     try {
-      expect(model.addCurtainWall(CURTAIN)).toMatchObject({
+      expect(authoring(model).addCurtainWall(CURTAIN)).toMatchObject({
         ok: false,
         error: {
           code: 'CURTAIN_WALL_CLEANUP_FAILED',
@@ -370,7 +383,7 @@ it.each(['before', 'after'] as const)(
 );
 
 it('preserves the primary generation failure and every cleanup diagnostic when multiple partial outputs throw after release', () => {
-  const model = new BimModel();
+  const model = new BimDocument();
   const baseline = arena();
   const kernel = brepjs.getKernel();
   const isValid = kernel.isValid.bind(kernel);
@@ -398,7 +411,7 @@ it('preserves the primary generation failure and every cleanup diagnostic when m
     return result;
   });
   try {
-    const result = model.addCurtainWall(CURTAIN);
+    const result = authoring(model).addCurtainWall(CURTAIN);
     expect(result).toMatchObject({
       ok: false,
       error: {

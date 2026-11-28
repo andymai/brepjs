@@ -1,8 +1,9 @@
+import { authoring } from '../src/model/authoring.js';
 import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
 import { initKernel } from '../../../tests/setup.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { SpfReader } from '../src/import/spfReader.js';
 import {
@@ -20,7 +21,7 @@ beforeAll(async () => {
 const META = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };
 
 interface Built {
-  readonly model: BimModel;
+  readonly model: BimDocument;
   readonly wallGuid: string;
 }
 
@@ -30,18 +31,18 @@ interface Built {
  * itself filled into that opening (IfcRelFillsElement).
  */
 function buildModel(): Built {
-  const model = new BimModel();
+  const model = new BimDocument();
   const initResult = model.init({ name: 'Import Data Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = unwrap(model.addSite({ name: 'Site' }));
-  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
-  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
+  const siteId = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
 
-  const wall = model.addWall({
+  const wall = authoring(model).addWall({
     length: 5000,
     height: 3000,
     thickness: 200,
@@ -59,7 +60,7 @@ function buildModel(): Built {
   if (!wall.ok) throw new Error(wall.error.message);
   model.placeIn(wall.value, storeyId);
 
-  const door = model.addDoorAndCutWall({
+  const door = authoring(model).addDoorAndCutWall({
     wallLocalId: wall.value,
     width: 900,
     height: 2100,
@@ -69,6 +70,7 @@ function buildModel(): Built {
   });
   if (!door.ok) throw new Error(door.error.message);
 
+  unwrap(model.placeIn(door.value, storeyId));
   const wallGuid = model.getWalls()[0]?.guid;
   if (wallGuid === undefined) throw new Error('wall guid missing');
   return { model, wallGuid };

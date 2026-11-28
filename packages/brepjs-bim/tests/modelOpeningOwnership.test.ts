@@ -1,6 +1,8 @@
+import { authoring } from '../src/model/authoring.js';
+import { ordinalOf } from '../src/identity/recordRef.js';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import * as brepjs from 'brepjs';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 import {
@@ -28,7 +30,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
     `${kind} stays committed when superseded cleanup throws %s release and rejects reentry`,
     (timing) => {
       const baseline = arena();
-      const model = new BimModel();
+      const model = new BimDocument();
       const host = openingHost(model, kind);
       const old = host.solid();
       const release = old[Symbol.dispose].bind(old);
@@ -42,7 +44,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
         callbackRelationships = model.getAllRelationships();
         reentrant =
           kind === 'Slab'
-            ? model.addSlabOpening({
+            ? authoring(model).addSlabOpening({
                 slabLocalId: host.hostId,
                 get sizeX() {
                   specReads++;
@@ -52,7 +54,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
                 offsetX: 7,
                 offsetY: 7,
               })
-            : model[kind === 'Door' ? 'addDoorAndCutWall' : 'addWindowAndCutWall']({
+            : authoring(model)[kind === 'Door' ? 'addDoorAndCutWall' : 'addWindowAndCutWall']({
                 ...DOOR,
                 wallLocalId: host.hostId,
                 get width() {
@@ -65,7 +67,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
       });
       try {
         const opening = brepjs.unwrap(host.open());
-        expect(opening).toBe(kind === 'Slab' ? 3 : 5);
+        expect(ordinalOf(opening)).toBe(kind === 'Slab' ? 3 : 5);
         expect(model.getElement(opening)?.category).toBe(
           kind === 'Slab' ? 'OPENING' : kind.toUpperCase()
         );
@@ -83,11 +85,15 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
             cause,
           },
         ]);
-        expect(model.addProxy({ name: 'Uncertain old host', solid: old })).toMatchObject({
-          ok: false,
-          error: { code: 'BODY_OWNERSHIP_CONFLICT', metadata: { ownerState: 'UNCERTAIN' } },
-        });
-        expect(model.addProxy({ name: 'Current host', solid: host.solid() })).toMatchObject({
+        expect(authoring(model).addProxy({ name: 'Uncertain old host', solid: old })).toMatchObject(
+          {
+            ok: false,
+            error: { code: 'BODY_OWNERSHIP_CONFLICT', metadata: { ownerState: 'UNCERTAIN' } },
+          }
+        );
+        expect(
+          authoring(model).addProxy({ name: 'Current host', solid: host.solid() })
+        ).toMatchObject({
           ok: false,
           error: { code: 'BODY_OWNERSHIP_CONFLICT', metadata: { ownerState: 'RETAINED' } },
         });
@@ -108,7 +114,7 @@ for (const kind of ['Door', 'Window', 'Slab'] as const) {
 
   it(`${kind} rejects opening edits on a disposed model before native work`, () => {
     const baseline = arena();
-    const model = new BimModel();
+    const model = new BimDocument();
     const host = openingHost(model, kind);
     model[Symbol.dispose]();
     const polygon = vi.spyOn(brepjs, 'polygon');
@@ -124,7 +130,7 @@ it.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)(
   'replacing an already-cut Wall with %s Body preserves openings without cutting again',
   (kind) => {
     const baseline = arena();
-    const model = new BimModel();
+    const model = new BimDocument();
     try {
       const { wallId, doorId } = addWallWithDoor(model);
       const door = model.getElement(doorId);
@@ -145,7 +151,9 @@ it.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)(
       );
       expect(model.getAllRelationships()).toEqual(relationships);
       expect(old.disposed).toBe(true);
-      expect(model.addWindowAndCutWall({ ...WINDOW, wallLocalId: wallId })).toMatchObject({
+      expect(
+        authoring(model).addWindowAndCutWall({ ...WINDOW, wallLocalId: wallId })
+      ).toMatchObject({
         ok: false,
         error: {
           code:
@@ -166,16 +174,18 @@ it.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)(
 
 it('retains independent native geometry through repeated recipe door and window edits', () => {
   const baseline = arena();
-  const model = new BimModel();
+  const model = new BimDocument();
   try {
     const { wallId, doorId } = addWallWithDoor(model);
     const wallAfterDoor = singletonWallSolid(model, wallId);
-    const windowId = brepjs.unwrap(model.addWindowAndCutWall({ ...WINDOW, wallLocalId: wallId }));
+    const windowId = brepjs.unwrap(
+      authoring(model).addWindowAndCutWall({ ...WINDOW, wallLocalId: wallId })
+    );
     expect(brepjs.getKernel().volume(singletonWallSolid(model, wallId).wrapped)).toBeCloseTo(53, 7);
     expect(wallAfterDoor.disposed).toBe(true);
     expect(model.getElement(doorId)?.category).toBe('DOOR');
     expect(model.getElement(windowId)?.category).toBe('WINDOW');
-    expect(model.getAllRelationships().filter((rel) => rel.kind === 'VOIDS_WALL')).toHaveLength(2);
+    expect(model.getAllRelationships().filter((rel) => rel.kind === 'VOIDS')).toHaveLength(2);
     expect(model.getAllRelationships().filter((rel) => rel.kind === 'FILLS_OPENING')).toHaveLength(
       2
     );
@@ -187,12 +197,14 @@ it('retains independent native geometry through repeated recipe door and window 
 
 it('rejects an opening that would split a singleton Wall Body without partial adoption', () => {
   const baseline = arena();
-  const model = new BimModel();
+  const model = new BimDocument();
   try {
-    const wallId = brepjs.unwrap(model.addWall(OPENING_WALL));
+    const wallId = brepjs.unwrap(authoring(model).addWall(OPENING_WALL));
     const before = model.getAllElements();
     const relationships = model.getAllRelationships();
-    expect(model.addDoorAndCutWall({ ...DOOR, wallLocalId: wallId, height: 6 })).toMatchObject({
+    expect(
+      authoring(model).addDoorAndCutWall({ ...DOOR, wallLocalId: wallId, height: 6 })
+    ).toMatchObject({
       ok: false,
       error: { code: 'WALL_OPENING_INVALID_SOLID' },
     });
@@ -207,14 +219,14 @@ it('rejects an opening that would split a singleton Wall Body without partial ad
 
 it('cuts a singleton recipe Wall and commits door identities, material and ownership', () => {
   const baseline = arena();
-  const model = new BimModel();
+  const model = new BimDocument();
   try {
-    const wallId = brepjs.unwrap(model.addWall(OPENING_WALL));
+    const wallId = brepjs.unwrap(authoring(model).addWall(OPENING_WALL));
     const before = model.getElement(wallId);
     const old = singletonWallSolid(model, wallId);
     const retire = vi.spyOn(old, Symbol.dispose);
     const doorId = brepjs.unwrap(
-      model.addDoorAndCutWall(
+      authoring(model).addDoorAndCutWall(
         { ...DOOR, wallLocalId: wallId },
         { stableKey: 'door', openingStableKey: 'opening' }
       )
@@ -228,8 +240,8 @@ it('cuts a singleton recipe Wall and commits door identities, material and owner
     expect(model.getAllRelationships()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          kind: 'VOIDS_WALL',
-          wallLocalId: wallId,
+          kind: 'VOIDS',
+          hostLocalId: wallId,
           openingLocalId: opening.localId,
         }),
         expect.objectContaining({
@@ -246,7 +258,7 @@ it('cuts a singleton recipe Wall and commits door identities, material and owner
     );
     expect(retire).toHaveBeenCalledTimes(1);
     expect(old.disposed).toBe(true);
-    expect(model.addProxy({ name: 'Borrowed host', solid: host })).toMatchObject({
+    expect(authoring(model).addProxy({ name: 'Borrowed host', solid: host })).toMatchObject({
       ok: false,
       error: { code: 'BODY_OWNERSHIP_CONFLICT' },
     });
@@ -271,10 +283,10 @@ for (const method of ['addDoorAndCutWall', 'addWindowAndCutWall'] as const) {
     `${method} rejects $kind / multiple=$multiple before allocating or reserving identities`,
     ({ kind, multiple, code }) => {
       const baseline = arena();
-      const model = new BimModel();
+      const model = new BimDocument();
       try {
-        const id = brepjs.unwrap(model.addWall(OPENING_WALL));
-        const supportedId = brepjs.unwrap(model.addWall(OPENING_WALL));
+        const id = brepjs.unwrap(authoring(model).addWall(OPENING_WALL));
+        const supportedId = brepjs.unwrap(authoring(model).addWall(OPENING_WALL));
         const first = brepjs.box(10, 1, 6);
         const solids: Body['solids'] = multiple ? [first, brepjs.box(1, 1, 1)] : [first];
         brepjs.unwrap(model.replaceBody({ localId: id, body: { kind, solids } }));
@@ -285,7 +297,7 @@ for (const method of ['addDoorAndCutWall', 'addWindowAndCutWall'] as const) {
         const extrude = vi.spyOn(brepjs, 'extrude');
         const cut = vi.spyOn(brepjs, 'cut');
         const options = { stableKey: 'filler', openingStableKey: 'opening' };
-        expect(model[method]({ ...DOOR, wallLocalId: id }, options)).toMatchObject({
+        expect(authoring(model)[method]({ ...DOOR, wallLocalId: id }, options)).toMatchObject({
           ok: false,
           error: { code },
         });
@@ -296,16 +308,17 @@ for (const method of ['addDoorAndCutWall', 'addWindowAndCutWall'] as const) {
         expect(model.getAllElements()).toEqual(before);
         expect(model.getAllRelationships()).toEqual(relationships);
         for (const solid of solids) {
-          expect(model.addProxy({ name: 'Still owned', solid })).toMatchObject({
+          expect(authoring(model).addProxy({ name: 'Still owned', solid })).toMatchObject({
             ok: false,
             error: { code: 'BODY_OWNERSHIP_CONFLICT' },
           });
           expect(brepjs.getKernel().volume(solid.wrapped)).toBeCloseTo(solid === first ? 60 : 1, 7);
         }
-        expect(model[method]({ ...DOOR, wallLocalId: supportedId }, options)).toEqual({
-          ok: true,
-          value: 7,
-        });
+        expect(
+          ordinalOf(
+            brepjs.unwrap(authoring(model)[method]({ ...DOOR, wallLocalId: supportedId }, options))
+          )
+        ).toBe(7);
         expect(
           brepjs.getKernel().volume(singletonWallSolid(model, supportedId).wrapped)
         ).toBeCloseTo(54, 7);

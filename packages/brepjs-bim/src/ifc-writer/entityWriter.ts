@@ -1,9 +1,8 @@
 import * as WebIFC from 'web-ifc';
 import type { IfcWriter } from './ifcWriter.js';
-import { writeAxis2Placement3D } from './headerWriter.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import { toIfcLengthM } from '../units/units.js';
-import type { SiteSpec, SpatialPlacementSpec } from '../specs/spatialSpec.js';
+import type { SiteSpec } from '../specs/spatialSpec.js';
 
 export function writeProject(
   w: IfcWriter,
@@ -35,9 +34,8 @@ export function writeSite(
   guid: IfcGuid,
   spec: SiteSpec,
   ownerHistoryId: number,
-  parentPlacementId: number | null = null
+  localPlacementId: number
 ): { entityId: number; placementId: number } {
-  const localPlacementId = writeSpatialLocalPlacement(w, spec, parentPlacementId);
   const entityId = w.nextId();
   w.writeLine({
     expressID: entityId,
@@ -60,47 +58,13 @@ export function writeSite(
   return { entityId, placementId: localPlacementId };
 }
 
-export function writeSpatialLocalPlacement(
-  w: IfcWriter,
-  spec: SpatialPlacementSpec,
-  parentPlacementId: number | null
-): number {
-  const toMetres = (value: [number, number, number]): [number, number, number] => [
-    toIfcLengthM(value[0]),
-    toIfcLengthM(value[1]),
-    toIfcLengthM(value[2]),
-  ];
-  const placement3DId = writeAxis2Placement3D(
-    w,
-    toMetres(spec.origin ?? [0, 0, 0]),
-    spec.axisZ ?? [0, 0, 1],
-    spec.axisX ?? [1, 0, 0]
-  );
-  const localPlacementId = w.nextId();
-  w.writeLine({
-    expressID: localPlacementId,
-    type: WebIFC.IFCLOCALPLACEMENT,
-    PlacementRelTo: parentPlacementId !== null ? w.ref(parentPlacementId) : null,
-    RelativePlacement: w.ref(placement3DId),
-  });
-  return localPlacementId;
-}
-
 export function writeBuilding(
   w: IfcWriter,
   guid: IfcGuid,
   name: string,
   ownerHistoryId: number,
-  parentPlacementId: number | null
+  localPlacementId: number
 ): { entityId: number; placementId: number } {
-  const placement3DId = writeAxis2Placement3D(w, [0, 0, 0]);
-  const localPlacementId = w.nextId();
-  w.writeLine({
-    expressID: localPlacementId,
-    type: WebIFC.IFCLOCALPLACEMENT,
-    PlacementRelTo: parentPlacementId !== null ? w.ref(parentPlacementId) : null,
-    RelativePlacement: w.ref(placement3DId),
-  });
   const entityId = w.nextId();
   w.writeLine({
     expressID: entityId,
@@ -125,19 +89,10 @@ export function writeStorey(
   w: IfcWriter,
   guid: IfcGuid,
   name: string,
-  elevationMm: number,
+  elevationMm: number | undefined,
   ownerHistoryId: number,
-  parentPlacementId: number | null
+  localPlacementId: number
 ): { entityId: number; placementId: number } {
-  const elevM = toIfcLengthM(elevationMm);
-  const placement3DId = writeAxis2Placement3D(w, [0, 0, elevM]);
-  const localPlacementId = w.nextId();
-  w.writeLine({
-    expressID: localPlacementId,
-    type: WebIFC.IFCLOCALPLACEMENT,
-    PlacementRelTo: parentPlacementId !== null ? w.ref(parentPlacementId) : null,
-    RelativePlacement: w.ref(placement3DId),
-  });
   const entityId = w.nextId();
   w.writeLine({
     expressID: entityId,
@@ -151,7 +106,10 @@ export function writeStorey(
     Representation: null,
     LongName: null,
     CompositionType: { type: 3, value: 'ELEMENT' },
-    Elevation: w.mkType(WebIFC.IFCLENGTHMEASURE, elevM),
+    Elevation:
+      elevationMm === undefined
+        ? null
+        : w.mkType(WebIFC.IFCLENGTHMEASURE, toIfcLengthM(elevationMm)),
   });
   return { entityId, placementId: localPlacementId };
 }

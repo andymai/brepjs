@@ -11,13 +11,13 @@ authors IFC4-aligned parametric building elements and a focused IFC4X3 civil bri
 assembles them into a spatial structure, and serializes the result to a valid **IFC-SPF** file —
 with a matching importer to read IFC back in.
 
-Pipeline: **author spec → `BimModel` (typed element + brepjs geometry) → spatial structure +
+Pipeline: **author spec → `BimDocument` (typed element + brepjs geometry) → spatial structure +
 property sets + classification → export IFC / COBie, validate, round-trip.**
 
 The declarative entry point is
 [`brepjs-families`](https://www.npmjs.com/package/brepjs-families): author the building as a tree of
-prop-driven components, then `familiesToBim(tree, { project })` projects it onto a `BimModel` with
-stable GlobalIds derived from component key paths. Hand-authoring specs against `BimModel` remains
+prop-driven components, then `familiesToBim(tree, { project })` projects it onto a `BimDocument` with
+stable GlobalIds derived from component key paths. Passing recipe specs to `authoring(document)` remains
 the low-level path (and covers elements the declarative route doesn't yet). See the
 [Declarative Models guide](https://brepjs.dev/families/overview).
 
@@ -47,15 +47,18 @@ Civil-semantic Families Wall/Railing routes require an evaluator and retain the 
 evaluator items, localizes every item, and respects the replacement receipt's ownership outcome.
 Conventional archetype routes retain their existing recipe authoring behavior.
 
-Element geometry is **unplaced template geometry** in local coordinates. Placement (`origin` /
-`axisX` / `axisZ`) is applied by the IFC layer via `IfcLocalPlacement`, not baked into the brepjs
-solid. Use `placedSolids(element)` to read fresh, caller-owned solids transformed by the element's
-own placement. Each Body returns one copy per item. Generated Stair/Ramp Bodies retain their flight items.
-A curtain wall has no material of its own. Traverse its Plate/Member children with
-`model.getChildren(id)` and pass the assembly frame to each child query. When an element is
-beneath a placed spatial structure, pass its cumulative frame as
-`placedSolids(element, { parentFrame })` to obtain world coordinates. This is especially important
-for parent-local Proxy and Earthworks Fill bodies.
+A `BimDocument` owns each element’s local geometry. Create recipe elements with
+`authoring(document)` and pass the returned `RecordRef` to document queries and edits.
+`document.placedSolids(ref, 'WORLD')` returns caller-owned copies after resolving each
+placement ancestor. Use `'LOCAL'` or another record’s reference to select a different
+coordinate space. `document.bounds(ref, target)` and `document.materialVolume(ref)`
+operate on the element’s own material. For a bodyless curtain wall, traverse
+`document.getChildren(ref)` and query each child's reference.
+
+A spatial container and a placement parent have independent meanings. Use
+`document.placeIn(element, storey)` for containment and
+`document.reparent(element, storey, 'KEEP_LOCAL')` for geometry authored in that storey.
+Choose `'KEEP_WORLD'` when changing parents should preserve the current World pose.
 
 IFC import reconstructs every supported Body item independently. `ImportedGeometry.solids` owns
 the resulting World-placed handles and `completeness` reports `COMPLETE`, `PARTIAL`, or `NONE`.
@@ -167,24 +170,27 @@ reproducible before upload.
 Author a small model and export IFC:
 
 ```ts
-import { BimModel, toIfc } from 'brepjs-bim';
+import { BimDocument, toIfc, authoring } from 'brepjs-bim';
 import { unwrap } from 'brepjs';
 
-const model = new BimModel();
+using model = new BimDocument();
+const create = authoring(model);
 model.init({ name: 'Example' });
 
 // Spatial structure: project → site → building → storey.
 const project = model.getProject();
-const siteId = unwrap(model.addSite({ name: 'Site' }));
-const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
-const storeyId = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
+const siteId = unwrap(create.addSite({ name: 'Site' }));
+const buildingId = unwrap(create.addBuilding({ name: 'Building' }, { placementParent: siteId }));
+const storeyId = unwrap(
+  create.addStorey({ name: 'Level 1', elevation: 0 }, { placementParent: buildingId })
+);
 if (project) model.aggregate(project.localId, siteId);
 model.aggregate(siteId, buildingId);
 model.aggregate(buildingId, storeyId);
 
 // A parametric wall, placed on the storey. Dimensions in mm; axisX is the wall's
 // length direction and axisZ its up direction.
-const wall = model.addWall({
+const wall = create.addWall({
   length: 4000,
   height: 3000,
   thickness: 200,
@@ -193,10 +199,13 @@ const wall = model.addWall({
   axisZ: [0, 0, 1],
   materialName: 'Concrete',
 });
-if (wall.ok) model.placeIn(wall.value, storeyId);
+if (wall.ok) {
+  unwrap(model.placeIn(wall.value, storeyId));
+  unwrap(model.reparent(wall.value, storeyId, 'KEEP_LOCAL'));
+}
 
-// Renderable geometry (a brepjs ValidSolid, unplaced/local coords):
-const solid = model.getWalls()[0]?.geometry;
+// Read the World bounds without taking ownership of the retained Body.
+if (wall.ok) unwrap(model.bounds(wall.value, 'WORLD'));
 
 // Serialize to an IFC-SPF byte buffer.
 const ifc = await toIfc(model, { applicationName: 'brepjs-bim', applicationVersion: '1.0' });
@@ -206,12 +215,39 @@ const ifc = await toIfc(model, { applicationName: 'brepjs-bim', applicationVersi
 Reading element geometry requires only the core brepjs kernel; `toIfc` / `fromIfc` additionally load
 the `web-ifc` peer dependency.
 
-All public operations return `Result<T, BimError>` (from `brepjs`); validation issues and non-fatal
-warnings travel inside the payload rather than throwing.
+Use `document.record(ref)` for a fallible lookup. Direct accessors such as `getElement(ref)` require a live reference and throw an error with a BIM diagnostic as its cause for an invalid reference.
+
+## Document edits and delivery
+
+A stable key identifies the corresponding occurrence across rebuilds. Look it up in each document
+to obtain a live reference. A move changes the local pose and carries placement descendants.
+Deletion reports every placement, containment, decomposition or in-document placement-reference
+dependant. Detach or reparent those records before retrying.
+
+An Opening stays fixed to the cut in its host Body. Move the host to carry the Opening and any
+placement children. To retire the Opening, resolve its dependants first. Deleting the Opening
+keeps the cut geometry and retires the host's recipe binding. Subsequent IFC delivery uses the
+retained Body and its measurable quantities.
+
+Storey labels and COBie Floor elevations use the current height above the enclosing Building's
+datum. An unresolved datum leaves the label without a height and the COBie elevation null.
+IFC4 emits the optional elevation when it also agrees with the Storey's local placement Z.
+[IfcBuildingStorey](https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcproductextension/lexical/ifcbuildingstorey.htm)
+
+`authoring(document).addRoofWithOpening(...)` accepts a finished local Roof solid with an existing
+cut, a host-relative rectangular opening definition and a stable void slot. The command returns
+the Roof and Opening references together. The Opening follows the Roof when it moves. IFC delivery
+currently reports `IFC_ROOF_OPENING_UNSUPPORTED` for this relationship.
+
+The [document frame tests](tests/documentFrames.test.ts) exercise World and record-local queries
+on spatial records, assemblies and placed material. The [edit tests](tests/documentEdits.test.ts)
+cover dependency checks and rollback. The [Roof fixture](tests/authoredRoofOpening.test.ts) checks
+occupied material at the notch, hole and interior. The [IFC placement fixture](tests/documentIfcPlacement.test.ts)
+reads W-01’s placement parent and spatial container from the exported file.
 
 ## Design
 
-Each `add*` call parses and validates its spec and stores a typed `BimElement` keyed by a `LocalId`.
+Each `add*` call parses and validates its spec and stores a typed `BimElement` addressed by a document-issued `RecordRef`.
 Parametric physical elements build an analytical brepjs solid; civil spatial elements are body-less,
 and arbitrary-body products such as Earthworks Fill take ownership of a validated authored solid.
 Families-projected civil walls and railings always retain copies of the evaluated authored items

@@ -11,7 +11,7 @@ import { unwrap } from 'brepjs';
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { BimModel, toIfcValidated } from 'brepjs-bim';
+import { BimDocument, toIfcValidated, authoring } from 'brepjs-bim';
 
 const outFile =
   process.argv[2] ?? resolve(dirname(fileURLToPath(import.meta.url)), 'interop-fixture.ifc');
@@ -27,7 +27,7 @@ function expect(result, label) {
   return result.value;
 }
 
-const model = new BimModel();
+const model = new BimDocument();
 model.init({
   name: 'brepjs-bim Interop Fixture',
   crs: {
@@ -41,12 +41,15 @@ model.init({
 });
 
 const project = model.getProject();
-const siteId = unwrap(model.addSite({ name: 'Interop Site' }));
-const buildingId = unwrap(model.addBuilding({ name: 'Interop Pavilion' }));
-const groundId = unwrap(model.addStorey({ name: 'Ground', elevation: 0 }));
+const create = authoring(model);
+const siteId = unwrap(create.addSite({ name: 'Interop Site' }));
+const buildingId = unwrap(create.addBuilding({ name: 'Interop Pavilion' }));
+const groundId = unwrap(create.addStorey({ name: 'Ground', elevation: 0 }));
 if (project) model.aggregate(project.localId, siteId);
-model.aggregate(siteId, buildingId);
-model.aggregate(buildingId, groundId);
+unwrap(model.aggregate(siteId, buildingId));
+unwrap(model.reparent(buildingId, siteId, 'KEEP_LOCAL'));
+unwrap(model.aggregate(buildingId, groundId));
+unwrap(model.reparent(groundId, buildingId, 'KEEP_LOCAL'));
 
 const L = 9000;
 const W = 6000;
@@ -64,7 +67,7 @@ const walls = [
 ];
 const wallIds = walls.map((d, i) =>
   expect(
-    model.addWall({
+    create.addWall({
       length: d.length,
       height: H,
       thickness: T,
@@ -79,13 +82,16 @@ const wallIds = walls.map((d, i) =>
     `wall ${i}`
   )
 );
-wallIds.forEach((id) => model.placeIn(id, groundId));
+for (const id of wallIds) {
+  unwrap(model.placeIn(id, groundId));
+  unwrap(model.reparent(id, groundId, 'KEEP_LOCAL'));
+}
 
 const rearWallId = wallIds[1];
 if (rearWallId === undefined) throw new Error('Expected rear perimeter wall');
 
 const door = expect(
-  model.addDoorAndCutWall({
+  create.addDoorAndCutWall({
     wallLocalId: rearWallId,
     offsetAlongWall: 1200,
     offsetFromFloor: 0,
@@ -96,7 +102,7 @@ const door = expect(
   'door'
 );
 const window = expect(
-  model.addWindowAndCutWall({
+  create.addWindowAndCutWall({
     wallLocalId: rearWallId,
     offsetAlongWall: 5000,
     offsetFromFloor: 900,
@@ -109,7 +115,7 @@ const window = expect(
 [door, window].forEach((id) => model.placeIn(id, groundId));
 
 const curtain = expect(
-  model.addCurtainWall({
+  create.addCurtainWall({
     width: L,
     height: H,
     columns: 6,
@@ -126,10 +132,11 @@ const curtain = expect(
   }),
   'curtain wall'
 );
-model.placeIn(curtain, groundId);
+unwrap(model.placeIn(curtain, groundId));
+unwrap(model.reparent(curtain, groundId, 'KEEP_LOCAL'));
 
 const slab = expect(
-  model.addSlab({
+  create.addSlab({
     length: L,
     width: W,
     thickness: 250,
@@ -142,11 +149,12 @@ const slab = expect(
   }),
   'base slab'
 );
-model.placeIn(slab, groundId);
+unwrap(model.placeIn(slab, groundId));
+unwrap(model.reparent(slab, groundId, 'KEEP_LOCAL'));
 
 // Profiled structure: circular and I-shape columns, an I-shape beam.
 const roundCol = expect(
-  model.addColumn({
+  create.addColumn({
     height: H,
     profile: { kind: 'CIRCULAR', radius: 150 },
     origin: [3000, 3000, 0],
@@ -158,7 +166,7 @@ const roundCol = expect(
   'circular column'
 );
 const iCol = expect(
-  model.addColumn({
+  create.addColumn({
     height: H,
     profile: {
       kind: 'I_BEAM',
@@ -177,7 +185,7 @@ const iCol = expect(
   'I column'
 );
 const beam = expect(
-  model.addBeam({
+  create.addBeam({
     length: 3000,
     profile: {
       kind: 'I_BEAM',
@@ -195,12 +203,15 @@ const beam = expect(
   }),
   'I beam'
 );
-[roundCol, iCol, beam].forEach((id) => model.placeIn(id, groundId));
+for (const id of [roundCol, iCol, beam]) {
+  unwrap(model.placeIn(id, groundId));
+  unwrap(model.reparent(id, groundId, 'KEEP_LOCAL'));
+}
 
 // Shaped roofs: gable over the west half, hip over the east half, a small dome
 // crown. All three serialize as tessellated bodies.
 const gable = expect(
-  model.addRoof({
+  create.addRoof({
     length: 4500,
     width: W,
     thickness: 200,
@@ -215,7 +226,7 @@ const gable = expect(
   'gable roof'
 );
 const hip = expect(
-  model.addRoof({
+  create.addRoof({
     length: 4500,
     width: W,
     thickness: 200,
@@ -230,7 +241,7 @@ const hip = expect(
   'hip roof'
 );
 const dome = expect(
-  model.addRoof({
+  create.addRoof({
     length: 2000,
     width: 2000,
     thickness: 100,
@@ -244,11 +255,14 @@ const dome = expect(
   }),
   'dome roof'
 );
-[gable, hip, dome].forEach((id) => model.placeIn(id, groundId));
+for (const id of [gable, hip, dome]) {
+  unwrap(model.placeIn(id, groundId));
+  unwrap(model.reparent(id, groundId, 'KEEP_LOCAL'));
+}
 
 // A two-flight return stair and a posted railing beside it.
 const stair = expect(
-  model.addStair({
+  create.addStair({
     name: 'Main Stair',
     predefinedType: 'HALF_TURN_STAIR',
     materialName: 'Concrete',
@@ -277,10 +291,11 @@ const stair = expect(
   }),
   'stair'
 );
-model.placeIn(stair, groundId);
+unwrap(model.placeIn(stair, groundId));
+unwrap(model.reparent(stair, groundId, 'KEEP_LOCAL'));
 
 const railing = expect(
-  model.addRailing({
+  create.addRailing({
     length: 2500,
     height: 1000,
     thickness: 50,
@@ -293,7 +308,8 @@ const railing = expect(
   }),
   'railing'
 );
-model.placeIn(railing, groundId);
+unwrap(model.placeIn(railing, groundId));
+unwrap(model.reparent(railing, groundId, 'KEEP_LOCAL'));
 
 const validated = expect(
   await toIfcValidated(model, {

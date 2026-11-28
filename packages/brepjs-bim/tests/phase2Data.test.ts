@@ -1,9 +1,10 @@
+import { authoring } from '../src/model/authoring.js';
 import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
 import * as WebIFC from 'web-ifc';
-import { BimModel } from '../src/model/bimModel.js';
-import type { LocalId } from '../src/identity/localId.js';
+import { BimDocument } from '../src/model/bimDocument.js';
+import type { RecordRef } from '../src/identity/recordRef.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 
 beforeAll(async () => {
@@ -12,14 +13,14 @@ beforeAll(async () => {
 
 const META = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };
 
-function spatialModel(): { model: BimModel; storeyId: LocalId } {
-  const model = new BimModel();
+function spatialModel(): { model: BimDocument; storeyId: RecordRef } {
+  const model = new BimDocument();
   const initResult = model.init({ name: 'Phase2 Data' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = unwrap(model.addSite({ name: 'Site' }));
-  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
-  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
+  const siteId = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
@@ -44,7 +45,7 @@ function measureName(value: Record<string, unknown> | undefined): string | undef
 describe('Phase 2 data integration', () => {
   it('emits Pset_WallCommon properties with correct (non-IFCREAL) measure types', async () => {
     const { model, storeyId } = spatialModel();
-    const wall = model.addWall({
+    const wall = authoring(model).addWall({
       length: 5000,
       height: 3000,
       thickness: 250,
@@ -82,7 +83,7 @@ describe('Phase 2 data integration', () => {
 
   it('emits the Status property as an IfcPropertyEnumeratedValue', async () => {
     const { model, storeyId } = spatialModel();
-    const wall = model.addWall({
+    const wall = authoring(model).addWall({
       length: 4000,
       height: 2700,
       thickness: 200,
@@ -109,7 +110,7 @@ describe('Phase 2 data integration', () => {
 
   it('associates a layered material via IfcRelAssociatesMaterial + IfcMaterialLayerSet', async () => {
     const { model, storeyId } = spatialModel();
-    const wall = model.addWall({
+    const wall = authoring(model).addWall({
       length: 5000,
       height: 3000,
       thickness: 300,
@@ -146,7 +147,7 @@ describe('Phase 2 data integration', () => {
 
   it('associates a classification reference via IfcRelAssociatesClassification', async () => {
     const { model, storeyId } = spatialModel();
-    const wall = model.addWall({
+    const wall = authoring(model).addWall({
       length: 5000,
       height: 3000,
       thickness: 250,
@@ -187,7 +188,7 @@ describe('Phase 2 data integration', () => {
 
   it('addClassification associates an existing element after the fact', async () => {
     const { model, storeyId } = spatialModel();
-    const wall = model.addWall({
+    const wall = authoring(model).addWall({
       length: 5000,
       height: 3000,
       thickness: 250,
@@ -209,7 +210,7 @@ describe('Phase 2 data integration', () => {
 
   it('keeps the bare-material path for walls without layers (backward compat)', async () => {
     const { model, storeyId } = spatialModel();
-    const wall = model.addWall({
+    const wall = authoring(model).addWall({
       length: 5000,
       height: 3000,
       thickness: 250,

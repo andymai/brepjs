@@ -1,10 +1,12 @@
+import { authoring } from '../src/model/authoring.js';
+import type { RecordRef } from '../src/identity/recordRef.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
 import { box, scale, unwrap } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
 import { SpfReader } from '../src/import/spfReader.js';
 import { emittedBody } from './helpers/ifcBodyFixture.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc, toIfcValidated } from '../src/serialize/toIfc.js';
 
 beforeAll(async () => {
@@ -16,19 +18,19 @@ const META = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };
 // Builds a spatially-complete model (project→site→building→storey) with a wall
 // that hosts a door and a window. Returns the model and the storey id so callers
 // can place additional elements.
-function buildModelWithOpenings(): { model: BimModel; storeyId: number } {
-  const model = new BimModel();
+function buildModelWithOpenings(): { model: BimDocument; storeyId: RecordRef } {
+  const model = new BimDocument();
   const initResult = model.init({ name: 'Phase2 Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = unwrap(model.addSite({ name: 'Site' }));
-  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
-  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
+  const siteId = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(authoring(model).addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
 
-  const wall = model.addWall({
+  const wall = authoring(model).addWall({
     length: 5000,
     height: 3000,
     thickness: 250,
@@ -40,7 +42,7 @@ function buildModelWithOpenings(): { model: BimModel; storeyId: number } {
   if (!wall.ok) throw new Error(wall.error.message);
   model.placeIn(wall.value, storeyId);
 
-  const door = model.addDoorAndCutWall({
+  const door = authoring(model).addDoorAndCutWall({
     width: 900,
     height: 2100,
     offsetAlongWall: 500,
@@ -51,7 +53,7 @@ function buildModelWithOpenings(): { model: BimModel; storeyId: number } {
   if (!door.ok) throw new Error(door.error.message);
   model.placeIn(door.value, storeyId);
 
-  const win = model.addWindowAndCutWall({
+  const win = authoring(model).addWindowAndCutWall({
     width: 1200,
     height: 1000,
     offsetAlongWall: 2500,
@@ -128,7 +130,9 @@ describe('Phase 2 door/window geometry', () => {
 describe('Phase 2 proxy geometry', () => {
   it('writes an IfcBuildingElementProxy with its own tessellated body', async () => {
     using model = buildModelWithOpenings().model;
-    const proxyId = unwrap(model.addProxy({ name: 'Custom Block', solid: box(800, 600, 400) }));
+    const proxyId = unwrap(
+      authoring(model).addProxy({ name: 'Custom Block', solid: box(800, 600, 400) })
+    );
     const proxy = model.getElement(proxyId);
     if (proxy?.category !== 'PROXY') throw new Error('Missing proxy');
     const bytes = unwrap(await toIfc(model, META));
@@ -145,7 +149,7 @@ describe('Phase 2 geometry-validity gate', () => {
     const { model } = buildModelWithOpenings();
     // Uniform near-zero scale keeps topology valid but collapses the volume.
     const degenerate = scale(box(1000, 500, 300), 1e-7);
-    const proxy = model.addProxy({ name: 'Degenerate', solid: degenerate });
+    const proxy = authoring(model).addProxy({ name: 'Degenerate', solid: degenerate });
     if (!proxy.ok) throw new Error(proxy.error.message);
 
     const result = await toIfcValidated(model, META);
@@ -157,7 +161,7 @@ describe('Phase 2 geometry-validity gate', () => {
 
   it('toIfcValidated reports no geometry errors for an all-valid model', async () => {
     const { model } = buildModelWithOpenings();
-    const proxy = model.addProxy({ name: 'Valid Block', solid: box(800, 600, 400) });
+    const proxy = authoring(model).addProxy({ name: 'Valid Block', solid: box(800, 600, 400) });
     if (!proxy.ok) throw new Error(proxy.error.message);
 
     const result = await toIfcValidated(model, META);

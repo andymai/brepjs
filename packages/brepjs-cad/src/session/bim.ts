@@ -14,17 +14,17 @@ export interface BimIssueLike {
   readonly code: string;
   readonly severity: DiagnosticSeverity;
   readonly message: string;
-  readonly entity?: string | number | undefined;
+  readonly entity?: object | string | number | undefined;
 }
 
-export interface BimModelLike {
-  getElement(id: number): { readonly guid: string } | null;
+export interface BimDocumentLike {
+  getElement(id: object): { readonly guid: string } | null;
   [Symbol.dispose](): void;
 }
 
 export interface FamiliesBimLike {
-  readonly model: BimModelLike;
-  readonly idByKeyPath: ReadonlyMap<string, number>;
+  readonly model: BimDocumentLike;
+  readonly idByKeyPath: ReadonlyMap<string, object>;
   readonly proxied: readonly { readonly keyPath: string }[];
 }
 
@@ -140,7 +140,7 @@ export interface BimNs {
     options?: { readonly skipGeometry?: boolean }
   ): Promise<BimResult<ImportedModelLike>>;
   toIfc(
-    model: BimModelLike,
+    model: BimDocumentLike,
     meta: { readonly applicationName: string; readonly applicationVersion: string }
   ): Promise<BimResult<Uint8Array>>;
   disposeImportedModel(model: ImportedModelLike): void;
@@ -152,7 +152,7 @@ export interface BimNs {
       readonly proxyEvaluator?: unknown;
     }
   ): BimResult<FamiliesBimLike>;
-  /** Takes the BimModel from familiesToBim. */
+  /** Takes the BimDocument from familiesToBim. */
   checkReferentialIntegrity(model: unknown): { readonly issues: readonly BimIssueLike[] };
   checkSchema(bytes: Uint8Array): Promise<{ readonly issues: readonly BimIssueLike[] }>;
   checkRoundTrip(bytes: Uint8Array): Promise<{ readonly issues: readonly BimIssueLike[] }>;
@@ -162,16 +162,16 @@ export interface BimNs {
     entity?: string
   ): { readonly issues: readonly BimIssueLike[] };
   serializeBcfFiles(data: BcfContainerLike): Map<string, string>;
-  /** Takes the BimModel from familiesToBim. */
+  /** Takes the BimDocument from familiesToBim. */
   deriveCobieModel(
-    model: BimModelLike,
+    model: BimDocumentLike,
     meta?: { readonly contact?: CobieContactLike | undefined }
   ): CobieModelLike;
   serializeCobieToCsv(model: CobieModelLike): Map<string, string>;
   serializeCobieToJson(model: CobieModelLike): unknown;
   parseBcfFiles(files: Map<string, string>): BimResult<BcfContainerLike>;
   toIfcValidated(
-    model: BimModelLike,
+    model: BimDocumentLike,
     meta: { readonly applicationName: string; readonly applicationVersion: string }
   ): Promise<
     BimResult<{

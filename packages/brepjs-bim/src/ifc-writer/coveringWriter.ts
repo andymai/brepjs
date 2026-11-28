@@ -20,23 +20,8 @@ export function writeCoveringGeometry(
   w: IfcWriter,
   spec: CoveringSpec,
   geomSubContextId: number,
-  parentPlacementId: number | null
+  localPlacementId: number
 ): CoveringRepresentationIds {
-  const placement3DId = writeAxis2Placement3D(
-    w,
-    spec.origin.map(toIfcLengthM) as [number, number, number],
-    spec.axisZ,
-    spec.axisX
-  );
-
-  const localPlacementId = w.nextId();
-  w.writeLine({
-    expressID: localPlacementId,
-    type: WebIFC.IFCLOCALPLACEMENT,
-    PlacementRelTo: parentPlacementId !== null ? w.ref(parentPlacementId) : null,
-    RelativePlacement: w.ref(placement3DId),
-  });
-
   const lengthM = toIfcLengthM(spec.length);
   const widthM = toIfcLengthM(spec.width);
   const thicknessM = toIfcLengthM(spec.thickness);

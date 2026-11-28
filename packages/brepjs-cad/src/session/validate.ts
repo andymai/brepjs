@@ -17,15 +17,18 @@ export type ValidateOutcome =
     }
   | { readonly ok: false; readonly error: string };
 
-/** Map an issue's entity (a BimModel local id, an IFC express id, or a label) to a record id. */
-type Resolve = (entity: string | number) => string | undefined;
+/** Map an issue's entity (a BimDocument local id, an IFC express id, or a label) to a record id. */
+type Resolve = (entity: object | string | number) => string | undefined;
 
 function finding(check: CheckName, issue: BimIssueLike, resolve: Resolve): Finding {
   // A multi-solid label reads `id [n]`; the element is the id.
   const raw =
     typeof issue.entity === 'string' ? issue.entity.replace(/ \[\d+\]$/, '') : issue.entity;
   const id =
-    raw === undefined ? undefined : (resolve(raw) ?? (typeof raw === 'number' ? `#${raw}` : raw));
+    raw === undefined
+      ? undefined
+      : (resolve(raw) ??
+        (typeof raw === 'number' ? `#${raw}` : typeof raw === 'string' ? raw : undefined));
   return {
     check,
     severity: issue.severity,
@@ -60,7 +63,7 @@ async function checkBytes(
 }
 
 /**
- * Validate a families build: project it to a BimModel, check that (referential integrity), write it
+ * Validate a families build: project it to a BimDocument, check that (referential integrity), write it
  * to IFC in memory and check the bytes (schema, round trip, gherkin rules), and check each element's
  * solid. Findings name key paths; an IFC express id resolves through the export's GlobalIds.
  */
@@ -87,7 +90,7 @@ export async function validateFamilies(
     const keyOfLocal = new Map([...idByKeyPath].map(([keyPath, id]) => [id, keyPath]));
     if (checks.has('integrity')) {
       const report = bim.checkReferentialIntegrity(model);
-      const resolve: Resolve = (e) => (typeof e === 'number' ? keyOfLocal.get(e) : undefined);
+      const resolve: Resolve = (e) => (typeof e === 'object' ? keyOfLocal.get(e) : undefined);
       for (const i of report.issues) findings.push(finding('integrity', i, resolve));
       ran.push('integrity');
     }
@@ -133,7 +136,7 @@ export async function validateFamilies(
  * Validate an imported IFC file: the byte-level checks on the file itself, and each element's
  * reconstructed solids. An element whose body the importer could not fully rebuild is reported
  * with the importer's finding, since the solid check sees only what was rebuilt. Referential
- * integrity needs a BimModel, which an import does not produce.
+ * integrity needs a BimDocument, which an import does not produce.
  */
 export async function validateIfc(
   bim: BimNs,
@@ -149,7 +152,7 @@ export async function validateIfc(
         {
           check: 'integrity' as const,
           reason:
-            'an imported IFC file has no BimModel to check; the schema and round-trip checks cover its references',
+            'an imported IFC file has no BimDocument to check; the schema and round-trip checks cover its references',
         },
       ]
     : [];

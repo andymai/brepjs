@@ -46,6 +46,8 @@ Acceptance requires direct shaped-Roof creation without a rectangular recipe, pr
 - Retained geometry can cost more to encode than a compact recipe.
 - Conversion needs validation of both material and item semantics if implemented.
 
+Independent Opening placement edits cannot move a cut baked into the retained Body. The document may retire the Opening record and keep the cut, invalidating the host's recipe binding. Deferred [ADR-0010](0010-changing-a-retained-aperture.md) covers relocating or closing the cut and checking a supplied Body against a void definition.
+
 ## Alternatives considered
 
 ### Automatically substitute a coincident recipe

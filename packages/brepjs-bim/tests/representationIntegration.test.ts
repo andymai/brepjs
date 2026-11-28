@@ -1,8 +1,7 @@
 import { box, DisposalScope, getEdges, getFaces, polygon, sewShells, unwrap } from 'brepjs';
 import { expect, it } from 'vitest';
 import { currentKernel } from '../../../tests/setup.js';
-import { BimModel } from '../src/model/bimModel.js';
-import { placedSolids } from '../src/elementFns/placedGeometry.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { measureBodyMaterial } from '../src/types/body.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { bodyRecordContract } from './helpers/bodyRecordContract.js';
@@ -12,9 +11,9 @@ bodyRecordContract('RAILING');
 it.each(['GRID_REFERENCE', 'LINEAR_REFERENCE'] as const)(
   'retains unresolved %s through replacement',
   async (kind) => {
-    using model = new BimModel();
+    using model = new BimDocument();
     unwrap(model.init({ name: 'Reference placement' }));
-    const references = ['datum-1'];
+    const references = [{ kind: 'EXTERNAL' as const, identifier: 'datum-1' }];
     const parameters = { offset: 21 };
     const id = unwrap(
       model.addAuthoredBody({
@@ -23,7 +22,7 @@ it.each(['GRID_REFERENCE', 'LINEAR_REFERENCE'] as const)(
         solids: [box(2, 2, 2)],
       })
     );
-    references[0] = 'unrelated';
+    references[0] = { kind: 'EXTERNAL', identifier: 'unrelated' };
     parameters.offset = 64;
     unwrap(
       model.replaceBody({
@@ -33,10 +32,14 @@ it.each(['GRID_REFERENCE', 'LINEAR_REFERENCE'] as const)(
     );
     const record = model.getElement(id);
     if (record?.representation !== 'BODY') throw new Error('Missing Body');
-    expect(record.placement).toEqual({ kind, references: ['datum-1'], parameters: { offset: 21 } });
+    expect(record.placement).toEqual({
+      kind,
+      references: [{ kind: 'EXTERNAL' as const, identifier: 'datum-1' }],
+      parameters: { offset: 21 },
+    });
     expect(unwrap(measureBodyMaterial(record.geometry.solids))).toBeCloseTo(27, 6);
     const failure = { ok: false, error: { code: 'PLACEMENT_REFERENCE_UNRESOLVED' } };
-    expect(placedSolids(record)).toMatchObject(failure);
+    expect(model.placedSolids(record.localId, 'WORLD')).toMatchObject(failure);
     expect(await toIfc(model, { applicationName: 'Test', applicationVersion: '1' })).toMatchObject(
       failure
     );
@@ -45,7 +48,7 @@ it.each(['GRID_REFERENCE', 'LINEAR_REFERENCE'] as const)(
 );
 
 it('rejects faces, open shells, edges and raw meshes before any item transfers', () => {
-  using model = new BimModel();
+  using model = new BimDocument();
   using first = box(1, 1, 1);
   using face = unwrap(
     polygon([

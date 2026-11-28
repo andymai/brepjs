@@ -1,7 +1,8 @@
+import { authoring } from '../src/model/authoring.js';
 import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
-import { BimModel } from '../src/model/bimModel.js';
+import { BimDocument } from '../src/model/bimDocument.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { parseIdsXml } from '../src/ids/idsParser.js';
 import { checkIdsData } from '../src/ids/idsEngine.js';
@@ -72,19 +73,19 @@ const WALL_PARTOF_IDS = `<?xml version="1.0" encoding="UTF-8"?>
 </ids>`;
 
 /** Builds a minimal spatial tree plus one wall, optionally marking it external. */
-function buildWallModel(withIsExternal: boolean): BimModel {
-  const model = new BimModel();
+function buildWallModel(withIsExternal: boolean): BimDocument {
+  const model = new BimDocument();
   const initResult = model.init({ name: 'IDS Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = unwrap(model.addSite({ name: 'Site' }));
-  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
-  const storeyId = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
+  const siteId = unwrap(authoring(model).addSite({ name: 'Site' }));
+  const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(authoring(model).addStorey({ name: 'Level 1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
 
-  const wall = model.addWall({
+  const wall = authoring(model).addWall({
     length: 5000,
     height: 3000,
     thickness: 200,

@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { box, getKernel, translate } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
-import { makeLocalIdCounter } from '../src/identity/localId.js';
+import { recordCounter } from '../src/identity/recordRef.js';
 import { IfcWriter, type IfcWriterApiForTesting } from '../src/ifc-writer/ifcWriter.js';
 import { prepareTessellation } from '../src/ifc-writer/tessellationWriter.js';
 import { preflightBody } from '../src/serialize/bodyPreflight.js';
@@ -33,7 +33,7 @@ describe('exact Product Body IFC preparation', () => {
     using first = box(100, 100, 100);
     using second = box(50, 50, 50);
     const result = preflightBody({
-      localId: makeLocalIdCounter().next(),
+      localId: recordCounter().next(),
       solids: [first, second],
       prepareItem: (solid) =>
         solid === second

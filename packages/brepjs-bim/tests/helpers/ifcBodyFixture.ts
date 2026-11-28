@@ -1,10 +1,11 @@
+import { authoring } from '../../src/model/authoring.js';
 import { box, clone, translate, unwrap, type Bounds3D, type ValidSolid } from 'brepjs';
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 import * as WebIFC from 'web-ifc';
-import { BimModel } from '../../src/model/bimModel.js';
+import { BimDocument } from '../../src/model/bimDocument.js';
 import type { WallSpec } from '../../src/specs/wallSpec.js';
 import type { SpfReader } from '../../src/import/spfReader.js';
 import { disposeBody, type Body, type NonEmpty } from '../../src/types/body.js';
@@ -19,7 +20,7 @@ export function bodyExchangeFixture(
   authority: Body['kind'],
   layout: BodyLayout
 ) {
-  const model = new BimModel();
+  const model = new BimDocument();
   try {
     const projectId = unwrap(
       model.init({
@@ -27,9 +28,9 @@ export function bodyExchangeFixture(
         projectId: `${category}-${authority}-${layout}`,
       })
     );
-    const siteId = unwrap(model.addSite({ name: 'Site' }));
-    const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
-    const storeyId = unwrap(model.addStorey({ name: 'Level', elevation: 7000 }));
+    const siteId = unwrap(authoring(model).addSite({ name: 'Site' }));
+    const buildingId = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+    const storeyId = unwrap(authoring(model).addStorey({ name: 'Level', elevation: 7000 }));
     model.aggregate(projectId, siteId);
     model.aggregate(siteId, buildingId);
     model.aggregate(buildingId, storeyId);
@@ -50,10 +51,14 @@ export function bodyExchangeFixture(
     };
     const localId = unwrap(
       category === 'WALL'
-        ? model.addWall(spec, { stableKey: 'product' })
-        : model.addRailing({ ...spec, predefinedType: 'GUARDRAIL' }, { stableKey: 'product' })
+        ? authoring(model).addWall(spec, { stableKey: 'product' })
+        : authoring(model).addRailing(
+            { ...spec, predefinedType: 'GUARDRAIL' },
+            { stableKey: 'product' }
+          )
     );
     model.placeIn(localId, storeyId);
+    unwrap(model.reparent(localId, storeyId, 'KEEP_LOCAL'));
     const first = box(1000, 100, 500);
     const solids: NonEmpty<ValidSolid> =
       layout === 'singleton'
@@ -128,7 +133,7 @@ export function retainedOpeningFixture(
   fillerKind: 'DOOR' | 'WINDOW' = 'DOOR',
   layout: 'disconnected' | 'aperture' = 'disconnected'
 ) {
-  const model = new BimModel();
+  const model = new BimDocument();
   try {
     const project = unwrap(
       model.init({
@@ -136,21 +141,22 @@ export function retainedOpeningFixture(
         projectId: `opening-${authority}-${fillerKind}-${layout}`,
       })
     );
-    const site = unwrap(model.addSite({ name: 'Site' }));
-    const building = unwrap(model.addBuilding({ name: 'Building' }));
-    const storey = unwrap(model.addStorey({ name: 'Level', elevation: 7000 }));
+    const site = unwrap(authoring(model).addSite({ name: 'Site' }));
+    const building = unwrap(authoring(model).addBuilding({ name: 'Building' }));
+    const storey = unwrap(authoring(model).addStorey({ name: 'Level', elevation: 7000 }));
     model.aggregate(project, site);
     model.aggregate(site, building);
     model.aggregate(building, storey);
-    const wallId = unwrap(model.addWall(OPENING_WALL, { stableKey: 'wall' }));
+    const wallId = unwrap(authoring(model).addWall(OPENING_WALL, { stableKey: 'wall' }));
     const fillerSpec = fillerKind === 'DOOR' ? DOOR : WINDOW;
     const fillerId = unwrap(
-      model[fillerKind === 'DOOR' ? 'addDoorAndCutWall' : 'addWindowAndCutWall'](
+      authoring(model)[fillerKind === 'DOOR' ? 'addDoorAndCutWall' : 'addWindowAndCutWall'](
         { ...fillerSpec, wallLocalId: wallId },
         { stableKey: 'filler', openingStableKey: 'opening' }
       )
     );
     model.placeIn(wallId, storey);
+    unwrap(model.reparent(wallId, storey, 'KEEP_LOCAL'));
     model.placeIn(fillerId, storey);
     using source =
       layout === 'disconnected' ? box(2, 1, 3) : box(fillerSpec.width, 1, fillerSpec.height / 2);
