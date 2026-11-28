@@ -66,14 +66,9 @@ function serialize<T>(path: string, fn: () => Promise<T>): Promise<T> {
 }
 
 async function bimFor(anchor: string): Promise<BimNs> {
-  const bim = await importBim(anchor);
-  if (bim === undefined) {
-    throw new SessionError(
-      'BIM_UNAVAILABLE',
-      "BCF issues need 'brepjs-bim' installed in this project"
-    );
-  }
-  return bim;
+  const loaded = await importBim(anchor, "BCF issues need 'brepjs-bim' installed in this project");
+  if (!loaded.ok) throw new SessionError('BIM_UNAVAILABLE', loaded.message);
+  return loaded.bim;
 }
 
 function bcfPath(cwd: string, raw: string, key: string): string {

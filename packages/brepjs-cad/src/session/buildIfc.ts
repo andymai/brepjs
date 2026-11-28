@@ -84,13 +84,12 @@ function failed(code: string, message: string): WorkerBuild {
 
 /** Import an IFC file into element records, holding the imported model for later phases. */
 export async function buildIfc(ifcPath: string): Promise<WorkerBuild> {
-  const bim = await importBim(ifcPath);
-  if (bim === undefined) {
-    return failed(
-      'BIM_MISSING',
-      "opening an .ifc needs 'brepjs-bim' and 'web-ifc' installed in this project"
-    );
-  }
+  const loaded = await importBim(
+    ifcPath,
+    "opening an .ifc needs 'brepjs-bim' and 'web-ifc' installed in this project"
+  );
+  if (!loaded.ok) return failed(loaded.code, loaded.message);
+  const { bim } = loaded;
   let bytes: Uint8Array;
   let brep: BrepNs;
   try {
