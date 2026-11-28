@@ -1,0 +1,27 @@
+packages/brepjs-families/CHANGELOG.md
+  s_2a61553bcbe166::t_00c3b7c1fd2640 3-9
+.release-please-manifest.json
+  s_2a61553bcbe166::t_00c3b7c1fd2640 5,8
+packages/brepjs-cad/CHANGELOG.md
+  s_2a61553bcbe166::t_00c3b7c1fd2640 3-9
+packages/brepjs-cad/package.json
+  s_2a61553bcbe166::t_00c3b7c1fd2640 3
+packages/brepjs-families/package.json
+  s_2a61553bcbe166::t_00c3b7c1fd2640 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "35f03b8a9da9d0e9f912c0fcdaba4acdaa9ce963",
+  "prompts": {},
+  "sessions": {
+    "s_2a61553bcbe166": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e9ca51b-5362-424a-88d1-5c1f1ce1f42e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
