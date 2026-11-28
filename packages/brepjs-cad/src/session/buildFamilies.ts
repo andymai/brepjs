@@ -166,53 +166,47 @@ export async function buildFamilies(
         return { brep, shapes };
       },
       cobie: async (args) => {
-        const bim = await importBim(entryPath);
-        if (bim === undefined) {
-          return { ok: false, error: "COBie needs 'brepjs-bim' installed in this project" };
-        }
-        return familiesCobie(bim, resolved, evaluator, args);
+        const loaded = await importBim(
+          entryPath,
+          "COBie needs 'brepjs-bim' installed in this project"
+        );
+        if (!loaded.ok) return { ok: false, error: loaded.message };
+        return familiesCobie(loaded.bim, resolved, evaluator, args);
       },
       validate: async (checks) => {
-        const bim = await importBim(entryPath);
-        if (bim === undefined) {
-          return {
-            ok: false,
-            error: "validation needs 'brepjs-bim' and 'web-ifc' installed in this project",
-          };
-        }
+        const loaded = await importBim(
+          entryPath,
+          "validation needs 'brepjs-bim' and 'web-ifc' installed in this project"
+        );
+        if (!loaded.ok) return { ok: false, error: loaded.message };
         const shapes = new Map<string, unknown>();
         for (const [keyPath, node] of model.byKeyPath) {
           if (node.shape?.ok && node.shape.value !== undefined)
             shapes.set(keyPath, node.shape.value);
         }
-        return validateFamilies(bim, resolved, evaluator, shapes, new Set(checks));
+        return validateFamilies(loaded.bim, resolved, evaluator, shapes, new Set(checks));
       },
       quantities: async () => {
-        const bim = await importBim(entryPath);
-        if (bim === undefined) {
-          return {
-            ok: false,
-            error: "quantities need 'brepjs-bim' and 'web-ifc' installed in this project",
-          };
-        }
-        quantitiesOutcome ??= familiesQuantities(bim, resolved, evaluator);
+        const loaded = await importBim(
+          entryPath,
+          "quantities need 'brepjs-bim' and 'web-ifc' installed in this project"
+        );
+        if (!loaded.ok) return { ok: false, error: loaded.message };
+        quantitiesOutcome ??= familiesQuantities(loaded.bim, resolved, evaluator);
         return quantitiesOutcome;
       },
       exportIfc: async (args) => {
-        const bim = await importBim(entryPath);
-        if (bim === undefined) {
+        const loaded = await importBim(
+          entryPath,
+          "IFC export needs 'brepjs-bim' and 'web-ifc' installed in this project"
+        );
+        if (!loaded.ok) {
           return {
             ok: false,
-            diagnostics: [
-              {
-                severity: 'error',
-                code: 'BIM_MISSING',
-                message: "IFC export needs 'brepjs-bim' and 'web-ifc' installed in this project",
-              },
-            ],
+            diagnostics: [{ severity: 'error', code: loaded.code, message: loaded.message }],
           };
         }
-        return exportFamiliesIfc(bim, resolved, evaluator, args);
+        return exportFamiliesIfc(loaded.bim, resolved, evaluator, args);
       },
     };
   } catch (e) {

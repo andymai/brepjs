@@ -75,9 +75,10 @@ const bytes = unwrap(await toIfc(bim, { applicationName: 'agent', applicationVer
   family's **archetype** routes it (`family('Wall', …, { archetype: 'wall' })`), so a renamed family
   keeps its mapping; declare none and it falls back to matching the family name. Anything else with
   geometry → `FAMILIES_UNSUPPORTED_TYPE` (or an `IfcBuildingElementProxy` when a proxy evaluator is
-  passed); drop to the imperative `BimDocument` adders (`addZone`, `addSystem`,
-  `addElementAssembly`, …) for pure grouping objects. The `covering` route is host-less —
-  an `IfcRelCoversBldgElements` link needs the imperative `addCovering(spec, hostLocalId)`.
+  passed). For pure grouping objects, call the imperative adders on `authoring(projected.model)`
+  (`addZone`, `addSystem`, `addElementAssembly`, …). The `covering` route is host-less: an
+  `IfcRelCoversBldgElements` link needs `authoring(projected.model).addCovering(spec, hostRef)`,
+  with `hostRef` from `projected.idByKeyPath`.
 - **Placement frame:** an element's thickness extrudes along `axisZ × axisX`, so a wall running +Y
   (`axisX: [0,1,0]`) grows its thickness toward **−X**. Probe placement with `getBounds`, not by eye.
 - **Wall/slab dims must contain their openings** — a door wider than the wall fails with

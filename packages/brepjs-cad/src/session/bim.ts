@@ -181,8 +181,13 @@ export interface BimNs {
   >;
 }
 
-/** brepjs-bim as installed for the project around `anchorPath` (or the server's cwd). */
-export async function importBim(anchorPath: string): Promise<BimNs | undefined> {
+export const MIN_BIM_VERSION = '0.29.0';
+
+type BimImport =
+  | { readonly ok: true; readonly bim: BimNs }
+  | { readonly ok: false; readonly code: 'BIM_MISSING' | 'BIM_OUTDATED'; readonly message: string };
+
+async function loadBim(anchorPath: string): Promise<BimNs | undefined> {
   try {
     // Typed through BimNs so a brepjs-bim API change that breaks these structural views fails typecheck.
     const bim: BimNs = await import('brepjs-bim');
@@ -199,4 +204,32 @@ export async function importBim(anchorPath: string): Promise<BimNs | undefined> 
     }
     return undefined;
   }
+}
+
+// Releases before 0.29.0 expose BimModel with numeric local ids; they still load and still satisfy
+// most of BimNs, but every element reference these views read would be wrong.
+function hasDocumentApi(bim: object): boolean {
+  return (
+    'authoring' in bim &&
+    typeof bim.authoring === 'function' &&
+    'BimDocument' in bim &&
+    typeof bim.BimDocument === 'function'
+  );
+}
+
+/**
+ * brepjs-bim as installed for the project around `anchorPath` (or the server's cwd).
+ * `missingMessage` explains what needs brepjs-bim when it is not installed.
+ */
+export async function importBim(anchorPath: string, missingMessage: string): Promise<BimImport> {
+  const bim = await loadBim(anchorPath);
+  if (bim === undefined) return { ok: false, code: 'BIM_MISSING', message: missingMessage };
+  if (!hasDocumentApi(bim)) {
+    return {
+      ok: false,
+      code: 'BIM_OUTDATED',
+      message: `brepjs-cad needs brepjs-bim ${MIN_BIM_VERSION} or later (the BimDocument API); upgrade brepjs-bim in this project`,
+    };
+  }
+  return { ok: true, bim };
 }

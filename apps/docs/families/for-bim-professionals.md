@@ -45,7 +45,7 @@ A door in a wall is not a boolean subtraction that happens to look right. The mo
 
 ## Current scope, stated plainly
 
-The IFC projection today maps **storeys, walls, slabs, doors, windows, columns, beams, roofs, stairs, ramps, railings, curtain walls, spaces, footings, piles, and coverings** (columns and beams in rectangular, circular, and I-shape profiles; roofs flat or pitched as shed / gable / hip / dome; stairs and ramps as multi-flight assemblies; openings, property sets, and materials throughout). Openings in this projection are wall-only; slab openings, zones, systems, and element assemblies are reachable through the direct `BimDocument` API.
+The IFC projection today maps **storeys, walls, slabs, doors, windows, columns, beams, roofs, stairs, ramps, railings, curtain walls, spaces, footings, piles, and coverings** (columns and beams in rectangular, circular, and I-shape profiles; roofs flat or pitched as shed / gable / hip / dome; stairs and ramps as multi-flight assemblies; openings, property sets, and materials throughout). Openings in this projection are wall-only; slab openings, zones, systems, and element assemblies are reachable through direct authoring with `authoring(document)`.
 
 This is also not a Revit or ArchiCAD replacement. There is no drawing sheet, no annotation, no GUI authoring. It is a **programmatic model pipeline**: configurators, generative studies, firm-standard component libraries, and automated IFC production feeding the tools you already use.
 

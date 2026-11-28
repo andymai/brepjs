@@ -5,7 +5,7 @@ description: 'Every parametric element brepjs-bim authors: structural, spatial, 
 
 # Element Catalog
 
-Parametric elements build local solids from typed recipes in millimeters. Directly authored elements retain the supplied solids and placement. Civil spatial elements have no Body. The IFC writer applies placement through `IfcLocalPlacement`.
+Parametric elements build local solids from typed recipes in millimeters. Call each method in this table on `authoring(document)`. Directly authored elements retain the supplied solids and placement. Civil spatial elements have no Body. The IFC writer applies placement through `IfcLocalPlacement`.
 
 | Element         | Method                   | Notes                                                                                |
 | --------------- | ------------------------ | ------------------------------------------------------------------------------------ |
