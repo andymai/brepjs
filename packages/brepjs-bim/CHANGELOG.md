@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.28.0...brepjs-bim-v0.29.0) (2026-11-28)
+
+
+### Features
+
+* **bim:** resolve placement in BimDocument (migration step 3) ([#2746](https://github.com/andymai/brepjs/issues/2746)) ([6d3e5ca](https://github.com/andymai/brepjs/commit/6d3e5ca16b45b2fb162ce65e6666b53cd98e9325))
+
 ## [0.28.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.27.3...brepjs-bim-v0.28.0) (2026-11-25)
 
 
