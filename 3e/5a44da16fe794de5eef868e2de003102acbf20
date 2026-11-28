@@ -1,0 +1,38 @@
+packages/brepjs-cad/tests/importBim.test.ts
+  s_2a61553bcbe166::t_edd421ee234b41 44-46
+  s_2a61553bcbe166::t_9197f50c322ce4 1-22,24-25,28-43,47-54
+  s_2a61553bcbe166::t_ba420f5f803f19 23,26-27
+apps/docs/bim/elements.md
+  s_2a61553bcbe166::t_0f88cf3a84b0b3 8
+packages/brepjs-cad/src/session/buildFamilies.ts
+  s_2a61553bcbe166::t_48552736c3dfbc 187,190-195,199-203,206,209
+  s_2a61553bcbe166::t_67310b7754a789 169-174,177-181
+packages/brepjs-cad/src/mcp/issueTools.ts
+  s_2a61553bcbe166::t_bc44f049fff8a9 69-71
+packages/brepjs-cad/src/session/bim.ts
+  s_2a61553bcbe166::t_162513cc4ec7fc 211-217
+  s_2a61553bcbe166::t_f6e438101b0dc4 184-185,187-190,208-210,218-235
+  s_2a61553bcbe166::t_b179d80aa6d518 186
+packages/brepjs-cad/skills/brepjs-implement/references/families-bim.md
+  s_2a61553bcbe166::t_0f88cf3a84b0b3 78-81
+apps/docs/families/for-bim-professionals.md
+  s_2a61553bcbe166::t_0f88cf3a84b0b3 48
+packages/brepjs-cad/src/session/buildIfc.ts
+  s_2a61553bcbe166::t_f31189cf917405 87-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3e5a44da16fe794de5eef868e2de003102acbf20",
+  "prompts": {},
+  "sessions": {
+    "s_2a61553bcbe166": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e9ca51b-5362-424a-88d1-5c1f1ce1f42e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
