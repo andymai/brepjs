@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.195.1](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.195.0...brepjs-cad-v0.195.1) (2026-11-28)
+
+
+### Bug Fixes
+
+* **cad:** require the brepjs-bim document API and fix authoring docs ([#2750](https://github.com/andymai/brepjs/issues/2750)) ([4480d5e](https://github.com/andymai/brepjs/commit/4480d5e3149770dcca197c1a5490b5517b3638f7))
+
 ## [0.195.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.194.1...brepjs-cad-v0.195.0) (2026-11-28)
 
 
